@@ -1,0 +1,13 @@
+[package]
+name = "spud"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+# These will increase compile times in release mode!
+# panic = "abort"
+# debug = true
+strip = true
+opt-level = 3
+lto = true
+codegen-units = 1
