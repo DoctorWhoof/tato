@@ -1,8 +1,7 @@
 //! Simple ringbuffer with averaging and smoothing.
 
-const CAPACITY:usize = 30;
-pub struct SmoothBuffer {
-    data: [f32; CAPACITY],
+pub struct SmoothBuffer<const CAP:usize> {
+    data: [f32; CAP],
     head: usize,
     sum: Option<f32>,
     max: Option<f32>,
@@ -11,17 +10,17 @@ pub struct SmoothBuffer {
 }
 
 
-impl Default for SmoothBuffer {
+impl<const CAP:usize> Default for SmoothBuffer<CAP> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SmoothBuffer{
+impl<const CAP:usize>  SmoothBuffer<CAP>{
 
     pub fn new() -> Self {
         SmoothBuffer{
-            data: [0.0; CAPACITY],
+            data: [0.0; CAP],
             head:0,
             sum: None,
             max: None,

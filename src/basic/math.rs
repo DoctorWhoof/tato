@@ -1,7 +1,7 @@
-
+use libm::roundf;
 
 pub fn quantize(value: f32, size: f32) -> f32 {
-    (value/size).round() * size
+    roundf(value/size) * size
 }
 
 

@@ -1,3 +1,4 @@
+use libm::fabsf;
 //Assumes the pixel buffer is indexed, 256 colors.
 
 #[inline]
@@ -21,8 +22,8 @@ pub fn draw_line(pixels: &mut [u8], buffer_width:usize, x0:i32, y0:i32, x1:i32, 
     let y_tail = i32::max(y1, 0);
     let y_tail = i32::min(y_tail, (buffer_height-1) as i32) as f32;
 
-    let w = (x_tail - x_head).abs();
-    let h = (y_tail - y_head).abs();
+    let w = fabsf(x_tail - x_head);
+    let h = fabsf(y_tail - y_head);
     let longest = if w > h { w } else { h };
     let inc_x = w / longest;
     let inc_y = h / longest;

@@ -1,4 +1,5 @@
 use super::*;
+use libm::floorf;
 use core::ops::{Add, Sub, Mul};
 
 #[derive(Clone, Copy, Debug)]
@@ -93,7 +94,7 @@ impl From<Rect<i8>> for Rect<i32> {
 
 impl Rect<f32> {
     pub fn to_i32(self) -> Rect<i32> {
-        Rect{ x: self.x.floor() as i32, y:self.y.floor() as i32, w:self.w.floor() as i32, h:self.h.floor() as i32 }
+        Rect{ x: floorf(self.x) as i32, y:floorf(self.y) as i32, w:floorf(self.w) as i32, h:floorf(self.h) as i32 }
     }
 }
 

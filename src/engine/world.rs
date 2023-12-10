@@ -1,9 +1,7 @@
-use core::time::Duration;
-use std::{time::Instant, thread::sleep};
 use crate::*;
 
-pub const ANIM_CAPACITY:u16 = 256;
-pub const ENTITY_CAPACITY:u16 = 256;
+pub const ANIM_CAPACITY:u16 = 64;
+pub const ENTITY_CAPACITY:u16 = 64;
 pub const TILEMAP_CAPACITY:u16 = 1;
 
 
@@ -35,15 +33,13 @@ pub struct World {
     pub cam:Rect<f32>,
     pub renderer: Renderer,
     pub time:f32,
-    pub elapsed_time_buffer:SmoothBuffer,
-    pub time_update_buffer:SmoothBuffer,
+    pub elapsed_time_buffer:SmoothBuffer<15>,
+    pub time_update_buffer:SmoothBuffer<60>,
     
     // Private
     entity_head:u16,
     anim_head:u16,
     tilemap_head:u16,
-    time_start:Instant,
-    time_start_frame:Instant,
     time_update:f32,
     time_elapsed:f32,
     time_idle:f32,
@@ -77,8 +73,6 @@ impl World {
             entity_head:0,
             anim_head:0,
             tilemap_head:0,
-            time_start:Instant::now(),
-            time_start_frame:Instant::now(),
             time_update:1.0 / 60.0,
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
@@ -406,42 +400,36 @@ impl World {
     // }
 
 
-    pub fn start_frame(&mut self) {
-        self.elapsed_time_buffer.push(self.time_start_frame.elapsed().as_secs_f32());
-        self.time_start_frame = Instant::now();
+    pub fn start_frame(&mut self, time_now:f32) {
+        self.elapsed_time_buffer.push(time_now - self.time);
+        self.time = time_now;
         
         self.time_elapsed = quantize(self.elapsed_time_buffer.average(), 1.0/ 360.0);
-        self.time = self.time_start.elapsed().as_secs_f32();
-
-        // for tilemap in self.tilemaps.iter_mut() {
-        //     tilemap.reset_bg_buffers()
-        // }
-
     }
 
 
 
-    pub fn finish_frame(&mut self) {
-        self.time_update = self.time_start_frame.elapsed().as_secs_f32();
+    pub fn finish_frame(&mut self, time_now:f32) {
+        self.time_update = time_now - self.time;
         self.time_update_buffer.push(self.time_update);
 
-        // Limit frame rate. TODO: This is hacky, doesn't always work.
-        if let Some(fps_limit) = self.limit_frame_rate {
-            let immediate_fps = 1.0 / self.time_update;
-            if immediate_fps > fps_limit {
-                let time_target = 1.0 / fps_limit;
-                let time_diff = time_target - self.time_update;
-                if time_diff > 1.0 / 240.0 {
-                    self.time_idle = time_diff * 0.75;
-                    sleep(Duration::from_secs_f32(self.time_idle));
-                }
-            } else {
-                println!("Skipping idle cycle!");
-                self.time_idle = 0.0;
-            }
-        } else {
-            self.time_idle = 0.0;
-        }
+        // Limit frame rate. TODO: This is hacky, doesn't always work, and needs std library.
+        // if let Some(fps_limit) = self.limit_frame_rate {
+        //     let immediate_fps = 1.0 / self.time_update;
+        //     if immediate_fps > fps_limit {
+        //         let time_target = 1.0 / fps_limit;
+        //         let time_diff = time_target - self.time_update;
+        //         if time_diff > 1.0 / 240.0 {
+        //             self.time_idle = time_diff * 0.75;
+        //             sleep(Duration::from_secs_f32(self.time_idle));
+        //         }
+        //     } else {
+        //         println!("Skipping idle cycle!");
+        //         self.time_idle = 0.0;
+        //     }
+        // } else {
+        //     self.time_idle = 0.0;
+        // }
     }
 
 }

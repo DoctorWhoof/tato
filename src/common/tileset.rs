@@ -15,7 +15,7 @@ impl TilesetID {
             index,
             unique_id: NEXT_ID.fetch_add(1, Ordering::AcqRel)
         };
-        println!("New TilesetID: {:#?}", result);
+        // println!("New TilesetID: {:#?}", result);
         result
     }
 
