@@ -28,7 +28,8 @@
             . I can still come up with more robust .map and .atlas formats
             . "map" can contain the tilemap dimensions, the tile indices and flags
             . "atlas" can contain tile dimensions
-            . "range" and "anim" can contain the tile flags besides their main data
+            . "anim" can contain the tile flags besides their main data
+            . Tilemaps could still exist as a separate file
 
 [.] Tilemaps
     [x] Build a basic tilemap shape with rendering (no autotiling)
@@ -87,20 +88,17 @@
                         [x] To keep things simple, it's a stack: you can't remove a set in the middle, you can only "pop".
                         [x] Clean up pipeline (replace AtlasBuilder references with TilesetBuilder, etc.)
                         [ ] Since TileIDs have a unique_id, inserting at any index may be doable
-------->[ ] Entities with Tile Group shapes
+        [x] Entities with Tile Group shapes
+        [ ] BUG: AnimTiles bug out whengoing off screen
         [ ] Art: Create new "area" (tilemap + distinct tiles) to test moving data in and out of Atlas
-        [ ] Scene file?
-            . Should a scene file just contain build time entities?
-            . Tilemaps could still exist as a separate file
-        [x] Anim files
-            [x] Binary with cols/rows
-            [x] Flags
 
+[x] Anim files
+    [x] Binary with cols/rows
+    [x] Flags
 
 [ ] Add additional debug data
     [ ] Entity Names
     [ ] Debug only scene list (App side)
-
 
 [.] HUD
     [x] Render a smaller window (instead of rendering entire view, then overwriting the HUD pixels)

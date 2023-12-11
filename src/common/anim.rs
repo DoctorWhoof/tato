@@ -30,17 +30,6 @@ impl Default for Anim {
 
 impl Anim {
 
-
-    // pub fn new(with_key:AnimID) -> AnimID {
-    //     Self {
-    //         fps: 10,
-    //         len: 0,
-    //         frames: core::array::from_fn(|_| Frame::default() ),
-    //         tileset: TilesetID::default()
-    //     }
-    // }
-
-
     pub fn load( data:&[u8], tileset:TilesetID, fps:u8 ) -> Self {
         let text_len = ANIM_HEADER_TEXT.len();
         if data.len() < ANIM_HEADER_LEN + 1 { panic!("Anim: Invalid .anim file") }

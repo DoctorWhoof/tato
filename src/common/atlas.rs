@@ -1,6 +1,7 @@
 use core::array;
 
-use super::*;
+use crate::*;
+use slotmap::SlotMap;
 
 pub const ATLAS_WIDTH:usize = 128;
 pub const ATLAS_HEIGHT:usize = 128;
@@ -14,12 +15,13 @@ pub const TILE_COUNT:usize = ATLAS_PIXEL_COUNT/TILE_LENGTH;
 pub const TILESET_COUNT:usize = 4;
 pub const TILESET_HEADER_TEXT:&str = "tileset_1.0";
 
+
 pub struct Atlas {
     pub pixels:[u8; ATLAS_PIXEL_COUNT],
     pub rects:[Rect<u8>; TILE_COUNT],
     next_tileset:u16,
     next_free_tile:u16,
-    tilesets:[Tileset; TILESET_COUNT],
+    tilesets: SlotMap<TilesetID, Tileset>
 }
 
 
@@ -50,9 +52,6 @@ impl Atlas {
 
 
     pub fn insert_tileset( &mut self, data:&[u8] ) -> TilesetID {
-        if self.next_tileset as usize == self.tilesets.len() {
-            panic!("\nAtlas: Error, exceeded tilesets capacity ({})\n", self.tilesets.len())
-        }
         let mut offset = TILEMAP_HEADER_TEXT.len()-1;
         if data[0 ..= offset] != *TILESET_HEADER_TEXT.as_bytes() { panic!("Atlas error: Invalid .tiles file") }
 
@@ -77,14 +76,11 @@ impl Atlas {
         }
         
         // Insert new tileset
-        let result = TilesetID::new(self.next_tileset);
         let start_index = self.next_free_tile; 
         let len = pixel_count / TILE_LENGTH as u16; 
-        self.tilesets[self.next_tileset as usize] = Tileset {
-            unique_id:result.unique_id,
-            start_index,
-            len
-        };
+        let result = self.tilesets.insert_with_key(|key| {
+            Tileset { unique_id:key, start_index, len }
+        });
 
         // Loads from linear-formatted pixels into tile-formatted pixels
         let cols = ATLAS_WIDTH / TILE_WIDTH;
@@ -109,39 +105,39 @@ impl Atlas {
     }
 
 
-    #[allow(unused)]
-    pub fn pop_tileset(&mut self) {
-        if self.next_tileset > 0 {
-            self.next_tileset -= 1;
-            let last_tileset = &self.tilesets[self.next_tileset as usize];
-            self.next_free_tile -= last_tileset.len;
-        } else {
-            panic!("Atlas: Error, no tiles left to pop!")
-        }
-    }
+    // #[allow(unused)]
+    // pub fn pop_tileset(&mut self) {
+    //     if self.next_tileset > 0 {
+    //         self.next_tileset -= 1;
+    //         let last_tileset = &self.tilesets[self.next_tileset as usize];
+    //         self.next_free_tile -= last_tileset.len;
+    //     } else {
+    //         panic!("Atlas: Error, no tiles left to pop!")
+    //     }
+    // }
 
 
     pub fn get_tileset(&self, id:TilesetID) -> &Tileset {
-        #[cfg(debug_assertions)]{
-            if id.index >= self.next_tileset {
-                panic!("Atlas: Invalid tileset ID {:?} (max is {:?})", id, self.next_tileset-1)
-            }
-        }
-        &self.tilesets[id.get()]
+        // #[cfg(debug_assertions)]{
+        //     if id.index >= self.next_tileset {
+        //         panic!("Atlas: Invalid tileset ID {:?} (max is {:?})", id, self.next_tileset-1)
+        //     }
+        // }
+        &self.tilesets[id]
     }
 
 
     pub fn get_tile_from_tileset(&self, index:u8, tileset_id:TilesetID) -> TileID {
-        let tileset = &self.tilesets[tileset_id.get()];
+        let tileset = &self.tilesets[tileset_id];
         let result = TileID(tileset.start_index + index as u16);
-        #[cfg(debug_assertions)]{
-            if tileset_id.unique_id != tileset.unique_id || tileset_id.index >= self.next_tileset{
-                panic!( "\nAtlas: Error, attempt to use invalid TilesetID:{:?}\n", tileset_id )
-            }
-            if index as u16 > tileset.len {
-                panic!("Atlas: Invalid tileID {:?} (max is {:?})", result, tileset.start_index + tileset.len)
-            }
-        }
+        // #[cfg(debug_assertions)]{
+        //     if tileset_id.unique_id != tileset.unique_id || tileset_id.index >= self.next_tileset{
+        //         panic!( "\nAtlas: Error, attempt to use invalid TilesetID:{:?}\n", tileset_id )
+        //     }
+        //     if index as u16 > tileset.len {
+        //         panic!("Atlas: Invalid tileID {:?} (max is {:?})", result, tileset.start_index + tileset.len)
+        //     }
+        // }
         result
     }
 
