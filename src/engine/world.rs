@@ -1,24 +1,10 @@
+use slotmap::SlotMap;
+
 use crate::*;
 
-pub const ANIM_CAPACITY:u16 = 64;
-pub const ENTITY_CAPACITY:u16 = 64;
-pub const TILEMAP_CAPACITY:u16 = 1;
-
-
-macro_rules! generate_id {
-    ($name:ident) => {
-        #[derive(Clone, Copy, Debug, PartialEq)]
-        pub struct $name(pub u16);
-
-        impl $name {
-            #[allow(unused)] #[inline]
-            pub fn get(self) -> usize { self.0 as usize}
-        }
-    }   
-}
-
-generate_id!(EntityID);
-generate_id!(AnimID);
+pub type EntityPool = SlotMap<EntityID, Entity>;
+pub type AnimPool = SlotMap<AnimID, Anim>;
+pub type TilemapPool = SlotMap<TilemapID, Tilemap>;
 
 
 pub struct World {
@@ -32,22 +18,19 @@ pub struct World {
 
     pub cam:Rect<f32>,
     pub renderer: Renderer,
-    pub time:f32,
     pub elapsed_time_buffer:SmoothBuffer<15>,
     pub time_update_buffer:SmoothBuffer<60>,
     
     // Private
-    entity_head:u16,
-    anim_head:u16,
-    tilemap_head:u16,
+    time:f32,
     time_update:f32,
     time_elapsed:f32,
     time_idle:f32,
     
     // Main data
-    anims:[Anim; ANIM_CAPACITY as usize],
-    entities:[Entity;ENTITY_CAPACITY as usize],
-    tilemaps:[Tilemap; TILEMAP_CAPACITY as usize],
+    entities:EntityPool,
+    anims:AnimPool,
+    tilemaps:TilemapPool,
 }
 
 
@@ -61,7 +44,6 @@ impl World {
 
 
     pub fn new() -> Self {
-        let renderer = Renderer::default();
         World {
             limit_frame_rate: None,
             debug_colliders:false,
@@ -70,24 +52,25 @@ impl World {
             draw_sprites: true,
             draw_tilemaps: true,
 
-            entity_head:0,
-            anim_head:0,
-            tilemap_head:0,
+            cam: Rect::new(0.0, 0.0, RENDER_WIDTH as f32, (RENDER_HEIGHT - HUD_HEIGHT) as f32),
+            renderer: Renderer::default(),
+
+            elapsed_time_buffer: SmoothBuffer::new(),
+            time_update_buffer: SmoothBuffer::new(),
+            time: 0.0,
             time_update:1.0 / 60.0,
+            
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            cam: Rect::new(0.0, 0.0, RENDER_WIDTH as f32, (RENDER_HEIGHT - HUD_HEIGHT) as f32),
-            entities: core::array::from_fn(|_| Entity::default() ),
-            anims: core::array::from_fn(|_| Anim::default() ),
-            tilemaps: core::array::from_fn(|_| Tilemap::default() ),
-            renderer,
-            
-            time: 0.0,
-            elapsed_time_buffer: SmoothBuffer::new(),
-            time_update_buffer: SmoothBuffer::new()
+            entities: SlotMap::with_key(),
+            anims: SlotMap::with_key(),
+            tilemaps: SlotMap::with_key()
         }
     }
+
+
+    pub fn time(&self) -> f32 { self.time }
 
 
     pub fn time_elapsed(&self) -> f32 { self.time_elapsed }
@@ -100,7 +83,7 @@ impl World {
 
     
     pub fn center_camera_on(&mut self, entity_id:EntityID) {
-        let e = &self.entities[entity_id.get()];
+        let e = &self.entities[entity_id];
         self.cam.x = e.pos.x - (RENDER_WIDTH/2) as f32;
         self.cam.y = e.pos.y - (RENDER_HEIGHT/2) as f32;
     }
@@ -108,71 +91,48 @@ impl World {
 
     // Returns a reference to the entity right away so you can easily edit its fields
     pub fn insert_entity(&mut self) -> &mut Entity {
-        let id = self.entity_head;
-        if id == ENTITY_CAPACITY { panic!("World: Entity capacity exceeded.") }
-
-        self.entities[id as usize].id = EntityID(id);
-
-        self.entity_head += 1;
-        &mut self.entities[id as usize]
-    }
-
-    // // Returns a reference to the tilemap just inserted.
-    // pub(crate) fn insert_tilemap(&mut self, cols:usize, rows:usize) -> &mut Tilemap {
-    //     let id = self.tilemap_head;
-    //     if id == TILEMAP_CAPACITY { panic!("World: Tilemap capacity exceeded.") }
-    //     if cols * rows > TILEMAP_LEN {
-    //         panic!("Tilemap: Error creating {} x {} tilemap, capacity of {} exceeded", cols, rows, TILEMAP_LEN)
-    //     }
-    //     self.tilemaps[id as usize] = Tilemap::default();
-    //     self.entity_head += 1;
-    //     &mut self.tilemaps[id as usize]
-    // }
-
-
-    // Returns a reference to the tilemap just inserted.
-    pub fn load_tilemap(&mut self, data:&[u8], tileset:TilesetID) -> TilemapID {
-        // Create ID and perform basic checks
-        let id = self.tilemap_head;
-        if id == TILEMAP_CAPACITY { panic!("World: Tilemap capacity exceeded.") }
-        
-        // Create tilemap
-        self.tilemaps[id as usize] = Tilemap::load( data, tileset, TilemapID(id) );
-        self.entity_head += 1;
-        self.tilemaps[id as usize].id
+        let id = self.entities.insert_with_key(|key|{
+            Entity::new(key)
+        });
+        &mut self.entities[id]
     }
 
 
     pub fn insert_anim(&mut self, bytes:&[u8], tileset:TilesetID, fps:u8) -> AnimID {
-        let result = self.anim_head;
-        let anim = Anim::load(bytes, tileset, fps);
+        self.anims.insert(
+            Anim::load(bytes, tileset, fps)
+        )
+    }
 
-        self.anims[self.anim_head as usize] = anim;
-        self.anim_head += 1;
-        AnimID(result)
+
+    // Returns a reference to the tilemap just inserted.
+    pub fn load_tilemap(&mut self, data:&[u8], tileset:TilesetID) -> TilemapID {
+        self.tilemaps.insert_with_key(|key|{
+            Tilemap::load( data, tileset, key )
+        })
     }
 
 
     // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
-    pub fn get_data_mut(&mut self) -> (&mut[Entity], &mut[Anim], &mut[Tilemap]) {
+    pub fn get_data_mut(&mut self) -> (&mut EntityPool, &mut AnimPool, &mut TilemapPool) {
         (&mut self.entities, &mut self.anims, &mut self.tilemaps)
     }
 
 
-    pub fn get_entity(&self, id:EntityID) -> &Entity { &self.entities[id.get()] }
+    pub fn get_entity(&self, id:EntityID) -> &Entity { &self.entities[id] }
 
 
-    // pub fn get_entity_mut(&mut self, id:EntityID) -> &mut Entity { &mut self.entities[id.get()] }
+    pub fn get_entity_mut(&mut self, id:EntityID) -> &mut Entity { &mut self.entities[id] }
 
 
-    pub fn get_tilemap(&self, id:TilemapID) -> &Tilemap { &self.tilemaps[id.get()] }
+    pub fn get_tilemap(&self, id:TilemapID) -> &Tilemap { &self.tilemaps[id] }
 
 
-    // pub fn get_tilemap_mut(&mut self, id:TilemapID) -> &mut Tilemap { &mut self.tilemaps[id.get()] }
+    pub fn get_tilemap_mut(&mut self, id:TilemapID) -> &mut Tilemap { &mut self.tilemaps[id] }
 
 
     pub fn get_entity_rect_from_id(&self, id:EntityID) -> Rect<f32> {
-        let entity = &self.entities[id.get()];
+        let entity = &self.entities[id];
         self.get_entity_rect(entity)
     }
 
@@ -181,7 +141,7 @@ impl World {
         match entity.shape {
             Shape::None => Rect { x:0.0, y:0.0, w:0.0, h:0.0 },
             Shape::Sprite { anim_id, .. } | Shape::AnimTiles { anim_id, .. } => {
-                let anim = &self.anims[anim_id.get()];
+                let anim = &self.anims[anim_id];
                 let frame = anim.frame(self.time);
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
@@ -191,7 +151,7 @@ impl World {
                 }
             },
             Shape::TilemapLayer { tilemap_id } => {
-                let tilemap = &self.tilemaps[tilemap_id.get()];
+                let tilemap = &self.tilemaps[tilemap_id];
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
@@ -205,10 +165,10 @@ impl World {
 
 
     pub fn tile_at(&self, x:f32, y:f32, id:EntityID) -> Option<Tile> {
-        let entity = &self.entities[id.get()];
+        let entity = &self.entities[id];
         let Shape::TilemapLayer{ tilemap_id } = entity.shape else { return None };
         
-        let tilemap = &self.tilemaps[tilemap_id.get()];
+        let tilemap = &self.tilemaps[tilemap_id];
         let rect = self.get_entity_rect(entity);
 
         if !rect.contains(x, y) { return None };
@@ -223,7 +183,7 @@ impl World {
     // Fills the pixel buffer with current entities
     pub fn render_frame(&mut self){
         // Iterate entities
-        for entity in &self.entities {
+        for (_, entity) in &self.entities {
             if let Shape::None = entity.shape { continue }
             let pos = entity.pos;
             let cam_rect = Rect {
@@ -246,12 +206,12 @@ impl World {
                     let world_rect = self.get_entity_rect(entity);
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };
                     
-                    let anim = &self.anims[anim_id.get()];
+                    let anim = &self.anims[anim_id];
                     let frame = anim.frame(self.time);
                     
                     let tilemap_rect = self.get_entity_rect(tilemap_entity);
                     
-                    let tilemap = &mut self.tilemaps[tilemap_id.get()];
+                    let tilemap = &mut self.tilemaps[tilemap_id];
                     
                     let left_col = (vis_rect.x - tilemap_rect.x) as i32 / TILE_WIDTH as i32;
                     let top_row = (vis_rect.y - tilemap_rect.y) as i32 / TILE_HEIGHT as i32;
@@ -276,7 +236,7 @@ impl World {
                 Shape::Sprite { anim_id, flip_h, .. } => {
                     if !self.draw_sprites { continue }
                     // Draw tiles
-                    let anim = &self.anims[anim_id.get()];
+                    let anim = &self.anims[anim_id];
                     let frame = anim.frame(self.time);
 
                     let mut draw_tile = |col:u8, row:u8| {
@@ -311,7 +271,7 @@ impl World {
                 Shape::TilemapLayer { tilemap_id } => {
                     if !self.draw_tilemaps { continue }
                     let world_rect = self.get_entity_rect(entity);
-                    let tilemap = &mut self.tilemaps[tilemap_id.get()];
+                    let tilemap = &mut self.tilemaps[tilemap_id];
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };  
 
                     // At least a part of tilemap is visible. Render visible tiles within it.

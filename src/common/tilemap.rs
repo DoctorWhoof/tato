@@ -1,16 +1,12 @@
 pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;
 pub const TILEMAP_HEADER_LEN:usize = 15;
-
-use super::*;
 pub const TILEMAP_LEN:usize = 48 * 48;
 
+use super::*;
+use slotmap::new_key_type;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TilemapID(pub u16);
-impl TilemapID {
-    #[allow(unused)] #[inline]
-    pub fn get(self) -> usize { self.0 as usize}
-}
+
+new_key_type! { pub struct TilemapID; }
 
 
 #[derive(Default, Clone)]
@@ -36,7 +32,7 @@ pub struct Tilemap {
 impl Default for Tilemap {
     fn default() -> Self {
         Self {
-            id:TilemapID(0),
+            id:TilemapID::default(),
             cols:1, rows:1,
             tiles:core::array::from_fn(|_| Tile::default() ),
             tileset: TilesetID::default(),

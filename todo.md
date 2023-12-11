@@ -1,4 +1,6 @@
 
+[ ] Switch data structs into Slotmaps?
+
 [ ] High level "scripting". Example:
     - Pause interaction
     - Load Scene 1

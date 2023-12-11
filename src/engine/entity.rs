@@ -1,4 +1,9 @@
 use crate::*;
+use slotmap::new_key_type;
+
+
+new_key_type! { pub struct EntityID; }
+
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -13,22 +18,21 @@ pub struct Entity {
 }
 
 
-impl Default for Entity {
-    fn default() -> Self {
+impl Entity {
+
+    pub fn id(&self) -> EntityID { self.id }
+
+
+    pub fn new(with_id:EntityID) -> Entity {
         Self { 
-            id: EntityID(0),    // Points to 
+            id: with_id,
             shape: Shape::None, 
             pos: Vec2 { x: 0.0, y: 0.0 }, 
-            // vel: Vec2 { x: 0.0, y: 0.0 }, 
             render_offset: Vec2 { x: 0, y: 0 },
             col: None, 
         }
     }
-}
 
-impl Entity {
-
-    pub fn id(&self) -> EntityID { self.id }
 
     fn world_vec2<T>(&self, pos:Vec2<T>, use_render_offset:bool) -> Vec2<f32>
     where T:Into<f32> {

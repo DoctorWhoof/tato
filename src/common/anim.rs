@@ -1,6 +1,9 @@
 use super::*;
+use slotmap::new_key_type;
 
-pub const ANIM_MAX_FRAMES:usize = 12;
+new_key_type! { pub struct AnimID; }
+
+pub const ANIM_MAX_FRAMES:usize = 6;
 pub const ANIM_HEADER_TEXT:&str = "anim_1.0";
 pub const ANIM_HEADER_LEN:usize = ANIM_HEADER_TEXT.len() + 3;
 
@@ -26,6 +29,16 @@ impl Default for Anim {
 
 
 impl Anim {
+
+
+    // pub fn new(with_key:AnimID) -> AnimID {
+    //     Self {
+    //         fps: 10,
+    //         len: 0,
+    //         frames: core::array::from_fn(|_| Frame::default() ),
+    //         tileset: TilesetID::default()
+    //     }
+    // }
 
 
     pub fn load( data:&[u8], tileset:TilesetID, fps:u8 ) -> Self {
