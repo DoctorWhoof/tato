@@ -5,6 +5,15 @@ use crate::*;
 pub type EntityPool = SlotMap<EntityID, Entity>;
 pub type AnimPool = SlotMap<AnimID, Anim>;
 pub type TilemapPool = SlotMap<TilemapID, Tilemap>;
+pub type WorldAtlas = Atlas<ATLAS_WIDTH, ATLAS_LEN, TILE_WIDTH, TILE_HEIGHT, TILE_COUNT>;
+
+pub const ATLAS_WIDTH:usize = 128;
+pub const ATLAS_HEIGHT:usize = 128;
+pub const TILE_WIDTH:usize = 8;
+pub const TILE_HEIGHT:usize = 8;
+pub const ATLAS_LEN:usize = ATLAS_WIDTH*ATLAS_HEIGHT;
+pub const TILE_LEN:usize = TILE_WIDTH*TILE_HEIGHT;
+pub const TILE_COUNT:usize = ATLAS_LEN / TILE_LEN;
 
 
 pub struct World {
@@ -17,9 +26,10 @@ pub struct World {
     pub draw_tilemaps: bool,
 
     pub cam:Rect<f32>,
-    pub renderer: Renderer,
     pub elapsed_time_buffer:SmoothBuffer<15>,
     pub time_update_buffer:SmoothBuffer<60>,
+    pub renderer: Renderer,
+    pub atlas: Atlas<128, 16384, 8, 8, 256>,
     
     // Private
     time:f32,
@@ -54,6 +64,7 @@ impl World {
 
             cam: Rect::new(0.0, 0.0, RENDER_WIDTH as f32, (RENDER_HEIGHT - HUD_HEIGHT) as f32),
             renderer: Renderer::default(),
+            atlas: Atlas::new(),
 
             elapsed_time_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
@@ -146,8 +157,8 @@ impl World {
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
-                    w:(frame.cols as usize * self.renderer.atlas.tile_width()) as f32,
-                    h:(frame.rows as usize * self.renderer.atlas.tile_height()) as f32,
+                    w:(frame.cols as usize * self.atlas.tile_width()) as f32,
+                    h:(frame.rows as usize * self.atlas.tile_height()) as f32,
                 }
             },
             Shape::TilemapLayer { tilemap_id } => {
@@ -155,14 +166,13 @@ impl World {
                 let result = Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
-                    w:tilemap.width(self.renderer.atlas.tile_width()) as f32,
-                    h:tilemap.height(self.renderer.atlas.tile_height()) as f32
+                    w:tilemap.width(self.atlas.tile_width()) as f32,
+                    h:tilemap.height(self.atlas.tile_height()) as f32
                 };
                 result
             },
         }
     }
-
 
 
     pub fn tile_at(&self, x:f32, y:f32, id:EntityID) -> Option<Tile> {
@@ -174,8 +184,8 @@ impl World {
 
         if !rect.contains(x, y) { return None };
 
-        let col = ((x - rect.x) as usize / self.renderer.atlas.tile_width()) as u16;
-        let row = ((y - rect.y) as usize / self.renderer.atlas.tile_height()) as u16;
+        let col = ((x - rect.x) as usize / self.atlas.tile_width()) as u16;
+        let row = ((y - rect.y) as usize / self.atlas.tile_height()) as u16;
 
         Some(tilemap.get_tile(col, row))
     }
@@ -194,8 +204,8 @@ impl World {
                 h: self.renderer.viewport.h as f32,
             };
 
-            let tile_width = self.renderer.atlas.tile_width();
-            let tile_height = self.renderer.atlas.tile_height();
+            let tile_width = self.atlas.tile_width();
+            let tile_height = self.atlas.tile_height();
 
             // Draw entity shape
             match entity.shape {
@@ -247,12 +257,12 @@ impl World {
                         let flipped_col = if flip_h { frame.cols - 1 - col } else { col };
                         let subtile = (row*frame.cols) + flipped_col;
                         let tile = frame.get_tile(subtile);
-                        let abs_tile_id = self.renderer.atlas.get_tile_from_tileset(
+                        let abs_tile_id = self.atlas.get_tile_from_tileset(
                             tile.index,
                             anim.tileset
                         );
 
-                        let tile_rect = self.renderer.atlas.get_rect(abs_tile_id.get());
+                        let tile_rect = self.atlas.get_rect(abs_tile_id.get());
                         let quad_rect = Rect{
                             x: pos.x + (col * 8) as f32 + entity.render_offset.x as f32,
                             y: pos.y + (row * 8) as f32 + entity.render_offset.y as f32,
@@ -262,7 +272,11 @@ impl World {
 
                         if !cam_rect.overlaps(&quad_rect) { return }
                         let screen_rect = quad_rect - cam_rect.pos();
-                        self.renderer.draw_tile(screen_rect.to_i32(), abs_tile_id, flip_h ^ tile.flipped_h()); //resulting flip is a XOR
+                        Self::draw_tile(
+                            &mut self.renderer,
+                            &self.atlas,
+                            screen_rect.to_i32(), abs_tile_id, flip_h ^ tile.flipped_h()
+                        ); //resulting flip is a XOR
                     };
 
                     for row in 0 .. frame.rows {
@@ -293,16 +307,20 @@ impl World {
                     for row in top_col .. bottom_col {
                         for col in left_col .. right_col {
                             let tile = tilemap.get_tile(col as u16, row as u16);
-                            let tile_id = self.renderer.atlas.get_tile_from_tileset(tile.index, tilemap.tileset);
+                            let tile_id = self.atlas.get_tile_from_tileset(tile.index, tilemap.tileset);
 
-                            let tile_rect = Rect::<i32>::from(self.renderer.atlas.get_rect(tile.index as usize));
+                            let tile_rect = Rect::<i32>::from(self.atlas.get_rect(tile.index as usize));
                             let world_tile_rect = Rect{
                                 x: pos.x + (col * tile_width) as f32 + entity.render_offset.x as f32 - cam_rect.x,
                                 y: pos.y + (row * tile_height) as f32 + entity.render_offset.y as f32 - cam_rect.y,
                                 w: tile_rect.w as f32,
                                 h: tile_rect.h as f32
                             };
-                            self.renderer.draw_tile(world_tile_rect.to_i32(), tile_id, tile.flipped_h());
+                            Self::draw_tile(
+                                &mut self.renderer,
+                                &self.atlas,
+                                world_tile_rect.to_i32(), tile_id, tile.flipped_h()
+                            );
                         }
                     }
                 }
@@ -338,18 +356,82 @@ impl World {
         #[cfg(debug_assertions)]
         if self.debug_atlas {
             'draw_loop: {
-                let width = self.renderer.atlas.width();
-                for y in 0 .. self.renderer.atlas.height() {
+                let width = self.atlas.width();
+                for y in 0 .. self.atlas.height() {
                     for x in 0 .. width  {
                         let pixel_index = (y*RENDER_WIDTH) + x;
                         if pixel_index > RENDER_LEN - 1 { break 'draw_loop }
-                        self.renderer.pixels[pixel_index] = self.renderer.atlas.get_pixel(x, y);
+                        self.renderer.pixels[pixel_index] = self.atlas.get_pixel(x, y);
                     }
                 }
             }
         }
     }
 
+
+    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font_range:Group, align_right:bool) {
+        let tileset_start = self.atlas.get_tileset(font_range.tileset).start_index;
+        for (i,letter) in text.chars().enumerate() {
+            let letter = letter as u32;
+            let index = if letter > 47 {
+                if letter < 65 {
+                    (letter - 48) as u16 + font_range.start as u16 // Zero
+                } else {
+                    (letter - 55) as u16 + font_range.start as u16 // Upper Case 'A' (A index is 65, but the first 10 tiles are the numbers so we add 10)
+                }
+            } else {
+                font_range.last() as u16 // Space
+            };
+            
+            let offset_x = if align_right {
+                (TILE_WIDTH * text.len()) as i32
+            } else {
+                0
+            };
+
+            Self::draw_tile(
+                &mut self.renderer,
+                &self.atlas,
+                Rect {
+                    x: x + (i * TILE_WIDTH) as i32 - offset_x,
+                    y,
+                    w: TILE_WIDTH as i32,
+                    h: TILE_HEIGHT as i32
+                },
+                TileID(index + tileset_start),
+                false
+            )
+        }
+    }
+
+
+    fn draw_tile(
+        renderer: &mut Renderer,
+        atlas:&WorldAtlas,
+        world_rect:Rect<i32>,
+        tile:TileID,
+        flip_h:bool
+    ){
+        let Some(visible_rect) = world_rect.intersect(renderer.viewport) else { return };
+        let tile_rect = atlas.get_rect(tile.get());
+        
+        for y in visible_rect.y .. visible_rect.bottom() {
+            let source_y = (y - world_rect.y) as usize + tile_rect.y as usize;
+
+            for x in visible_rect.x .. visible_rect.right() {
+                let source_x = if flip_h {
+                    let local_x = TILE_WIDTH - (x - world_rect.x) as usize - 1;
+                    local_x + tile_rect.x as usize
+                } else {    
+                    let local_x = (x - world_rect.x) as usize;
+                    local_x + tile_rect.x as usize
+                };
+                let color = atlas.get_pixel(source_x, source_y);
+                if color == COLOR_TRANSPARENCY { continue; } 
+                draw_pixel(&mut renderer.pixels, RENDER_WIDTH, x as usize, y as usize, color);
+            }
+        }
+    }
 
 
     // pub(crate) fn draw_world_pixel(&mut self, x:f32, y:f32, color:u8) {
