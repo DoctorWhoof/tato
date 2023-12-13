@@ -3,8 +3,16 @@ use core::{usize, array};
 
 pub const RENDER_WIDTH:usize = 288;
 pub const RENDER_HEIGHT:usize = 216;
-pub const RENDER_LENGTH:usize = RENDER_WIDTH * RENDER_HEIGHT;
-pub const HUD_HEIGHT:usize = TILE_HEIGHT * 2;
+pub const RENDER_LEN:usize = RENDER_WIDTH * RENDER_HEIGHT;
+pub const HUD_HEIGHT:usize = 16;
+
+pub const ATLAS_WIDTH:usize = 128;
+pub const ATLAS_HEIGHT:usize = 128;
+pub const TILE_WIDTH:usize = 8;
+pub const TILE_HEIGHT:usize = 8;
+pub const ATLAS_LEN:usize = ATLAS_WIDTH*ATLAS_HEIGHT;
+pub const TILE_LEN:usize = TILE_WIDTH*TILE_HEIGHT;
+pub const TILE_COUNT:usize = ATLAS_LEN / TILE_LEN;
 
 // The transparent index is hard coded to 255! Allows for black to be 0 and white is 15 in each subpalette.
 pub const COLOR_TRANSPARENCY:u8 = 255;
@@ -12,10 +20,10 @@ pub const COLOR_ENTITY_RECT:u8 = 254;
 pub const COLOR_COLLIDER:u8 = 253;
 
 pub struct Renderer {
-    pub pixels: [u8; RENDER_LENGTH],
+    pub pixels: [u8; RENDER_LEN],
     pub palette: [Color; 256],
-    pub atlas: Atlas,
-    pub viewport: Rect<i32>
+    pub viewport: Rect<i32>,
+    pub atlas: Atlas<ATLAS_WIDTH,ATLAS_LEN, TILE_WIDTH, TILE_HEIGHT, TILE_COUNT>,
 }
 
 
@@ -26,7 +34,7 @@ impl Default for Renderer {
         const RECT:usize = COLOR_ENTITY_RECT as usize;
         const COL:usize = COLOR_COLLIDER as usize;
         Renderer {
-            pixels: [0; RENDER_LENGTH],
+            pixels: [0; RENDER_LEN],
             palette: array::from_fn( |i| {
                 // Default palette is 16 tone grayscale repeated over 256 indices
                 match i {
@@ -39,7 +47,7 @@ impl Default for Renderer {
                     } 
                 }
             }),
-            atlas: Atlas::default(),
+            atlas: Atlas::new(),
             viewport: Rect { x:0, y:0, w:RENDER_WIDTH as i32, h:(RENDER_HEIGHT - HUD_HEIGHT) as i32 }
         }
     }
@@ -169,7 +177,7 @@ impl Renderer {
     pub fn draw_tile(&mut self, world_rect:Rect<i32>, tile:TileID, flip_h:bool){
 
         let Some(visible_rect) = world_rect.intersect(self.viewport) else { return };
-        let tile_rect = self.atlas.rects[tile.get()];
+        let tile_rect = self.atlas.get_rect(tile.get());
         
         for y in visible_rect.y .. visible_rect.bottom() {
             let source_y = (y - world_rect.y) as usize + tile_rect.y as usize;

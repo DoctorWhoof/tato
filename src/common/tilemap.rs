@@ -17,7 +17,6 @@ struct BgBuffer {
 }
 
 
-
 pub struct Tilemap {
     pub id: TilemapID,
     pub cols:u16,
@@ -28,6 +27,8 @@ pub struct Tilemap {
     bg_buffer_head:usize,
     bg_buffers_dirty: bool
 }
+
+
 
 impl Default for Tilemap {
     fn default() -> Self {
@@ -107,17 +108,6 @@ impl Tilemap {
 
     pub fn insert_bg_buffer(&mut self, col:u16, row:u16, cols:u8, rows:u8) {
         self.bg_buffers_dirty = true;
-
-        // let mut bg_frame = Frame { cols, rows, tiles:core::array::from_fn(|i|{
-        //     if index 
-        // }) };
-        // for frame_row in 0 .. rows {
-        //     for frame_col in 0 .. columns {
-        //         let buffer_index = (frame_row * cols as usize) + frame_col;
-        //         let tilemap_index = ((frame_row + row as usize) * cols as usize) + frame_col + col as usize;
-        //         bg_frame.tiles[buffer_index] = self.tiles[tilemap_index];
-        //     }
-        // }
 
         let tile_count = cols as usize * rows as usize;
         self.bg_buffers[self.bg_buffer_head] = BgBuffer {

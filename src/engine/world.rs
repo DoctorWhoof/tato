@@ -146,18 +146,19 @@ impl World {
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
-                    w:(frame.cols as usize * TILE_WIDTH) as f32,
-                    h:(frame.rows as usize * TILE_HEIGHT) as f32,
+                    w:(frame.cols as usize * self.renderer.atlas.tile_width()) as f32,
+                    h:(frame.rows as usize * self.renderer.atlas.tile_height()) as f32,
                 }
             },
             Shape::TilemapLayer { tilemap_id } => {
                 let tilemap = &self.tilemaps[tilemap_id];
-                Rect {
+                let result = Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
-                    w:tilemap.width(TILE_WIDTH) as f32,
-                    h:tilemap.height(TILE_HEIGHT) as f32
-                }
+                    w:tilemap.width(self.renderer.atlas.tile_width()) as f32,
+                    h:tilemap.height(self.renderer.atlas.tile_height()) as f32
+                };
+                result
             },
         }
     }
@@ -173,8 +174,8 @@ impl World {
 
         if !rect.contains(x, y) { return None };
 
-        let col = ((x - rect.x) as usize / TILE_WIDTH) as u16;
-        let row = ((y - rect.y) as usize / TILE_HEIGHT) as u16;
+        let col = ((x - rect.x) as usize / self.renderer.atlas.tile_width()) as u16;
+        let row = ((y - rect.y) as usize / self.renderer.atlas.tile_height()) as u16;
 
         Some(tilemap.get_tile(col, row))
     }
@@ -192,6 +193,9 @@ impl World {
                 w: self.renderer.viewport.w as f32,
                 h: self.renderer.viewport.h as f32,
             };
+
+            let tile_width = self.renderer.atlas.tile_width();
+            let tile_height = self.renderer.atlas.tile_height();
 
             // Draw entity shape
             match entity.shape {
@@ -213,8 +217,8 @@ impl World {
                     
                     let tilemap = &mut self.tilemaps[tilemap_id];
                     
-                    let left_col = (vis_rect.x - tilemap_rect.x) as i32 / TILE_WIDTH as i32;
-                    let top_row = (vis_rect.y - tilemap_rect.y) as i32 / TILE_HEIGHT as i32;
+                    let left_col = (vis_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
+                    let top_row = (vis_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
                     
                     tilemap.reset_bg_buffers();
                     tilemap.insert_bg_buffer(left_col as u16, top_row as u16, frame.cols, frame.rows);
@@ -248,7 +252,7 @@ impl World {
                             anim.tileset
                         );
 
-                        let tile_rect = self.renderer.atlas.rects[abs_tile_id.get()];
+                        let tile_rect = self.renderer.atlas.get_rect(abs_tile_id.get());
                         let quad_rect = Rect{
                             x: pos.x + (col * 8) as f32 + entity.render_offset.x as f32,
                             y: pos.y + (row * 8) as f32 + entity.render_offset.y as f32,
@@ -275,11 +279,11 @@ impl World {
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };  
 
                     // At least a part of tilemap is visible. Render visible tiles within it.
-                    let left_col = ((vis_rect.x - world_rect.x) / TILE_WIDTH as f32) as usize;
-                    let mut right_col = ((vis_rect.right() - world_rect.x) / TILE_WIDTH as f32) as usize + 1; // +1 prevents cutting off tile too early
+                    let left_col = ((vis_rect.x - world_rect.x) / tile_width as f32) as usize;
+                    let mut right_col = ((vis_rect.right() - world_rect.x) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
 
-                    let top_col = ((vis_rect.y - world_rect.y) / TILE_HEIGHT as f32) as usize;
-                    let mut bottom_col = ((vis_rect.bottom() - world_rect.y) / TILE_WIDTH as f32) as usize + 1; // +1 prevents cutting off tile too early
+                    let top_col = ((vis_rect.y - world_rect.y) / tile_height as f32) as usize;
+                    let mut bottom_col = ((vis_rect.bottom() - world_rect.y) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
 
                     // However, those +1's up there will cause invalid coordinates when we reach the end of the tilemap, so...
                     if right_col > tilemap.cols as usize { right_col -= 1 };
@@ -291,10 +295,10 @@ impl World {
                             let tile = tilemap.get_tile(col as u16, row as u16);
                             let tile_id = self.renderer.atlas.get_tile_from_tileset(tile.index, tilemap.tileset);
 
-                            let tile_rect = Rect::<i32>::from(self.renderer.atlas.rects[tile.index as usize]);
+                            let tile_rect = Rect::<i32>::from(self.renderer.atlas.get_rect(tile.index as usize));
                             let world_tile_rect = Rect{
-                                x: pos.x + (col * TILE_WIDTH) as f32 + entity.render_offset.x as f32 - cam_rect.x,
-                                y: pos.y + (row * TILE_HEIGHT) as f32 + entity.render_offset.y as f32 - cam_rect.y,
+                                x: pos.x + (col * tile_width) as f32 + entity.render_offset.x as f32 - cam_rect.x,
+                                y: pos.y + (row * tile_height) as f32 + entity.render_offset.y as f32 - cam_rect.y,
                                 w: tile_rect.w as f32,
                                 h: tile_rect.h as f32
                             };
@@ -333,13 +337,14 @@ impl World {
         // Debug Atlas
         #[cfg(debug_assertions)]
         if self.debug_atlas {
-            'draw_loop:
-            for y in 0 .. ATLAS_HEIGHT {
-                for x in 0.. ATLAS_WIDTH {
-                    let pixel_index = (y*RENDER_WIDTH) + x;
-                    if pixel_index > RENDER_LENGTH - 1 { break 'draw_loop }
-                    let atlas_index = (y*ATLAS_WIDTH) + x;
-                    self.renderer.pixels[pixel_index] = self.renderer.atlas.pixels[atlas_index]
+            'draw_loop: {
+                let width = self.renderer.atlas.width();
+                for y in 0 .. self.renderer.atlas.height() {
+                    for x in 0 .. width  {
+                        let pixel_index = (y*RENDER_WIDTH) + x;
+                        if pixel_index > RENDER_LEN - 1 { break 'draw_loop }
+                        self.renderer.pixels[pixel_index] = self.renderer.atlas.get_pixel(x, y);
+                    }
                 }
             }
         }
