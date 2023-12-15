@@ -4,59 +4,56 @@ use crate::*;
 use slotmap::SlotMap;
 
 
-pub struct Atlas<
-    const WIDTH:usize,
-    const LEN:usize,
-    const TILE_WIDTH:usize,
-    const TILE_HEIGHT:usize,
-    const TILE_COUNT:usize
-> {
-    pixels:[u8; LEN],
+pub struct Atlas<const PIXEL_COUNT:usize, const TILE_COUNT:usize> {
+    pixels:[u8; PIXEL_COUNT],
     rects:[Rect<u8>; TILE_COUNT],
     next_tileset:u16,
     next_free_tile:u16,
-    tilesets: SlotMap<TilesetID, Tileset>
+    tilesets: SlotMap<TilesetID, Tileset>,
+    width: usize,
+    height:usize,
+    tile_width:u8,
+    tile_height:u8,
 }
 
 
-impl<
-    const WIDTH:usize,
-    const LEN:usize,
-    const TILE_WIDTH:usize,
-    const TILE_HEIGHT:usize,
-    const TILE_COUNT:usize
-> Atlas<WIDTH, LEN, TILE_WIDTH, TILE_HEIGHT, TILE_COUNT>  {
+impl<const PIXEL_COUNT:usize, const TILE_COUNT:usize>
+Atlas<PIXEL_COUNT, TILE_COUNT>  {
 
-    pub fn new() -> Self {
+    pub fn new(width:usize, height:usize, tile_width:u8, tile_height:u8) -> Self {
         // println!("Atlas: Creating new Atlas with {} tiles.", MAX_TILES);
-        let Ok(tile_width) = u8::try_from(TILE_WIDTH) else { panic!("Tile width can't be more than 255") };
-        let Ok(tile_height) = u8::try_from(TILE_HEIGHT) else { panic!("Tile height can't be more than 255") };
+        assert!(PIXEL_COUNT==width*height, "Atlas: Error, width x height must equal PIXEL_COUNT");
+        assert!(TILE_COUNT==(width/tile_width as usize)*(height/tile_height as usize), "Atlas: Invalid tile count.");
         Atlas {
-            pixels: [0; LEN],
+            pixels: [0; PIXEL_COUNT],
             rects: array::from_fn( |i| {
                 // generates all tiles
-                let tile_x = i * TILE_WIDTH;
-                let x = (tile_x % WIDTH) as u8;
-                let y = ((tile_x / WIDTH) * TILE_HEIGHT) as u8;
+                let tile_x = i * tile_width as usize;
+                let x = (tile_x % width) as u8;
+                let y = ((tile_x / width) * tile_height as usize) as u8;
                 Rect{ x ,y , w:tile_width, h:tile_height }
             }),
             tilesets: Default::default(),
             next_tileset: 0,
             next_free_tile: 0,
+            width,
+            height,
+            tile_width,
+            tile_height
         }
     }
 
 
-    pub fn width(&self) -> usize { WIDTH }
+    pub fn width(&self) -> usize { self.width }
 
 
-    pub fn height(&self) -> usize { LEN / WIDTH }
+    pub fn height(&self) -> usize { self.height }
 
 
-    pub fn tile_width(&self) -> usize { TILE_WIDTH }
+    pub fn tile_width(&self) -> u8 { self.tile_width }
 
 
-    pub fn tile_height(&self) -> usize { TILE_HEIGHT }
+    pub fn tile_height(&self) -> u8 { self.tile_height }
 
 
     pub fn insert_tileset( &mut self, data:&[u8] ) -> TilesetID {
@@ -77,7 +74,7 @@ impl<
         let tile_len = (TILE_WIDTH * TILE_HEIGHT) as u16;
         let tile_count = pixel_count / tile_len;
         let tile_length = tile_width as u16 * tile_height as u16;
-        if (tile_count * tile_length != pixel_count) || (tile_width as usize != TILE_WIDTH) || (tile_height as usize != TILE_HEIGHT) {
+        if (tile_count * tile_length != pixel_count) || (tile_width != self.tile_width) || (tile_height != self.tile_height) {
             panic!(
                 "Atlas error: invalid tileset dimensions. Expected {} pixels with ({}x{}) tiles",
                 pixel_count, TILE_WIDTH, TILE_HEIGHT
@@ -92,7 +89,7 @@ impl<
         });
 
         // Loads from linear-formatted pixels into tile-formatted pixels
-        let cols = WIDTH / TILE_WIDTH;
+        let cols = self.width / self.tile_width as usize;
         let mut source_px = 0;
         for tile in  start_index as usize .. (start_index + len) as usize {
             for y in 0 .. tile_height as usize {
@@ -101,7 +98,7 @@ impl<
                     let row = tile / cols;
                     let tile_x = col * tile_width as usize;
                     let tile_y = row * tile_height as usize;
-                    let dest_px = (WIDTH * (tile_y + y)) + (tile_x + x);
+                    let dest_px = (self.width * (tile_y + y)) + (tile_x + x);
                     self.pixels[dest_px] = data[tileset_header_len + source_px];
                     source_px += 1;
                 }
@@ -136,7 +133,7 @@ impl<
     }
 
     pub fn get_pixel(&self, x:usize, y:usize) -> u8 {
-        let index = (y * WIDTH) + x;
+        let index = (y * self.width) + x;
         self.pixels[index]
     }
 

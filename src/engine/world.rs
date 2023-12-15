@@ -5,16 +5,19 @@ use crate::*;
 pub type EntityPool = SlotMap<EntityID, Entity>;
 pub type AnimPool = SlotMap<AnimID, Anim>;
 pub type TilemapPool = SlotMap<TilemapID, Tilemap>;
-pub type WorldAtlas = Atlas<ATLAS_WIDTH, ATLAS_LEN, TILE_WIDTH, TILE_HEIGHT, TILE_COUNT>;
+
+pub const RENDER_WIDTH:usize = 288;
+pub const RENDER_HEIGHT:usize = 216;
+pub const RENDER_LEN:usize = (RENDER_WIDTH * RENDER_HEIGHT) as usize;
 
 pub const ATLAS_WIDTH:usize = 128;
 pub const ATLAS_HEIGHT:usize = 128;
-pub const TILE_WIDTH:usize = 8;
-pub const TILE_HEIGHT:usize = 8;
 pub const ATLAS_LEN:usize = ATLAS_WIDTH*ATLAS_HEIGHT;
-pub const TILE_LEN:usize = TILE_WIDTH*TILE_HEIGHT;
-pub const TILE_COUNT:usize = ATLAS_LEN / TILE_LEN;
 
+pub const TILE_WIDTH:u8 = 8;
+pub const TILE_HEIGHT:u8 = 8;
+pub const TILE_LEN:usize = TILE_WIDTH as usize * TILE_HEIGHT as usize;
+pub const TILE_COUNT:usize = ATLAS_LEN / TILE_LEN;
 
 pub struct World {
     // Visible to Host App
@@ -28,8 +31,8 @@ pub struct World {
     pub cam:Rect<f32>,
     pub elapsed_time_buffer:SmoothBuffer<15>,
     pub time_update_buffer:SmoothBuffer<60>,
-    pub renderer: Renderer,
-    pub atlas: Atlas<128, 16384, 8, 8, 256>,
+    pub renderer: Renderer<RENDER_LEN>,
+    pub atlas: Atlas<ATLAS_LEN, TILE_COUNT>,
     
     // Private
     time:f32,
@@ -62,9 +65,9 @@ impl World {
             draw_sprites: true,
             draw_tilemaps: true,
 
-            cam: Rect::new(0.0, 0.0, RENDER_WIDTH as f32, (RENDER_HEIGHT - HUD_HEIGHT) as f32),
-            renderer: Renderer::default(),
-            atlas: Atlas::new(),
+            cam: Rect::new(0.0, 0.0, RENDER_WIDTH as f32, RENDER_HEIGHT as f32),
+            renderer: Renderer::new(RENDER_WIDTH, RENDER_HEIGHT),
+            atlas: Atlas::new(ATLAS_WIDTH, ATLAS_HEIGHT, TILE_WIDTH, TILE_HEIGHT),
 
             elapsed_time_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
@@ -97,6 +100,12 @@ impl World {
         let e = &self.entities[entity_id];
         self.cam.x = e.pos.x - (RENDER_WIDTH/2) as f32;
         self.cam.y = e.pos.y - (RENDER_HEIGHT/2) as f32;
+    }
+
+    pub fn set_viewport(&mut self, rect:Rect<i32>) {
+        self.renderer.viewport = rect;
+        self.cam.w = rect.w as f32;
+        self.cam.h = rect.h as f32;
     }
 
 
@@ -157,8 +166,8 @@ impl World {
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
-                    w:(frame.cols as usize * self.atlas.tile_width()) as f32,
-                    h:(frame.rows as usize * self.atlas.tile_height()) as f32,
+                    w:(frame.cols as usize * self.atlas.tile_width() as usize) as f32,
+                    h:(frame.rows as usize * self.atlas.tile_height() as usize) as f32,
                 }
             },
             Shape::TilemapLayer { tilemap_id } => {
@@ -184,8 +193,8 @@ impl World {
 
         if !rect.contains(x, y) { return None };
 
-        let col = ((x - rect.x) as usize / self.atlas.tile_width()) as u16;
-        let row = ((y - rect.y) as usize / self.atlas.tile_height()) as u16;
+        let col = ((x - rect.x) as usize / self.atlas.tile_width() as usize) as u16;
+        let row = ((y - rect.y) as usize / self.atlas.tile_height() as usize) as u16;
 
         Some(tilemap.get_tile(col, row))
     }
@@ -311,8 +320,8 @@ impl World {
 
                             let tile_rect = Rect::<i32>::from(self.atlas.get_rect(tile.index as usize));
                             let world_tile_rect = Rect{
-                                x: pos.x + (col * tile_width) as f32 + entity.render_offset.x as f32 - cam_rect.x,
-                                y: pos.y + (row * tile_height) as f32 + entity.render_offset.y as f32 - cam_rect.y,
+                                x: pos.x + (col * tile_width as usize) as f32 + entity.render_offset.x as f32 - cam_rect.x,
+                                y: pos.y + (row * tile_height as usize) as f32 + entity.render_offset.y as f32 - cam_rect.y,
                                 w: tile_rect.w as f32,
                                 h: tile_rect.h as f32
                             };
@@ -384,7 +393,7 @@ impl World {
             };
             
             let offset_x = if align_right {
-                (TILE_WIDTH * text.len()) as i32
+                (TILE_WIDTH as usize * text.len()) as i32
             } else {
                 0
             };
@@ -393,7 +402,7 @@ impl World {
                 &mut self.renderer,
                 &self.atlas,
                 Rect {
-                    x: x + (i * TILE_WIDTH) as i32 - offset_x,
+                    x: x + (i * TILE_WIDTH as usize) as i32 - offset_x,
                     y,
                     w: TILE_WIDTH as i32,
                     h: TILE_HEIGHT as i32
@@ -406,8 +415,8 @@ impl World {
 
 
     fn draw_tile(
-        renderer: &mut Renderer,
-        atlas:&WorldAtlas,
+        renderer: &mut Renderer<RENDER_LEN>,
+        atlas:&Atlas<ATLAS_LEN, TILE_COUNT>,
         world_rect:Rect<i32>,
         tile:TileID,
         flip_h:bool
@@ -420,7 +429,7 @@ impl World {
 
             for x in visible_rect.x .. visible_rect.right() {
                 let source_x = if flip_h {
-                    let local_x = TILE_WIDTH - (x - world_rect.x) as usize - 1;
+                    let local_x = TILE_WIDTH as usize - (x - world_rect.x) as usize - 1;
                     local_x + tile_rect.x as usize
                 } else {    
                     let local_x = (x - world_rect.x) as usize;

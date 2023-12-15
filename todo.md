@@ -1,7 +1,8 @@
 
-[ ] Switch data structs into Slotmaps?
+[.] Switch data structs into Slotmaps?
 
 [ ] High level "scripting". Example:
+    - Present screen, wait for input
     - Pause interaction
     - Load Scene 1
     - Move char A to (x,y) with speed X, anim A

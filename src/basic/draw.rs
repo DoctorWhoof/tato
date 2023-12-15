@@ -3,7 +3,7 @@ use libm::fabsf;
 
 #[inline]
 pub fn draw_pixel(pixels: &mut [u8], buffer_width:usize, x:usize, y:usize, color_index:u8){
-    let index = (y * buffer_width) + x;
+    let index = (y as usize * buffer_width) + x as usize;
     pixels[index] = color_index;
 }
 

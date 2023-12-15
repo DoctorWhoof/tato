@@ -159,10 +159,10 @@ impl Tilemap {
     }
 
 
-    pub fn width(&self, tile_width:usize) -> usize { self.cols as usize * tile_width }
+    pub fn width(&self, tile_width:u8) -> usize { self.cols as usize * tile_width as usize }
 
 
-    pub fn height(&self, tile_height:usize) -> usize { self.rows as usize * tile_height }
+    pub fn height(&self, tile_height:u8) -> usize { self.rows as usize * tile_height as usize }
 
     
 }
