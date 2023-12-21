@@ -2,15 +2,17 @@ pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;
 pub const TILEMAP_HEADER_LEN:usize = 15;
 pub const TILEMAP_LEN:usize = 48 * 48;
 
+use crate::EntityID;
+
 use super::*;
-use slotmap::new_key_type;
+use slotmap::{new_key_type, SecondaryMap};
 
 
 new_key_type! { pub struct TilemapID; }
 
 
-#[derive(Default, Clone)]
-struct BgBuffer {
+#[derive(Default)]
+pub(crate) struct BgBuffer {
     frame:Frame,
     source_col:u16,    // Assuming tilemaps aren't huge, otherwise needs to be a larger int
     source_row:u16,
@@ -23,9 +25,7 @@ pub struct Tilemap {
     pub rows:u16,
     pub tiles:[Tile; TILEMAP_LEN],
     pub tileset: TilesetID,
-    bg_buffers:[BgBuffer; 1],
-    bg_buffer_head:usize,
-    bg_buffers_dirty: bool
+    pub(crate) bg_buffers:SecondaryMap<EntityID, BgBuffer>,
 }
 
 
@@ -38,8 +38,6 @@ impl Default for Tilemap {
             tiles:core::array::from_fn(|_| Tile::default() ),
             tileset: TilesetID::default(),
             bg_buffers: Default::default(),
-            bg_buffer_head: 0,
-            bg_buffers_dirty: false
         }
     }
 }
@@ -78,39 +76,30 @@ impl Tilemap {
             tiles: tile_data,
             tileset, 
             bg_buffers: Default::default(),
-            bg_buffer_head: 0,
-            bg_buffers_dirty: false
         }
     }
 
 
-    pub fn reset_bg_buffers(&mut self) {
-        if self.bg_buffers_dirty {
-            for n in 0 .. self.bg_buffer_head {
-                let buffer = &self.bg_buffers[n];
-                let rows = buffer.frame.rows as usize;
-                let columns = buffer.frame.cols as usize;
-                for row in 0 .. rows {
-                    for col in 0 .. columns {
-                        let buffer_index = (row * columns) + col;
-                        let tilemap_index = ((row + buffer.source_row as usize) * self.cols as usize) + col + buffer.source_col as usize;
-                        self.tiles[tilemap_index] = buffer.frame.tiles[buffer_index];
-                        // self.tiles[tilemap_index].index = 0;
-                    }
-                }
-                // println!("Restoring {:?} at {},{}", buffer.frame.tiles[0], buffer.source_col, buffer.source_row);
+    pub fn restore_bg_buffer(&mut self, id:EntityID) {
+        let Some(buffer) = self.bg_buffers.get_mut(id) else { return };
+
+        let rows = buffer.frame.rows as usize;
+        let columns = buffer.frame.cols as usize;
+        for row in 0 .. rows {
+            for col in 0 .. columns {
+                let buffer_index = (row * columns) + col;
+                let tilemap_index = ((row + buffer.source_row as usize) * self.cols as usize) + col + buffer.source_col as usize;
+                self.tiles[tilemap_index] = buffer.frame.tiles[buffer_index];
             }
         }
-        self.bg_buffers_dirty = false;
-        self.bg_buffer_head = 0;
     }
 
 
-    pub fn insert_bg_buffer(&mut self, col:u16, row:u16, cols:u8, rows:u8) {
-        self.bg_buffers_dirty = true;
+    pub fn insert_bg_buffer(&mut self, col:u16, row:u16, cols:u8, rows:u8, id:EntityID) {
+        self.restore_bg_buffer(id);
 
         let tile_count = cols as usize * rows as usize;
-        self.bg_buffers[self.bg_buffer_head] = BgBuffer {
+        self.bg_buffers.insert(id, BgBuffer {
             frame: Frame {
                 cols,
                 rows,
@@ -129,10 +118,7 @@ impl Tilemap {
             },
             source_col: col,
             source_row: row,
-        };
-        
-        self.bg_buffer_head += 1;
-        // println!("Inserting bg_buffer at {},{}, total: {}", col, row, self.bg_buffer_head);
+        });
     }
 
 

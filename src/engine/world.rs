@@ -6,20 +6,11 @@ pub type EntityPool = SlotMap<EntityID, Entity>;
 pub type AnimPool = SlotMap<AnimID, Anim>;
 pub type TilemapPool = SlotMap<TilemapID, Tilemap>;
 
-pub const RENDER_WIDTH:usize = 288;
-pub const RENDER_HEIGHT:usize = 216;
-pub const RENDER_LEN:usize = (RENDER_WIDTH * RENDER_HEIGHT) as usize;
-
-pub const ATLAS_WIDTH:usize = 128;
-pub const ATLAS_HEIGHT:usize = 128;
-pub const ATLAS_LEN:usize = ATLAS_WIDTH*ATLAS_HEIGHT;
-
-pub const TILE_WIDTH:u8 = 8;
-pub const TILE_HEIGHT:u8 = 8;
-pub const TILE_LEN:usize = TILE_WIDTH as usize * TILE_HEIGHT as usize;
-pub const TILE_COUNT:usize = ATLAS_LEN / TILE_LEN;
-
-pub struct World {
+pub struct World <
+const ATLAS_LEN:usize,
+const ATLAS_TILE_COUNT:usize,
+const RENDER_LEN:usize,
+> {
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
     pub debug_colliders: bool,
@@ -27,12 +18,13 @@ pub struct World {
     pub debug_atlas: bool,
     pub draw_sprites: bool,
     pub draw_tilemaps: bool,
-
-    pub cam:Rect<f32>,
-    pub elapsed_time_buffer:SmoothBuffer<15>,
-    pub time_update_buffer:SmoothBuffer<60>,
     pub renderer: Renderer<RENDER_LEN>,
-    pub atlas: Atlas<ATLAS_LEN, TILE_COUNT>,
+    pub atlas: Atlas<ATLAS_LEN, ATLAS_TILE_COUNT>,
+    pub cam:Rect<f32>,
+
+    // Visible to whole crate
+    pub(crate) time_elapsed_buffer:SmoothBuffer<15>,
+    pub(crate) time_update_buffer:SmoothBuffer<60>,
     
     // Private
     time:f32,
@@ -46,17 +38,15 @@ pub struct World {
     tilemaps:TilemapPool,
 }
 
-
-impl Default for World {
-    fn default() -> Self {
-        Self::new()
-    }
-}
     
-impl World {
+impl<
+const ATLAS_LEN:usize,
+const ATLAS_TILE_COUNT:usize,
+const RENDER_LEN:usize,
+> World<ATLAS_LEN, ATLAS_TILE_COUNT, RENDER_LEN> {
 
 
-    pub fn new() -> Self {
+    pub fn new(render_width:u16, render_height:u16, atlas_width:u16, atlas_height:u16, tile_width:u8, tile_height:u8) -> Self {
         World {
             limit_frame_rate: None,
             debug_colliders:false,
@@ -65,11 +55,11 @@ impl World {
             draw_sprites: true,
             draw_tilemaps: true,
 
-            cam: Rect::new(0.0, 0.0, RENDER_WIDTH as f32, RENDER_HEIGHT as f32),
-            renderer: Renderer::new(RENDER_WIDTH, RENDER_HEIGHT),
-            atlas: Atlas::new(ATLAS_WIDTH, ATLAS_HEIGHT, TILE_WIDTH, TILE_HEIGHT),
+            cam: Rect::new(0.0, 0.0, render_width as f32, render_height as f32),
+            renderer: Renderer::new(render_width, render_height),
+            atlas: Atlas::new(atlas_width, atlas_height, tile_width, tile_height),
 
-            elapsed_time_buffer: SmoothBuffer::new(),
+            time_elapsed_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
             time: 0.0,
             time_update:1.0 / 60.0,
@@ -77,9 +67,9 @@ impl World {
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            entities: SlotMap::with_key(),
-            anims: SlotMap::with_key(),
-            tilemaps: SlotMap::with_key()
+            entities: SlotMap::with_capacity_and_key(64),
+            anims: SlotMap::with_capacity_and_key(64),
+            tilemaps: SlotMap::with_capacity_and_key(4)
         }
     }
 
@@ -87,10 +77,10 @@ impl World {
     pub fn time(&self) -> f32 { self.time }
 
 
-    pub fn time_elapsed(&self) -> f32 { self.time_elapsed }
+    pub fn time_elapsed(&self) -> f32 { self.time_elapsed_buffer.average() }
 
 
-    pub fn time_update(&self) -> f32 { self.time_update }
+    pub fn time_update(&self) -> f32 { self.time_update_buffer.average() }
 
 
     pub fn time_idle(&self) -> f32 { self.time_idle }
@@ -98,8 +88,8 @@ impl World {
     
     pub fn center_camera_on(&mut self, entity_id:EntityID) {
         let e = &self.entities[entity_id];
-        self.cam.x = e.pos.x - (RENDER_WIDTH/2) as f32;
-        self.cam.y = e.pos.y - (RENDER_HEIGHT/2) as f32;
+        self.cam.x = e.pos.x - (self.renderer.width()/2) as f32;
+        self.cam.y = e.pos.y - (self.renderer.height()/2) as f32;
     }
 
     pub fn set_viewport(&mut self, rect:Rect<i32>) {
@@ -184,6 +174,24 @@ impl World {
     }
 
 
+    pub fn delete_entity(&mut self, id:EntityID) {
+        if let Some(ent) = self.entities.get(id){
+            // Clean up AnimTiles if needed. Tilemap will stay "dirty" by the AnimTile entity if this is not performed
+            if let Shape::AnimTiles { tilemap_entity, .. } = ent.shape {
+                if let Some(tilemap_ent) = self.entities.get(tilemap_entity) {
+                    if let Shape::TilemapLayer { tilemap_id } = tilemap_ent.shape {
+                        if let Some(tilemap) = self.tilemaps.get_mut(tilemap_id){
+                            tilemap.restore_bg_buffer(ent.id);
+                            tilemap.bg_buffers.remove(id);
+                        };
+                    }
+                }
+            }
+            self.entities.remove(id);
+        }
+    }
+
+
     pub fn tile_at(&self, x:f32, y:f32, id:EntityID) -> Option<Tile> {
         let entity = &self.entities[id];
         let Shape::TilemapLayer{ tilemap_id } = entity.shape else { return None };
@@ -202,8 +210,9 @@ impl World {
 
     // Fills the pixel buffer with current entities
     pub fn render_frame(&mut self){
+        
         // Iterate entities
-        for (_, entity) in &self.entities {
+        for entity in self.entities.values() {
             if let Shape::None = entity.shape { continue }
             let pos = entity.pos;
             let cam_rect = Rect {
@@ -227,7 +236,7 @@ impl World {
                     let Shape::TilemapLayer { tilemap_id } = tilemap_entity.shape else { continue };
                     
                     let world_rect = self.get_entity_rect(entity);
-                    let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };
+                    let Some(..) = world_rect.intersect(cam_rect) else { continue };
                     
                     let anim = &self.anims[anim_id];
                     let frame = anim.frame(self.time);
@@ -236,11 +245,10 @@ impl World {
                     
                     let tilemap = &mut self.tilemaps[tilemap_id];
                     
-                    let left_col = (vis_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
-                    let top_row = (vis_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
+                    let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
+                    let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
                     
-                    tilemap.reset_bg_buffers();
-                    tilemap.insert_bg_buffer(left_col as u16, top_row as u16, frame.cols, frame.rows);
+                    tilemap.insert_bg_buffer(left_col as u16, top_row as u16, frame.cols, frame.rows, entity.id);
 
                     for row in 0 .. frame.rows as i32 {
                         for col in 0 .. frame.cols as i32 {
@@ -284,8 +292,10 @@ impl World {
                         Self::draw_tile(
                             &mut self.renderer,
                             &self.atlas,
-                            screen_rect.to_i32(), abs_tile_id, flip_h ^ tile.flipped_h()
-                        ); //resulting flip is a XOR
+                            screen_rect.to_i32(),
+                            abs_tile_id,
+                            flip_h ^ tile.flipped_h() //resulting flip is a XOR
+                        ); 
                     };
 
                     for row in 0 .. frame.rows {
@@ -368,7 +378,7 @@ impl World {
                 let width = self.atlas.width();
                 for y in 0 .. self.atlas.height() {
                     for x in 0 .. width  {
-                        let pixel_index = (y*RENDER_WIDTH) + x;
+                        let pixel_index = (y*self.renderer.width()) + x;
                         if pixel_index > RENDER_LEN - 1 { break 'draw_loop }
                         self.renderer.pixels[pixel_index] = self.atlas.get_pixel(x, y);
                     }
@@ -393,7 +403,7 @@ impl World {
             };
             
             let offset_x = if align_right {
-                (TILE_WIDTH as usize * text.len()) as i32
+                (self.atlas.tile_width() as usize * text.len()) as i32
             } else {
                 0
             };
@@ -402,10 +412,10 @@ impl World {
                 &mut self.renderer,
                 &self.atlas,
                 Rect {
-                    x: x + (i * TILE_WIDTH as usize) as i32 - offset_x,
+                    x: x + (i * self.atlas.tile_width() as usize) as i32 - offset_x,
                     y,
-                    w: TILE_WIDTH as i32,
-                    h: TILE_HEIGHT as i32
+                    w: self.atlas.tile_width() as i32,
+                    h: self.atlas.tile_height() as i32
                 },
                 TileID(index + tileset_start),
                 false
@@ -416,20 +426,21 @@ impl World {
 
     fn draw_tile(
         renderer: &mut Renderer<RENDER_LEN>,
-        atlas:&Atlas<ATLAS_LEN, TILE_COUNT>,
+        atlas:&Atlas<ATLAS_LEN, ATLAS_TILE_COUNT>,
         world_rect:Rect<i32>,
         tile:TileID,
         flip_h:bool
     ){
         let Some(visible_rect) = world_rect.intersect(renderer.viewport) else { return };
         let tile_rect = atlas.get_rect(tile.get());
+        let width = renderer.width();
         
         for y in visible_rect.y .. visible_rect.bottom() {
             let source_y = (y - world_rect.y) as usize + tile_rect.y as usize;
 
             for x in visible_rect.x .. visible_rect.right() {
                 let source_x = if flip_h {
-                    let local_x = TILE_WIDTH as usize - (x - world_rect.x) as usize - 1;
+                    let local_x = atlas.tile_width() as usize - (x - world_rect.x) as usize - 1;
                     local_x + tile_rect.x as usize
                 } else {    
                     let local_x = (x - world_rect.x) as usize;
@@ -437,7 +448,7 @@ impl World {
                 };
                 let color = atlas.get_pixel(source_x, source_y);
                 if color == COLOR_TRANSPARENCY { continue; } 
-                draw_pixel(&mut renderer.pixels, RENDER_WIDTH, x as usize, y as usize, color);
+                draw_pixel(&mut renderer.pixels, width, x as usize, y as usize, color);
             }
         }
     }
@@ -457,10 +468,10 @@ impl World {
 
 
     pub fn start_frame(&mut self, time_now:f32) {
-        self.elapsed_time_buffer.push(time_now - self.time);
+        self.time_elapsed_buffer.push(time_now - self.time);
         self.time = time_now;
         
-        self.time_elapsed = quantize(self.elapsed_time_buffer.average(), 1.0/ 360.0);
+        self.time_elapsed = quantize(self.time_elapsed_buffer.average(), 1.0/ 360.0);
     }
 
 

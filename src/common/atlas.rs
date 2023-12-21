@@ -10,8 +10,8 @@ pub struct Atlas<const PIXEL_COUNT:usize, const TILE_COUNT:usize> {
     next_tileset:u16,
     next_free_tile:u16,
     tilesets: SlotMap<TilesetID, Tileset>,
-    width: usize,
-    height:usize,
+    width: u16,
+    height:u16,
     tile_width:u8,
     tile_height:u8,
 }
@@ -20,17 +20,17 @@ pub struct Atlas<const PIXEL_COUNT:usize, const TILE_COUNT:usize> {
 impl<const PIXEL_COUNT:usize, const TILE_COUNT:usize>
 Atlas<PIXEL_COUNT, TILE_COUNT>  {
 
-    pub fn new(width:usize, height:usize, tile_width:u8, tile_height:u8) -> Self {
+    pub fn new(width:u16, height:u16, tile_width:u8, tile_height:u8) -> Self {
         // println!("Atlas: Creating new Atlas with {} tiles.", MAX_TILES);
-        assert!(PIXEL_COUNT==width*height, "Atlas: Error, width x height must equal PIXEL_COUNT");
-        assert!(TILE_COUNT==(width/tile_width as usize)*(height/tile_height as usize), "Atlas: Invalid tile count.");
+        assert!(PIXEL_COUNT==width as usize * height as usize , "Atlas: Error, width x height must equal PIXEL_COUNT");
+        assert!(TILE_COUNT==(width as usize /tile_width as usize)*(height as usize /tile_height as usize), "Atlas: Invalid tile count.");
         Atlas {
             pixels: [0; PIXEL_COUNT],
             rects: array::from_fn( |i| {
                 // generates all tiles
                 let tile_x = i * tile_width as usize;
-                let x = (tile_x % width) as u8;
-                let y = ((tile_x / width) * tile_height as usize) as u8;
+                let x = (tile_x % width as usize ) as u8;
+                let y = ((tile_x / width as usize ) * tile_height as usize) as u8;
                 Rect{ x ,y , w:tile_width, h:tile_height }
             }),
             tilesets: Default::default(),
@@ -44,10 +44,10 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
     }
 
 
-    pub fn width(&self) -> usize { self.width }
+    pub fn width(&self) -> usize { self.width as usize  }
 
 
-    pub fn height(&self) -> usize { self.height }
+    pub fn height(&self) -> usize { self.height as usize }
 
 
     pub fn tile_width(&self) -> u8 { self.tile_width }
@@ -71,13 +71,13 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
 
         // Wrap up header, error checking
         let tileset_header_len = cursor();
-        let tile_len = (TILE_WIDTH * TILE_HEIGHT) as u16;
+        let tile_len = (self.tile_width * self.tile_height) as u16;
         let tile_count = pixel_count / tile_len;
         let tile_length = tile_width as u16 * tile_height as u16;
         if (tile_count * tile_length != pixel_count) || (tile_width != self.tile_width) || (tile_height != self.tile_height) {
             panic!(
                 "Atlas error: invalid tileset dimensions. Expected {} pixels with ({}x{}) tiles",
-                pixel_count, TILE_WIDTH, TILE_HEIGHT
+                pixel_count, self.tile_width, self.tile_height
             )
         }
         
@@ -89,7 +89,7 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
         });
 
         // Loads from linear-formatted pixels into tile-formatted pixels
-        let cols = self.width / self.tile_width as usize;
+        let cols = self.width as usize  / self.tile_width as usize;
         let mut source_px = 0;
         for tile in  start_index as usize .. (start_index + len) as usize {
             for y in 0 .. tile_height as usize {
@@ -98,7 +98,7 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
                     let row = tile / cols;
                     let tile_x = col * tile_width as usize;
                     let tile_y = row * tile_height as usize;
-                    let dest_px = (self.width * (tile_y + y)) + (tile_x + x);
+                    let dest_px = (self.width as usize  * (tile_y + y)) + (tile_x + x);
                     self.pixels[dest_px] = data[tileset_header_len + source_px];
                     source_px += 1;
                 }
@@ -133,7 +133,7 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
     }
 
     pub fn get_pixel(&self, x:usize, y:usize) -> u8 {
-        let index = (y * self.width) + x;
+        let index = (y * self.width as usize) + x;
         self.pixels[index]
     }
 

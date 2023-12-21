@@ -97,7 +97,7 @@
     [x] Binary with cols/rows
     [x] Flags
 
-[ ] Add additional debug data
+[ ] Add additional debug data?
     [ ] Entity Names
     [ ] Debug only scene list (App side)
 

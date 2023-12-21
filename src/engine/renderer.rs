@@ -7,17 +7,17 @@ pub const COLOR_ENTITY_RECT:u8 = 254;
 pub const COLOR_COLLIDER:u8 = 253;
 
 pub struct Renderer<const PIXEL_COUNT:usize> {
-    pub pixels: [u8; PIXEL_COUNT],
-    pub palette: [Color; 256],
-    pub viewport: Rect<i32>,
-    width: usize,
-    height: usize
+    pub(crate) pixels: [u8; PIXEL_COUNT],
+    pub(crate) palette: [Color; 256],
+    pub(crate) viewport: Rect<i32>,
+    width: u16,
+    height: u16
 }
 
 impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
 
-    pub fn new(width:usize, height:usize) -> Self {
-        assert!(PIXEL_COUNT==width*height, "Renderer: Error, width x height must equal PIXEL_COUNT");
+    pub fn new(width:u16, height:u16) -> Self {
+        assert!(PIXEL_COUNT==width as usize * height as usize, "Renderer: Error, width x height must equal PIXEL_COUNT");
         const TRANSP:usize = COLOR_TRANSPARENCY as usize;
         const RECT:usize = COLOR_ENTITY_RECT as usize;
         const COL:usize = COLOR_COLLIDER as usize;
@@ -41,6 +41,21 @@ impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
             height
         }
     }
+
+
+    pub fn width(&self) -> usize { self.width as usize }
+
+
+    pub fn height(&self) -> usize { self.height as usize }
+
+
+    pub fn pixels(&self) -> &[u8; PIXEL_COUNT] { &self.pixels }
+
+
+    pub fn palette(&self) -> &[Color; 256] { &self.palette }
+
+
+    pub fn viewport(&self) -> &Rect<i32> { &self.viewport }
 
 
     #[allow(unused)]
