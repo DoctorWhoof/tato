@@ -1,3 +1,4 @@
+/// 8 bits per channel representation of an RGBA color.
 #[derive(Debug, Clone, Copy)]
 pub struct Color {
     pub r:u8,
@@ -5,6 +6,7 @@ pub struct Color {
     pub b:u8,
     pub a:u8
 }
+
 
 impl Default for Color {
     fn default() -> Self {

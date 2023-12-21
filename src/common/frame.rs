@@ -2,7 +2,7 @@ use super::tile::*;
 
 pub const MAX_TILES_PER_FRAME:usize = 8;
 
-
+/// The smallest part of an animation, contains tiles indices up to MAX_TILES_PER_FRAME.
 #[derive(Clone)]
 pub struct Frame {
     pub(crate) cols:u8,
@@ -26,6 +26,5 @@ impl Default for Frame {
 impl Frame {
 
     pub fn get_tile(&self, index:u8) -> Tile { self.tiles[index as usize] }
-
 
 }

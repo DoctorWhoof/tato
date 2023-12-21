@@ -6,6 +6,8 @@ pub type EntityPool = SlotMap<EntityID, Entity>;
 pub type AnimPool = SlotMap<AnimID, Anim>;
 pub type TilemapPool = SlotMap<TilemapID, Tilemap>;
 
+/// A World contains all necessary data to render and detect collisions on entities, including the
+/// tile Atlas and associated data like Tilemaps and Animations.
 pub struct World <
 const ATLAS_LEN:usize,
 const ATLAS_TILE_COUNT:usize,
@@ -22,9 +24,9 @@ const RENDER_LEN:usize,
     pub atlas: Atlas<ATLAS_LEN, ATLAS_TILE_COUNT>,
     pub cam:Rect<f32>,
 
-    // Visible to whole crate
-    pub(crate) time_elapsed_buffer:SmoothBuffer<15>,
-    pub(crate) time_update_buffer:SmoothBuffer<60>,
+    // Visible to crate
+    pub(super) time_elapsed_buffer:SmoothBuffer<15>,
+    pub(super) time_update_buffer:SmoothBuffer<60>,
     
     // Private
     time:f32,
@@ -91,6 +93,7 @@ const RENDER_LEN:usize,
         self.cam.x = e.pos.x - (self.renderer.width()/2) as f32;
         self.cam.y = e.pos.y - (self.renderer.height()/2) as f32;
     }
+
 
     pub fn set_viewport(&mut self, rect:Rect<i32>) {
         self.renderer.viewport = rect;
@@ -499,6 +502,7 @@ const RENDER_LEN:usize,
         // }
     }
 
+    
 }
 
 

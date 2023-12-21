@@ -1,8 +1,11 @@
 pub const TILESET_HEADER_TEXT:&str = "tileset_1.0";
 
-slotmap::new_key_type! { pub struct TilesetID; }
+slotmap::new_key_type! {
+    /// A key to the World slotmap containing tilesets.
+    pub struct TilesetID;
+}
 
-
+/// A subset of an Atlas.
 #[derive(Debug, Default)]
 pub struct Tileset {
     pub unique_id:TilesetID,

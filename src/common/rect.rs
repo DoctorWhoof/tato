@@ -2,6 +2,7 @@ use super::*;
 use libm::floorf;
 use core::ops::{Add, Sub, Mul};
 
+/// A generic rectangular area.
 #[derive(Clone, Copy, Debug)]
 pub struct Rect<T> {
     pub x:T,

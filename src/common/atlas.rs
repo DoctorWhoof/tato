@@ -3,7 +3,7 @@ use core::array;
 use crate::*;
 use slotmap::SlotMap;
 
-
+/// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
 pub struct Atlas<const PIXEL_COUNT:usize, const TILE_COUNT:usize> {
     pixels:[u8; PIXEL_COUNT],
     rects:[Rect<u8>; TILE_COUNT],

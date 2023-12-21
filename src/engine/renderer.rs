@@ -1,15 +1,16 @@
 use crate::*;
 use core::{usize, array};
 
-// The transparent index is hard coded to 255! Allows for black to be 0 and white is 15 in each subpalette.
-pub const COLOR_TRANSPARENCY:u8 = 255;
+pub const COLOR_TRANSPARENCY:u8 = 255; // The transparent index is hard coded to 255! Allows for black to be 0 and white is 15 in each subpalette.
 pub const COLOR_ENTITY_RECT:u8 = 254;
 pub const COLOR_COLLIDER:u8 = 253;
 
+
+/// Allows writing pixels to a color-indexed pixel buffer.
 pub struct Renderer<const PIXEL_COUNT:usize> {
-    pub(crate) pixels: [u8; PIXEL_COUNT],
-    pub(crate) palette: [Color; 256],
-    pub(crate) viewport: Rect<i32>,
+    pub(super) pixels: [u8; PIXEL_COUNT],
+    pub(super) palette: [Color; 256],
+    pub(super) viewport: Rect<i32>,
     width: u16,
     height: u16
 }

@@ -1,10 +1,12 @@
 use crate::*;
 use slotmap::new_key_type;
 
+new_key_type! {
+    /// A key to the World slotmap containing entities.
+    pub struct EntityID;
+}
 
-new_key_type! { pub struct EntityID; }
-
-
+/// Contains the necessary structs to provide rendering and collisions
 #[derive(Clone, Debug)]
 pub struct Entity {
     // Accessible to "engine" only, not to "Game", so that only World can set it.

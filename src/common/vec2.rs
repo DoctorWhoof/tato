@@ -1,6 +1,8 @@
 use core::ops::{Add, Sub};
 use libm::floorf;
 
+
+/// A generic 2D vector.
 #[derive(Clone, Copy, Debug)]
 pub struct Vec2<T> {
     pub x:T,

@@ -1,6 +1,6 @@
 use crate::*;
 
-
+/// Determines how an entity's rectangle is rendered to pixels.
 #[derive(Clone, Debug)]
 pub enum Shape {
     None,

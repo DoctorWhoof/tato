@@ -1,5 +1,4 @@
-//! Simple ringbuffer with averaging and smoothing.
-
+/// Simple ringbuffer with fast averaging and smoothing.
 pub struct SmoothBuffer<const CAP:usize> {
     data: [f32; CAP],
     head: usize,

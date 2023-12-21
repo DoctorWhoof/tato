@@ -3,6 +3,7 @@ use super::tileset::TilesetID;
 
 pub const GROUP_COUNT:usize = 16; // Currently can't be higher than 64! 
 
+/// A contiguous group of tiles in an Atlas (i.e. a text font, or the many tiles of a single object).
 #[derive(Clone, Copy, Debug)]
 pub struct Group {
     pub id: u8,

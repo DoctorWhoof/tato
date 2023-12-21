@@ -2,6 +2,7 @@
 use super::*;
 
 
+/// Allows recovering the absolute Atlas index from a tile within a tileset.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TileID(pub u16);
 impl TileID {
@@ -9,7 +10,7 @@ impl TileID {
     pub fn get(self) -> usize { self.0 as usize}
 }
 
-
+/// The smallest part of a Tilemap, contains a tile index and its flags.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Tile{
     pub index:u8,

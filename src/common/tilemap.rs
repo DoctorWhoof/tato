@@ -8,7 +8,11 @@ use super::*;
 use slotmap::{new_key_type, SecondaryMap};
 
 
-new_key_type! { pub struct TilemapID; }
+new_key_type! {
+    /// A key to the World slotmap containing tilemaps.
+    pub struct TilemapID;
+}
+
 
 
 #[derive(Default)]
@@ -18,14 +22,15 @@ pub(crate) struct BgBuffer {
     source_row:u16,
 }
 
-
+/// A rectangular array of tiles that belong to a single Tileset. Also provides "BgBuffers" so that
+/// AnimTiles can restore the BG copntents they overwrite.
 pub struct Tilemap {
     pub id: TilemapID,
+    pub tileset: TilesetID,
     pub cols:u16,
     pub rows:u16,
-    pub tiles:[Tile; TILEMAP_LEN],
-    pub tileset: TilesetID,
     pub(crate) bg_buffers:SecondaryMap<EntityID, BgBuffer>,
+    pub tiles:[Tile; TILEMAP_LEN],
 }
 
 
@@ -34,10 +39,10 @@ impl Default for Tilemap {
     fn default() -> Self {
         Self {
             id:TilemapID::default(),
-            cols:1, rows:1,
-            tiles:core::array::from_fn(|_| Tile::default() ),
             tileset: TilesetID::default(),
+            cols:1, rows:1,
             bg_buffers: Default::default(),
+            tiles:core::array::from_fn(|_| Tile::default() ),
         }
     }
 }

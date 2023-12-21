@@ -1,13 +1,16 @@
 use super::*;
 use slotmap::new_key_type;
 
-new_key_type! { pub struct AnimID; }
+new_key_type! {
+    /// A key to the World slotmap containing animations.
+    pub struct AnimID;
+}
 
 pub const ANIM_MAX_FRAMES:usize = 6;
 pub const ANIM_HEADER_TEXT:&str = "anim_1.0";
 pub const ANIM_HEADER_LEN:usize = ANIM_HEADER_TEXT.len() + 3;
 
-/// This is a single action anim (i.e. Idle, Run, etc.). To provide multiple anims to an entity,
+/// A collection of frames representing a single action animation (i.e. Idle, Run, etc.). To provide multiple anims to an entity,
 /// simply store multiple Anim structs somewhere and assign one of them to the entity.
 pub struct  Anim {
     pub fps: u8,
