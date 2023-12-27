@@ -88,9 +88,17 @@
                     [x] Insert / Remove tilesets!
                         [x] To keep things simple, it's a stack: you can't remove a set in the middle, you can only "pop".
                         [x] Clean up pipeline (replace AtlasBuilder references with TilesetBuilder, etc.)
-                        [ ] Since TileIDs have a unique_id, inserting at any index may be doable
+                        [?] Since TileIDs have a unique_id, inserting at any index may be doable
         [x] Entities with Tile Group shapes
-        [ ] BUG: AnimTiles bug out whengoing off screen
+        [x] BUG: AnimTiles bug out whengoing off screen
+        [.] Prototype Door prop with AnimTiles shape.
+----------->[ ] Too many mistakes so far. Groups and Anims should be tied to tilesets, so you can't use a group intended for a tileset on another.
+            [ ] Detect all door instances at build time, when importing the tilemap.
+            [ ] Save/Load basic Scene file containing door entities
+            [ ] Add "Group" functionality to anims (look at TilesetBuilder.insert_group)
+                [ ] Will need to be saved and loaded with .anim files
+                [ ] Also needs "add_anim" closure that updates the "groups" array, just like "add_group"
+                    . This right here needs to be streamlined. Maybe groups are just part of the Atlas?
         [ ] Art: Create new "area" (tilemap + distinct tiles) to test moving data in and out of Atlas
 
 [x] Anim files

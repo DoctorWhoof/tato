@@ -132,6 +132,11 @@ const RENDER_LEN:usize,
     }
 
 
+    pub fn get_anim(&self, id:AnimID) -> &Anim {
+        &self.anims[id]
+    }
+
+
     pub fn get_entity(&self, id:EntityID) -> &Entity { &self.entities[id] }
 
 
@@ -179,7 +184,8 @@ const RENDER_LEN:usize,
 
     pub fn delete_entity(&mut self, id:EntityID) {
         if let Some(ent) = self.entities.get(id){
-            // Clean up AnimTiles if needed. Tilemap will stay "dirty" by the AnimTile entity if this is not performed
+            // Clean up AnimTiles if needed.
+            // Tilemap will be left "dirty" by the AnimTile entity if this is not performed
             if let Shape::AnimTiles { tilemap_entity, .. } = ent.shape {
                 if let Some(tilemap_ent) = self.entities.get(tilemap_entity) {
                     if let Shape::TilemapLayer { tilemap_id } = tilemap_ent.shape {
@@ -251,7 +257,7 @@ const RENDER_LEN:usize,
                     let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
                     let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
                     
-                    tilemap.insert_bg_buffer(left_col as u16, top_row as u16, frame.cols, frame.rows, entity.id);
+                    tilemap.store_bg_buffer(left_col as u16, top_row as u16, frame.cols, frame.rows, entity.id);
 
                     for row in 0 .. frame.rows as i32 {
                         for col in 0 .. frame.cols as i32 {

@@ -1,6 +1,6 @@
 use super::tile::*;
 
-pub const MAX_TILES_PER_FRAME:usize = 8;
+pub const MAX_TILES_PER_FRAME:usize = 12;
 
 /// The smallest part of an animation, contains tiles indices up to MAX_TILES_PER_FRAME.
 #[derive(Clone)]

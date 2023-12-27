@@ -16,7 +16,7 @@ new_key_type! {
 
 
 #[derive(Default)]
-pub(crate) struct BgBuffer {
+pub struct BgBuffer {
     frame:Frame,
     source_col:u16,    // Assuming tilemaps aren't huge, otherwise needs to be a larger int
     source_row:u16,
@@ -29,7 +29,7 @@ pub struct Tilemap {
     pub tileset: TilesetID,
     pub cols:u16,
     pub rows:u16,
-    pub(crate) bg_buffers:SecondaryMap<EntityID, BgBuffer>,
+    pub bg_buffers:SecondaryMap<EntityID, BgBuffer>,
     pub tiles:[Tile; TILEMAP_LEN],
 }
 
@@ -86,7 +86,7 @@ impl Tilemap {
 
 
     pub fn restore_bg_buffer(&mut self, id:EntityID) {
-        let Some(buffer) = self.bg_buffers.get_mut(id) else { return };
+        let Some(buffer) = self.bg_buffers.get(id) else { return };
 
         let rows = buffer.frame.rows as usize;
         let columns = buffer.frame.cols as usize;
@@ -100,7 +100,8 @@ impl Tilemap {
     }
 
 
-    pub fn insert_bg_buffer(&mut self, col:u16, row:u16, cols:u8, rows:u8, id:EntityID) {
+    pub fn store_bg_buffer(&mut self, col:u16, row:u16, cols:u8, rows:u8, id:EntityID) {
+        // If this buffer already wrote to the tilemap on last frame, restore it before moving on
         self.restore_bg_buffer(id);
 
         let tile_count = cols as usize * rows as usize;

@@ -8,11 +8,12 @@ new_key_type! {
 
 pub const ANIM_MAX_FRAMES:usize = 6;
 pub const ANIM_HEADER_TEXT:&str = "anim_1.0";
-pub const ANIM_HEADER_LEN:usize = ANIM_HEADER_TEXT.len() + 3;
+pub const ANIM_HEADER_LEN:usize = ANIM_HEADER_TEXT.len() + 4;
 
 /// A collection of frames representing a single action animation (i.e. Idle, Run, etc.). To provide multiple anims to an entity,
 /// simply store multiple Anim structs somewhere and assign one of them to the entity.
 pub struct  Anim {
+    pub group_id:u8,
     pub fps: u8,
     pub(crate) len:u8,  // Actual used length
     pub(crate) frames: [Frame; ANIM_MAX_FRAMES],
@@ -22,6 +23,7 @@ pub struct  Anim {
 impl Default for Anim {
     fn default() -> Self {
         Self {
+            group_id:0,
             fps: 10,
             len: 0,
             frames: core::array::from_fn(|_| Frame::default() ),
@@ -38,9 +40,10 @@ impl Anim {
         if data.len() < ANIM_HEADER_LEN + 1 { panic!("Anim: Invalid .anim file") }
         if data[0 .. text_len] != *ANIM_HEADER_TEXT.as_bytes() { panic!("Anim: Invalid .anim file") }
 
-        let cols = data[text_len];
-        let rows = data[text_len+1];
-        let frame_count = data[text_len+2];
+        let group_id = data[text_len];
+        let cols = data[text_len+1];
+        let rows = data[text_len+2];
+        let frame_count = data[text_len+3];
         let frame_size = cols as usize * rows as usize;
 
         let mut frames:[Frame; ANIM_MAX_FRAMES] = core::array::from_fn(|_| Frame::default() );
@@ -58,6 +61,7 @@ impl Anim {
 
         // println!("Anim loaded: {},{},{}", cols, rows, frame_count);
         Self {
+            group_id,
             fps,    //TODO: Read from file!
             len:frame_count,
             frames,
