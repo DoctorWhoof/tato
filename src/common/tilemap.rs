@@ -1,10 +1,6 @@
-pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;
-pub const TILEMAP_HEADER_LEN:usize = 15;
-pub const TILEMAP_LEN:usize = 48 * 48;
-
 use crate::EntityID;
 
-use super::*;
+use crate::*;
 use slotmap::{new_key_type, SecondaryMap};
 
 
@@ -13,19 +9,10 @@ new_key_type! {
     pub struct TilemapID;
 }
 
-
-
-#[derive(Default)]
-pub struct BgBuffer {
-    frame:Frame,
-    source_col:u16,    // Assuming tilemaps aren't huge, otherwise needs to be a larger int
-    source_row:u16,
-}
-
 /// A rectangular array of tiles that belong to a single Tileset. Also provides "BgBuffers" so that
-/// AnimTiles can restore the BG copntents they overwrite.
+/// AnimTiles can restore the BG contents they overwrite.
 pub struct Tilemap {
-    pub id: TilemapID,
+    pub id: u8,
     pub tileset: TilesetID,
     pub cols:u16,
     pub rows:u16,
@@ -34,11 +21,10 @@ pub struct Tilemap {
 }
 
 
-
 impl Default for Tilemap {
     fn default() -> Self {
         Self {
-            id:TilemapID::default(),
+            id:0,
             tileset: TilesetID::default(),
             cols:1, rows:1,
             bg_buffers: Default::default(),
@@ -50,39 +36,59 @@ impl Default for Tilemap {
 
 impl Tilemap {
 
-    pub fn load( data:&[u8], tileset:TilesetID, id:TilemapID ) -> Self {
-        let text_len = TILEMAP_HEADER_TEXT.len();
-        if data[0 .. text_len] != *TILEMAP_HEADER_TEXT.as_bytes() { panic!("World error: Invalid .tilemap file") }
-        if data.len() < TILEMAP_HEADER_LEN + 1 { panic!("World error: Invalid .tilemap file") }
+    // pub fn id(&self) -> u8 { self.id }
 
-        let cols = u16::from_ne_bytes([data[text_len], data[text_len+1]]);
-        let rows = u16::from_ne_bytes([data[text_len+2], data[text_len+3]]);
-        
-        if cols as usize * rows as usize > TILEMAP_LEN {
-            panic!("Tilemap: Error creating {} x {} tilemap, capacity of {} exceeded", cols, rows, TILEMAP_LEN)
-        }
 
-        let max_len = (TILEMAP_LEN * 2) + TILEMAP_HEADER_LEN;
-        if data.len() > max_len {
-            panic!("Tilemap: Error, tilemap data over capacity. Should be less than {}, but it's {}", max_len, data.len())
-        }
+    // pub fn cols(&self) -> u16 { self.cols }
 
-        let mut tile_data:[Tile; TILEMAP_LEN] = core::array::from_fn(|_| Tile::default() );
-        let data_len = (data.len() - TILEMAP_HEADER_LEN) / 2;
-        (0 .. data_len).for_each(|i| {
-            let index = (i * 2) + TILEMAP_HEADER_LEN;
-            tile_data[i].index = data[index];
-            tile_data[i].flags = data[index + 1];
-        });
 
-        Self {
-            id,
-            cols, rows,
-            tiles: tile_data,
-            tileset, 
-            bg_buffers: Default::default(),
-        }
+    // pub fn rows(&self) -> u16 { self.rows }
+
+
+    // pub fn tiles(&self) -> &[Tile; TILEMAP_LEN] { &self.tiles }
+
+
+    pub fn new(tiles:[Tile; TILEMAP_LEN], id:u8, cols:u16, rows:u16) -> Self {
+        Self { id, cols, rows, tiles, .. Default::default() }
     }
+
+
+    pub fn bg_buffer_count(&self) -> usize { self.bg_buffers.len() }
+
+
+    // pub fn load( data:&[u8], tileset:TilesetID, id:TilemapID ) -> Self {
+    //     let text_len = TILEMAP_HEADER_TEXT.len();
+    //     if data[0 .. text_len] != *TILEMAP_HEADER_TEXT.as_bytes() { panic!("World error: Invalid .tilemap file") }
+    //     if data.len() < TILEMAP_HEADER_LEN + 1 { panic!("World error: Invalid .tilemap file") }
+
+    //     let cols = u16::from_ne_bytes([data[text_len], data[text_len+1]]);
+    //     let rows = u16::from_ne_bytes([data[text_len+2], data[text_len+3]]);
+        
+    //     if cols as usize * rows as usize > TILEMAP_LEN {
+    //         panic!("Tilemap: Error creating {} x {} tilemap, capacity of {} exceeded", cols, rows, TILEMAP_LEN)
+    //     }
+
+    //     let max_len = (TILEMAP_LEN * 2) + TILEMAP_HEADER_LEN;
+    //     if data.len() > max_len {
+    //         panic!("Tilemap: Error, tilemap data over capacity. Should be less than {}, but it's {}", max_len, data.len())
+    //     }
+
+    //     let mut tile_data:[Tile; TILEMAP_LEN] = core::array::from_fn(|_| Tile::default() );
+    //     let data_len = (data.len() - TILEMAP_HEADER_LEN) / 2;
+    //     (0 .. data_len).for_each(|i| {
+    //         let index = (i * 2) + TILEMAP_HEADER_LEN;
+    //         tile_data[i].index = data[index];
+    //         tile_data[i].flags = data[index + 1];
+    //     });
+
+    //     Self {
+    //         id,
+    //         cols, rows,
+    //         tiles: tile_data,
+    //         tileset, 
+    //         bg_buffers: Default::default(),
+    //     }
+    // }
 
 
     pub fn restore_bg_buffer(&mut self, id:EntityID) {
@@ -99,10 +105,16 @@ impl Tilemap {
         }
     }
 
-
-    pub fn store_bg_buffer(&mut self, col:u16, row:u16, cols:u8, rows:u8, id:EntityID) {
+    // Returns false if off screen
+    pub fn store_bg_buffer(&mut self, col:i32, row:i32, cols:u8, rows:u8, id:EntityID) -> bool {
         // If this buffer already wrote to the tilemap on last frame, restore it before moving on
         self.restore_bg_buffer(id);
+
+        if col <= -(cols as i32) || row <= -(rows as i32) { return false }
+        if col >= self.cols as i32 || row >= self.rows as i32 { return false }
+
+        let Ok(col) = u16::try_from(col) else { return false };
+        let Ok(row) = u16::try_from(row) else { return false };
 
         let tile_count = cols as usize * rows as usize;
         self.bg_buffers.insert(id, BgBuffer {
@@ -125,6 +137,7 @@ impl Tilemap {
             source_col: col,
             source_row: row,
         });
+        true
     }
 
 

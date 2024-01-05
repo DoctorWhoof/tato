@@ -92,7 +92,10 @@
         [x] Entities with Tile Group shapes
         [x] BUG: AnimTiles bug out whengoing off screen
         [.] Prototype Door prop with AnimTiles shape.
------------>[ ] Too many mistakes so far. Groups and Anims should be tied to tilesets, so you can't use a group intended for a tileset on another.
+            [ ] Too many bugs caused by silly mistakes so far! Needs better pipeline design.
+                . Groups and Anims should be tied to tilesets, so you can't use a group intended for a tileset on another.
+                . Added "GroupEnum" generic parameter to TilesetBuilder
+--------------->. Proceed to actually save that data so that initializing a group also restores its enum assignment
             [ ] Detect all door instances at build time, when importing the tilemap.
             [ ] Save/Load basic Scene file containing door entities
             [ ] Add "Group" functionality to anims (look at TilesetBuilder.insert_group)

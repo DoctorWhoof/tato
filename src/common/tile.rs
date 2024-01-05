@@ -1,6 +1,4 @@
-#![allow(dead_code)]
-use super::*;
-
+use crate::*;
 
 /// Allows recovering the absolute Atlas index from a tile within a tileset.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,7 +23,7 @@ impl Tile {
 
 
     pub fn set_group(&mut self, value:u8) {
-        if value as usize >= GROUP_COUNT { panic!{"TileFlags: Error, group value range is 0 .. {}. Can't set to {}", GROUP_COUNT-1, value} }
+        if value as usize >= GROUP_CAPACITY { panic!{"TileFlags: Error, group value range is 0 .. {}. Can't set to {}", GROUP_CAPACITY-1, value} }
         self.flags &= 0b1100_0000;
         self.flags |= value;
     }

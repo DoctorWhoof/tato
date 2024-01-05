@@ -3,8 +3,6 @@ use slotmap::SlotMap;
 use crate::*;
 
 pub type EntityPool = SlotMap<EntityID, Entity>;
-pub type AnimPool = SlotMap<AnimID, Anim>;
-pub type TilemapPool = SlotMap<TilemapID, Tilemap>;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Atlas and associated data like Tilemaps and Animations.
@@ -12,6 +10,9 @@ pub struct World <
 const ATLAS_LEN:usize,
 const ATLAS_TILE_COUNT:usize,
 const RENDER_LEN:usize,
+const ANIM_CAP:usize,
+const FONT_CAP:usize,
+const TILEMAP_CAP:usize
 > {
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
@@ -20,24 +21,22 @@ const RENDER_LEN:usize,
     pub debug_atlas: bool,
     pub draw_sprites: bool,
     pub draw_tilemaps: bool,
-    pub renderer: Renderer<RENDER_LEN>,
-    pub atlas: Atlas<ATLAS_LEN, ATLAS_TILE_COUNT>,
     pub cam:Rect<f32>,
-
-    // Visible to crate
-    pub(super) time_elapsed_buffer:SmoothBuffer<15>,
-    pub(super) time_update_buffer:SmoothBuffer<60>,
+    // Main components
+    pub renderer: Renderer<RENDER_LEN>,
+    pub atlas: Atlas<ATLAS_LEN, ATLAS_TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP>,
     
     // Private
+    time_elapsed_buffer:SmoothBuffer<30>,
+    time_update_buffer:SmoothBuffer<120>,
     time:f32,
     time_update:f32,
     time_elapsed:f32,
     time_idle:f32,
     
-    // Main data
+    // Data Pools
     entities:EntityPool,
-    anims:AnimPool,
-    tilemaps:TilemapPool,
+
 }
 
     
@@ -45,8 +44,11 @@ impl<
 const ATLAS_LEN:usize,
 const ATLAS_TILE_COUNT:usize,
 const RENDER_LEN:usize,
-> World<ATLAS_LEN, ATLAS_TILE_COUNT, RENDER_LEN> {
-
+const ANIM_CAP:usize,
+const FONT_CAP:usize,
+const TILEMAP_CAP:usize
+> World<ATLAS_LEN, ATLAS_TILE_COUNT, RENDER_LEN, ANIM_CAP, FONT_CAP, TILEMAP_CAP>
+{
 
     pub fn new(render_width:u16, render_height:u16, atlas_width:u16, atlas_height:u16, tile_width:u8, tile_height:u8) -> Self {
         World {
@@ -70,8 +72,8 @@ const RENDER_LEN:usize,
             time_idle: 0.0,
 
             entities: SlotMap::with_capacity_and_key(64),
-            anims: SlotMap::with_capacity_and_key(64),
-            tilemaps: SlotMap::with_capacity_and_key(4)
+            // anims: SlotMap::with_capacity_and_key(64),
+            // tilemaps: SlotMap::with_capacity_and_key(4)
         }
     }
 
@@ -79,10 +81,10 @@ const RENDER_LEN:usize,
     pub fn time(&self) -> f32 { self.time }
 
 
-    pub fn time_elapsed(&self) -> f32 { self.time_elapsed_buffer.average() }
+    pub fn time_elapsed(&self) -> f32 { self.time_elapsed }
 
 
-    pub fn time_update(&self) -> f32 { self.time_update_buffer.average() }
+    pub fn time_update(&self) -> f32 { self.time_update }
 
 
     pub fn time_idle(&self) -> f32 { self.time_idle }
@@ -111,29 +113,14 @@ const RENDER_LEN:usize,
     }
 
 
-    pub fn insert_anim(&mut self, bytes:&[u8], tileset:TilesetID, fps:u8) -> AnimID {
-        self.anims.insert(
-            Anim::load(bytes, tileset, fps)
-        )
-    }
-
-
-    // Returns a reference to the tilemap just inserted.
-    pub fn load_tilemap(&mut self, data:&[u8], tileset:TilesetID) -> TilemapID {
-        self.tilemaps.insert_with_key(|key|{
-            Tilemap::load( data, tileset, key )
-        })
-    }
-
-
     // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
-    pub fn get_data_mut(&mut self) -> (&mut EntityPool, &mut AnimPool, &mut TilemapPool) {
-        (&mut self.entities, &mut self.anims, &mut self.tilemaps)
+    pub fn get_data_mut(&mut self) -> (&mut EntityPool, &mut Pool<Anim, ANIM_CAP>, &mut Pool<Tilemap, TILEMAP_CAP>) {
+        (&mut self.entities, &mut self.atlas.anims, &mut self.atlas.tilemaps)
     }
 
 
-    pub fn get_anim(&self, id:AnimID) -> &Anim {
-        &self.anims[id]
+    pub fn get_anim(&self, id:u8) -> &Anim {
+        &self.atlas.anims.get(id as usize).unwrap()
     }
 
 
@@ -143,10 +130,14 @@ const RENDER_LEN:usize,
     pub fn get_entity_mut(&mut self, id:EntityID) -> &mut Entity { &mut self.entities[id] }
 
 
-    pub fn get_tilemap(&self, id:TilemapID) -> &Tilemap { &self.tilemaps[id] }
+    pub fn get_tilemap(&self, id:u8) -> &Tilemap {
+        &self.atlas.tilemaps.get(id as usize).unwrap()
+    }
 
 
-    pub fn get_tilemap_mut(&mut self, id:TilemapID) -> &mut Tilemap { &mut self.tilemaps[id] }
+    pub fn get_tilemap_mut(&mut self, id:u8) -> &mut Tilemap {
+        self.atlas.tilemaps.get_mut(id as usize).unwrap()
+    }
 
 
     pub fn get_entity_rect_from_id(&self, id:EntityID) -> Rect<f32> {
@@ -157,9 +148,9 @@ const RENDER_LEN:usize,
 
     pub fn get_entity_rect(&self, entity:&Entity) -> Rect<f32> {
         match entity.shape {
-            Shape::None => Rect { x:0.0, y:0.0, w:0.0, h:0.0 },
+            Shape::None => Default::default(),
             Shape::Sprite { anim_id, .. } | Shape::AnimTiles { anim_id, .. } => {
-                let anim = &self.anims[anim_id];
+                let Some(anim) = &self.atlas.anims.get(anim_id as usize) else { return Default::default() };
                 let frame = anim.frame(self.time);
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
@@ -169,7 +160,7 @@ const RENDER_LEN:usize,
                 }
             },
             Shape::TilemapLayer { tilemap_id } => {
-                let tilemap = &self.tilemaps[tilemap_id];
+                let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
                 let result = Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
@@ -189,7 +180,7 @@ const RENDER_LEN:usize,
             if let Shape::AnimTiles { tilemap_entity, .. } = ent.shape {
                 if let Some(tilemap_ent) = self.entities.get(tilemap_entity) {
                     if let Shape::TilemapLayer { tilemap_id } = tilemap_ent.shape {
-                        if let Some(tilemap) = self.tilemaps.get_mut(tilemap_id){
+                        if let Some(tilemap) = self.atlas.tilemaps.get_mut(tilemap_id as usize){
                             tilemap.restore_bg_buffer(ent.id);
                             tilemap.bg_buffers.remove(id);
                         };
@@ -205,7 +196,7 @@ const RENDER_LEN:usize,
         let entity = &self.entities[id];
         let Shape::TilemapLayer{ tilemap_id } = entity.shape else { return None };
         
-        let tilemap = &self.tilemaps[tilemap_id];
+        let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
         let rect = self.get_entity_rect(entity);
 
         if !rect.contains(x, y) { return None };
@@ -247,28 +238,29 @@ const RENDER_LEN:usize,
                     let world_rect = self.get_entity_rect(entity);
                     let Some(..) = world_rect.intersect(cam_rect) else { continue };
                     
-                    let anim = &self.anims[anim_id];
+                    let Some(anim) = self.atlas.anims.get(anim_id as usize) else { continue };
                     let frame = anim.frame(self.time);
                     
                     let tilemap_rect = self.get_entity_rect(tilemap_entity);
                     
-                    let tilemap = &mut self.tilemaps[tilemap_id];
+                    let tilemap = &mut self.atlas.tilemaps.get_mut(tilemap_id as usize).unwrap();
                     
                     let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
                     let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
-                    
-                    tilemap.store_bg_buffer(left_col as u16, top_row as u16, frame.cols, frame.rows, entity.id);
+
+                    if tilemap.store_bg_buffer(left_col, top_row, frame.cols, frame.rows, entity.id) == false {
+                        continue
+                    };
 
                     for row in 0 .. frame.rows as i32 {
+                        if row < 0 { continue }
                         for col in 0 .. frame.cols as i32 {
+                            if col < 0 { continue }
                             let mut tile = frame.get_tile(row as u8 * frame.cols + col as u8);
-                            //TODO: flipping needs testing
-                            tile.set_flipped_h(tile.flipped_h() ^ flip_h);
-                            tile.set_flipped_v(tile.flipped_v() ^ flip_v);
-                            
+                            tile.set_flipped_h(tile.flipped_h() ^ flip_h);  //TODO: flipping needs testing
+                            tile.set_flipped_v(tile.flipped_v() ^ flip_v);  //TODO: flipping needs testing
                             let tilemap_index = (((row + top_row) * tilemap.cols as i32) + (col + left_col)) as usize;
                             tilemap.tiles[tilemap_index] = tile;
-                            // tilemap.tiles[tilemap_index].index = 0;
                         }
                     }
                 },
@@ -276,7 +268,7 @@ const RENDER_LEN:usize,
                 Shape::Sprite { anim_id, flip_h, .. } => {
                     if !self.draw_sprites { continue }
                     // Draw tiles
-                    let anim = &self.anims[anim_id];
+                    let Some(anim) = &self.atlas.anims.get(anim_id as usize) else { continue };
                     let frame = anim.frame(self.time);
 
                     let mut draw_tile = |col:u8, row:u8| {
@@ -317,7 +309,7 @@ const RENDER_LEN:usize,
                 Shape::TilemapLayer { tilemap_id } => {
                     if !self.draw_tilemaps { continue }
                     let world_rect = self.get_entity_rect(entity);
-                    let tilemap = &mut self.tilemaps[tilemap_id];
+                    let tilemap = &mut self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };  
 
                     // At least a part of tilemap is visible. Render visible tiles within it.
@@ -355,7 +347,7 @@ const RENDER_LEN:usize,
             }
 
             // Draw collider Wireframe
-            #[cfg(debug_assertions)]
+            // #[cfg(debug_assertions)]
             if self.debug_colliders {
                 if let Some(col) = entity.col {
                     let world_col = entity.world_rect(col, false);
@@ -367,7 +359,7 @@ const RENDER_LEN:usize,
             }
 
             // Draw pivot point
-            #[cfg(debug_assertions)]
+            // #[cfg(debug_assertions)]
             if self.debug_pivot {
                 let rect = self.get_entity_rect(entity);
                 if let Some(vis_rect) = rect.intersect(cam_rect) {
@@ -381,7 +373,7 @@ const RENDER_LEN:usize,
         }
 
         // Debug Atlas
-        #[cfg(debug_assertions)]
+        // #[cfg(debug_assertions)]
         if self.debug_atlas {
             'draw_loop: {
                 let width = self.atlas.width();
@@ -397,7 +389,8 @@ const RENDER_LEN:usize,
     }
 
 
-    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font_range:Group, align_right:bool) {
+    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:u8, align_right:bool) {
+        let Some(font_range) = &self.atlas.fonts.get(font as usize) else { return };
         let tileset_start = self.atlas.get_tileset(font_range.tileset).start_index;
         for (i,letter) in text.chars().enumerate() {
             let letter = letter as u32;
@@ -435,7 +428,7 @@ const RENDER_LEN:usize,
 
     fn draw_tile(
         renderer: &mut Renderer<RENDER_LEN>,
-        atlas:&Atlas<ATLAS_LEN, ATLAS_TILE_COUNT>,
+        atlas:&Atlas<ATLAS_LEN, ATLAS_TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP>,
         world_rect:Rect<i32>,
         tile:TileID,
         flip_h:bool
@@ -486,8 +479,8 @@ const RENDER_LEN:usize,
 
 
     pub fn finish_frame(&mut self, time_now:f32) {
-        self.time_update = time_now - self.time;
-        self.time_update_buffer.push(self.time_update);
+        self.time_update_buffer.push(time_now - self.time);
+        self.time_update = self.time_update_buffer.average();
 
         // Limit frame rate. TODO: This is hacky, doesn't always work, and needs std library.
         // if let Some(fps_limit) = self.limit_frame_rate {

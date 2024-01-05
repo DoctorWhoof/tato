@@ -4,12 +4,22 @@ use crate::*;
 use slotmap::SlotMap;
 
 /// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
-pub struct Atlas<const PIXEL_COUNT:usize, const TILE_COUNT:usize> {
+pub struct Atlas<
+const PIXEL_COUNT:usize,
+const TILE_COUNT:usize,
+const ANIM_CAP:usize,
+const FONT_CAP:usize,
+const TILEMAP_CAP:usize,
+> {
+    pub(crate) rects:[Rect<u8>; TILE_COUNT],
+    pub(crate) fonts: Pool<Font, FONT_CAP>,
+    pub(crate) anims: Pool<Anim, ANIM_CAP>,
+    pub(crate) tilemaps: Pool<Tilemap, TILEMAP_CAP>,  //TODO: TILEMAP_CAP
+    pub(crate) tilesets: SlotMap<TilesetID, Tileset>,
     pixels:[u8; PIXEL_COUNT],
-    rects:[Rect<u8>; TILE_COUNT],
+
     next_tileset:u16,
     next_free_tile:u16,
-    tilesets: SlotMap<TilesetID, Tileset>,
     width: u16,
     height:u16,
     tile_width:u8,
@@ -17,10 +27,15 @@ pub struct Atlas<const PIXEL_COUNT:usize, const TILE_COUNT:usize> {
 }
 
 
-impl<const PIXEL_COUNT:usize, const TILE_COUNT:usize>
-Atlas<PIXEL_COUNT, TILE_COUNT>  {
-
-    pub fn new(width:u16, height:u16, tile_width:u8, tile_height:u8) -> Self {
+impl<
+const PIXEL_COUNT:usize,
+const TILE_COUNT:usize,
+const ANIM_CAP:usize,
+const FONT_CAP:usize,
+const TILEMAP_CAP:usize,
+> Atlas<PIXEL_COUNT, TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP>
+{
+    pub(crate) fn new(width:u16, height:u16, tile_width:u8, tile_height:u8) -> Self {
         // println!("Atlas: Creating new Atlas with {} tiles.", MAX_TILES);
         assert!(PIXEL_COUNT==width as usize * height as usize , "Atlas: Error, width x height must equal PIXEL_COUNT");
         assert!(TILE_COUNT==(width as usize /tile_width as usize)*(height as usize /tile_height as usize), "Atlas: Invalid tile count.");
@@ -33,6 +48,9 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
                 let y = ((tile_x / width as usize ) * tile_height as usize) as u8;
                 Rect{ x ,y , w:tile_width, h:tile_height }
             }),
+            fonts: Default::default(),
+            anims: Default::default(),
+            tilemaps: Default::default(),
             tilesets: Default::default(),
             next_tileset: 0,
             next_free_tile: 0,
@@ -57,40 +75,49 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
 
 
     pub fn insert_tileset( &mut self, data:&[u8] ) -> TilesetID {
-        let mut offset = TILEMAP_HEADER_TEXT.len()-1;
-        if data[0 ..= offset] != *TILESET_HEADER_TEXT.as_bytes() { panic!("Atlas error: Invalid .tiles file") }
+        let mut offset = TILEMAP_HEADER_TEXT.len();
+        if data[0 .. TILESET_HEADER_TEXT.len()] != *TILESET_HEADER_TEXT.as_bytes() { panic!("Atlas error: Invalid .tiles file") }
 
         let mut cursor = || -> usize {
+            let result = offset;
             offset += 1;
-            offset
+            result
         };
 
         let tile_width = data[cursor()];
         let tile_height = data[cursor()];
         let pixel_count = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
+        let font_count = data[cursor()];
+        let anim_count = data[cursor()];
+        let tilemap_count = data[cursor()];
 
         // Wrap up header, error checking
-        let tileset_header_len = cursor();
         let tile_len = (self.tile_width * self.tile_height) as u16;
         let tile_count = pixel_count / tile_len;
         let tile_length = tile_width as u16 * tile_height as u16;
-        if (tile_count * tile_length != pixel_count) || (tile_width != self.tile_width) || (tile_height != self.tile_height) {
-            panic!(
-                "Atlas error: invalid tileset dimensions. Expected {} pixels with ({}x{}) tiles",
-                pixel_count, self.tile_width, self.tile_height
-            )
+
+        if (tile_width != self.tile_width) || (tile_height != self.tile_height) {
+            panic!("Atlas error: invalid tileset dimensions. Expected {}x{} tiles, found {}x{}",
+            self.tile_width, self.tile_height, tile_width, tile_height)
+        }
+
+        if tile_count as usize * tile_length as usize != pixel_count as usize {
+            panic!("Atlas error: invalid tileset dimensions. Expected {} pixels.", pixel_count)
         }
         
         // Insert new tileset
         let start_index = self.next_free_tile; 
         let len = pixel_count / tile_len; 
         let result = self.tilesets.insert_with_key(|key| {
-            Tileset { unique_id:key, start_index, len }
+            Tileset {
+                unique_id:key,
+                start_index,
+                len
+            }
         });
 
         // Loads from linear-formatted pixels into tile-formatted pixels
         let cols = self.width as usize  / self.tile_width as usize;
-        let mut source_px = 0;
         for tile in  start_index as usize .. (start_index + len) as usize {
             for y in 0 .. tile_height as usize {
                 for x in 0 ..tile_width as usize {
@@ -99,12 +126,74 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
                     let tile_x = col * tile_width as usize;
                     let tile_y = row * tile_height as usize;
                     let dest_px = (self.width as usize  * (tile_y + y)) + (tile_x + x);
-                    self.pixels[dest_px] = data[tileset_header_len + source_px];
-                    source_px += 1;
+                    self.pixels[dest_px] = data[cursor()];
                 }
             }
         }
+
+        // Load fonts
+        // println!("group count:{}", font_count);
+        for _ in 0 .. font_count {
+            let id = data[cursor()];
+            let start = data[cursor()];
+            let len = data[cursor()]; 
+            if id as usize != self.fonts.len() { panic!("Atlas Error: Font ID does not match its Pool index!")}
+            self.fonts.push(Font { start, len, id, tileset:result });
+        }
+
+        // Load Anims
+        for _ in 0 .. anim_count {
+            let id = data[cursor()];
+            let group = data[cursor()];
+            let fps = data[cursor()];
+            let len = data[cursor()];
+            self.anims.insert (
+                Anim {
+                    id,
+                    group,
+                    fps,
+                    len,
+                    frames: core::array::from_fn(|_|{
+                        Frame {
+                            cols: data[cursor()],
+                            rows: data[cursor()],
+                            tiles: core::array::from_fn(|_|{
+                                Tile {
+                                    index: data[cursor()],
+                                    flags: data[cursor()]
+                                }
+                            })
+                        }
+                    }),
+                    tileset: result,
+                },
+                id as usize
+            );
+        }
+
+        // Load Tilemaps
+        for _ in 0 .. tilemap_count {
+            let id = data[cursor()];
+            let cols = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
+            let rows = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
+            self.tilemaps.insert(Tilemap{
+                id,
+                tileset: result,
+                cols,
+                rows,
+                bg_buffers: Default::default(),
+                tiles: core::array::from_fn(|_|{
+                    Tile{
+                        index: data[cursor()],
+                        flags: data[cursor()],
+                    }
+                }),
+            }, id as usize);
+
+        }
         
+        
+        // Finish tileset insertion
         self.next_tileset += 1;
         self.next_free_tile += len;
         result
@@ -137,8 +226,8 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
         self.pixels[index]
     }
 
-    // Slower methods, since they calculate the absolute tile coordinates on every pixel
 
+    // Slower methods, since they calculate the absolute tile coordinates on every pixel
     // #[inline]
     // pub fn get_pixel_from_quad(&self, x:usize, y:usize, tile_id:TileID) -> u8 {
     //     let (x,y) = self.get_coords_from_quad(x, y, tile_id);
@@ -146,16 +235,12 @@ Atlas<PIXEL_COUNT, TILE_COUNT>  {
     //     let index = (y * ATLAS_WIDTH) + x;
     //     self.pixels[index]
     // }
-
-
     // pub fn set_pixel_in_quad(&mut self, x:usize, y:usize, tile_id:TileID, color_index:u8) {
     //     let (x,y) = self.get_coords_from_quad(x, y, tile_id);
     //     // Return pixel
     //     let index = (y * ATLAS_WIDTH) + x;
     //     self.pixels[index] = color_index;
     // }
-
-    // #[inline]
     // pub fn get_coords_from_quad(&self, x:usize, y:usize, tile_id:TileID) -> (usize, usize) {
     //     // Acquire rect
     //     let id = tile_id.get();

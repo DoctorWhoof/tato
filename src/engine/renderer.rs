@@ -1,11 +1,6 @@
 use crate::*;
 use core::{usize, array};
 
-pub const COLOR_TRANSPARENCY:u8 = 255; // The transparent index is hard coded to 255! Allows for black to be 0 and white is 15 in each subpalette.
-pub const COLOR_ENTITY_RECT:u8 = 254;
-pub const COLOR_COLLIDER:u8 = 253;
-
-
 /// Allows writing pixels to a color-indexed pixel buffer.
 pub struct Renderer<const PIXEL_COUNT:usize> {
     pub(super) pixels: [u8; PIXEL_COUNT],
@@ -17,7 +12,7 @@ pub struct Renderer<const PIXEL_COUNT:usize> {
 
 impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
 
-    pub fn new(width:u16, height:u16) -> Self {
+    pub(super) fn new(width:u16, height:u16) -> Self {
         assert!(PIXEL_COUNT==width as usize * height as usize, "Renderer: Error, width x height must equal PIXEL_COUNT");
         const TRANSP:usize = COLOR_TRANSPARENCY as usize;
         const RECT:usize = COLOR_ENTITY_RECT as usize;
@@ -59,24 +54,10 @@ impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
     pub fn viewport(&self) -> &Rect<i32> { &self.viewport }
 
 
-    #[allow(unused)]
     pub fn clear(&mut self, color_index:u8) {
         for pixel in self.pixels.iter_mut() {
             *pixel = color_index
         }
-    }
-
-
-    #[inline]
-    pub fn draw_pixel(&mut self, x:usize, y:usize, color_index:u8){
-        draw_pixel(&mut self.pixels, self.width as usize, x, y, color_index)
-    }
-    
-
-    #[inline]
-    pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color_index:u8) {
-        // TODO: Take viewport into account
-        draw_line(&mut self.pixels, self.width as usize, x0, y0, x1, y1, color_index)
     }
 
 
@@ -89,6 +70,19 @@ impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
             return Some(Vec2 { x: world_coord.x, y:world_coord.y})
         }
         None
+    }
+
+
+    #[inline]
+    pub(super) fn draw_pixel(&mut self, x:usize, y:usize, color_index:u8){
+        draw_pixel(&mut self.pixels, self.width as usize, x, y, color_index)
+    }
+    
+
+    #[inline]
+    pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color_index:u8) {
+        // TODO: Take viewport into account
+        draw_line(&mut self.pixels, self.width as usize, x0, y0, x1, y1, color_index)
     }
 
 

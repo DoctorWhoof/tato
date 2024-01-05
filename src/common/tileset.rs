@@ -1,5 +1,5 @@
-pub const TILESET_HEADER_TEXT:&str = "tileset_1.0";
-
+// use slotmap::SlotMap;
+// use super::*
 slotmap::new_key_type! {
     /// A key to the World slotmap containing tilesets.
     pub struct TilesetID;
@@ -10,7 +10,9 @@ slotmap::new_key_type! {
 pub struct Tileset {
     pub unique_id:TilesetID,
     pub start_index:u16,
-    pub len:u16
+    pub len:u16,
+    // pub groups:SlotMap<GroupID, Group>,
+    // pub anims:SlotMap<AnimID, Anim>
 }
 
 // // test

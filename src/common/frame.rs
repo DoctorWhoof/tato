@@ -1,13 +1,11 @@
-use super::tile::*;
+use crate::*;
 
-pub const MAX_TILES_PER_FRAME:usize = 12;
-
-/// The smallest part of an animation, contains tiles indices up to MAX_TILES_PER_FRAME.
-#[derive(Clone)]
+/// The smallest part of an animation, contains tiles indices up to ANIM_TILES_PER_FRAME.
+#[derive(Debug, Clone)]
 pub struct Frame {
-    pub(crate) cols:u8,
-    pub(crate) rows:u8,
-    pub(crate) tiles:[Tile; MAX_TILES_PER_FRAME]
+    pub cols:u8,
+    pub rows:u8,
+    pub tiles:[Tile; ANIM_TILES_PER_FRAME]
 }
 
 
@@ -16,7 +14,7 @@ impl Default for Frame {
         Self {
             cols:1,
             rows:1,
-            tiles: [Tile::default(); MAX_TILES_PER_FRAME]
+            tiles: [Tile::default(); ANIM_TILES_PER_FRAME]
         }
     }
 }
@@ -24,6 +22,21 @@ impl Default for Frame {
 
 
 impl Frame {
+
+    pub fn from_slice(slice:&[Tile], cols:u8, rows:u8) -> Frame {
+        let mut tiles = slice.into_iter();
+        Frame {
+            cols,
+            rows,
+            tiles: core::array::from_fn(|_| {
+                match tiles.next() {
+                    Some(tile) => *tile,
+                    None => Default::default(),
+                }
+            }),
+        }
+    }
+
 
     pub fn get_tile(&self, index:u8) -> Tile { self.tiles[index as usize] }
 
