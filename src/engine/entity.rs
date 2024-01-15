@@ -7,12 +7,13 @@ new_key_type! {
 }
 
 /// Contains the necessary structs to provide rendering and collisions
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Entity {
     // Accessible to "engine" only, not to "Game", so that only World can set it.
-    pub(super) id:EntityID,     
+    pub(super) id:EntityID,
 
     // Public
+    pub visible: bool,  //TODO: Flags? Would allow mirroring whole entity, with colliders and offset properly mirrored.
     pub shape: Shape,
     pub pos: Vec2<f32>,
     pub col: Option<Rect<i8>>,
@@ -28,6 +29,7 @@ impl Entity {
     pub fn new(with_id:EntityID) -> Entity {
         Self { 
             id: with_id,
+            visible: true,
             shape: Shape::None, 
             pos: Vec2 { x: 0.0, y: 0.0 }, 
             render_offset: Vec2 { x: 0, y: 0 },

@@ -1,5 +1,5 @@
 /// 8 bits per channel representation of an RGBA color.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color {
     pub r:u8,
     pub g:u8,

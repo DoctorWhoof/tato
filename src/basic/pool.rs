@@ -1,7 +1,7 @@
 
-pub struct Pool<T, const CAP:usize>
+pub struct Pool<T, const CAP:usize> 
 where T:Default {
-    data:[T; CAP],
+    pub data:[T; CAP],
     head:usize
 }
 
@@ -18,6 +18,28 @@ where T:Default {
 
 impl<T, const CAP:usize> Pool<T, CAP>
 where T:Default {
+
+    // // pub fn new_filled(item:T) -> Self 
+    // pub fn new_filled() -> Self 
+    // // where T:Clone
+    // {
+    //     Self {
+    //         head: 0,
+    //         // data: core::array::from_fn( |_| item.clone() ),
+    //         ..Default::default()
+    //     }
+    // }
+
+    pub fn is_empty(&self) -> bool {
+        self.head == 0
+    }
+
+
+    pub fn set(&mut self, i:usize, value:T) {
+        if i >= self.head { panic!("Pool error: Invalid index {}", i) }
+        self.data[i] = value;
+    }
+
 
     pub fn push(&mut self, elem:T){
         if self.head == CAP { panic!("Pool Error: Capacity of {} exceeded", CAP) }
@@ -38,8 +60,8 @@ where T:Default {
     }
 
 
-    /// Expands pool to include index!
-    pub fn insert(&mut self, elem:T, i:usize) {
+    /// Expands pool to include index! Not sure about this.
+    pub fn insert(&mut self, i:usize, elem:T) {
         if i >= CAP { panic!("Pool Error: Capacity of {} exceeded", CAP) }
         if i >= self.head { self.head = i }
         self.data[i] = elem;
@@ -49,6 +71,11 @@ where T:Default {
 
     pub fn len(&self) -> usize {
         self.head
+    }
+
+
+    pub fn capacity(&self) -> usize {
+        CAP
     }
 
 }

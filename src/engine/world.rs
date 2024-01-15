@@ -1,18 +1,20 @@
-use slotmap::SlotMap;
-
 use crate::*;
 
-pub type EntityPool = SlotMap<EntityID, Entity>;
+// pub type EntityPool = SlotMap<EntityID, LayerID>;
+// pub type LayerPool = SlotMap<LayerID, Layer>;
+
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Atlas and associated data like Tilemaps and Animations.
 pub struct World <
-const ATLAS_LEN:usize,
-const ATLAS_TILE_COUNT:usize,
-const RENDER_LEN:usize,
-const ANIM_CAP:usize,
-const FONT_CAP:usize,
-const TILEMAP_CAP:usize
+    const ATLAS_LEN:usize,
+    const ATLAS_TILE_COUNT:usize,
+    const RENDER_LEN:usize,
+    const ANIM_CAP:usize,
+    const FONT_CAP:usize,
+    const TILEMAP_CAP:usize,
+    const PALETTE_CAP:usize,
+    const COLORS_PER_PALETTE:usize
 > {
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
@@ -24,7 +26,7 @@ const TILEMAP_CAP:usize
     pub cam:Rect<f32>,
     // Main components
     pub renderer: Renderer<RENDER_LEN>,
-    pub atlas: Atlas<ATLAS_LEN, ATLAS_TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP>,
+    pub atlas: Atlas<ATLAS_LEN, ATLAS_TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP, PALETTE_CAP, COLORS_PER_PALETTE>,
     
     // Private
     time_elapsed_buffer:SmoothBuffer<30>,
@@ -35,19 +37,23 @@ const TILEMAP_CAP:usize
     time_idle:f32,
     
     // Data Pools
-    entities:EntityPool,
+    // entities:SlotMap<EntityID, LayerID>,    // Stores just the layer where each entity is
+    // layers: SlotMap<LayerID, Layer>,        // Each layer contains the actual entity
+    layers: LayerPool
 
 }
 
     
 impl<
-const ATLAS_LEN:usize,
-const ATLAS_TILE_COUNT:usize,
-const RENDER_LEN:usize,
-const ANIM_CAP:usize,
-const FONT_CAP:usize,
-const TILEMAP_CAP:usize
-> World<ATLAS_LEN, ATLAS_TILE_COUNT, RENDER_LEN, ANIM_CAP, FONT_CAP, TILEMAP_CAP>
+    const ATLAS_LEN:usize,
+    const ATLAS_TILE_COUNT:usize,
+    const RENDER_LEN:usize,
+    const ANIM_CAP:usize,
+    const FONT_CAP:usize,
+    const TILEMAP_CAP:usize,
+    const PALETTE_CAP:usize,
+    const COLORS_PER_PALETTE:usize
+> World<ATLAS_LEN, ATLAS_TILE_COUNT, RENDER_LEN, ANIM_CAP, FONT_CAP, TILEMAP_CAP, PALETTE_CAP, COLORS_PER_PALETTE>
 {
 
     pub fn new(render_width:u16, render_height:u16, atlas_width:u16, atlas_height:u16, tile_width:u8, tile_height:u8) -> Self {
@@ -71,7 +77,9 @@ const TILEMAP_CAP:usize
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            entities: SlotMap::with_capacity_and_key(64),
+            layers: Default::default()
+            // entities: SlotMap::with_capacity_and_key(64),
+            // layers: SlotMap::with_capacity_and_key(4),
             // anims: SlotMap::with_capacity_and_key(64),
             // tilemaps: SlotMap::with_capacity_and_key(4)
         }
@@ -90,10 +98,12 @@ const TILEMAP_CAP:usize
     pub fn time_idle(&self) -> f32 { self.time_idle }
 
     
-    pub fn center_camera_on(&mut self, entity_id:EntityID) {
-        let e = &self.entities[entity_id];
-        self.cam.x = e.pos.x - (self.renderer.width()/2) as f32;
-        self.cam.y = e.pos.y - (self.renderer.height()/2) as f32;
+    pub fn center_camera_on(&mut self, id:EntityID) {
+        // let Some(layer) = &self.layers.get(layer) else { return };
+        let Some(ent) = self.get_entity(id) else { return };
+        let pos = ent.pos;
+        self.cam.x = pos.x - (self.renderer.width()/2) as f32;
+        self.cam.y = pos.y - (self.renderer.height()/2) as f32;
     }
 
 
@@ -104,18 +114,22 @@ const TILEMAP_CAP:usize
     }
 
 
+
+    // pub fn insert_layer(&mut self, palette:impl ByteID) -> LayerID {
+    pub fn insert_layer(&mut self) -> LayerID {
+        self.layers.insert_layer()
+    }
+
+
     // Returns a reference to the entity right away so you can easily edit its fields
-    pub fn insert_entity(&mut self) -> &mut Entity {
-        let id = self.entities.insert_with_key(|key|{
-            Entity::new(key)
-        });
-        &mut self.entities[id]
+    pub fn insert_entity(&mut self, layer_id:LayerID) -> &mut Entity {
+        self.layers.insert_entity(layer_id)
     }
 
 
     // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
-    pub fn get_data_mut(&mut self) -> (&mut EntityPool, &mut Pool<Anim, ANIM_CAP>, &mut Pool<Tilemap, TILEMAP_CAP>) {
-        (&mut self.entities, &mut self.atlas.anims, &mut self.atlas.tilemaps)
+    pub fn get_data_mut(&mut self) -> (&mut LayerPool, &mut Pool<Anim, ANIM_CAP>, &mut Pool<Tilemap, TILEMAP_CAP>) {
+        (&mut self.layers,  &mut self.atlas.anims, &mut self.atlas.tilemaps)
     }
 
 
@@ -124,10 +138,15 @@ const TILEMAP_CAP:usize
     }
 
 
-    pub fn get_entity(&self, id:EntityID) -> &Entity { &self.entities[id] }
+    #[inline]
+    pub fn get_entity(&self, id:EntityID) -> Option<&Entity> {
+        self.layers.get(id)
+    }
 
-
-    pub fn get_entity_mut(&mut self, id:EntityID) -> &mut Entity { &mut self.entities[id] }
+    #[inline]
+    pub fn get_entity_mut(&mut self, id:EntityID) -> Option<&mut Entity> {
+        self.layers.get_mut(id)
+    }
 
 
     pub fn get_tilemap(&self, id:u8) -> &Tilemap {
@@ -141,8 +160,11 @@ const TILEMAP_CAP:usize
 
 
     pub fn get_entity_rect_from_id(&self, id:EntityID) -> Rect<f32> {
-        let entity = &self.entities[id];
-        self.get_entity_rect(entity)
+        if let Some(entity) = self.get_entity(id){
+            self.get_entity_rect(entity)
+        } else {
+            Rect::default()
+        }
     }
 
 
@@ -174,11 +196,11 @@ const TILEMAP_CAP:usize
 
 
     pub fn delete_entity(&mut self, id:EntityID) {
-        if let Some(ent) = self.entities.get(id){
+        if let Some(ent) = self.layers.get(id){
             // Clean up AnimTiles if needed.
             // Tilemap will be left "dirty" by the AnimTile entity if this is not performed
             if let Shape::AnimTiles { tilemap_entity, .. } = ent.shape {
-                if let Some(tilemap_ent) = self.entities.get(tilemap_entity) {
+                if let Some(tilemap_ent) = self.layers.get(tilemap_entity) {
                     if let Shape::TilemapLayer { tilemap_id } = tilemap_ent.shape {
                         if let Some(tilemap) = self.atlas.tilemaps.get_mut(tilemap_id as usize){
                             tilemap.restore_bg_buffer(ent.id);
@@ -187,13 +209,14 @@ const TILEMAP_CAP:usize
                     }
                 }
             }
-            self.entities.remove(id);
+            self.layers.remove_entity(id);
         }
     }
 
 
     pub fn tile_at(&self, x:f32, y:f32, id:EntityID) -> Option<Tile> {
-        let entity = &self.entities[id];
+        // let Some(entity) = layer.entities.get(id) else { return None };
+        let Some(entity) = self.get_entity(id) else { return None };
         let Shape::TilemapLayer{ tilemap_id } = entity.shape else { return None };
         
         let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
@@ -212,176 +235,179 @@ const TILEMAP_CAP:usize
     pub fn render_frame(&mut self){
         
         // Iterate entities
-        for entity in self.entities.values() {
-            if let Shape::None = entity.shape { continue }
-            let pos = entity.pos;
-            let cam_rect = Rect {
-                x: self.cam.x + self.renderer.viewport.x as f32,
-                y: self.cam.y + self.renderer.viewport.y as f32,
-                w: self.renderer.viewport.w as f32,
-                h: self.renderer.viewport.h as f32,
-            };
-
-            let tile_width = self.atlas.tile_width();
-            let tile_height = self.atlas.tile_height();
-
-            // Draw entity shape
-            match entity.shape {
-                Shape::None => {
-                    // Do nothing!
-                },
-
-                Shape::AnimTiles { anim_id, tilemap_entity, flip_h, flip_v } => {
-                    let tilemap_entity = self.get_entity(tilemap_entity);
-                    let Shape::TilemapLayer { tilemap_id } = tilemap_entity.shape else { continue };
-                    
-                    let world_rect = self.get_entity_rect(entity);
-                    let Some(..) = world_rect.intersect(cam_rect) else { continue };
-                    
-                    let Some(anim) = self.atlas.anims.get(anim_id as usize) else { continue };
-                    let frame = anim.frame(self.time);
-                    
-                    let tilemap_rect = self.get_entity_rect(tilemap_entity);
-                    
-                    let tilemap = &mut self.atlas.tilemaps.get_mut(tilemap_id as usize).unwrap();
-                    
-                    let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
-                    let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
-
-                    if tilemap.store_bg_buffer(left_col, top_row, frame.cols, frame.rows, entity.id) == false {
-                        continue
-                    };
-
-                    for row in 0 .. frame.rows as i32 {
-                        if row < 0 { continue }
-                        for col in 0 .. frame.cols as i32 {
-                            if col < 0 { continue }
-                            let mut tile = frame.get_tile(row as u8 * frame.cols + col as u8);
-                            tile.set_flipped_h(tile.flipped_h() ^ flip_h);  //TODO: flipping needs testing
-                            tile.set_flipped_v(tile.flipped_v() ^ flip_v);  //TODO: flipping needs testing
-                            let tilemap_index = (((row + top_row) * tilemap.cols as i32) + (col + left_col)) as usize;
-                            tilemap.tiles[tilemap_index] = tile;
-                        }
-                    }
-                },
-
-                Shape::Sprite { anim_id, flip_h, .. } => {
-                    if !self.draw_sprites { continue }
-                    // Draw tiles
-                    let Some(anim) = &self.atlas.anims.get(anim_id as usize) else { continue };
-                    let frame = anim.frame(self.time);
-
-                    let mut draw_tile = |col:u8, row:u8| {
-                        let flipped_col = if flip_h { frame.cols - 1 - col } else { col };
-                        let subtile = (row*frame.cols) + flipped_col;
-                        let tile = frame.get_tile(subtile);
-                        let abs_tile_id = self.atlas.get_tile_from_tileset(
-                            tile.index,
-                            anim.tileset
-                        );
-
-                        let tile_rect = self.atlas.get_rect(abs_tile_id.get());
-                        let quad_rect = Rect{
-                            x: pos.x + (col * 8) as f32 + entity.render_offset.x as f32,
-                            y: pos.y + (row * 8) as f32 + entity.render_offset.y as f32,
-                            w: tile_rect.w as f32,
-                            h: tile_rect.h as f32
+        for layer in self.layers.layers.values() {
+            for entity in layer.data.values() {
+                if !entity.visible { continue }
+                if let Shape::None = entity.shape { continue }
+                let pos = entity.pos;
+                let cam_rect = Rect {
+                    x: self.cam.x + self.renderer.viewport.x as f32,
+                    y: self.cam.y + self.renderer.viewport.y as f32,
+                    w: self.renderer.viewport.w as f32,
+                    h: self.renderer.viewport.h as f32,
+                };
+    
+                let tile_width = self.atlas.tile_width();
+                let tile_height = self.atlas.tile_height();
+    
+                // Draw entity shape
+                match entity.shape {
+                    Shape::None => {
+                        // Do nothing!
+                    },
+    
+                    Shape::AnimTiles { anim_id, tilemap_entity, flip_h, flip_v } => {
+                        let Some(tilemap_entity) = layer.data.get(tilemap_entity) else { continue }; // TODO: remove this "must be in same layer" requirement
+                        let Shape::TilemapLayer { tilemap_id } = tilemap_entity.shape else { continue };
+                        
+                        let world_rect = self.get_entity_rect(entity);
+                        let Some(..) = world_rect.intersect(cam_rect) else { continue };
+                        
+                        let Some(anim) = self.atlas.anims.get(anim_id as usize) else { continue };
+                        let frame = anim.frame(self.time);
+                        
+                        let tilemap_rect = self.get_entity_rect(tilemap_entity);
+                        
+                        let tilemap = &mut self.atlas.tilemaps.get_mut(tilemap_id as usize).unwrap();
+                        
+                        let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
+                        let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
+    
+                        if tilemap.store_bg_buffer(left_col, top_row, frame.cols, frame.rows, entity.id) == false {
+                            continue
                         };
-
-                        if !cam_rect.overlaps(&quad_rect) { return }
-                        let screen_rect = quad_rect - cam_rect.pos();
-                        Self::draw_tile(
-                            &mut self.renderer,
-                            &self.atlas,
-                            screen_rect.to_i32(),
-                            abs_tile_id,
-                            flip_h ^ tile.flipped_h() //resulting flip is a XOR
-                        ); 
-                    };
-
-                    for row in 0 .. frame.rows {
-                        for col in 0 .. frame.cols {
-                            draw_tile(col, row);
+    
+                        for row in 0 .. frame.rows as i32 {
+                            if row < 0 { continue }
+                            for col in 0 .. frame.cols as i32 {
+                                if col < 0 { continue }
+                                let mut tile = frame.get_tile(row as u8 * frame.cols + col as u8);
+                                tile.set_flipped_h(tile.flipped_h() ^ flip_h);  //TODO: flipping needs testing
+                                tile.set_flipped_v(tile.flipped_v() ^ flip_v);  //TODO: flipping needs testing
+                                let tilemap_index = (((row + top_row) * tilemap.cols as i32) + (col + left_col)) as usize;
+                                tilemap.tiles[tilemap_index] = tile;
+                            }
                         }
-                    }
-                },
-
-                Shape::TilemapLayer { tilemap_id } => {
-                    if !self.draw_tilemaps { continue }
-                    let world_rect = self.get_entity_rect(entity);
-                    let tilemap = &mut self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
-                    let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };  
-
-                    // At least a part of tilemap is visible. Render visible tiles within it.
-                    let left_col = ((vis_rect.x - world_rect.x) / tile_width as f32) as usize;
-                    let mut right_col = ((vis_rect.right() - world_rect.x) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
-
-                    let top_col = ((vis_rect.y - world_rect.y) / tile_height as f32) as usize;
-                    let mut bottom_col = ((vis_rect.bottom() - world_rect.y) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
-
-                    // However, those +1's up there will cause invalid coordinates when we reach the end of the tilemap, so...
-                    if right_col > tilemap.cols as usize { right_col -= 1 };
-                    if bottom_col > tilemap.rows as usize { bottom_col -= 1 };
-                    
-                    // Acquire and render tiles
-                    for row in top_col .. bottom_col {
-                        for col in left_col .. right_col {
-                            let tile = tilemap.get_tile(col as u16, row as u16);
-                            let tile_id = self.atlas.get_tile_from_tileset(tile.index, tilemap.tileset);
-
-                            let tile_rect = Rect::<i32>::from(self.atlas.get_rect(tile.index as usize));
-                            let world_tile_rect = Rect{
-                                x: pos.x + (col * tile_width as usize) as f32 + entity.render_offset.x as f32 - cam_rect.x,
-                                y: pos.y + (row * tile_height as usize) as f32 + entity.render_offset.y as f32 - cam_rect.y,
+                    },
+    
+                    Shape::Sprite { anim_id, flip_h, .. } => {
+                        if !self.draw_sprites { continue }
+                        // Draw tiles
+                        let Some(anim) = &self.atlas.anims.get(anim_id as usize) else { continue };
+                        let frame = anim.frame(self.time);
+    
+                        let mut draw_tile = |col:u8, row:u8| {
+                            let flipped_col = if flip_h { frame.cols - 1 - col } else { col };
+                            let subtile = (row*frame.cols) + flipped_col;
+                            let tile = frame.get_tile(subtile);
+                            let abs_tile_id = self.atlas.get_tile_from_tileset(
+                                tile.index,
+                                anim.tileset
+                            );
+    
+                            let tile_rect = self.atlas.get_rect(abs_tile_id.get());
+                            let quad_rect = Rect{
+                                x: pos.x + (col * 8) as f32 + entity.render_offset.x as f32,
+                                y: pos.y + (row * 8) as f32 + entity.render_offset.y as f32,
                                 w: tile_rect.w as f32,
                                 h: tile_rect.h as f32
                             };
+    
+                            if !cam_rect.overlaps(&quad_rect) { return }
+                            let screen_rect = quad_rect - cam_rect.pos();
                             Self::draw_tile(
                                 &mut self.renderer,
                                 &self.atlas,
-                                world_tile_rect.to_i32(), tile_id, tile.flipped_h()
-                            );
+                                screen_rect.to_i32(),
+                                abs_tile_id,
+                                flip_h ^ tile.flipped_h() //resulting flip is a XOR
+                            ); 
+                        };
+    
+                        for row in 0 .. frame.rows {
+                            for col in 0 .. frame.cols {
+                                draw_tile(col, row);
+                            }
+                        }
+                    },
+    
+                    Shape::TilemapLayer { tilemap_id } => {
+                        if !self.draw_tilemaps { continue }
+                        let world_rect = self.get_entity_rect(entity);
+                        let tilemap = &mut self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
+                        let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };  
+    
+                        // At least a part of tilemap is visible. Render visible tiles within it.
+                        let left_col = ((vis_rect.x - world_rect.x) / tile_width as f32) as usize;
+                        let mut right_col = ((vis_rect.right() - world_rect.x) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
+    
+                        let top_col = ((vis_rect.y - world_rect.y) / tile_height as f32) as usize;
+                        let mut bottom_col = ((vis_rect.bottom() - world_rect.y) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
+    
+                        // However, those +1's up there will cause invalid coordinates when we reach the end of the tilemap, so...
+                        if right_col > tilemap.cols as usize { right_col -= 1 };
+                        if bottom_col > tilemap.rows as usize { bottom_col -= 1 };
+                        
+                        // Acquire and render tiles
+                        for row in top_col .. bottom_col {
+                            for col in left_col .. right_col {
+                                let tile = tilemap.get_tile(col as u16, row as u16);
+                                let tile_id = self.atlas.get_tile_from_tileset(tile.index, tilemap.tileset);
+    
+                                let tile_rect = Rect::<i32>::from(self.atlas.get_rect(tile.index as usize));
+                                let world_tile_rect = Rect{
+                                    x: pos.x + (col * tile_width as usize) as f32 + entity.render_offset.x as f32 - cam_rect.x,
+                                    y: pos.y + (row * tile_height as usize) as f32 + entity.render_offset.y as f32 - cam_rect.y,
+                                    w: tile_rect.w as f32,
+                                    h: tile_rect.h as f32
+                                };
+                                Self::draw_tile(
+                                    &mut self.renderer,
+                                    &self.atlas,
+                                    world_tile_rect.to_i32(), tile_id, tile.flipped_h()
+                                );
+                            }
                         }
                     }
                 }
-            }
-
-            // Draw collider Wireframe
-            // #[cfg(debug_assertions)]
-            if self.debug_colliders {
-                if let Some(col) = entity.col {
-                    let world_col = entity.world_rect(col, false);
-                    let screen_col = world_col - cam_rect.pos();
-                    if cam_rect.overlaps(&world_col) {
-                        self.renderer.draw_rect(screen_col.to_i32(), COLOR_COLLIDER);
+    
+                // Draw collider Wireframe
+                // #[cfg(debug_assertions)]
+                if self.debug_colliders {
+                    if let Some(col) = entity.col {
+                        let world_col = entity.world_rect(col, false);
+                        let screen_col = world_col - cam_rect.pos();
+                        if cam_rect.overlaps(&world_col) {
+                            self.renderer.draw_rect(screen_col.to_i32(), COLOR_COLLIDER);
+                        }
+                    }; 
+                }
+    
+                // Draw pivot point
+                // #[cfg(debug_assertions)]
+                if self.debug_pivot {
+                    let rect = self.get_entity_rect(entity);
+                    if let Some(vis_rect) = rect.intersect(cam_rect) {
+                        self.renderer.draw_rect((vis_rect - cam_rect).to_i32(), COLOR_ENTITY_RECT);
+                    };
+                    if let Some(point) = self.renderer.get_visible_point((pos - cam_rect.pos()).to_i32()){
+                        self.renderer.draw_line(point.x, point.y-2, point.x, point.y, 15);
+                        self.renderer.draw_line(point.x-1, point.y-1, point.x+1, point.y-1, 15);
                     }
-                }; 
-            }
-
-            // Draw pivot point
-            // #[cfg(debug_assertions)]
-            if self.debug_pivot {
-                let rect = self.get_entity_rect(entity);
-                if let Some(vis_rect) = rect.intersect(cam_rect) {
-                    self.renderer.draw_rect((vis_rect - cam_rect).to_i32(), COLOR_ENTITY_RECT);
-                };
-                if let Some(point) = self.renderer.get_visible_point((pos - cam_rect.pos()).to_i32()){
-                    self.renderer.draw_line(point.x, point.y-2, point.x, point.y, 15);
-                    self.renderer.draw_line(point.x-1, point.y-1, point.x+1, point.y-1, 15);
                 }
             }
-        }
-
-        // Debug Atlas
-        // #[cfg(debug_assertions)]
-        if self.debug_atlas {
-            'draw_loop: {
-                let width = self.atlas.width();
-                for y in 0 .. self.atlas.height() {
-                    for x in 0 .. width  {
-                        let pixel_index = (y*self.renderer.width()) + x;
-                        if pixel_index > RENDER_LEN - 1 { break 'draw_loop }
-                        self.renderer.pixels[pixel_index] = self.atlas.get_pixel(x, y);
+    
+            // Debug Atlas
+            // #[cfg(debug_assertions)]
+            if self.debug_atlas {
+                'draw_loop: {
+                    let width = self.atlas.width();
+                    for y in 0 .. self.atlas.height() {
+                        for x in 0 .. width  {
+                            let pixel_index = (y*self.renderer.width()) + x;
+                            if pixel_index > RENDER_LEN - 1 { break 'draw_loop }
+                            self.renderer.pixels[pixel_index] = self.atlas.get_pixel(x, y);
+                        }
                     }
                 }
             }
@@ -389,8 +415,9 @@ const TILEMAP_CAP:usize
     }
 
 
-    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:u8, align_right:bool) {
-        let Some(font_range) = &self.atlas.fonts.get(font as usize) else { return };
+    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:impl ByteID, align_right:bool) {
+        let font:u8 = font.to_u8();
+        let Some(font_range) = &self.atlas.fonts.get(font.into()) else { return }; // TODO: This SHOULD fail if no fonts
         let tileset_start = self.atlas.get_tileset(font_range.tileset).start_index;
         for (i,letter) in text.chars().enumerate() {
             let letter = letter as u32;
@@ -428,7 +455,7 @@ const TILEMAP_CAP:usize
 
     fn draw_tile(
         renderer: &mut Renderer<RENDER_LEN>,
-        atlas:&Atlas<ATLAS_LEN, ATLAS_TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP>,
+        atlas:&Atlas<ATLAS_LEN, ATLAS_TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP, PALETTE_CAP, COLORS_PER_PALETTE>,
         world_rect:Rect<i32>,
         tile:TileID,
         flip_h:bool

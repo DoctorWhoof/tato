@@ -1,5 +1,5 @@
 
-[.] Switch data structs into Slotmaps?
+[x] Switch data structs into Slotmaps?
 
 [ ] High level "scripting". Example:
     - Present screen, wait for input
@@ -11,6 +11,12 @@
     - Display overlay with text, wait 2 seconds
     - Load Scene 2
     - Resume interaction
+  
+[ ] Rendering
+    [ ] Proper Palettes:
+        - Palette struct containing array with colors
+        - GlobalPalette that combines multiple Palettes into a single, global 256 color palette.
+        - Generate palette during build, from RGB .png files. Bonus: directly support palettized png?
 
 [ ] World
     [ ] Separate rendering and collision into slices.

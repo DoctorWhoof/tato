@@ -1,5 +1,6 @@
 #![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
-#![no_std]
+// #![no_std]
+#![feature(generic_arg_infer)]
 
 #[path ="common/_common.rs"] mod common;
 #[path ="engine/_engine.rs"] mod engine;

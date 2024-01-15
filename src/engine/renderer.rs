@@ -1,37 +1,41 @@
 use crate::*;
-use core::{usize, array};
 
 /// Allows writing pixels to a color-indexed pixel buffer.
-pub struct Renderer<const PIXEL_COUNT:usize> {
+pub struct Renderer<
+    const PIXEL_COUNT:usize
+    // const SPECS:RenderSpecs
+> {
     pub(super) pixels: [u8; PIXEL_COUNT],
-    pub(super) palette: [Color; 256],
+    // pub(super) palette: [Color; 256],
     pub(super) viewport: Rect<i32>,
     width: u16,
     height: u16
 }
 
-impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
+impl<
+    const PIXEL_COUNT:usize
+> Renderer<PIXEL_COUNT> {
 
     pub(super) fn new(width:u16, height:u16) -> Self {
         assert!(PIXEL_COUNT==width as usize * height as usize, "Renderer: Error, width x height must equal PIXEL_COUNT");
-        const TRANSP:usize = COLOR_TRANSPARENCY as usize;
-        const RECT:usize = COLOR_ENTITY_RECT as usize;
-        const COL:usize = COLOR_COLLIDER as usize;
+        // const TRANSP:usize = COLOR_TRANSPARENCY as usize;
+        // const RECT:usize = COLOR_ENTITY_RECT as usize;
+        // const COL:usize = COLOR_COLLIDER as usize;
         Renderer {
             pixels: [0; PIXEL_COUNT],
-            palette: array::from_fn( |i| {
-                match i {
-                    // Debug colors
-                    TRANSP => Color{r:0,g:255,b:0,a:255},
-                    RECT => Color{r:0,g:255,b:255,a:255},
-                    COL => Color{r:255,g:128,b:128,a:255},
-                    // Default palette is 16 tone grayscale repeated over 256 indices
-                    _ =>{
-                        let v = ((i%16) * 17).clamp(0, 255) as u8;
-                        Color::new(v,v,v,255)  
-                    } 
-                }
-            }),
+            // palette: array::from_fn( |i| {
+            //     match i {
+            //         // Debug colors
+            //         TRANSP => Color{r:0,g:255,b:0,a:255},
+            //         RECT => Color{r:0,g:255,b:255,a:255},
+            //         COL => Color{r:255,g:128,b:128,a:255},
+            //         // Default palette is 16 tone grayscale repeated over 256 indices
+            //         _ =>{
+            //             let v = ((i%16) * 17).clamp(0, 255) as u8;
+            //             Color::new(v,v,v,255)  
+            //         } 
+            //     }
+            // }),
             viewport: Rect { x:0, y:0, w:width as i32, h:height as i32 },
             width,
             height
@@ -46,9 +50,6 @@ impl<const PIXEL_COUNT:usize> Renderer<PIXEL_COUNT> {
 
 
     pub fn pixels(&self) -> &[u8; PIXEL_COUNT] { &self.pixels }
-
-
-    pub fn palette(&self) -> &[Color; 256] { &self.palette }
 
 
     pub fn viewport(&self) -> &Rect<i32> { &self.viewport }

@@ -1,10 +1,10 @@
 use crate::*;
-use slotmap::new_key_type;
 
-new_key_type! {
-    /// A key to the World slotmap containing animations.
-    pub struct AnimID;
-}
+// use slotmap::new_key_type;
+// new_key_type! {
+//     /// A key to the World slotmap containing animations.
+//     pub struct AnimID;
+// }
 
 
 

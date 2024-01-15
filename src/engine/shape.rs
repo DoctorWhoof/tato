@@ -1,8 +1,9 @@
 use crate::*;
 
 /// Determines how an entity's rectangle is rendered to pixels.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum Shape {
+    #[default]
     None,
     // Invisible,
     Sprite {     // Sprites can be placed anywhere in the world
@@ -24,18 +25,18 @@ pub enum Shape {
 
 impl Shape {
 
-    pub fn sprite_from_anim(anim_id:u8) -> Self {
+    pub fn sprite_from_anim(anim_id:impl ByteID) -> Self {
         Shape::Sprite {
-            anim_id,
+            anim_id:anim_id.to_u8(),
             flip_h: false,
             flip_v: false,
         }
     }
 
 
-    pub fn anim_tiles_from_anim(anim_id:u8, tilemap_entity:EntityID) -> Self {
+    pub fn anim_tiles_from_anim(anim_id:impl ByteID, tilemap_entity:EntityID) -> Self {
         Shape::AnimTiles {
-            anim_id,
+            anim_id:anim_id.to_u8(),
             flip_h: false,
             flip_v: false,
             tilemap_entity,

@@ -1,13 +1,12 @@
 use crate::EntityID;
 
 use crate::*;
-use slotmap::{new_key_type, SecondaryMap};
+use slotmap::SecondaryMap;
 
-
-new_key_type! {
-    /// A key to the World slotmap containing tilemaps.
-    pub struct TilemapID;
-}
+// slotmap::new_key_type! {
+//     /// A key to the World slotmap containing tilemaps.
+//     pub struct TilemapID;
+// }
 
 /// A rectangular array of tiles that belong to a single Tileset. Also provides "BgBuffers" so that
 /// AnimTiles can restore the BG contents they overwrite.
