@@ -1,6 +1,10 @@
 
 [x] Switch data structs into Slotmaps?
 
+[ ] Switch Anim frames to Pool<Frames>, so that only used frames are saved
+
+[ ] Think about generic Scene<ENTITY_COUNT>. How dows that interact with the host app?
+
 [ ] High level "scripting". Example:
     - Present screen, wait for input
     - Pause interaction
@@ -13,10 +17,12 @@
     - Resume interaction
   
 [ ] Rendering
-    [ ] Proper Palettes:
-        - Palette struct containing array with colors
-        - GlobalPalette that combines multiple Palettes into a single, global 256 color palette.
-        - Generate palette during build, from RGB .png files. Bonus: directly support palettized png?
+    [x] Proper Palettes:
+        [x] Palette struct containing array with colors
+        [/] GlobalPalette that combines multiple Palettes into a single, global 256 color palette.
+            . Abandoned in lieu of RGBA frame buffer for the host app, while the Atlas contains byte indices + palettes.
+        [x] Generate palette during build, from RGB .png files
+        [x] Bonus: directly support palettized png? Seems to be working already, img is converted to RGBA, then re-palettized in ImageBuilder.
 
 [ ] World
     [ ] Separate rendering and collision into slices.

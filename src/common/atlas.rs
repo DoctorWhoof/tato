@@ -7,17 +7,17 @@ use slotmap::SlotMap;
 pub struct Atlas<
     const PIXEL_COUNT:usize,
     const TILE_COUNT:usize,
-    const ANIM_CAP:usize,
-    const FONT_CAP:usize,
-    const TILEMAP_CAP:usize,
-    const PALETTE_CAP:usize,
+    const ANIM_COUNT:usize,
+    const FONT_COUNT:usize,
+    const TILEMAP_COUNT:usize,
+    const PALETTE_COUNT:usize,
     const COLORS_PER_PALETTE:usize
 > {
     pub(crate) rects:[Rect<u8>; TILE_COUNT],
-    pub(crate) fonts: Pool<Font, FONT_CAP>,
-    pub(crate) anims: Pool<Anim, ANIM_CAP>,
-    pub(crate) tilemaps: Pool<Tilemap, TILEMAP_CAP>,
-    pub(crate) palettes: Pool<Palette<COLORS_PER_PALETTE>, PALETTE_CAP>,    //TODO: Find all instances of Palette, remove hard coded number of colors
+    pub(crate) fonts: Pool<Font, FONT_COUNT>,
+    pub(crate) anims: Pool<Anim, ANIM_COUNT>,
+    pub(crate) tilemaps: Pool<Tilemap, TILEMAP_COUNT>,
+    pub(crate) palettes: Pool<Palette<COLORS_PER_PALETTE>, PALETTE_COUNT>,    //TODO: Find all instances of Palette, remove hard coded number of colors
     pub(crate) tilesets: SlotMap<TilesetID, Tileset>,
     pixels:[u8; PIXEL_COUNT],
     // palette: [Color; 256],
@@ -34,12 +34,12 @@ pub struct Atlas<
 impl<
     const PIXEL_COUNT:usize,
     const TILE_COUNT:usize,
-    const ANIM_CAP:usize,
-    const FONT_CAP:usize,
-    const TILEMAP_CAP:usize,
-    const PALETTE_CAP:usize,
+    const ANIM_COUNT:usize,
+    const FONT_COUNT:usize,
+    const TILEMAP_COUNT:usize,
+    const PALETTE_COUNT:usize,
     const COLORS_PER_PALETTE:usize
-> Atlas<PIXEL_COUNT, TILE_COUNT, ANIM_CAP, FONT_CAP, TILEMAP_CAP, PALETTE_CAP, COLORS_PER_PALETTE>
+> Atlas<PIXEL_COUNT, TILE_COUNT, ANIM_COUNT, FONT_COUNT, TILEMAP_COUNT, PALETTE_COUNT, COLORS_PER_PALETTE>
 {
     pub(crate) fn new(width:u16, height:u16, tile_width:u8, tile_height:u8) -> Self {
         // println!("Atlas: Creating new Atlas with {} tiles.", MAX_TILES);
@@ -47,22 +47,6 @@ impl<
         assert!(TILE_COUNT==(width as usize /tile_width as usize)*(height as usize /tile_height as usize), "Atlas: Invalid tile count.");
         Atlas {
             pixels: [0; PIXEL_COUNT],
-            // palette: array::from_fn( |i| {
-            //     const TRANSP:usize = COLOR_TRANSPARENCY as usize;
-            //     const RECT:usize = COLOR_ENTITY_RECT as usize;
-            //     const COL:usize = COLOR_COLLIDER as usize;
-            //     match i {
-            //         // Debug colors
-            //         TRANSP => Color{r:0,g:255,b:0,a:255},
-            //         RECT => Color{r:0,g:255,b:255,a:255},
-            //         COL => Color{r:255,g:128,b:128,a:255},
-            //         // Default palette is 16 tone grayscale repeated over 256 indices
-            //         _ =>{
-            //             let v = ((i%16) * 17).clamp(0, 255) as u8;
-            //             Color::new(v,v,v,255)  
-            //         } 
-            //     }
-            // }),
             rects: array::from_fn( |i| {
                 // generates all tiles
                 let tile_x = i * tile_width as usize;
@@ -97,19 +81,19 @@ impl<
     pub fn tile_height(&self) -> u8 { self.tile_height }
 
 
-    pub fn get_color(&self, index:u8) -> Color {
-        // TODO: Adjust for non hard coded palette size
-        match index {
-            COLOR_TRANSPARENCY => Color{r:0,g:255,b:0,a:255},
-            COLOR_ENTITY_RECT => Color{r:0,g:255,b:255,a:255},
-            COLOR_COLLIDER => Color{r:255,g:128,b:128,a:255},
-            _ => {
-                let color_idx = (index % 16) as usize; 
-                let palettte_idx = (index / 16) as usize;
-                *self.palettes.data[palettte_idx].colors.get(color_idx).unwrap()
-            }
-        }
-    }
+    // pub fn get_color(&self, index:u8) -> Color {
+    //     // TODO: Adjust for non hard coded palette size
+    //     match index {
+    //         COLOR_TRANSPARENCY => Color{r:0,g:255,b:0,a:255},
+    //         COLOR_ENTITY_RECT => Color{r:0,g:255,b:255,a:255},
+    //         COLOR_COLLIDER => Color{r:255,g:128,b:128,a:255},
+    //         _ => {
+    //             let color_idx = (index % 16) as usize; 
+    //             let palettte_idx = (index / 16) as usize;
+    //             *self.palettes.data[palettte_idx].colors.get(color_idx).unwrap()
+    //         }
+    //     }
+    // }
 
     // pub fn palette(&self) -> &[Color; 256] {
     //     &self.palette
@@ -165,37 +149,39 @@ impl<
         
         // Insert new tileset
         println!(
-            "Loading tileset with {} pixels, {} colors, {} fonts, {} anims, and {} maps",
+            "\nLoading tileset with {} pixels, {} colors, {} fonts, {} anims, and {} maps",
             pixel_count, palette_len, font_count, anim_count, tilemap_count
         );
         let start_index = self.next_free_tile; 
         let len = pixel_count / tile_len; 
+        println!("    start_index:{}, len:{} , palette_id:{}", start_index, len, palette_id);
         let result = self.tilesets.insert_with_key(|key| {
             Tileset {
                 unique_id:key,
                 start_index,
-                len
+                len,
+                palette_id
             }
         });
 
         // Load palettte. Will overwrite the same palette sometimes, since tilesets may use the same palette
         let mut palette = Palette::new(palette_id);
-        println!("Loading palette {} with {} colors", palette_id, palette_len);
+        println!("    Loading palette {} with {} colors", palette_id, palette_len);
         // let current = offset.clone();
         // println!("    Cursor: {}", current);
-        for _ in 0 .. palette_len {
+        for i in 0 .. palette_len {
             let r = data[cursor()];
             let g = data[cursor()];
             let b = data[cursor()];
             let a = data[cursor()];
             palette.push(Color{r,g,b,a});
-            println!("    {:?}", Color{r,g,b,a});
+            println!("        {:02}: {:?}", i, Color{r,g,b,a});
         }
         
         self.palettes.insert(palette_id as usize, palette);
 
         // Load pixels from linear format into tile-formatted.
-        print!("Loading {} pixels... ", pixel_count);
+        print!("    Loading {} pixels... ", pixel_count);
         let mut pix_count:usize = 0;
         let cols = self.width as usize  / self.tile_width as usize;
         for tile in  start_index as usize .. (start_index + len) as usize {
@@ -220,7 +206,7 @@ impl<
             let len = data[cursor()]; 
             // if id as usize != self.fonts.len() { panic!("Atlas Error: Font ID does not match its Pool index!")}
             let font = Font { start, len, id, tileset:result };
-            println!("Loading font:{:?}", font);
+            println!("    Loading font:{:?}", font);
             self.fonts.insert(id as usize, font);
         }
 
@@ -230,7 +216,7 @@ impl<
             let group = data[cursor()];
             let fps = data[cursor()];
             let len = data[cursor()];
-            println!("Loading anim {} with group {}", id, group);
+            println!("    Loading anim {} with group {}", id, group);
             self.anims.insert (
                 id as usize,
                 Anim {
@@ -239,7 +225,7 @@ impl<
                     fps,
                     len,
                     frames: core::array::from_fn(|frame|{
-                        print!("    Loading frame {} ", frame);
+                        print!("        Loading frame {} ", frame);
                         Frame {
                             cols: data[cursor()],
                             rows: data[cursor()],
@@ -264,7 +250,7 @@ impl<
             let id = data[cursor()];
             let cols = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
             let rows = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
-            println!("Loading map {} with {}x{} tiles", id, cols, rows);
+            println!("    Loading map {} with {}x{} tiles", id, cols, rows);
             self.tilemaps.insert(
                 id as usize,
                 Tilemap{
@@ -306,10 +292,12 @@ impl<
     }
 
 
-    pub fn get_tile_from_tileset(&self, index:u8, tileset_id:TilesetID) -> TileID {
+    pub fn get_tile_and_palette(&self, index:u8, tileset_id:TilesetID) -> (TileID, &Palette<COLORS_PER_PALETTE>) {
         let tileset = &self.tilesets[tileset_id];
-        let result = TileID(tileset.start_index + index as u16);
-        result
+        let palette = self.palettes.get(tileset.palette_id as usize).unwrap();
+        // let result = TileID(tileset.start_index + index as u16);
+        // result
+        (TileID(tileset.start_index + index as u16), palette)
     }
 
 
@@ -324,7 +312,7 @@ impl<
     }
 
 
-    pub fn get_anims(&self) -> &Pool<Anim, ANIM_CAP> { &self.anims }
+    pub fn get_anims(&self) -> &Pool<Anim, ANIM_COUNT> { &self.anims }
 
     // Slower methods, since they calculate the absolute tile coordinates on every pixel
     // #[inline]

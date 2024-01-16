@@ -21,9 +21,10 @@ pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;
 pub const TILEMAP_HEADER_LEN:usize = 15;
 pub const TILEMAP_LEN:usize = 48 * 48;
 
-pub const COLOR_TRANSPARENCY:u8 = 255; // The transparent index is hard coded to 255! Allows for black to be 0 and white is 15 in each subpalette.
-pub const COLOR_ENTITY_RECT:u8 = 254;
-pub const COLOR_COLLIDER:u8 = 253;
+pub const COLOR_TRANSPARENCY:Color = Color{r:0,g:255,b:0,a:255};
+pub const COLOR_ENTITY_RECT:Color = Color{r:0,g:255,b:255,a:255};
+pub const COLOR_COLLIDER:Color = Color{r:255,g:128,b:128,a:255};
+
 
 // #[cfg(test)]
 // mod tests {

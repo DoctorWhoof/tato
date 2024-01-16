@@ -11,6 +11,7 @@ pub struct Tileset {
     pub unique_id:TilesetID,
     pub start_index:u16,
     pub len:u16,
+    pub palette_id:u8,
     // pub groups:SlotMap<GroupID, Group>,
     // pub anims:SlotMap<AnimID, Anim>
 }

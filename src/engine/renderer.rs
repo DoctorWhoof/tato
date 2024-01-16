@@ -1,12 +1,9 @@
-use crate::*;
+use crate::{Rect, Color, Vec2};
+use libm::fabsf;
 
-/// Allows writing pixels to a color-indexed pixel buffer.
-pub struct Renderer<
-    const PIXEL_COUNT:usize
-    // const SPECS:RenderSpecs
-> {
-    pub(super) pixels: [u8; PIXEL_COUNT],
-    // pub(super) palette: [Color; 256],
+/// Allows writing pixels to a frame buffer.
+pub struct Renderer< const PIXEL_COUNT:usize > {
+    pub(super) pixels: [Color; PIXEL_COUNT],
     pub(super) viewport: Rect<i32>,
     width: u16,
     height: u16
@@ -18,24 +15,8 @@ impl<
 
     pub(super) fn new(width:u16, height:u16) -> Self {
         assert!(PIXEL_COUNT==width as usize * height as usize, "Renderer: Error, width x height must equal PIXEL_COUNT");
-        // const TRANSP:usize = COLOR_TRANSPARENCY as usize;
-        // const RECT:usize = COLOR_ENTITY_RECT as usize;
-        // const COL:usize = COLOR_COLLIDER as usize;
         Renderer {
-            pixels: [0; PIXEL_COUNT],
-            // palette: array::from_fn( |i| {
-            //     match i {
-            //         // Debug colors
-            //         TRANSP => Color{r:0,g:255,b:0,a:255},
-            //         RECT => Color{r:0,g:255,b:255,a:255},
-            //         COL => Color{r:255,g:128,b:128,a:255},
-            //         // Default palette is 16 tone grayscale repeated over 256 indices
-            //         _ =>{
-            //             let v = ((i%16) * 17).clamp(0, 255) as u8;
-            //             Color::new(v,v,v,255)  
-            //         } 
-            //     }
-            // }),
+            pixels: [Color::default(); PIXEL_COUNT],
             viewport: Rect { x:0, y:0, w:width as i32, h:height as i32 },
             width,
             height
@@ -49,15 +30,15 @@ impl<
     pub fn height(&self) -> usize { self.height as usize }
 
 
-    pub fn pixels(&self) -> &[u8; PIXEL_COUNT] { &self.pixels }
+    pub fn pixels(&self) -> &[Color; PIXEL_COUNT] { &self.pixels }
 
 
     pub fn viewport(&self) -> &Rect<i32> { &self.viewport }
 
 
-    pub fn clear(&mut self, color_index:u8) {
+    pub fn clear(&mut self, color:Color) {
         for pixel in self.pixels.iter_mut() {
-            *pixel = color_index
+            *pixel = color
         }
     }
 
@@ -75,40 +56,40 @@ impl<
 
 
     #[inline]
-    pub(super) fn draw_pixel(&mut self, x:usize, y:usize, color_index:u8){
-        draw_pixel(&mut self.pixels, self.width as usize, x, y, color_index)
+    pub(super) fn draw_pixel(&mut self, x:usize, y:usize, color:Color){
+        draw_pixel(&mut self.pixels, self.width as usize, x, y, color)
     }
     
 
     #[inline]
-    pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color_index:u8) {
+    pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
-        draw_line(&mut self.pixels, self.width as usize, x0, y0, x1, y1, color_index)
+        draw_line(&mut self.pixels, self.width as usize, x0, y0, x1, y1, color)
     }
 
 
-    pub fn draw_rect(&mut self, rect:Rect<i32>, color_index:u8){
+    pub fn draw_rect(&mut self, rect:Rect<i32>, color:Color){
         // TODO: Take viewport into account
         let left = rect.x;
         let top = rect.y;
         let right = rect.x + rect.w - 1;
         let bottom = rect.y + rect.h - 1;
         if left > -1 && left < self.width as i32 {
-            draw_line(&mut self.pixels, self.width as usize, left, top, left, bottom, color_index)
+            draw_line(&mut self.pixels, self.width as usize, left, top, left, bottom, color)
         }
         if right > -1 && right < self.width as i32 {
-            draw_line(&mut self.pixels, self.width as usize,  right, top, right, bottom, color_index)
+            draw_line(&mut self.pixels, self.width as usize,  right, top, right, bottom, color)
         }
         if top > -1 && top < self.height as i32 {
-            draw_line(&mut self.pixels, self.width as usize,  left + 1, top, right - 1, top, color_index)
+            draw_line(&mut self.pixels, self.width as usize,  left + 1, top, right - 1, top, color)
         }
         if bottom > -1 && bottom < self.height as i32 {
-            draw_line(&mut self.pixels, self.width as usize,  left + 1, bottom, right - 1, bottom, color_index)
+            draw_line(&mut self.pixels, self.width as usize,  left + 1, bottom, right - 1, bottom, color)
         }
     }
 
 
-    pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:u8){
+    pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:Color){
         // TODO: Take viewport into account
         let rect = {
             let x = i32::clamp(rect.x, 0, self.width as i32 -1);
@@ -124,5 +105,41 @@ impl<
         }
     }
 
+}
+
+
+
+#[inline]
+pub fn draw_pixel(pixels: &mut [Color], buffer_width:usize, x:usize, y:usize, color:Color){
+    let index = (y as usize * buffer_width) + x as usize;
+    pixels[index] = color;
+}
+
+
+pub fn draw_line(pixels: &mut [Color], buffer_width:usize, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
+    let buffer_height = pixels.len() / buffer_width;
+    let x_head = i32::max(x0, 0);
+    let mut x_head = i32::min(x_head, (buffer_width-1) as i32) as f32;
+
+    let y_head = i32::max(y0, 0);
+    let mut y_head = i32::min(y_head, (buffer_height-1) as i32) as f32;
+
+    let x_tail = i32::max(x1, 0);
+    let x_tail = i32::min(x_tail, (buffer_width-1) as i32) as f32;
+
+    let y_tail = i32::max(y1, 0);
+    let y_tail = i32::min(y_tail, (buffer_height-1) as i32) as f32;
+
+    let w = fabsf(x_tail - x_head);
+    let h = fabsf(y_tail - y_head);
+    let longest = if w > h { w } else { h };
+    let inc_x = w / longest;
+    let inc_y = h / longest;
+
+    for _ in 0 ..= longest as usize {
+        draw_pixel(pixels, buffer_width, x_head as usize, y_head as usize, color);
+        x_head += inc_x;
+        y_head += inc_y;
+    }
 }
 

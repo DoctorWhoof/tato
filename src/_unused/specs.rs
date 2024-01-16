@@ -2,9 +2,9 @@
 pub struct AtlasSpecs <
     const PIXEL_COUNT:usize,
     const TILE_COUNT:usize,
-    const ANIM_CAP:usize,
-    const FONT_CAP:usize,
-    const TILEMAP_CAP:usize,
+    const ANIM_COUNT:usize,
+    const FONT_COUNT:usize,
+    const TILEMAP_COUNT:usize,
 >{}
 
 
@@ -19,15 +19,15 @@ pub struct RenderSpecs <
 //     // Atlas
 //     const ATLAS_PIXEL_COUNT:usize,
 //     const ATLAS_TILE_COUNT:usize,
-//     const ATLAS_ANIM_CAP:usize,
-//     const ATLAS_FONT_CAP:usize,
-//     const ATLAS_TILEMAP_CAP:usize,
+//     const ATLAS_ANIM_COUNT:usize,
+//     const ATLAS_FONT_COUNT:usize,
+//     const ATLAS_TILEMAP_COUNT:usize,
 //     // renderer
 //     const RENDER_WIDTH:usize,
 //     const RENDER_HEIGHT: usize,
 //     // World
 
 // >{
-//     atlas:AtlasSpecs< ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ATLAS_ANIM_CAP, ATLAS_FONT_CAP, ATLAS_TILEMAP_CAP >,
+//     atlas:AtlasSpecs< ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ATLAS_ANIM_COUNT, ATLAS_FONT_COUNT, ATLAS_TILEMAP_COUNT >,
 //     render: RenderSpecs< RENDER_WIDTH, RENDER_HEIGHT >
 // }
