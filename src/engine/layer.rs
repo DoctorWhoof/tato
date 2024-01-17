@@ -58,7 +58,7 @@ impl LayerPool {
                 data: Default::default(),
             }
         });
-        println!("New layer with key {:?}", key);
+        #[cfg(std)]{ println!("New layer with key {:?}", key); }
         key
     }
 

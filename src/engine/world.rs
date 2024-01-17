@@ -26,8 +26,9 @@ pub struct World <
     pub atlas: Atlas<ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ANIM_COUNT, FONT_COUNT, TILEMAP_COUNT, PALETTE_COUNT, COLORS_PER_PALETTE>,
     
     // Private
-    time_elapsed_buffer:SmoothBuffer<15>,   // Affects gameplay speed (used to calculate frame deltas)
-    time_update_buffer:SmoothBuffer<120>,   // For performance info only, doesn't affect gameplay
+    time_elapsed_buffer:SmoothBuffer<15>,           // Affects gameplay speed (used to calculate frame deltas)
+    time_update_buffer:SmoothBuffer<120>,           // For performance info only, doesn't affect gameplay
+    // time_internal_update_buffer:SmoothBuffer<120>,  // Update minus host app update (copying to GPU texture, etc.)
     time:f32,
     time_update:f32,
     time_elapsed:f32,
@@ -68,6 +69,7 @@ impl<
 
             time_elapsed_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
+            // time_internal_update_buffer: SmoothBuffer::new(),
             time: 0.0,
             time_update:1.0 / 60.0,
             
@@ -90,6 +92,9 @@ impl<
 
 
     pub fn time_update(&self) -> f32 { self.time_update }
+
+
+    // pub fn time_update_internal(&self) -> f32 { self.time_internal_update_buffer.average() }
 
 
     pub fn time_idle(&self) -> f32 { self.time_idle }
@@ -225,6 +230,14 @@ impl<
         let row = ((y - rect.y) as usize / self.atlas.tile_height() as usize) as u16;
 
         Some(tilemap.get_tile(col, row))
+    }
+
+
+    pub fn start_frame(&mut self, time_now:f32) {
+        self.time_elapsed_buffer.push(time_now - self.time);
+        self.time = time_now;
+        
+        self.time_elapsed = quantize(self.time_elapsed_buffer.average(), 1.0/ 360.0);
     }
 
 
@@ -434,6 +447,30 @@ impl<
     }
 
 
+    pub fn finish_frame(&mut self, time_now:f32) {
+        self.time_update_buffer.push(time_now - self.time);
+        self.time_update = self.time_update_buffer.average();
+
+    // Limit frame rate. TODO: This is hacky, doesn't always work, and needs std library.
+    // if let Some(fps_limit) = self.limit_frame_rate {
+    //     let immediate_fps = 1.0 / self.time_update;
+    //     if immediate_fps > fps_limit {
+    //         let time_target = 1.0 / fps_limit;
+    //         let time_diff = time_target - self.time_update;
+    //         if time_diff > 1.0 / 240.0 {
+    //             self.time_idle = time_diff * 0.75;
+    //             sleep(Duration::from_secs_f32(self.time_idle));
+    //         }
+    //     } else {
+    //         println!("Skipping idle cycle!");
+    //         self.time_idle = 0.0;
+    //     }
+    // } else {
+    //     self.time_idle = 0.0;
+    // }
+    }
+
+
     pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:impl ByteID, align_right:bool) {
         let font:u8 = font.to_u8();
         let Some(font_range) = &self.atlas.fonts.get(font.into()) else { return }; // TODO: This SHOULD fail if no fonts
@@ -518,38 +555,6 @@ impl<
     //     )
     // }
 
-
-    pub fn start_frame(&mut self, time_now:f32) {
-        self.time_elapsed_buffer.push(time_now - self.time);
-        self.time = time_now;
-        
-        self.time_elapsed = quantize(self.time_elapsed_buffer.average(), 1.0/ 360.0);
-    }
-
-
-
-    pub fn finish_frame(&mut self, time_now:f32) {
-        self.time_update_buffer.push(time_now - self.time);
-        self.time_update = self.time_update_buffer.average();
-
-    // Limit frame rate. TODO: This is hacky, doesn't always work, and needs std library.
-    // if let Some(fps_limit) = self.limit_frame_rate {
-    //     let immediate_fps = 1.0 / self.time_update;
-    //     if immediate_fps > fps_limit {
-    //         let time_target = 1.0 / fps_limit;
-    //         let time_diff = time_target - self.time_update;
-    //         if time_diff > 1.0 / 240.0 {
-    //             self.time_idle = time_diff * 0.75;
-    //             sleep(Duration::from_secs_f32(self.time_idle));
-    //         }
-    //     } else {
-    //         println!("Skipping idle cycle!");
-    //         self.time_idle = 0.0;
-    //     }
-    // } else {
-    //     self.time_idle = 0.0;
-    // }
-    }
 
     
 }
