@@ -543,6 +543,10 @@ impl<
     } 
 
 
+    pub fn clear_layer(&mut self, layer_id:LayerID) {
+        self.layers.clear_layer(layer_id)
+    }
+
     // pub(crate) fn draw_world_pixel(&mut self, x:f32, y:f32, color:u8) {
     //     let screen_x = x - cam_rect.x;
     //     let screen_y = y - cam_rect.y;

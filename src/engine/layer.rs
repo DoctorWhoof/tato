@@ -49,7 +49,6 @@ impl LayerPool {
     }
 
 
-    // pub fn insert_layer(&mut self, palette:impl ByteID) -> LayerID {
     pub fn insert_layer(&mut self) -> LayerID {
         let key = self.layers.insert_with_key(|id|{
             Layer{
@@ -82,6 +81,17 @@ impl LayerPool {
         if let Some(layer_id) = self.entities.get(id) {
             self.layers[*layer_id].data.remove(id);
             self.entities.remove(id);
+        }
+    }
+
+
+    // Clears all contents in the layer, but does not remove it
+    pub fn clear_layer(&mut self, layer_id:LayerID) {
+        if let Some(layer) = self.layers.get_mut(layer_id) {
+            for entity_id in layer.data.keys() {
+                self.entities.remove(entity_id);
+            }
+            layer.data.clear();
         }
     }
     
