@@ -36,4 +36,7 @@ Palette<CAP> {
 
     pub fn len(&self) -> usize { self.colors.len() }
 
+
+    pub fn is_empty(&self) -> bool { self.colors.is_empty() }
+
 }

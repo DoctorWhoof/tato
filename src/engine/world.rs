@@ -136,7 +136,7 @@ impl<
 
 
     pub fn get_anim(&self, id:u8) -> &Anim {
-        &self.atlas.anims.get(id as usize).unwrap()
+        self.atlas.anims.get(id as usize).unwrap()
     }
 
 
@@ -152,7 +152,7 @@ impl<
 
 
     pub fn get_tilemap(&self, id:u8) -> &Tilemap {
-        &self.atlas.tilemaps.get(id as usize).unwrap()
+        self.atlas.tilemaps.get(id as usize).unwrap()
     }
 
 
@@ -185,13 +185,12 @@ impl<
             },
             Shape::TilemapLayer { tilemap_id } => {
                 let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
-                let result = Rect {
+                Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
                     y:entity.pos.y + entity.render_offset.y as f32,
                     w:tilemap.width(self.atlas.tile_width()) as f32,
                     h:tilemap.height(self.atlas.tile_height()) as f32
-                };
-                result
+                }
             },
         }
     }
@@ -218,7 +217,7 @@ impl<
 
     pub fn tile_at(&self, x:f32, y:f32, id:EntityID) -> Option<Tile> {
         // let Some(entity) = layer.entities.get(id) else { return None };
-        let Some(entity) = self.get_entity(id) else { return None };
+        let entity = self.get_entity(id)?;
         let Shape::TilemapLayer{ tilemap_id } = entity.shape else { return None };
         
         let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
@@ -283,7 +282,7 @@ impl<
                         let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
                         let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
     
-                        if tilemap.store_bg_buffer(left_col, top_row, frame.cols, frame.rows, entity.id) == false {
+                        if !tilemap.store_bg_buffer(left_col, top_row, frame.cols, frame.rows, entity.id) {
                             continue
                         };
     

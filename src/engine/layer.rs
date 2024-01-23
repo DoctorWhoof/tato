@@ -58,6 +58,7 @@ impl LayerPool {
             }
         });
         #[cfg(std)]{ println!("New layer with key {:?}", key); }
+        #[allow(clippy::let_and_return)]
         key
     }
 

@@ -24,7 +24,7 @@ impl Default for Frame {
 impl Frame {
 
     pub fn from_slice(slice:&[Tile], cols:u8, rows:u8) -> Frame {
-        let mut tiles = slice.into_iter();
+        let mut tiles = slice.iter();
         Frame {
             cols,
             rows,

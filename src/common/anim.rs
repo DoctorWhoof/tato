@@ -42,6 +42,9 @@ impl Anim {
     pub fn len(&self) -> u8 { self.len }
 
 
+    pub fn is_empty(&self) -> bool { self.len == 0 }
+    
+
     pub fn frames(&self) -> &[Frame] { &self.frames }
 
 

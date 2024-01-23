@@ -111,7 +111,7 @@ impl<
 
 #[inline]
 pub fn draw_pixel(pixels: &mut [Color], buffer_width:usize, x:usize, y:usize, color:Color){
-    let index = (y as usize * buffer_width) + x as usize;
+    let index = (y * buffer_width) + x;
     pixels[index] = color;
 }
 
