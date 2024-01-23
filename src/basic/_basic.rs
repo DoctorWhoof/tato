@@ -6,7 +6,7 @@ mod color;
 mod math;
 mod rand;
 mod smooth_buffer;
-mod palette;
+// mod palette;
 mod pool;
 
 pub use bit_flags::*;
@@ -16,4 +16,4 @@ pub use math::*;
 pub use rand::*;
 pub use smooth_buffer::*;
 pub use pool::*;
-pub use palette::*;
+// pub use palette::*;

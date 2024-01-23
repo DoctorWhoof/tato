@@ -12,7 +12,7 @@ use slotmap::SecondaryMap;
 /// AnimTiles can restore the BG contents they overwrite.
 pub struct Tilemap {
     pub id: u8,
-    pub tileset: TilesetID,
+    pub tileset: u8,
     pub cols:u16,
     pub rows:u16,
     pub bg_buffers:SecondaryMap<EntityID, BgBuffer>,
@@ -24,7 +24,7 @@ impl Default for Tilemap {
     fn default() -> Self {
         Self {
             id:0,
-            tileset: TilesetID::default(),
+            tileset: u8::default(),
             cols:1, rows:1,
             bg_buffers: Default::default(),
             tiles:core::array::from_fn(|_| Tile::default() ),
@@ -163,10 +163,10 @@ impl Tilemap {
     }
 
 
-    pub fn width(&self, tile_width:u8) -> usize { self.cols as usize * tile_width as usize }
+    pub fn width(&self, tile_width:usize) -> usize { self.cols as usize * tile_width }
 
 
-    pub fn height(&self, tile_height:u8) -> usize { self.rows as usize * tile_height as usize }
+    pub fn height(&self, tile_height:usize) -> usize { self.rows as usize * tile_height }
 
     
 }

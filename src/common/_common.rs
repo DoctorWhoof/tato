@@ -13,6 +13,8 @@ mod font;
 mod tilemap;
 mod tileset;
 mod vec2;
+mod specs;
+mod palette;
 
 pub use anim::*;
 pub use atlas::*;
@@ -24,3 +26,5 @@ pub use font::*;
 pub use tilemap::*;
 pub use tileset::*;
 pub use vec2::*;
+pub use specs::*;
+pub use palette::*;

@@ -1,4 +1,5 @@
 #![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
+#![feature(generic_const_exprs)]
 // #![no_std]
 
 #[path ="common/_common.rs"] mod common;

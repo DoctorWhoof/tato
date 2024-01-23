@@ -17,7 +17,7 @@ pub struct  Anim {
     pub(crate) id:u8,
     pub(crate) len:u8,  // Actual used length
     pub(crate) frames: [Frame; ANIM_MAX_FRAMES],
-    pub(crate) tileset: TilesetID
+    pub(crate) tileset: u8
 }
 
 impl Default for Anim {
@@ -28,7 +28,7 @@ impl Default for Anim {
             fps: 10,
             len: 0,
             frames: core::array::from_fn(|_| Frame::default() ),
-            tileset: TilesetID::default(),
+            tileset: Default::default(),
         }
     }
 }
@@ -52,7 +52,7 @@ impl Anim {
             fps,
             len,
             frames,
-            tileset: TilesetID::default()
+            tileset: Default::default()
         }
     }
 
