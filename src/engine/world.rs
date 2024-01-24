@@ -3,16 +3,18 @@ use crate::*;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Atlas and associated data like Tilemaps and Animations.
-pub struct World <
-    const ATLAS_PIXEL_COUNT:usize,
-    const ATLAS_TILE_COUNT:usize,
-    const RENDER_PIXEL_COUNT:usize,
-    const ANIM_COUNT:usize,
-    const FONT_COUNT:usize,
-    const TILEMAP_COUNT:usize,
-    const PALETTE_COUNT:usize,
-    const COLORS_PER_PALETTE:usize
-> {
+pub struct World <S:Specs>
+where
+    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
+    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); S::ANIM_COUNT]: Sized,
+    [(); S::FONT_COUNT]: Sized,
+    [(); S::TILEMAP_COUNT]: Sized,
+    [(); S::TILESET_COUNT]: Sized,
+    [(); S::PALETTE_COUNT]: Sized,
+    [(); S::COLORS_PER_PALETTE]: Sized,
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
+{
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
     pub debug_colliders: bool,
@@ -22,8 +24,8 @@ pub struct World <
     pub draw_tilemaps: bool,
     pub cam:Rect<f32>,
     // Main components
-    pub renderer: Renderer<RENDER_PIXEL_COUNT>,
-    pub atlas: Atlas<ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ANIM_COUNT, FONT_COUNT, TILEMAP_COUNT, PALETTE_COUNT, COLORS_PER_PALETTE>,
+    pub renderer: Renderer<S>,
+    pub atlas: Atlas<S>,
     
     // Private
     time_elapsed_buffer:SmoothBuffer<15>,           // Affects gameplay speed (used to calculate frame deltas)
@@ -42,19 +44,20 @@ pub struct World <
 }
 
     
-impl<
-    const ATLAS_PIXEL_COUNT:usize,
-    const ATLAS_TILE_COUNT:usize,
-    const RENDER_PIXEL_COUNT:usize,
-    const ANIM_COUNT:usize,
-    const FONT_COUNT:usize,
-    const TILEMAP_COUNT:usize,
-    const PALETTE_COUNT:usize,
-    const COLORS_PER_PALETTE:usize
-> World<ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, RENDER_PIXEL_COUNT, ANIM_COUNT, FONT_COUNT, TILEMAP_COUNT, PALETTE_COUNT, COLORS_PER_PALETTE>
+impl<S:Specs> World<S>
+where
+    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
+    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); S::ANIM_COUNT]: Sized,
+    [(); S::FONT_COUNT]: Sized,
+    [(); S::TILEMAP_COUNT]: Sized,
+    [(); S::TILESET_COUNT]: Sized,
+    [(); S::PALETTE_COUNT]: Sized,
+    [(); S::COLORS_PER_PALETTE]: Sized,
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
 {
 
-    pub fn new(render_width:u16, render_height:u16, atlas_width:u16, atlas_height:u16, tile_width:u8, tile_height:u8) -> Self {
+    pub fn new() -> Self {
         World {
             limit_frame_rate: None,
             debug_colliders:false,
@@ -63,9 +66,9 @@ impl<
             draw_sprites: true,
             draw_tilemaps: true,
 
-            cam: Rect::new(0.0, 0.0, render_width as f32, render_height as f32),
-            renderer: Renderer::new(render_width, render_height),
-            atlas: Atlas::new(atlas_width, atlas_height, tile_width, tile_height),
+            cam: Rect::new(0.0, 0.0, S::RENDER_WIDTH as f32, S::RENDER_HEIGHT as f32),
+            renderer: Renderer::new(),
+            atlas: Atlas::new(),
 
             time_elapsed_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
@@ -130,7 +133,7 @@ impl<
 
 
     // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
-    pub fn get_data_mut(&mut self) -> (&mut LayerPool, &mut Pool<Anim, ANIM_COUNT>, &mut Pool<Tilemap, TILEMAP_COUNT>) {
+    pub fn get_data_mut(&mut self) -> (&mut LayerPool, &mut [Anim; S::ANIM_COUNT], &mut [Tilemap; S::TILEMAP_COUNT]) {
         (&mut self.layers,  &mut self.atlas.anims, &mut self.atlas.tilemaps)
     }
 
@@ -311,7 +314,7 @@ impl<
                             let tile = frame.get_tile(subtile);
                             let (abs_tile_id, palette) = self.atlas.get_tile_and_palette(
                                 tile.index,
-                                anim.tileset
+                                anim.tileset as usize
                             );
     
                             let tile_rect = self.atlas.get_rect(abs_tile_id.get());
@@ -324,6 +327,14 @@ impl<
     
                             if !cam_rect.overlaps(&quad_rect) { return }
                             let screen_rect = quad_rect - cam_rect.pos();
+
+                            // // Debug test
+                            // let Some(visible_rect) = screen_rect.to_i32().intersect(self.renderer.viewport) else { return };
+                            // self.renderer.draw_line(
+                            //     visible_rect.x, visible_rect.x, visible_rect.right(), visible_rect.bottom(),
+                            //     Color::blue()
+                            // );
+
                             Self::draw_tile(
                                 &mut self.renderer,
                                 &self.atlas,
@@ -362,7 +373,7 @@ impl<
                         for row in top_col .. bottom_col {
                             for col in left_col .. right_col {
                                 let tile = tilemap.get_tile(col as u16, row as u16);
-                                let (tile_id, palette) = self.atlas.get_tile_and_palette(tile.index, tilemap.tileset);
+                                let (tile_id, palette) = self.atlas.get_tile_and_palette(tile.index, tilemap.tileset as usize);
     
                                 let tile_rect = Rect::<i32>::from(self.atlas.get_rect(tile.index as usize));
                                 let world_tile_rect = Rect{
@@ -410,23 +421,9 @@ impl<
             // Debug Atlas
             #[cfg(debug_assertions)]
             if self.debug_atlas {
-                // let color_mult = u8::try_from(255 / COLORS_PER_PALETTE).ok().unwrap();
-                // let mut tileset_id
-                // 'draw_loop: {
-                //     let width = self.atlas.width();
-                //     for y in 0 .. self.atlas.height() {
-                //         for x in 0 .. width  {
-                //             let pixel_index = (y*self.renderer.width()) + x;
-                //             if pixel_index > RENDER_PIXEL_COUNT - 1 { break 'draw_loop }
-                //             let value = self.atlas.get_pixel(x, y) * color_mult;
-                //             // let color = if value
-                //             self.renderer.pixels[pixel_index] = Color{r:value, g:value, b:value, a:255};
-                //         }
-                //     }
-                // }
                 let atlas_rect = Rect{x:0, y:0, w:self.atlas.width() as i32, h:self.atlas.height() as i32};
                 self.renderer.draw_filled_rect(atlas_rect, Color::black());
-                for tileset in self.atlas.tilesets.values() {
+                for tileset in &self.atlas.tilesets {
                     for tile_index in tileset.start_index .. tileset.start_index + tileset.len {
                         let rect = self.atlas.get_rect(tile_index as usize);
                         let palette = self.atlas.palettes.get(tileset.palette_id as usize).unwrap();
@@ -471,9 +468,9 @@ impl<
 
 
     pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:impl ByteID, align_right:bool) {
-        let font:u8 = font.to_u8();
-        let Some(font_range) = &self.atlas.fonts.get(font.into()) else { return }; // TODO: This SHOULD fail if no fonts
-        let tileset = self.atlas.get_tileset(font_range.tileset);
+        // let font:u8 = font.to_u8();
+        let font_range = &self.atlas.fonts[font.to_usize()];
+        let tileset = self.atlas.get_tileset(font_range.tileset as usize);
         let tileset_start = tileset.start_index;
         for (i,letter) in text.chars().enumerate() {
             let letter = letter as u32;
@@ -511,11 +508,11 @@ impl<
 
 
     fn draw_tile(
-        renderer: &mut Renderer<RENDER_PIXEL_COUNT>,
-        atlas:&Atlas<ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ANIM_COUNT, FONT_COUNT, TILEMAP_COUNT, PALETTE_COUNT, COLORS_PER_PALETTE>,
+        renderer: &mut Renderer<S>,
+        atlas:&Atlas<S>,
         world_rect:Rect<i32>,
         tile:TileID,
-        palette:&Palette<COLORS_PER_PALETTE>,
+        palette:&Palette<S>,
         flip_h:bool
     ){
         let Some(visible_rect) = world_rect.intersect(renderer.viewport) else { return };
@@ -560,6 +557,23 @@ impl<
 
 
     
+}
+
+impl<S:Specs> Default for World<S>
+where
+    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
+    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); S::ANIM_COUNT]: Sized,
+    [(); S::FONT_COUNT]: Sized,
+    [(); S::TILEMAP_COUNT]: Sized,
+    [(); S::TILESET_COUNT]: Sized,
+    [(); S::PALETTE_COUNT]: Sized,
+    [(); S::COLORS_PER_PALETTE]: Sized,
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 

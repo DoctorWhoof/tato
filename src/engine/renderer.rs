@@ -1,36 +1,35 @@
-use crate::{Rect, Color, Vec2};
+use crate::{Color, Rect, Specs, Vec2};
 use libm::fabsf;
 
 /// Allows writing pixels to a frame buffer.
-pub struct Renderer< const PIXEL_COUNT:usize > {
-    pub(super) pixels: [Color; PIXEL_COUNT],
+pub struct Renderer<R:Specs> 
+where
+    [(); R::RENDER_WIDTH * R::RENDER_HEIGHT]: Sized
+{
+    pub(super) pixels: [Color; R::RENDER_WIDTH * R::RENDER_HEIGHT],
     pub(super) viewport: Rect<i32>,
-    width: u16,
-    height: u16
 }
 
-impl<
-    const PIXEL_COUNT:usize
-> Renderer<PIXEL_COUNT> {
+impl<R:Specs> Renderer<R>
+where
+    [(); R::RENDER_WIDTH * R::RENDER_HEIGHT]: Sized
+{
 
-    pub(super) fn new(width:u16, height:u16) -> Self {
-        assert!(PIXEL_COUNT==width as usize * height as usize, "Renderer: Error, width x height must equal PIXEL_COUNT");
+    pub(super) fn new() -> Self {
         Renderer {
-            pixels: [Color::default(); PIXEL_COUNT],
-            viewport: Rect { x:0, y:0, w:width as i32, h:height as i32 },
-            width,
-            height
+            pixels: [Color::default(); R::RENDER_WIDTH * R::RENDER_HEIGHT],
+            viewport: Rect { x:0, y:0, w:R::RENDER_WIDTH as i32, h:R::RENDER_HEIGHT as i32 },
         }
     }
 
 
-    pub fn width(&self) -> usize { self.width as usize }
+    pub fn width(&self) -> usize { R::RENDER_WIDTH }
 
 
-    pub fn height(&self) -> usize { self.height as usize }
+    pub fn height(&self) -> usize { R::RENDER_HEIGHT }
 
 
-    pub fn pixels(&self) -> &[Color; PIXEL_COUNT] { &self.pixels }
+    pub fn pixels(&self) -> &[Color; R::RENDER_WIDTH * R::RENDER_HEIGHT] { &self.pixels }
 
 
     pub fn viewport(&self) -> &Rect<i32> { &self.viewport }
@@ -57,14 +56,14 @@ impl<
 
     #[inline]
     pub(super) fn draw_pixel(&mut self, x:usize, y:usize, color:Color){
-        draw_pixel(&mut self.pixels, self.width as usize, x, y, color)
+        draw_pixel(&mut self.pixels, R::RENDER_WIDTH, x, y, color)
     }
     
 
     #[inline]
     pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
-        draw_line(&mut self.pixels, self.width as usize, x0, y0, x1, y1, color)
+        draw_line(&mut self.pixels, R::RENDER_WIDTH, x0, y0, x1, y1, color)
     }
 
 
@@ -74,17 +73,17 @@ impl<
         let top = rect.y;
         let right = rect.x + rect.w - 1;
         let bottom = rect.y + rect.h - 1;
-        if left > -1 && left < self.width as i32 {
-            draw_line(&mut self.pixels, self.width as usize, left, top, left, bottom, color)
+        if left > -1 && left < R::RENDER_WIDTH as i32 {
+            draw_line(&mut self.pixels, R::RENDER_WIDTH, left, top, left, bottom, color)
         }
-        if right > -1 && right < self.width as i32 {
-            draw_line(&mut self.pixels, self.width as usize,  right, top, right, bottom, color)
+        if right > -1 && right < R::RENDER_WIDTH as i32 {
+            draw_line(&mut self.pixels, R::RENDER_WIDTH,  right, top, right, bottom, color)
         }
-        if top > -1 && top < self.height as i32 {
-            draw_line(&mut self.pixels, self.width as usize,  left + 1, top, right - 1, top, color)
+        if top > -1 && top < R::RENDER_HEIGHT as i32 {
+            draw_line(&mut self.pixels, R::RENDER_WIDTH,  left + 1, top, right - 1, top, color)
         }
-        if bottom > -1 && bottom < self.height as i32 {
-            draw_line(&mut self.pixels, self.width as usize,  left + 1, bottom, right - 1, bottom, color)
+        if bottom > -1 && bottom < R::RENDER_HEIGHT as i32 {
+            draw_line(&mut self.pixels, R::RENDER_WIDTH,  left + 1, bottom, right - 1, bottom, color)
         }
     }
 
@@ -92,10 +91,10 @@ impl<
     pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:Color){
         // TODO: Take viewport into account
         let rect = {
-            let x = i32::clamp(rect.x, 0, self.width as i32 -1);
-            let right = i32::clamp(rect.x + rect.w - 1, 0, self.width as i32 - 1);
-            let y = i32::clamp(rect.y, 0, self.height as i32 -1);
-            let bottom = i32::clamp(rect.y + rect.h - 1, 0, self.height as i32 - 1);
+            let x = i32::clamp(rect.x, 0, R::RENDER_WIDTH as i32 -1);
+            let right = i32::clamp(rect.x + rect.w - 1, 0, R::RENDER_WIDTH as i32 - 1);
+            let y = i32::clamp(rect.y, 0, R::RENDER_HEIGHT as i32 -1);
+            let bottom = i32::clamp(rect.y + rect.h - 1, 0, R::RENDER_HEIGHT as i32 - 1);
             Rect { x, y, w: right-x, h: bottom - y }
         };
         for y in rect.y ..= rect.bottom() {

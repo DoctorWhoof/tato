@@ -1,5 +1,5 @@
 
-pub struct AtlasSpecs <
+pub struct Specs <
     const PIXEL_COUNT:usize,
     const TILE_COUNT:usize,
     const ANIM_COUNT:usize,
@@ -28,6 +28,6 @@ pub struct RenderSpecs <
 //     // World
 
 // >{
-//     atlas:AtlasSpecs< ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ATLAS_ANIM_COUNT, ATLAS_FONT_COUNT, ATLAS_TILEMAP_COUNT >,
+//     atlas:Specs< ATLAS_PIXEL_COUNT, ATLAS_TILE_COUNT, ATLAS_ANIM_COUNT, ATLAS_FONT_COUNT, ATLAS_TILEMAP_COUNT >,
 //     render: RenderSpecs< RENDER_WIDTH, RENDER_HEIGHT >
 // }

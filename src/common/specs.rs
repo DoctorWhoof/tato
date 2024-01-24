@@ -1,13 +1,11 @@
-pub trait RendererSpecs {
+pub trait Specs {
     // Renderer
-        const RENDER_WIDTH:usize;
-        const RENDER_HEIGHT:usize;
-}
+    const RENDER_WIDTH:usize;
+    const RENDER_HEIGHT:usize;
 
-pub trait AtlasSpecs {
     // Atlas
-    const TILE_WIDTH:usize;
-    const TILE_HEIGHT:usize;
+    const TILE_WIDTH:u8;
+    const TILE_HEIGHT:u8;
 
     const ATLAS_WIDTH:usize;
     const ATLAS_HEIGHT:usize; 
