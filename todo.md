@@ -110,7 +110,7 @@
 --------------->. Proceed to actually save that data so that initializing a group also restores its enum assignment
             [ ] Detect all door instances at build time, when importing the tilemap.
             [ ] Save/Load basic Scene file containing door entities
-            [ ] Add "Group" functionality to anims (look at TilesetBuilder.insert_group)
+            [ ] Add "Group" functionality to anims (look at TilesetBuilder.init_group)
                 [ ] Will need to be saved and loaded with .anim files
                 [ ] Also needs "add_anim" closure that updates the "groups" array, just like "add_group"
                     . This right here needs to be streamlined. Maybe groups are just part of the Atlas?

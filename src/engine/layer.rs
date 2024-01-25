@@ -57,7 +57,9 @@ impl LayerPool {
                 data: Default::default(),
             }
         });
-        #[cfg(not(no_std))]{ println!("New layer with key {:?}", key); }
+        #[cfg(feature = "std")]{
+            println!("New layer with key {:?}", key);
+        }
         #[allow(clippy::let_and_return)]
         key
     }

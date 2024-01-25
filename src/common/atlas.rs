@@ -39,7 +39,7 @@ where
     [(); S::COLORS_PER_PALETTE]: Sized,
 {
     pub(crate) fn new() -> Self {
-        #[cfg(not(no_std))]{
+        #[cfg(feature = "std")]{
             println!("Atlas: Creating new Atlas with {} tiles.", S::ATLAS_TILE_COUNT);
         }
         let tile_count = (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize);
@@ -122,7 +122,7 @@ where
         }
         
         // Insert new tileset
-        #[cfg(not(no_std))]{
+        #[cfg(feature = "std")]{
             println!(
                 "\nInserting tileset {:#?} with {} pixels, {} colors, {} fonts, {} anims, and {} maps",
                 tileset_id.to_u8(), pixel_count, palette_len, font_count, anim_count, tilemap_count
@@ -130,7 +130,7 @@ where
         };
         let start_index = self.next_free_tile; 
         let len = pixel_count / tile_len; 
-        #[cfg(not(no_std))]{
+        #[cfg(feature = "std")]{
             println!("    start_index:{}, len:{} , palette_id:{}", start_index, len, palette_id);
         }
         self.tilesets[tileset_id.to_usize()] = Tileset {
@@ -142,7 +142,7 @@ where
 
         // Load palettte. Will overwrite the same palette sometimes, since tilesets may use the same palette
         let mut palette = Palette::new(palette_id);
-        #[cfg(not(no_std))]{
+        #[cfg(feature = "std")]{
             println!("    Loading palette {} with {} colors", palette_id, palette_len);
         }
         // let current = offset.clone();
@@ -153,7 +153,7 @@ where
             let b = data[cursor()];
             let a = data[cursor()];
             palette.push(Color{r,g,b,a});
-            #[cfg(not(no_std))]{
+            #[cfg(feature = "std")]{
                 println!("        {:02}: {:?}", _i, Color{r,g,b,a});
             }
         }
@@ -161,7 +161,7 @@ where
         self.palettes[palette_id as usize] = palette;
 
         // Load pixels from linear format into tile-formatted.
-        let mut pix_count:usize = 0;
+        let mut _pix_count:usize = 0;
         let cols = S::ATLAS_WIDTH  / S::TILE_WIDTH as usize;
         for tile in  start_index as usize .. (start_index + len) as usize {
             for y in 0 .. tile_height as usize {
@@ -172,11 +172,11 @@ where
                     let tile_y = row * tile_height as usize;
                     let dest_px = (S::ATLAS_WIDTH  * (tile_y + y)) + (tile_x + x);
                     self.pixels[dest_px] = data[cursor()];
-                    pix_count += 1;
+                    _pix_count += 1;
                 }
             }
         }
-        #[cfg(not(no_std))]{ println!("{} pixels loaded", pix_count); }
+        #[cfg(feature = "std")]{ println!("{} pixels loaded", _pix_count); }
 
         // Load fonts
         for _ in 0 .. font_count {
@@ -185,7 +185,7 @@ where
             let len = data[cursor()]; 
             // if id as usize != self.fonts.len() { panic!("Atlas Error: Font ID does not match its Pool index!")}
             let font = Font { start, len, id, tileset:tileset_id.to_u8() };
-            #[cfg(not(no_std))]{ println!("    Loading font:{:?}", font); }
+            #[cfg(feature = "std")]{ println!("    Loading font:{:?}", font); }
             self.fonts[id as usize] = font;
         }
 
@@ -195,20 +195,20 @@ where
             let group = data[cursor()];
             let fps = data[cursor()];
             let len = data[cursor()];
-            #[cfg(not(no_std))]{ println!("    Loading anim {} with group {}", id, group); }
+            #[cfg(feature = "std")]{ println!("    Loading anim {} with group {}", id, group); }
             self.anims[id as usize] = Anim {
                 id,
                 group,
                 fps,
                 len,
                 frames: core::array::from_fn(|_frame|{
-                    #[cfg(not(no_std))]{ print!("        Loading frame {} ", _frame); }
+                    #[cfg(feature = "std")]{ print!("        Loading frame {} ", _frame); }
                     Frame {
                         cols: data[cursor()],
                         rows: data[cursor()],
                         tiles: core::array::from_fn(|_tile|{
                             let index = data[cursor()];
-                            // #[cfg(not(no_std))]{
+                            // #[cfg(feature = "std")]{
                             //     print!("    tile {}:{},", tile, index);
                             //     if _tile == ANIM_TILES_PER_FRAME-1 { println!("") }
                             // }
@@ -228,7 +228,7 @@ where
             let id = data[cursor()];
             let cols = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
             let rows = u16::from_ne_bytes([data[cursor()], data[cursor()]]);
-            #[cfg(not(no_std))]{ println!("    Loading map {} with {}x{} tiles", id, cols, rows); }
+            #[cfg(feature = "std")]{ println!("    Loading map {} with {}x{} tiles", id, cols, rows); }
             self.tilemaps[id as usize] = Tilemap{
                 id,
                 tileset: tileset_id.to_u8(),

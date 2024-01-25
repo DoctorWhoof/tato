@@ -1,7 +1,10 @@
 #![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
-// #![no_std]
+#![no_std]
+
+#[cfg(feature = "std")] extern crate std;
+#[cfg(feature = "std")] pub use std::{print, println};
 
 #[path ="common/_common.rs"] mod common;
 #[path ="engine/_engine.rs"] mod engine;

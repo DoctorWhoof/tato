@@ -3,6 +3,9 @@ name = "spud"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+std = []
+
 [profile.release]
 # debug = true
 panic = "abort"
