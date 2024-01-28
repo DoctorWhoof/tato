@@ -27,10 +27,12 @@ pub struct Tilemap {
 }
 
 
-impl Default for Tilemap {
-    fn default() -> Self {
+
+impl Tilemap {
+
+    pub fn new(id:u8) -> Self {
         Self {
-            id:0,
+            id,
             tileset: 0,
             cols:1,
             rows:1,
@@ -39,10 +41,7 @@ impl Default for Tilemap {
             tiles:core::array::from_fn(|_| Tile::default() ),
         }
     }
-}
 
-
-impl Tilemap {
 
     pub fn id(&self) -> u8 { self.id }
 

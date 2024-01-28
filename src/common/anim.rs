@@ -21,10 +21,26 @@ pub struct  Anim {
     pub frames: [Frame; ANIM_MAX_FRAMES],
 }
 
-impl Default for Anim {
-    fn default() -> Self {
+// impl Default for Anim {
+//     fn default() -> Self {
+//         Self {
+//             id: 0,
+//             group: Default::default(),
+//             fps: 10,
+//             len: 0,
+//             tileset: 0,
+//             palette: 0,
+//             frames: core::array::from_fn(|_| Frame::default() ),
+//         }
+//     }
+// }
+
+
+impl Anim {
+
+    pub fn new(id:u8) -> Self {
         Self {
-            id: 0,
+            id,
             group: Default::default(),
             fps: 10,
             len: 0,
@@ -33,10 +49,6 @@ impl Default for Anim {
             frames: core::array::from_fn(|_| Frame::default() ),
         }
     }
-}
-
-
-impl Anim {
 
     pub fn id(&self) -> u8 { self.id }
 

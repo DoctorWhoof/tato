@@ -13,12 +13,12 @@ where
     [(); S::PALETTE_COUNT]: Sized,
     [(); S::COLORS_PER_PALETTE]: Sized,
 {
-    pub(crate) rects:[Rect<u8>; S::ATLAS_TILE_COUNT],
+    pub(crate) tilesets: [Tileset; S::TILESET_COUNT],    
+    pub(crate) palettes: [Palette<S>; S::PALETTE_COUNT],
     pub(crate) fonts: [Font; S::FONT_COUNT],
     pub(crate) anims: [Anim; S::ANIM_COUNT],
     pub(crate) tilemaps: [Tilemap; S::TILEMAP_COUNT],
-    pub(crate) palettes: [Palette<S>; S::PALETTE_COUNT],
-    pub(crate) tilesets: [Tileset; S::TILESET_COUNT],    
+    pub(crate) rects:[Rect<u8>; S::ATLAS_TILE_COUNT],
     pixels:[u8; S::ATLAS_WIDTH * S::ATLAS_HEIGHT],
 }
 
@@ -43,6 +43,14 @@ where
         assert!(S::ATLAS_TILE_COUNT == tile_count, "Atlas specs error: invalid tile count {}", S::ATLAS_TILE_COUNT);
         Atlas {
             pixels: [0; S::ATLAS_WIDTH * S::ATLAS_HEIGHT],
+            // Assets are always initialized, never an option! The length of the array containing each asset
+            // is determined by the Enum associated with it, and the builder script will fail if any
+            // enum variant is not initialized
+            tilesets: core::array::from_fn( |i| Tileset::new( u8::try_from(i).unwrap() )),
+            palettes: core::array::from_fn( |i| Palette::new( u8::try_from(i).unwrap() )),
+            fonts: core::array::from_fn( |i| Font::new( u8::try_from(i).unwrap() )),
+            anims: core::array::from_fn( |i| Anim::new( u8::try_from(i).unwrap() ) ),
+            tilemaps: core::array::from_fn( |i| Tilemap::new( u8::try_from(i).unwrap() ) ),
             rects: array::from_fn( |i| {
                 // generates all tiles
                 let tile_x = i * S::TILE_WIDTH as usize;
@@ -55,12 +63,6 @@ where
                     h:S::TILE_HEIGHT
                 }
             }),
-            // TODO: add if needed and initalize all ids from "i"
-            tilesets: core::array::from_fn( |i| Default::default() ),
-            palettes: core::array::from_fn( |i| Palette::new( u8::try_from(i).unwrap() )),
-            fonts: core::array::from_fn( |i| Default::default() ),
-            anims: core::array::from_fn( |i| Default::default() ),
-            tilemaps: core::array::from_fn( |i| Default::default() ),
             // next_tileset: 0,
             // next_free_tile: 0,
         }
@@ -85,14 +87,14 @@ where
 
         // Palettes
         for palette in self.palettes.iter_mut(){
-            palette.id = Some( cursor.next());
+            palette.id = cursor.next();
             for color in palette.colors.iter_mut() {
                 color.r =  cursor.next();
                 color.g =  cursor.next();
                 color.b =  cursor.next();
                 color.a =  cursor.next();
             }
-            #[cfg(feature = "std")]{ println!(" Initializing Palette {}", palette.id.unwrap()); }
+            #[cfg(feature = "std")]{ println!(" Initializing Palette {}", palette.id); }
         }
 
         // Fonts

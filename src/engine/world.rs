@@ -465,15 +465,15 @@ where
     pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:impl ByteID, align_right:bool) {
         // let font:u8 = font.to_u8();
         let font_range = &self.atlas.fonts[font.to_usize()];
-        let tileset = self.atlas.get_tileset(font_range.tileset as usize);
+        let tileset = self.atlas.get_tileset(font_range.tileset_id as usize);
         let tileset_start = tileset.start_index;
         for (i,letter) in text.chars().enumerate() {
             let letter = letter as u32;
             let index = if letter > 47 {
                 if letter < 65 {
-                    (letter - 48) as u16 + font_range.start as u16 // Zero
+                    (letter - 48) as u16 + font_range.start_index as u16 // Zero
                 } else {
-                    (letter - 55) as u16 + font_range.start as u16 // Upper Case 'A' (A index is 65, but the first 10 tiles are the numbers so we add 10)
+                    (letter - 55) as u16 + font_range.start_index as u16 // Upper Case 'A' (A index is 65, but the first 10 tiles are the numbers so we add 10)
                 }
             } else {
                 font_range.last() as u16 // Space

@@ -4,7 +4,7 @@ use super::*;
 pub struct Palette<S:Specs>
 where [(); S::COLORS_PER_PALETTE]: Sized,
 {
-    pub(crate) id: Option<u8>,
+    pub(crate) id: u8,
     pub colors: [Color; S::COLORS_PER_PALETTE],
     head:usize,
 }
@@ -14,13 +14,13 @@ where [(); S::COLORS_PER_PALETTE]: Sized,
 {
     pub fn new(from_id:u8) -> Self {
         Palette {
-            id: Some(from_id),
+            id: from_id,
             colors: core::array::from_fn(|_| Color::default() ),
             head: 0,
         }
     }
 
-    pub fn id(&self) -> Option<u8> { self.id }
+    pub fn id(&self) -> u8 { self.id }
 
     
     pub fn push(&mut self, color:Color) {
