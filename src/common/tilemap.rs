@@ -1,15 +1,8 @@
 use core::mem::size_of;
-
-use crate::*;
-// use serde::Serialize;
 use slotmap::SecondaryMap;
+use crate::*;
 
 const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tileset, cols(2 bytes), rows(2 bytes), palette, [tiles] 
-
-// slotmap::new_key_type! {
-//     /// A key to the World slotmap containing tilemaps.
-//     pub struct TilemapID;
-// }
 
 /// A rectangular array of tiles that belong to a single Tileset. Also provides "BgBuffers" so that
 /// BgTiles can restore the BG contents they overwrite.
@@ -19,13 +12,10 @@ pub struct Tilemap {
     pub tileset: u8,
     pub cols:u16,
     pub rows:u16,
-    // #[serde(serialize_with = "serialize_array")]
     pub palette:u8,
     pub tiles:[Tile; TILEMAP_LEN],
-    // #[serde(skip_serializing)]
     pub bg_buffers:SecondaryMap<EntityID, BgBuffer>,
 }
-
 
 
 impl Tilemap {
@@ -44,11 +34,6 @@ impl Tilemap {
 
 
     pub fn id(&self) -> u8 { self.id }
-
-
-    // pub fn new(tiles:[Tile; TILEMAP_LEN], id:u8, cols:u16, rows:u16) -> Self {
-    //     Self { id, cols, rows, tiles, .. Default::default() }
-    // }
 
 
     pub fn serialize(&self) -> [u8; SIZE_OF_TILEMAP] {
@@ -137,8 +122,6 @@ impl Tilemap {
     }
 
 
-
-    #[inline]
     fn get_index(&self, col:u16, row:u16) -> usize {
         #[cfg(debug_assertions)]
         if col >= self.cols || row >= self.rows {
