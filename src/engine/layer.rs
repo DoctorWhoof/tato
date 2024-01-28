@@ -58,7 +58,7 @@ impl LayerPool {
             }
         });
         #[cfg(feature = "std")]{
-            println!("New layer with key {:?}", key);
+            println!("Atlas: New layer with key {:?}", key);
         }
         #[allow(clippy::let_and_return)]
         key

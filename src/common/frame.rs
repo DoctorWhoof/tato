@@ -1,5 +1,7 @@
 use crate::*;
 
+const SIZE_OF_FRAME:usize = core::mem::size_of::<Frame>();
+
 /// The smallest part of an animation, contains tiles indices up to ANIM_TILES_PER_FRAME.
 #[derive(Debug, Clone)]
 pub struct Frame {
@@ -34,6 +36,29 @@ impl Frame {
                     None => Default::default(),
                 }
             }),
+        }
+    }
+
+
+    pub fn serialize(&self) -> [u8; SIZE_OF_FRAME] {
+        let mut bytes = ByteArray::<SIZE_OF_FRAME>::new();
+        
+        bytes.push(self.cols);
+        bytes.push(self.rows);
+        for tile in self.tiles {
+            let tile_data = tile.serialize();
+            bytes.push_array(&tile_data)
+        }
+
+        bytes.validate_and_get_data()
+    }
+
+
+    pub fn deserialize(&mut self, cursor:&mut Cursor<'_, u8>) {
+        self.cols = cursor.next();
+        self.rows = cursor.next();
+        for tile in self.tiles.iter_mut() {
+            tile.deserialize(cursor);
         }
     }
 

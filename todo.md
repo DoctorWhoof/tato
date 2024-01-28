@@ -1,9 +1,12 @@
 
 [x] Switch data structs into Slotmaps?
 
-[ ] Switch Anim frames to Pool<Frames>, so that only used frames are saved
+[ ] Switch Anim frames to Pool<Frames>, so that only used frames are saved?
 
 [ ] Think about generic Scene<ENTITY_COUNT>. How dows that interact with the host app?
+
+[ ] Safety checks:
+    [ ] Ensure everything works (no crash) even if world.atlas is not loaded
 
 [ ] High level "scripting". Example:
     - Present screen, wait for input
@@ -23,6 +26,7 @@
             . Abandoned in lieu of RGBA frame buffer for the host app, while the Atlas contains byte indices + palettes.
         [x] Generate palette during build, from RGB .png files
         [x] Bonus: directly support palettized png? Seems to be working already, img is converted to RGBA, then re-palettized in ImageBuilder.
+        [ ] Switch color to RGB instead of RGBA to save memory bandwidth on low end devices
 
 [ ] World
     [ ] Separate rendering and collision into slices.
@@ -102,8 +106,8 @@
                         [x] Clean up pipeline (replace AtlasBuilder references with TilesetBuilder, etc.)
                         [?] Since TileIDs have a unique_id, inserting at any index may be doable
         [x] Entities with Tile Group shapes
-        [x] BUG: AnimTiles bug out whengoing off screen
-        [.] Prototype Door prop with AnimTiles shape.
+        [x] BUG: BgTiles bug out whengoing off screen
+        [.] Prototype Door prop with BgTiles shape.
             [ ] Too many bugs caused by silly mistakes so far! Needs better pipeline design.
                 . Groups and Anims should be tied to tilesets, so you can't use a group intended for a tileset on another.
                 . Added "GroupEnum" generic parameter to TilesetBuilder
@@ -120,7 +124,7 @@
     [x] Binary with cols/rows
     [x] Flags
 
-[ ] Add additional debug data?
+[ ] Add additional debug-only data?
     [ ] Entity Names
     [ ] Debug only scene list (App side)
 

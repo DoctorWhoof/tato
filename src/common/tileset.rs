@@ -9,8 +9,8 @@
 #[derive(Debug, Default)]
 pub struct Tileset {
     pub unique_id:u8,
-    pub start_index:u16,
-    pub len:u16,
+    pub start_index:u16,    // Start Tile index
+    pub len:u16,            // Tile count
     pub palette_id:u8,
     // pub groups:SlotMap<GroupID, Group>,
     // pub anims:SlotMap<AnimID, Anim>

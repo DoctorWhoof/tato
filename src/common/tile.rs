@@ -1,4 +1,8 @@
+// use serde::Serialize;
+
 use crate::*;
+
+const SIZE_OF_TILE:usize = core::mem::size_of::<Tile>();
 
 /// Allows recovering the absolute Atlas index from a tile within a tileset.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -39,5 +43,15 @@ impl Tile {
 
     
     pub fn set_flipped_v(&mut self, value:bool) { set_bit(&mut self.flags, value, 1) }
+
+
+    pub fn serialize(&self) -> [u8; SIZE_OF_TILE] {
+        [self.index , self.flags]
+    }
+
+    pub fn deserialize(&mut self, cursor:&mut Cursor<'_, u8>) {
+        self.index = cursor.next();
+        self.flags = cursor.next();
+    }
 
 }

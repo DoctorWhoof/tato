@@ -1,4 +1,5 @@
-pub trait Specs {
+
+pub trait Specs:{
     // Renderer
     const RENDER_WIDTH:usize;
     const RENDER_HEIGHT:usize;

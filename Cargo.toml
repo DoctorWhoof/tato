@@ -18,3 +18,4 @@ codegen-units = 1
 [dependencies]
 libm = "0.2.8"
 slotmap = { version = "1.0.7", default-features = false }
+# serde = { version = "1.0.196", default-features = false, features = ["derive"] }

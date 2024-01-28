@@ -1,3 +1,5 @@
+use core::mem::size_of;
+
 /// 8 bits per channel representation of an RGBA color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color {
@@ -19,6 +21,15 @@ impl Color {
     pub fn new(r:u8, g:u8, b:u8, a:u8) -> Color {
         Color{r,g,b,a}
     }
+
+    pub fn serialize(&self) -> [u8; size_of::<Color>()] {
+        [self.r, self.g, self.b, self.a]
+    }
+
+    pub fn deserialize(data:[u8; size_of::<Color>()]) -> Self  {
+        Self{r:data[0], g:data[1], b:data[2], a:data[3]}
+    }
+
 
     pub fn black() -> Color { Color { r: 0, g: 0, b: 0, a: 255 } }
     

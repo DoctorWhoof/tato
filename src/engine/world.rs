@@ -176,7 +176,7 @@ where
     pub fn get_entity_rect(&self, entity:&Entity) -> Rect<f32> {
         match entity.shape {
             Shape::None => Default::default(),
-            Shape::Sprite { anim_id, .. } | Shape::AnimTiles { anim_id, .. } => {
+            Shape::Sprite { anim_id, .. } | Shape::BgTiles { anim_id, .. } => {
                 let Some(anim) = &self.atlas.anims.get(anim_id as usize) else { return Default::default() };
                 let frame = anim.frame(self.time);
                 Rect {
@@ -186,7 +186,7 @@ where
                     h:(frame.rows as usize * self.atlas.tile_height() as usize) as f32,
                 }
             },
-            Shape::TilemapLayer { tilemap_id } => {
+            Shape::Bg { tilemap_id } => {
                 let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
                 Rect {
                     x:entity.pos.x + entity.render_offset.x as f32,
@@ -201,11 +201,11 @@ where
 
     pub fn delete_entity(&mut self, id:EntityID) {
         if let Some(ent) = self.layers.get(id){
-            // Clean up AnimTiles if needed.
+            // Clean up BgTiles if needed.
             // Tilemap will be left "dirty" by the AnimTile entity if this is not performed
-            if let Shape::AnimTiles { tilemap_entity, .. } = ent.shape {
+            if let Shape::BgTiles { tilemap_entity, .. } = ent.shape {
                 if let Some(tilemap_ent) = self.layers.get(tilemap_entity) {
-                    if let Shape::TilemapLayer { tilemap_id } = tilemap_ent.shape {
+                    if let Shape::Bg { tilemap_id } = tilemap_ent.shape {
                         if let Some(tilemap) = self.atlas.tilemaps.get_mut(tilemap_id as usize){
                             tilemap.restore_bg_buffer(ent.id);
                             tilemap.bg_buffers.remove(id);
@@ -221,7 +221,7 @@ where
     pub fn tile_at(&self, x:f32, y:f32, id:EntityID) -> Option<Tile> {
         // let Some(entity) = layer.entities.get(id) else { return None };
         let entity = self.get_entity(id)?;
-        let Shape::TilemapLayer{ tilemap_id } = entity.shape else { return None };
+        let Shape::Bg{ tilemap_id } = entity.shape else { return None };
         
         let tilemap = &self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
         let rect = self.get_entity_rect(entity);
@@ -268,9 +268,9 @@ where
                         // Do nothing!
                     },
     
-                    Shape::AnimTiles { anim_id, tilemap_entity, flip_h, flip_v } => {
+                    Shape::BgTiles { anim_id, tilemap_entity, flip_h, flip_v } => {
                         let Some(tilemap_entity) = layer.data.get(tilemap_entity) else { continue }; // TODO: remove this "must be in same layer" requirement
-                        let Shape::TilemapLayer { tilemap_id } = tilemap_entity.shape else { continue };
+                        let Shape::Bg { tilemap_id } = tilemap_entity.shape else { continue };
                         
                         let world_rect = self.get_entity_rect(entity);
                         let Some(..) = world_rect.intersect(cam_rect) else { continue };
@@ -305,14 +305,15 @@ where
                     Shape::Sprite { anim_id, flip_h, .. } => {
                         if !self.draw_sprites { continue }
                         // Draw tiles
-                        let Some(anim) = &self.atlas.anims.get(anim_id as usize) else { continue };
+                        let Some(anim) = self.atlas.anims.get(anim_id as usize) else { continue };
                         let frame = anim.frame(self.time);
+                        let palette = &self.atlas.palettes[anim.palette as usize];
     
                         let mut draw_tile = |col:u8, row:u8| {
                             let flipped_col = if flip_h { frame.cols - 1 - col } else { col };
                             let subtile = (row*frame.cols) + flipped_col;
                             let tile = frame.get_tile(subtile);
-                            let (abs_tile_id, palette) = self.atlas.get_tile_and_palette(
+                            let abs_tile_id = self.atlas.get_tile(
                                 tile.index,
                                 anim.tileset as usize
                             );
@@ -327,13 +328,6 @@ where
     
                             if !cam_rect.overlaps(&quad_rect) { return }
                             let screen_rect = quad_rect - cam_rect.pos();
-
-                            // // Debug test
-                            // let Some(visible_rect) = screen_rect.to_i32().intersect(self.renderer.viewport) else { return };
-                            // self.renderer.draw_line(
-                            //     visible_rect.x, visible_rect.x, visible_rect.right(), visible_rect.bottom(),
-                            //     Color::blue()
-                            // );
 
                             Self::draw_tile(
                                 &mut self.renderer,
@@ -352,11 +346,12 @@ where
                         }
                     },
     
-                    Shape::TilemapLayer { tilemap_id } => {
+                    Shape::Bg { tilemap_id } => {
                         if !self.draw_tilemaps { continue }
                         let world_rect = self.get_entity_rect(entity);
                         let tilemap = &mut self.atlas.tilemaps.get(tilemap_id as usize).unwrap();
                         let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };  
+                        let palette = &self.atlas.palettes[tilemap.palette as usize];
     
                         // At least a part of tilemap is visible. Render visible tiles within it.
                         let left_col = ((vis_rect.x - world_rect.x) / tile_width as f32) as usize;
@@ -373,7 +368,7 @@ where
                         for row in top_col .. bottom_col {
                             for col in left_col .. right_col {
                                 let tile = tilemap.get_tile(col as u16, row as u16);
-                                let (tile_id, palette) = self.atlas.get_tile_and_palette(tile.index, tilemap.tileset as usize);
+                                let tile_id = self.atlas.get_tile(tile.index, tilemap.tileset as usize);
     
                                 let tile_rect = Rect::<i32>::from(self.atlas.get_rect(tile.index as usize));
                                 let world_tile_rect = Rect{
