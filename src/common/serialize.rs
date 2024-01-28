@@ -14,7 +14,6 @@ impl<'a, T:Copy> Cursor<'a,T> {
         }
     }
 
-
     pub fn next(&mut self) -> T {
         let result = self.data[self.head];
         self.head += 1;
@@ -24,7 +23,7 @@ impl<'a, T:Copy> Cursor<'a,T> {
 
 /// Helps building up a byte array for serialization. Similar to Pool.
 pub struct ByteArray<const LEN:usize> {
-    // TODO: Maybe just use a Pool?
+    // TODO: Maybe just use an improved Pool<u8>?
     // TODO: Add more methods like "push_u16" that breaks up the data into bytes internally
     pub data:[u8; LEN],
     head: usize,
@@ -39,10 +38,6 @@ impl<const LEN:usize> ByteArray<LEN> {
             head: 0,
             tail: 0
         }
-    }
-
-    pub fn from_array(data:[u8; LEN]) -> Self {
-        Self {data, head:0, tail:0}
     }
     
     pub fn push(&mut self, value:u8) {
@@ -65,7 +60,7 @@ impl<const LEN:usize> ByteArray<LEN> {
         self.tail == self.head
     }
 
-
+    // Ensures struct is completely filled before giving away its data array.
     pub fn validate_and_get_data(self) -> [u8; LEN] {
         if self.head == LEN {
             self.data

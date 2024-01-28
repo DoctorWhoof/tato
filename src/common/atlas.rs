@@ -18,11 +18,8 @@ where
     pub(crate) anims: [Anim; S::ANIM_COUNT],
     pub(crate) tilemaps: [Tilemap; S::TILEMAP_COUNT],
     pub(crate) palettes: [Palette<S>; S::PALETTE_COUNT],
-    pub(crate) tilesets: [Tileset; S::TILESET_COUNT],
-    
+    pub(crate) tilesets: [Tileset; S::TILESET_COUNT],    
     pixels:[u8; S::ATLAS_WIDTH * S::ATLAS_HEIGHT],
-    // next_tileset:u16,
-    // next_free_tile:u16,
 }
 
 
@@ -95,33 +92,25 @@ where
                 color.b =  cursor.next();
                 color.a =  cursor.next();
             }
-            #[cfg(feature = "std")]{
-                println!("  Initializing Palette {}", palette.id.unwrap());
-            }
+            #[cfg(feature = "std")]{ println!(" Initializing Palette {}", palette.id.unwrap()); }
         }
 
         // Fonts
         for font in self.fonts.iter_mut() {
             font.deserialize(&mut cursor);
-            #[cfg(feature = "std")]{
-                println!("  Initializing Font {}", font.id);
-            }
+            #[cfg(feature = "std")]{ println!(" Initializing Font {}", font.id); }
         }
 
         // Anims
         for anim in self.anims.iter_mut() {
             anim.deserialize(&mut cursor);
-            #[cfg(feature = "std")]{
-                println!("  Initializing Anim {}", anim.id);
-            }
+            #[cfg(feature = "std")]{ println!(" Initializing Anim {}", anim.id); }
         }
 
         // Tilemaps
         for tilemap in self.tilemaps.iter_mut() {
             tilemap.deserialize(&mut cursor);
-            #[cfg(feature = "std")]{
-                println!("  Initializing Tilemap {}", tilemap.id);
-            }
+            #[cfg(feature = "std")]{ println!(" Initializing Tilemap {}", tilemap.id); }
         }
 
         // Tilesets
