@@ -1,3 +1,14 @@
+[ ] Problem: Multiple swappable tilesets would require unique Enum types for various assets (i.e. AnimID), making the cascading generics an absolute mess.
+    Solution:
+    - "Atlas" contains only two generic Enums, TilesetID and PaletteID.
+    - AtlasBuilder would be renamed "RomBuilder", and act like storage. Atlas can then load/unload tilesets from the Rom file.
+    - Font, Anim and Tilemaps live directly unders their respective Tilesets.
+    - [ ] Problem: Now I need a way to refer to an Asset both at build and run time.
+      . Maybe losen up the typing, and use Enums strictly to provide int indices in this case?
+
+[ ] Tile revamp:
+    [ ] Get rid of layers, implement depth in tile flags?
+    [ ] 4 bytes - Index(16 bit), Group(8 bit), Flags(flip_h, flip_v, depth)
 
 [x] Switch data structs into Slotmaps?
 

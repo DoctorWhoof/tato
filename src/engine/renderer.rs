@@ -60,7 +60,7 @@ where
     }
     
 
-    #[inline]
+    #[inline] #[allow(unused)]
     pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
         draw_line(&mut self.pixels, R::RENDER_WIDTH, x0, y0, x1, y1, color)

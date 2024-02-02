@@ -1,46 +1,60 @@
 use core::array;
 use crate::*;
+use core::mem::variant_count;
 
 /// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
-pub struct Atlas<S:Specs>
+pub struct Atlas<
+    S:Specs,
+    TilesetEnum:Into<u8> + Copy,
+    PaletteEnum:Into<u8> + Copy,
+>
 where
-    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); variant_count::<TilesetEnum>()]: Sized,
+    [(); variant_count::<PaletteEnum>()]: Sized,
+    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,                                                          //Pixel count
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
     [(); S::ANIM_COUNT]: Sized,
     [(); S::FONT_COUNT]: Sized,
     [(); S::TILEMAP_COUNT]: Sized,
-    [(); S::TILESET_COUNT]: Sized,
-    [(); S::PALETTE_COUNT]: Sized,
     [(); S::COLORS_PER_PALETTE]: Sized,
 {
-    pub(crate) tilesets: [Tileset; S::TILESET_COUNT],    
-    pub(crate) palettes: [Palette<S>; S::PALETTE_COUNT],
+    // pub(crate) tilesets: [Tileset; S::TILESET_COUNT],    
+    pub(crate) tilesets: [Tileset; variant_count::<TilesetEnum>()],    
+    pub(crate) palettes: [Palette<S>; variant_count::<PaletteEnum>()],
     pub(crate) fonts: [Font; S::FONT_COUNT],
     pub(crate) anims: [Anim; S::ANIM_COUNT],
     pub(crate) tilemaps: [Tilemap; S::TILEMAP_COUNT],
-    pub(crate) rects:[Rect<u8>; S::ATLAS_TILE_COUNT],
+    // pub(crate) rects:[Rect<u8>; S::ATLAS_TILE_COUNT],
+    pub(crate) rects:[Rect<u8>; (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)],
     pixels:[u8; S::ATLAS_WIDTH * S::ATLAS_HEIGHT],
 }
 
 
-impl<S:Specs> Atlas<S>
+impl<
+    S:Specs,
+    TilesetEnum:Into<u8> + Copy,
+    PaletteEnum:Into<u8> + Copy,
+    // AnimEnum:Into<u8> + Copy,
+> Atlas<S, TilesetEnum, PaletteEnum>
 where
-    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); variant_count::<TilesetEnum>()]: Sized,
+    [(); variant_count::<PaletteEnum>()]: Sized,
+    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,  // Pixel count
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized, //Tile count
     [(); S::ANIM_COUNT]: Sized,
     [(); S::FONT_COUNT]: Sized,
     [(); S::TILEMAP_COUNT]: Sized,
-    [(); S::TILESET_COUNT]: Sized,
-    [(); S::PALETTE_COUNT]: Sized,
     [(); S::COLORS_PER_PALETTE]: Sized,
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
 {
     pub(crate) fn new() -> Self {
-
+        
         #[cfg(feature = "std")]{
-            println!("Atlas: Creating new Atlas with {} tiles.", S::ATLAS_TILE_COUNT);
+            let tile_count = (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize);
+            println!("Atlas: Creating new Atlas with {} tiles.", tile_count);
         }
-        let tile_count = (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize);
-        assert!(S::ATLAS_TILE_COUNT == tile_count, "Atlas specs error: invalid tile count {}", S::ATLAS_TILE_COUNT);
+
         Atlas {
             pixels: [0; S::ATLAS_WIDTH * S::ATLAS_HEIGHT],
             // Assets are always initialized, never an option! The length of the array containing each asset
@@ -63,8 +77,6 @@ where
                     h:S::TILE_HEIGHT
                 }
             }),
-            // next_tileset: 0,
-            // next_free_tile: 0,
         }
     }
 
@@ -77,13 +89,16 @@ where
         }
 
         // Header data
-        assert!(S::TILE_WIDTH ==  cursor.next(), "Atlas Error: Tile width does not match.");                  // Tile Width
-        assert!(S::TILE_HEIGHT ==  cursor.next(), "Atlas Error: Tile width does not match.");                 // Tile Height
-        assert!(S::PALETTE_COUNT as u8 ==  cursor.next(), "Atlas Error: Palette count does not match");       // Palette Count
-        assert!(S::FONT_COUNT as u8 ==  cursor.next(), "Atlas Error: Font count does not match");             // Font Count
-        assert!(S::ANIM_COUNT as u8 ==  cursor.next(), "Atlas Error: Anim count does not match");             // Anim Count
-        assert!(S::TILEMAP_COUNT as u8 ==  cursor.next(), "Atlas Error: Tilemap count does not match");       // Tilemap Count
-        assert!(S::TILESET_COUNT as u8 ==  cursor.next(), "Atlas Error: Tileset count does not match");       // Tileset Count
+        assert!(S::TILE_WIDTH ==  cursor.next(), "Atlas Error: Tile width does not match.");                                // Tile Width
+        assert!(S::TILE_HEIGHT ==  cursor.next(), "Atlas Error: Tile width does not match.");                               // Tile Height
+        assert!(variant_count::<PaletteEnum>() as u8 ==  cursor.next(), "Atlas Error: Palette count does not match");       // Palette Count
+        assert!(S::FONT_COUNT as u8 ==  cursor.next(), "Atlas Error: Font count does not match");                           // Font Count
+        assert!(S::ANIM_COUNT as u8 ==  cursor.next(), "Atlas Error: Anim count does not match");                           // Anim Count
+        assert!(S::TILEMAP_COUNT as u8 ==  cursor.next(), "Atlas Error: Tilemap count does not match");                     // Tilemap Count
+        assert!(
+            variant_count::<TilesetEnum>() == cursor.next() as usize,
+            "Atlas Error: Tileset count does not match"
+        );       // Tileset Count
 
         // Palettes
         for palette in self.palettes.iter_mut(){
@@ -168,7 +183,7 @@ where
     pub fn tile_height(&self) -> u8 { S::TILE_HEIGHT }
 
 
-    // pub fn insert_tileset( &mut self, tileset_id:impl ByteID, data:&[u8] ) {
+    // pub fn insert_tileset( &mut self, tileset_id:impl IntoPrimitive, data:&[u8] ) {
     //     if data[0 .. TILESET_HEADER_TEXT.len()] != *TILESET_HEADER_TEXT.as_bytes() { panic!("Atlas error: Invalid .tiles file") }
         
     //     let mut offset = TILEMAP_HEADER_TEXT.len();
@@ -211,7 +226,7 @@ where
     //     #[cfg(feature = "std")]{
     //         println!(
     //             "\nInserting tileset {:#?} with {} pixels, {} colors, {} fonts, {} anims, and {} maps",
-    //             tileset_id.to_u8(), pixel_count, palette_len, font_count, anim_count, tilemap_count
+    //             tileset_id.into(), pixel_count, palette_len, font_count, anim_count, tilemap_count
     //         );
     //     };
     //     let start_index = self.next_free_tile; 
@@ -220,7 +235,7 @@ where
     //         println!("    start_index:{}, len:{} , palette_id:{}", start_index, len, palette_id);
     //     }
     //     self.tilesets[tileset_id.to_usize()] = Tileset {
-    //         unique_id:tileset_id.to_u8(),
+    //         unique_id:tileset_id.into(),
     //         start_index,
     //         len,
     //         palette_id
@@ -270,7 +285,7 @@ where
     //         let start = data[cursor()];
     //         let len = data[cursor()]; 
     //         // if id as usize != self.fonts.len() { panic!("Atlas Error: Font ID does not match its Pool index!")}
-    //         let font = Font { start, len, id, tileset:tileset_id.to_u8() };
+    //         let font = Font { start, len, id, tileset:tileset_id.into() };
     //         #[cfg(feature = "std")]{ println!("    Loading font:{:?}", font); }
     //         self.fonts[id as usize] = font;
     //     }
@@ -305,7 +320,7 @@ where
     //                     })
     //                 }
     //             }),
-    //             tileset: tileset_id.to_u8(),
+    //             tileset: tileset_id.into(),
     //         };
     //     }
 
@@ -317,7 +332,7 @@ where
     //         #[cfg(feature = "std")]{ println!("    Loading map {} with {}x{} tiles", id, cols, rows); }
     //         self.tilemaps[id as usize] = Tilemap{
     //             id,
-    //             tileset: tileset_id.to_u8(),
+    //             tileset: tileset_id.into(),
     //             cols,
     //             rows,
     //             bg_buffers: Default::default(),

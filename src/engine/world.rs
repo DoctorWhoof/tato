@@ -1,17 +1,22 @@
 use crate::*;
-
+use core::mem::variant_count;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Atlas and associated data like Tilemaps and Animations.
-pub struct World <S:Specs>
-where
+pub struct World <
+    S:Specs,
+    TilesetEnum:Into<u8> + Copy,
+    PaletteEnum:Into<u8> + Copy,
+    // AnimEnum:Into<u8> + Copy,
+> where
+    [(); variant_count::<TilesetEnum>()]: Sized,
+    [(); variant_count::<PaletteEnum>()]: Sized,
     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized, 
+    // [(); S::ATLAS_TILE_COUNT]: Sized,
     [(); S::ANIM_COUNT]: Sized,
     [(); S::FONT_COUNT]: Sized,
     [(); S::TILEMAP_COUNT]: Sized,
-    [(); S::TILESET_COUNT]: Sized,
-    [(); S::PALETTE_COUNT]: Sized,
     [(); S::COLORS_PER_PALETTE]: Sized,
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
 {
@@ -25,7 +30,7 @@ where
     pub cam:Rect<f32>,
     // Main components
     pub renderer: Renderer<S>,
-    pub atlas: Atlas<S>,
+    pub atlas: Atlas<S, TilesetEnum, PaletteEnum>,
     
     // Private
     time_elapsed_buffer:SmoothBuffer<15>,           // Affects gameplay speed (used to calculate frame deltas)
@@ -44,15 +49,21 @@ where
 }
 
     
-impl<S:Specs> World<S>
+impl<
+    S:Specs,
+    TilesetEnum:Into<u8> + Copy,
+    PaletteEnum:Into<u8> + Copy,
+    // AnimEnum:Into<u8> + Copy,
+> World<S, TilesetEnum, PaletteEnum>
 where
+    [(); variant_count::<TilesetEnum>()]: Sized,
+    [(); variant_count::<PaletteEnum>()]: Sized,
     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ATLAS_TILE_COUNT]: Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized, 
+    // [(); S::ATLAS_TILE_COUNT]: Sized,
     [(); S::ANIM_COUNT]: Sized,
     [(); S::FONT_COUNT]: Sized,
     [(); S::TILEMAP_COUNT]: Sized,
-    [(); S::TILESET_COUNT]: Sized,
-    [(); S::PALETTE_COUNT]: Sized,
     [(); S::COLORS_PER_PALETTE]: Sized,
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
 {
@@ -120,7 +131,7 @@ where
 
 
 
-    // pub fn insert_layer(&mut self, palette:impl ByteID) -> LayerID {
+    // pub fn insert_layer(&mut self, palette:impl IntoPrimitive) -> LayerID {
     pub fn insert_layer(&mut self) -> LayerID {
         self.layers.insert_layer()
     }
@@ -462,9 +473,13 @@ where
     }
 
 
-    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:impl ByteID, align_right:bool) {
-        // let font:u8 = font.to_u8();
-        let font_range = &self.atlas.fonts[font.to_usize()];
+    pub fn draw_text(&mut self, text:&str, x:i32, y:i32, font:impl Into<u8>, align_right:bool) {
+        // let font:u8 = font.into();
+        let font:u8 = match font.try_into() {
+            Ok(value) => value,
+            Err(_) => panic!("Invalid font ID"),
+        };
+        let font_range = &self.atlas.fonts[font as usize];
         let tileset = self.atlas.get_tileset(font_range.tileset_id as usize);
         let tileset_start = tileset.start_index;
         for (i,letter) in text.chars().enumerate() {
@@ -504,7 +519,7 @@ where
 
     fn draw_tile(
         renderer: &mut Renderer<S>,
-        atlas:&Atlas<S>,
+        atlas:&Atlas<S, TilesetEnum, PaletteEnum>,
         world_rect:Rect<i32>,
         tile:TileID,
         palette:&Palette<S>,
@@ -554,22 +569,26 @@ where
     
 }
 
-impl<S:Specs> Default for World<S>
-where
-    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ATLAS_TILE_COUNT]: Sized,
-    [(); S::ANIM_COUNT]: Sized,
-    [(); S::FONT_COUNT]: Sized,
-    [(); S::TILEMAP_COUNT]: Sized,
-    [(); S::TILESET_COUNT]: Sized,
-    [(); S::PALETTE_COUNT]: Sized,
-    [(); S::COLORS_PER_PALETTE]: Sized,
-    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl<
+//     S:Specs,
+//     TilesetEnum:Into<u8> + Copy,
+//     PaletteEnum:Into<u8> + Copy
+// > Default for World<S, TilesetEnum, PaletteEnum, AnimEnum>
+// where
+//     [(); variant_count::<TilesetEnum>()]: Sized,
+//     [(); variant_count::<PaletteEnum>()]: Sized,
+//     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
+//     [(); S::ATLAS_TILE_COUNT]: Sized,
+//     [(); S::ANIM_COUNT]: Sized,
+//     [(); S::FONT_COUNT]: Sized,
+//     [(); S::TILEMAP_COUNT]: Sized,
+//     [(); S::COLORS_PER_PALETTE]: Sized,
+//     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
+// {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 
 

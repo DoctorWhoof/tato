@@ -25,18 +25,26 @@ pub enum Shape {
 
 impl Shape {
 
-    pub fn sprite_from_anim(anim_id:impl ByteID) -> Self {
+    pub fn sprite_from_anim(anim_id:impl Into<u8>) -> Self {
+        let anim_id = match anim_id.try_into(){
+            Ok(value) => value,
+            Err(_) => panic!("Invalid anim_id"),
+        };
         Shape::Sprite {
-            anim_id:anim_id.to_u8(),
+            anim_id,
             flip_h: false,
             flip_v: false,
         }
     }
 
 
-    pub fn anim_tiles_from_anim(anim_id:impl ByteID, tilemap_entity:EntityID) -> Self {
+    pub fn anim_tiles_from_anim(anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
+        let anim_id = match anim_id.try_into(){
+            Ok(value) => value,
+            Err(_) => panic!("Invalid anim_id"),
+        };
         Shape::BgTiles {
-            anim_id:anim_id.to_u8(),
+            anim_id,
             flip_h: false,
             flip_v: false,
             tilemap_entity,

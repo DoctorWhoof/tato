@@ -1,8 +1,9 @@
 #![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
-#![no_std]
 
+#![allow(incomplete_features, unstable_features)]
+#![feature(generic_const_exprs, variant_count)]
+
+#![no_std]
 #[cfg(feature = "std")] extern crate std;
 #[cfg(feature = "std")] pub use std::{print, println};
 
@@ -12,17 +13,22 @@
 pub use engine::*;
 pub use common::*;
 
+// Re-export for conveniency
+// #[macro_use]
+// pub extern crate num_enum;
+// pub extern crate num_enum_derive;
+// pub use num_enum::{IntoPrimitive, FromPrimitive};
+
+// Consts
+
 pub const GROUP_CAPACITY:usize = 64; // Currently tiles can't represent more than 64 groups (6 bits)
 
 pub const ATLAS_HEADER_TEXT:&str = "atlas_1.0";
 pub const TILESET_HEADER_TEXT:&str = "tileset_1.0";
-// pub const ANIM_HEADER_TEXT:&str = "anim_1.0";
 pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;
 
-pub const ANIM_MAX_FRAMES:usize = 6;
-pub const ANIM_FRAME_SIZE:usize = core::mem::size_of::<Frame>();
-// pub const ANIM_HEADER_LEN:usize = ANIM_HEADER_TEXT.len() + 4;
-pub const ANIM_TILES_PER_FRAME:usize = 12;
+pub const ANIM_MAX_FRAMES:usize = 6;        // TODO: Move to specs
+pub const ANIM_TILES_PER_FRAME:usize = 12;  // TODO: Move to specs
 
 pub const TILEMAP_HEADER_LEN:usize = 15;
 pub const TILEMAP_LEN:usize = 48 * 48;

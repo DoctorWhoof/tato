@@ -53,7 +53,7 @@ impl LayerPool {
         let key = self.layers.insert_with_key(|id|{
             Layer{
                 id,
-                // palette: palette.to_u8(),
+                // palette: palette.into(),
                 data: Default::default(),
             }
         });
