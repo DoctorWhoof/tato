@@ -1,35 +1,54 @@
-use crate::{Color, Rect, Specs, Vec2};
+use crate::{Color, Rect, Specs, Vec2, Tileset};
 use libm::fabsf;
+use slotmap::{new_key_type, SlotMap};
+
+new_key_type! { struct TilesetKey; }
 
 /// Allows writing pixels to a frame buffer.
-pub struct Renderer<R:Specs> 
+pub struct Renderer<S:Specs> 
 where
-    [(); R::RENDER_WIDTH * R::RENDER_HEIGHT]: Sized
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
 {
-    pub(super) pixels: [Color; R::RENDER_WIDTH * R::RENDER_HEIGHT],
+    pub(super) pixels: [Color; S::RENDER_WIDTH * S::RENDER_HEIGHT],
     pub(super) viewport: Rect<i32>,
+    // pub(super) tilesets: SlotMap<TilesetKey, Tileset>,
+    // pub(crate) rects:[Rect<u8>; (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)],
 }
 
-impl<R:Specs> Renderer<R>
+impl<S:Specs> Renderer<S>
 where
-    [(); R::RENDER_WIDTH * R::RENDER_HEIGHT]: Sized
+    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
 {
 
     pub(super) fn new() -> Self {
         Renderer {
-            pixels: [Color::default(); R::RENDER_WIDTH * R::RENDER_HEIGHT],
-            viewport: Rect { x:0, y:0, w:R::RENDER_WIDTH as i32, h:R::RENDER_HEIGHT as i32 },
+            pixels: [Color::default(); S::RENDER_WIDTH * S::RENDER_HEIGHT],
+            viewport: Rect { x:0, y:0, w:S::RENDER_WIDTH as i32, h:S::RENDER_HEIGHT as i32 },
+            // rects: core::array::from_fn( |i| {
+            //     // generates all tiles
+            //     let tile_x = i * S::TILE_WIDTH as usize;
+            //     let x = (tile_x % S::ATLAS_WIDTH) as u8;
+            //     let y = ((tile_x / S::ATLAS_WIDTH) * S::TILE_HEIGHT as usize) as u8;
+            //     Rect{
+            //         x,
+            //         y,
+            //         w:S::TILE_WIDTH,
+            //         h:S::TILE_HEIGHT
+            //     }
+            // }),
         }
     }
 
 
-    pub fn width(&self) -> usize { R::RENDER_WIDTH }
+    pub fn width(&self) -> usize { S::RENDER_WIDTH }
 
 
-    pub fn height(&self) -> usize { R::RENDER_HEIGHT }
+    pub fn height(&self) -> usize { S::RENDER_HEIGHT }
 
 
-    pub fn pixels(&self) -> &[Color; R::RENDER_WIDTH * R::RENDER_HEIGHT] { &self.pixels }
+    pub fn pixels(&self) -> &[Color; S::RENDER_WIDTH * S::RENDER_HEIGHT] { &self.pixels }
 
 
     pub fn viewport(&self) -> &Rect<i32> { &self.viewport }
@@ -56,14 +75,14 @@ where
 
     #[inline]
     pub(super) fn draw_pixel(&mut self, x:usize, y:usize, color:Color){
-        draw_pixel(&mut self.pixels, R::RENDER_WIDTH, x, y, color)
+        draw_pixel(&mut self.pixels, S::RENDER_WIDTH, x, y, color)
     }
     
 
     #[inline] #[allow(unused)]
     pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
-        draw_line(&mut self.pixels, R::RENDER_WIDTH, x0, y0, x1, y1, color)
+        draw_line(&mut self.pixels, S::RENDER_WIDTH, x0, y0, x1, y1, color)
     }
 
 
@@ -73,17 +92,17 @@ where
         let top = rect.y;
         let right = rect.x + rect.w - 1;
         let bottom = rect.y + rect.h - 1;
-        if left > -1 && left < R::RENDER_WIDTH as i32 {
-            draw_line(&mut self.pixels, R::RENDER_WIDTH, left, top, left, bottom, color)
+        if left > -1 && left < S::RENDER_WIDTH as i32 {
+            draw_line(&mut self.pixels, S::RENDER_WIDTH, left, top, left, bottom, color)
         }
-        if right > -1 && right < R::RENDER_WIDTH as i32 {
-            draw_line(&mut self.pixels, R::RENDER_WIDTH,  right, top, right, bottom, color)
+        if right > -1 && right < S::RENDER_WIDTH as i32 {
+            draw_line(&mut self.pixels, S::RENDER_WIDTH,  right, top, right, bottom, color)
         }
-        if top > -1 && top < R::RENDER_HEIGHT as i32 {
-            draw_line(&mut self.pixels, R::RENDER_WIDTH,  left + 1, top, right - 1, top, color)
+        if top > -1 && top < S::RENDER_HEIGHT as i32 {
+            draw_line(&mut self.pixels, S::RENDER_WIDTH,  left + 1, top, right - 1, top, color)
         }
-        if bottom > -1 && bottom < R::RENDER_HEIGHT as i32 {
-            draw_line(&mut self.pixels, R::RENDER_WIDTH,  left + 1, bottom, right - 1, bottom, color)
+        if bottom > -1 && bottom < S::RENDER_HEIGHT as i32 {
+            draw_line(&mut self.pixels, S::RENDER_WIDTH,  left + 1, bottom, right - 1, bottom, color)
         }
     }
 
@@ -91,10 +110,10 @@ where
     pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:Color){
         // TODO: Take viewport into account
         let rect = {
-            let x = i32::clamp(rect.x, 0, R::RENDER_WIDTH as i32 -1);
-            let right = i32::clamp(rect.x + rect.w - 1, 0, R::RENDER_WIDTH as i32 - 1);
-            let y = i32::clamp(rect.y, 0, R::RENDER_HEIGHT as i32 -1);
-            let bottom = i32::clamp(rect.y + rect.h - 1, 0, R::RENDER_HEIGHT as i32 - 1);
+            let x = i32::clamp(rect.x, 0, S::RENDER_WIDTH as i32 -1);
+            let right = i32::clamp(rect.x + rect.w - 1, 0, S::RENDER_WIDTH as i32 - 1);
+            let y = i32::clamp(rect.y, 0, S::RENDER_HEIGHT as i32 -1);
+            let bottom = i32::clamp(rect.y + rect.h - 1, 0, S::RENDER_HEIGHT as i32 - 1);
             Rect { x, y, w: right-x, h: bottom - y }
         };
         for y in rect.y ..= rect.bottom() {

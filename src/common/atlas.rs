@@ -20,12 +20,12 @@ where
     [(); S::COLORS_PER_PALETTE]: Sized,
 {
     // pub(crate) tilesets: [Tileset; S::TILESET_COUNT],    
-    pub(crate) tilesets: [Tileset; variant_count::<TilesetEnum>()],    
+    // pub(crate) tilesets: [Tileset<S>; variant_count::<TilesetEnum>()],    
+    pub(crate) tilesets: [Tileset; variant_count::<TilesetEnum>()],
     pub(crate) palettes: [Palette<S>; variant_count::<PaletteEnum>()],
     pub(crate) fonts: [Font; S::FONT_COUNT],
     pub(crate) anims: [Anim; S::ANIM_COUNT],
     pub(crate) tilemaps: [Tilemap; S::TILEMAP_COUNT],
-    // pub(crate) rects:[Rect<u8>; S::ATLAS_TILE_COUNT],
     pub(crate) rects:[Rect<u8>; (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)],
     pixels:[u8; S::ATLAS_WIDTH * S::ATLAS_HEIGHT],
 }
@@ -131,7 +131,7 @@ where
         }
 
         // Tilesets
-        for tileset in self.tilesets.iter_mut() {
+        for (_tileset_idx,tileset) in self.tilesets.iter_mut().enumerate() {
             // Header text
             for letter in TILESET_HEADER_TEXT.as_bytes() {
                 assert!(*letter == cursor.next(), "Atlas Error: Invalid tileset header." )
@@ -147,7 +147,7 @@ where
             tileset.palette_id = cursor.next();
             
             // Pixels
-            #[cfg(feature = "std")]{ print!("  Initializing {:?} ... ", tileset); }
+            #[cfg(feature = "std")]{ print!("  Initializing tileset {} ... ", _tileset_idx); }
 
             // Load pixels from linear format into tile-formatted.
             let mut _pix_count:usize = 0;
@@ -362,6 +362,7 @@ where
     // }
 
 
+    // pub fn get_tileset(&self, id:usize) -> &Tileset<S> {
     pub fn get_tileset(&self, id:usize) -> &Tileset {
         &self.tilesets[id]
     }

@@ -7,13 +7,11 @@ pub struct World <
     S:Specs,
     TilesetEnum:Into<u8> + Copy,
     PaletteEnum:Into<u8> + Copy,
-    // AnimEnum:Into<u8> + Copy,
 > where
     [(); variant_count::<TilesetEnum>()]: Sized,
     [(); variant_count::<PaletteEnum>()]: Sized,
     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
     [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized, 
-    // [(); S::ATLAS_TILE_COUNT]: Sized,
     [(); S::ANIM_COUNT]: Sized,
     [(); S::FONT_COUNT]: Sized,
     [(); S::TILEMAP_COUNT]: Sized,
@@ -35,7 +33,6 @@ pub struct World <
     // Private
     time_elapsed_buffer:SmoothBuffer<15>,           // Affects gameplay speed (used to calculate frame deltas)
     time_update_buffer:SmoothBuffer<120>,           // For performance info only, doesn't affect gameplay
-    // time_internal_update_buffer:SmoothBuffer<120>,  // Update minus host app update (copying to GPU texture, etc.)
     time:f32,
     time_update:f32,
     time_elapsed:f32,
@@ -45,7 +42,7 @@ pub struct World <
     // entities:SlotMap<EntityID, LayerID>,    // Stores just the layer where each entity is
     // layers: SlotMap<LayerID, Layer>,        // Each layer contains the actual entity
     layers: LayerPool
-
+    
 }
 
     
@@ -53,14 +50,12 @@ impl<
     S:Specs,
     TilesetEnum:Into<u8> + Copy,
     PaletteEnum:Into<u8> + Copy,
-    // AnimEnum:Into<u8> + Copy,
 > World<S, TilesetEnum, PaletteEnum>
 where
     [(); variant_count::<TilesetEnum>()]: Sized,
     [(); variant_count::<PaletteEnum>()]: Sized,
     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
     [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized, 
-    // [(); S::ATLAS_TILE_COUNT]: Sized,
     [(); S::ANIM_COUNT]: Sized,
     [(); S::FONT_COUNT]: Sized,
     [(); S::TILEMAP_COUNT]: Sized,
@@ -92,9 +87,6 @@ where
 
             layers: Default::default()
             // entities: SlotMap::with_capacity_and_key(64),
-            // layers: SlotMap::with_capacity_and_key(4),
-            // anims: SlotMap::with_capacity_and_key(64),
-            // tilemaps: SlotMap::with_capacity_and_key(4)
         }
     }
 
@@ -108,14 +100,10 @@ where
     pub fn time_update(&self) -> f32 { self.time_update }
 
 
-    // pub fn time_update_internal(&self) -> f32 { self.time_internal_update_buffer.average() }
-
-
     pub fn time_idle(&self) -> f32 { self.time_idle }
 
     
     pub fn center_camera_on(&mut self, id:EntityID) {
-        // let Some(layer) = &self.layers.get(layer) else { return };
         let Some(ent) = self.get_entity(id) else { return };
         let pos = ent.pos;
         self.cam.x = pos.x - (self.renderer.width()/2) as f32;
