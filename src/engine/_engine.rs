@@ -1,11 +1,11 @@
 mod entity;
-mod renderer;
+mod framebuf;
 mod layer;
 mod shape;
 mod world;
 
 pub use entity::*;
-pub use renderer::*;
+pub use framebuf::*;
 pub use layer::*;
 pub use shape::*;
 pub use world::*;

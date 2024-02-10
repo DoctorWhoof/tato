@@ -6,7 +6,6 @@ const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tile
 
 /// A rectangular array of tiles that belong to a single Tileset. Also provides "BgBuffers" so that
 /// BgTiles can restore the BG contents they overwrite.
-// #[derive(Serialize)]
 pub struct Tilemap {
     pub id: u8,
     pub tileset: u8,
@@ -18,19 +17,34 @@ pub struct Tilemap {
 }
 
 
-impl Tilemap {
-
-    pub fn new(id:u8) -> Self {
+impl Clone for Tilemap {
+    fn clone(&self) -> Self {
         Self {
-            id,
-            tileset: 0,
-            cols:1,
-            rows:1,
-            palette: 0,
-            bg_buffers: Default::default(),
-            tiles:core::array::from_fn(|_| Tile::default() ),
+            id: self.id.clone(),
+            tileset: self.tileset.clone(),
+            cols: self.cols.clone(),
+            rows: self.rows.clone(),
+            palette: self.palette.clone(),
+            tiles: self.tiles.clone(),
+            bg_buffers: Default::default(), // no need to clone this, will be populated at runtime
         }
     }
+}
+
+
+impl Tilemap {
+
+    // pub fn new(id:u8) -> Self {
+    //     Self {
+    //         id,
+    //         tileset: 0,
+    //         cols:1,
+    //         rows:1,
+    //         palette: 0,
+    //         bg_buffers: Default::default(),
+    //         tiles:core::array::from_fn(|_| Tile::default() ),
+    //     }
+    // }
 
 
     pub fn id(&self) -> u8 { self.id }
@@ -56,16 +70,19 @@ impl Tilemap {
     }
 
 
-    pub fn deserialize(&mut self, cursor:&mut Cursor<'_, u8>) {
-        self.id = cursor.next();
-        self.tileset = cursor.next();
-        self.cols = u16::from_ne_bytes([cursor.next(), cursor.next()]);
-        self.rows = u16::from_ne_bytes([cursor.next(), cursor.next()]);
-        self.palette = cursor.next();
-
-        for tile in self.tiles.iter_mut() {
-            tile.deserialize(cursor);
+    pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
+        Self {
+            id: cursor.next(),
+            tileset: cursor.next(),
+            cols: u16::from_ne_bytes([cursor.next(), cursor.next()]),
+            rows: u16::from_ne_bytes([cursor.next(), cursor.next()]),
+            palette: cursor.next(),
+            bg_buffers: Default::default(),
+            tiles: core::array::from_fn(|_|{
+                Tile::deserialize(cursor)
+            })
         }
+
     }
 
 

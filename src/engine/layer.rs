@@ -6,17 +6,6 @@ new_key_type! {
     pub struct LayerID;
 }
 
-// #[derive(Default, Clone, Copy)]
-// #[repr(u8)]
-// pub enum LayerID {
-//     // #[default] Bg,
-//     SceneBG,
-//     SceneSprites,
-//     #[default] Sprites,
-//     Ui,
-//     Count
-// }
-// implement_byte_id!(LayerID);
 
 #[derive(Default)]
 pub struct Layer {
@@ -58,7 +47,7 @@ impl LayerPool {
             }
         });
         #[cfg(feature = "std")]{
-            println!("Atlas: New layer with key {:?}", key);
+            println!("Renderer: New layer with key {:?}", key);
         }
         #[allow(clippy::let_and_return)]
         key

@@ -1,6 +1,5 @@
 use super::*;
 
-#[derive(Default)]
 pub struct BgBuffer {
     pub frame:Frame,
     // Assuming tilemaps aren't humongous, otherwise cols and rows need to be a larger int

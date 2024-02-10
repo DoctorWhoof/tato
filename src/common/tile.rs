@@ -1,10 +1,8 @@
-// use serde::Serialize;
-
 use crate::*;
 
 const SIZE_OF_TILE:usize = core::mem::size_of::<Tile>();
 
-/// Allows recovering the absolute Atlas index from a tile within a tileset.
+/// Allows recovering the absolute Renderer index from a tile within a tileset.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TileID(pub u16);
 impl TileID {
@@ -49,9 +47,11 @@ impl Tile {
         [self.index , self.flags]
     }
 
-    pub fn deserialize(&mut self, cursor:&mut Cursor<'_, u8>) {
-        self.index = cursor.next();
-        self.flags = cursor.next();
+    pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
+        Self {
+            index: cursor.next(),
+            flags: cursor.next(),
+        }
     }
 
 }

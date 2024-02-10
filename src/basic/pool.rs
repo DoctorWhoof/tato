@@ -1,7 +1,6 @@
 
-pub struct Pool<T, const CAP:usize> 
-where T:Default {
-    pub data:[T; CAP],
+pub struct Pool<T, const CAP:usize> {
+    pub data:[Option<T>; CAP],
     head:usize
 }
 
@@ -10,25 +9,13 @@ for Pool<T, CAP>
 where T:Default {
     fn default() -> Self {
         Self {
-            data: core::array::from_fn( |_| Default::default() ),
+            data: core::array::from_fn( |_| None ),
             head: 0
         }
     }
 }
 
-impl<T, const CAP:usize> Pool<T, CAP>
-where T:Default {
-
-    // // pub fn new_filled(item:T) -> Self 
-    // pub fn new_filled() -> Self 
-    // // where T:Clone
-    // {
-    //     Self {
-    //         head: 0,
-    //         // data: core::array::from_fn( |_| item.clone() ),
-    //         ..Default::default()
-    //     }
-    // }
+impl<T, const CAP:usize> Pool<T, CAP> {
 
     pub fn is_empty(&self) -> bool {
         self.head == 0
@@ -37,26 +24,32 @@ where T:Default {
 
     pub fn set(&mut self, i:usize, value:T) {
         if i >= self.head { panic!("Pool error: Invalid index {}", i) }
-        self.data[i] = value;
+        self.data[i] = Some(value);
     }
 
 
     pub fn push(&mut self, elem:T){
         if self.head == CAP { panic!("Pool Error: Capacity of {} exceeded", CAP) }
-        self.data[self.head] = elem;
+        self.data[self.head] = Some(elem);
         self.head += 1;
     }
 
 
     pub fn get(&self, i:usize) -> Option<&T> {
         if i >= self.head { return None }
-        Some(&self.data[i])
+        match self.data[i]{
+            Some(ref value) => Some(value),
+            None => None,
+        }
     }
 
 
     pub fn get_mut(&mut self, i:usize) -> Option<&mut T> {
         if i >= self.head { return None }
-        Some(&mut self.data[i])
+        match self.data[i]{
+            Some(ref mut value) => Some(value),
+            None => None,
+        }
     }
 
 
@@ -64,7 +57,7 @@ where T:Default {
     pub fn insert(&mut self, i:usize, elem:T) {
         if i >= CAP { panic!("Pool Error: Capacity of {} exceeded", CAP) }
         if i >= self.head { self.head = i }
-        self.data[i] = elem;
+        self.data[i] = Some(elem);
         self.head += 1;
     }
 

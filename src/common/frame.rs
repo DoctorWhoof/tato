@@ -11,6 +11,7 @@ pub struct Frame {
 }
 
 
+// Required to leave certain frames "empty"
 impl Default for Frame {
     fn default() -> Self {
         Self {
@@ -20,7 +21,6 @@ impl Default for Frame {
         }
     }
 }
-
 
 
 impl Frame {
@@ -54,11 +54,13 @@ impl Frame {
     }
 
 
-    pub fn deserialize(&mut self, cursor:&mut Cursor<'_, u8>) {
-        self.cols = cursor.next();
-        self.rows = cursor.next();
-        for tile in self.tiles.iter_mut() {
-            tile.deserialize(cursor);
+    pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
+        Frame {
+            cols: cursor.next(),
+            rows: cursor.next(),
+            tiles: core::array::from_fn(|_|{
+                Tile::deserialize(cursor)
+            })
         }
     }
 

@@ -1,43 +1,26 @@
-use crate::{Color, Rect, Specs, Vec2, Tileset};
+use crate::{Color, Rect, Specs, Vec2};
 use libm::fabsf;
-use slotmap::{new_key_type, SlotMap};
-
-new_key_type! { struct TilesetKey; }
 
 /// Allows writing pixels to a frame buffer.
-pub struct Renderer<S:Specs> 
+pub struct FrameBuf<S:Specs> 
 where
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
     [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
 {
     pub(super) pixels: [Color; S::RENDER_WIDTH * S::RENDER_HEIGHT],
     pub(super) viewport: Rect<i32>,
-    // pub(super) tilesets: SlotMap<TilesetKey, Tileset>,
-    // pub(crate) rects:[Rect<u8>; (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)],
 }
 
-impl<S:Specs> Renderer<S>
+impl<S:Specs> FrameBuf<S>
 where
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
     [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
 {
 
     pub(super) fn new() -> Self {
-        Renderer {
+        FrameBuf {
             pixels: [Color::default(); S::RENDER_WIDTH * S::RENDER_HEIGHT],
             viewport: Rect { x:0, y:0, w:S::RENDER_WIDTH as i32, h:S::RENDER_HEIGHT as i32 },
-            // rects: core::array::from_fn( |i| {
-            //     // generates all tiles
-            //     let tile_x = i * S::TILE_WIDTH as usize;
-            //     let x = (tile_x % S::ATLAS_WIDTH) as u8;
-            //     let y = ((tile_x / S::ATLAS_WIDTH) * S::TILE_HEIGHT as usize) as u8;
-            //     Rect{
-            //         x,
-            //         y,
-            //         w:S::TILE_WIDTH,
-            //         h:S::TILE_HEIGHT
-            //     }
-            // }),
         }
     }
 

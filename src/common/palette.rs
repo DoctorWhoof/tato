@@ -1,6 +1,6 @@
 use super::*;
 
-// #[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Palette<S:Specs>
 where [(); S::COLORS_PER_PALETTE]: Sized,
 {
@@ -34,8 +34,5 @@ where [(); S::COLORS_PER_PALETTE]: Sized,
 
 
     pub fn len(&self) -> usize { self.colors.len() }
-
-
-    // Const struct specs is making a "serialize" function hard... will serialize on the AtlasBuilder/Atlas side instead
 
 }
