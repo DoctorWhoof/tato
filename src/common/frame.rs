@@ -56,8 +56,8 @@ impl Frame {
 
     pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
         Frame {
-            cols: cursor.next(),
-            rows: cursor.next(),
+            cols: cursor.advance(),
+            rows: cursor.advance(),
             tiles: core::array::from_fn(|_|{
                 Tile::deserialize(cursor)
             })

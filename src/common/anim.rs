@@ -49,12 +49,12 @@ impl Anim {
     // Warning: cursor must be already at the position in the array where the Anim block starts
     pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
         Self {
-            id: cursor.next(),
-            group: cursor.next(),
-            fps: cursor.next(),
-            len: cursor.next(),
-            palette: cursor.next(),
-            tileset: cursor.next(),
+            id: cursor.advance(),
+            group: cursor.advance(),
+            fps: cursor.advance(),
+            len: cursor.advance(),
+            palette: cursor.advance(),
+            tileset: cursor.advance(),
             frames: core::array::from_fn(|_| Frame::deserialize(cursor) )
         }
     }

@@ -14,21 +14,12 @@ impl TileID {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Tile{
     pub index:u8,
-    pub flags:u8
+    pub group:u8,
+    pub flags:u8,    //flip_h, flip_v, collider, debug_colliding
 }
 
 
 impl Tile {
-
-
-    pub fn group(&self) -> u8 { self.flags & 0b0011_1111 }
-
-
-    pub fn set_group(&mut self, value:u8) {
-        if value as usize >= GROUP_CAPACITY { panic!{"TileFlags: Error, group value range is 0 .. {}. Can't set to {}", GROUP_CAPACITY-1, value} }
-        self.flags &= 0b1100_0000;
-        self.flags |= value;
-    }
     
 
     pub fn flipped_h(&self) -> bool { get_bit(self.flags, 0)  }
@@ -43,14 +34,27 @@ impl Tile {
     pub fn set_flipped_v(&mut self, value:bool) { set_bit(&mut self.flags, value, 1) }
 
 
+    pub fn is_collider(&self) -> bool { get_bit(self.flags, 2)  }
+
+
+    pub fn set_collider(&mut self, value:bool) { set_bit(&mut self.flags, value, 2) }
+
+
+    // pub fn is_colliding(&self) -> bool { get_bit(self.flags, 3)  }
+
+
+    // pub fn set_colliding(&mut self, value:bool) { set_bit(&mut self.flags, value, 3) }
+
+
     pub fn serialize(&self) -> [u8; SIZE_OF_TILE] {
-        [self.index , self.flags]
+        [self.index , self.group, self.flags]
     }
 
     pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
         Self {
-            index: cursor.next(),
-            flags: cursor.next(),
+            index: cursor.advance(),
+            group: cursor.advance(),
+            flags: cursor.advance(),
         }
     }
 

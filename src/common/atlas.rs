@@ -45,34 +45,34 @@ where
         let mut cursor = Cursor::new(bytes);
 
         for letter in ATLAS_HEADER_TEXT.as_bytes() {
-            assert!(*letter== cursor.next(), "Renderer Error: Invalid header.")
+            assert!(*letter== cursor.advance(), "Renderer Error: Invalid header.")
         }
 
         // Header data
-        assert!(S::TILE_WIDTH ==  cursor.next(), "Renderer Error: Tile width does not match.");  // Tile Width
-        assert!(S::TILE_HEIGHT ==  cursor.next(), "Renderer Error: Tile width does not match."); // Tile Height
+        assert!(S::TILE_WIDTH ==  cursor.advance(), "Renderer Error: Tile width does not match.");  // Tile Width
+        assert!(S::TILE_HEIGHT ==  cursor.advance(), "Renderer Error: Tile width does not match."); // Tile Height
 
         // Palette Count
         assert!(                                                                                                               
-            variant_count::<PaletteEnum>() as u8 ==  cursor.next(),
+            variant_count::<PaletteEnum>() as u8 ==  cursor.advance(),
             "Renderer Error: Palette count does not match"
         );
 
         // Tileset Count
         assert!( 
-            variant_count::<TilesetEnum>() == cursor.next() as usize,
+            variant_count::<TilesetEnum>() == cursor.advance() as usize,
             "Renderer Error: Tileset count does not match"
         );
 
         // Palettes
         for palette in atlas.palettes.iter_mut(){
             #[cfg(feature = "std")]{ println!("    Initializing Palette {}", palette.id); }
-            palette.id = cursor.next();
+            palette.id = cursor.advance();
             for color in palette.colors.iter_mut() {
-                color.r =  cursor.next();
-                color.g =  cursor.next();
-                color.b =  cursor.next();
-                color.a =  cursor.next();
+                color.r =  cursor.advance();
+                color.g =  cursor.advance();
+                color.b =  cursor.advance();
+                color.a =  cursor.advance();
                 #[cfg(feature = "std")]{ println!("        {:?}", color); }
             }
             
@@ -82,19 +82,19 @@ where
         for (_i, tileset) in atlas.tilesets.iter_mut().enumerate() {
             // Header text
             for letter in TILESET_HEADER_TEXT.as_bytes() {
-                assert!(*letter == cursor.next(), "Renderer Error: Invalid tileset header." )
+                assert!(*letter == cursor.advance(), "Renderer Error: Invalid tileset header." )
             }
             
             // TODO: Check actual amount of actually available pixels
-            let pixel_count = u16::from_ne_bytes([cursor.next(), cursor.next()]);
+            let pixel_count = u16::from_ne_bytes([cursor.advance(), cursor.advance()]);
             assert!((pixel_count as usize) < (S::ATLAS_WIDTH * S::ATLAS_HEIGHT),  "Renderer error: Tileset pixels count will overflow!");
-            tileset.tile_count = cursor.next();
-            tileset.font_count = cursor.next();
-            tileset.anim_count = cursor.next();
-            tileset.tilemap_count = cursor.next();
+            tileset.tile_count = cursor.advance();
+            tileset.font_count = cursor.advance();
+            tileset.anim_count = cursor.advance();
+            tileset.tilemap_count = cursor.advance();
 
             // Debug palette
-            tileset.debug_palette = cursor.next();
+            tileset.debug_palette = cursor.advance();
             
             // Pixels
             #[cfg(feature = "std")]{ print!("Initializing tileset {} ... ", _i); }
@@ -110,7 +110,7 @@ where
                         let tile_x = col * S::TILE_WIDTH as usize;
                         let tile_y = row * S::TILE_HEIGHT as usize;
                         let dest_px = (S::ATLAS_WIDTH  * (tile_y + y)) + (tile_x + x);
-                        tileset.pixels[dest_px] = cursor.next();
+                        tileset.pixels[dest_px] = cursor.advance();
                         _pix_count += 1;
                     }
                 }

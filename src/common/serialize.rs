@@ -14,7 +14,7 @@ impl<'a, T:Copy> Cursor<'a,T> {
         }
     }
 
-    pub fn next(&mut self) -> T {
+    pub fn advance(&mut self) -> T {
         let result = self.data[self.head];
         self.head += 1;
         result
@@ -69,4 +69,10 @@ impl<const LEN:usize> ByteArray<LEN> {
         }
     }
 
+}
+
+impl<const LEN:usize> Default for ByteArray<LEN> {
+    fn default() -> Self {
+        Self::new()
+    }
 }

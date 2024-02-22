@@ -37,19 +37,13 @@ impl<T, const CAP:usize> Pool<T, CAP> {
 
     pub fn get(&self, i:usize) -> Option<&T> {
         if i >= self.head { return None }
-        match self.data[i]{
-            Some(ref value) => Some(value),
-            None => None,
-        }
+        self.data[i].as_ref()
     }
 
 
     pub fn get_mut(&mut self, i:usize) -> Option<&mut T> {
         if i >= self.head { return None }
-        match self.data[i]{
-            Some(ref mut value) => Some(value),
-            None => None,
-        }
+        self.data[i].as_mut()
     }
 
 

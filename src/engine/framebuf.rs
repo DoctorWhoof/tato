@@ -1,5 +1,4 @@
 use crate::{Color, Rect, Specs, Vec2};
-use libm::fabsf;
 
 /// Allows writing pixels to a frame buffer.
 pub struct FrameBuf<S:Specs> 
@@ -57,13 +56,13 @@ where
 
 
     #[inline]
-    pub(super) fn draw_pixel(&mut self, x:usize, y:usize, color:Color){
+    pub fn draw_pixel(&mut self, x:usize, y:usize, color:Color){
         draw_pixel(&mut self.pixels, S::RENDER_WIDTH, x, y, color)
     }
     
 
     #[inline] #[allow(unused)]
-    pub(super) fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
+    pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
         draw_line(&mut self.pixels, S::RENDER_WIDTH, x0, y0, x1, y1, color)
     }
@@ -111,36 +110,33 @@ where
 
 
 #[inline]
-pub fn draw_pixel(pixels: &mut [Color], buffer_width:usize, x:usize, y:usize, color:Color){
+pub(crate) fn draw_pixel(pixels: &mut [Color], buffer_width:usize, x:usize, y:usize, color:Color){
     let index = (y * buffer_width) + x;
+    if index > pixels.len() { return }
     pixels[index] = color;
 }
 
 
-pub fn draw_line(pixels: &mut [Color], buffer_width:usize, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
+pub(crate) fn draw_line(pixels: &mut [Color], buffer_width:usize, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
+
     let buffer_height = pixels.len() / buffer_width;
-    let x_head = i32::max(x0, 0);
-    let mut x_head = i32::min(x_head, (buffer_width-1) as i32) as f32;
+        
+    let mut x_head = (x0 as f32).clamp(0.0, buffer_width as f32);
+    let mut y_head = (y0 as f32).clamp(0.0, buffer_height as f32);
+    let x_tail = x1.clamp(0, buffer_width as i32);
+    let y_tail = y1.clamp(0, buffer_height as i32);
 
-    let y_head = i32::max(y0, 0);
-    let mut y_head = i32::min(y_head, (buffer_height-1) as i32) as f32;
-
-    let x_tail = i32::max(x1, 0);
-    let x_tail = i32::min(x_tail, (buffer_width-1) as i32) as f32;
-
-    let y_tail = i32::max(y1, 0);
-    let y_tail = i32::min(y_tail, (buffer_height-1) as i32) as f32;
-
-    let w = fabsf(x_tail - x_head);
-    let h = fabsf(y_tail - y_head);
-    let longest = if w > h { w } else { h };
-    let inc_x = w / longest;
-    let inc_y = h / longest;
+    let w = x_tail - x_head as i32;
+    let h = y_tail - y_head as i32;
+    let longest = if w.abs() > h.abs() { w.abs() } else { h.abs() };
+    let inc_x = w as f32 / longest as f32;
+    let inc_y = h as f32 / longest as f32;
 
     for _ in 0 ..= longest as usize {
         draw_pixel(pixels, buffer_width, x_head as usize, y_head as usize, color);
         x_head += inc_x;
         y_head += inc_y;
+        if x_head as usize >= buffer_width || y_head as usize >= buffer_height { break };
     }
 }
 

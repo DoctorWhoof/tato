@@ -5,14 +5,20 @@
         [ ] Galaga-like
         [ ] Maze game
 
+    [ ] Loading tilesets should allow specifying which assets to load, if the tileset contains more than the specs allow at once.
+
     [ ] Tile revamp:
         [ ] Get rid of layers, implement depth in tile flags?
         [ ] 4 bytes - Index(16 bit), Group(8 bit), Flags(flip_h, flip_v, depth)
 
     [ ] Strong typed Anim, Font and Tilemap IDs
         - Each ID struct contains the TilesetID (u8) and the asset index (u8)
+  
+    [?] Renderer should provide its internal pixels as a framebuffer, for debugging purposes (allows drawing loaded tiles separate from main frame buffer)
 
     [ ] Switch Anim frames to Pool<Frames>, so that only used frames are saved?
+
+    [ ] Combine table of contents into Atlas, including const search function 
 
     [ ] Safety checks:
         - Ensure everything works (no crash) even if world.atlas is not loaded

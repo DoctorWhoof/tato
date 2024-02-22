@@ -1,6 +1,7 @@
 use core::mem::size_of;
+// use libm::fabsf;
 use slotmap::SecondaryMap;
-use crate::*;
+use crate::{BgBuffer, ByteArray, Cursor, EntityID, Frame, Tile, Vec2, TILEMAP_LEN};
 
 const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tileset, cols(2 bytes), rows(2 bytes), palette, [tiles] 
 
@@ -20,12 +21,12 @@ pub struct Tilemap {
 impl Clone for Tilemap {
     fn clone(&self) -> Self {
         Self {
-            id: self.id.clone(),
-            tileset: self.tileset.clone(),
-            cols: self.cols.clone(),
-            rows: self.rows.clone(),
-            palette: self.palette.clone(),
-            tiles: self.tiles.clone(),
+            id: self.id,
+            tileset: self.tileset,
+            cols: self.cols,
+            rows: self.rows,
+            palette: self.palette,
+            tiles: self.tiles,
             bg_buffers: Default::default(), // no need to clone this, will be populated at runtime
         }
     }
@@ -33,19 +34,6 @@ impl Clone for Tilemap {
 
 
 impl Tilemap {
-
-    // pub fn new(id:u8) -> Self {
-    //     Self {
-    //         id,
-    //         tileset: 0,
-    //         cols:1,
-    //         rows:1,
-    //         palette: 0,
-    //         bg_buffers: Default::default(),
-    //         tiles:core::array::from_fn(|_| Tile::default() ),
-    //     }
-    // }
-
 
     pub fn id(&self) -> u8 { self.id }
 
@@ -72,11 +60,11 @@ impl Tilemap {
 
     pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
         Self {
-            id: cursor.next(),
-            tileset: cursor.next(),
-            cols: u16::from_ne_bytes([cursor.next(), cursor.next()]),
-            rows: u16::from_ne_bytes([cursor.next(), cursor.next()]),
-            palette: cursor.next(),
+            id: cursor.advance(),
+            tileset: cursor.advance(),
+            cols: u16::from_ne_bytes([cursor.advance(), cursor.advance()]),
+            rows: u16::from_ne_bytes([cursor.advance(), cursor.advance()]),
+            palette: cursor.advance(),
             bg_buffers: Default::default(),
             tiles: core::array::from_fn(|_|{
                 Tile::deserialize(cursor)
@@ -142,7 +130,7 @@ impl Tilemap {
     fn get_index(&self, col:u16, row:u16) -> usize {
         #[cfg(debug_assertions)]
         if col >= self.cols || row >= self.rows {
-            panic!("Invalid tilemap coordinates")
+            panic!("Invalid tilemap coordinates {}, {}", col, row)
         }
         (row as usize * self.cols as usize) + col as usize
     }
@@ -164,6 +152,45 @@ impl Tilemap {
 
 
     pub fn height(&self, tile_height:u8) -> usize { self.rows as usize * tile_height as usize }
+
+
+    /// Checks if a tile on the given line coordinates is a collider, returns the collider tile and its coordinates, if any.
+    pub fn collide_with_line(&self, x0:i32, y0:i32, x1:i32, y1:i32) -> Option<(Tile, Vec2<i32>)> { 
+
+        if (x0, y0) == (x1, y1) { return  None }
+
+        let w = x1 - x0;
+        let h = y1 - y0;
+        
+        let longest = if w.abs() > h.abs() { w.abs() } else { h.abs() };
+        let inc_x = w as f32 / longest as f32;
+        let inc_y = h as f32 / longest as f32;
+
+        let mut float_x = x0 as f32;
+        let mut float_y = y0 as f32;
+
+        for _ in 0 ..= longest as usize {
+            float_x += inc_x;
+            float_y += inc_y;
+            let x = float_x.round() as i32;
+            let y = float_y.round() as i32;
+            if x < 0 || x >= self.cols as i32 { return None };
+            if y < 0 || y >= self.rows as i32 { return None };
+            if (x != x0) || (y != y0){
+                let tile = self.get_tile(
+                    u16::try_from(x).unwrap(),
+                    u16::try_from(y).unwrap()
+                );
+                if tile.is_collider() {
+                    // println!("collision {},{} -> {},{}", x0, y0, x1, y1);
+                    // println!("{},{},{}; {},{}: {:?}", inc_x, inc_y, longest, x, y, tile);
+                    return Some((tile, Vec2{x, y}))
+                }  
+            }
+        }
+        None
+    }
+    
 
     
 }

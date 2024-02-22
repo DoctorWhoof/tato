@@ -27,10 +27,10 @@ impl Font {
 
     pub fn deserialize(cursor:&mut Cursor<'_, u8>) -> Self {
         Self {
-            id: cursor.next(),
-            start_index: cursor.next(),
-            len: cursor.next(),
-            tileset_id: cursor.next(),
+            id: cursor.advance(),
+            start_index: cursor.advance(),
+            len: cursor.advance(),
+            tileset_id: cursor.advance(),
         }
     }
 

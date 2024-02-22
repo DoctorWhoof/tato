@@ -47,3 +47,15 @@ where
     }
 
 }
+
+impl<S:Specs> Default for Tileset<S>
+where
+    [(); S::FONTS_PER_TILESET]: Sized,
+    [(); S::ANIMS_PER_TILESET]: Sized,
+    [(); S::TILEMAPS_PER_TILESET]: Sized,
+    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
