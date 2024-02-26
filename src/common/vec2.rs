@@ -43,9 +43,14 @@ impl<T:Float> Vec2<T> {
         Self{ x:T::zero(), y:T::zero() }
     }
 
+
     pub fn len(&self) -> T {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
-        // ((self.x * self.x) + (self.y * self.y)).sqrt().abs()
+    }
+
+
+    pub fn is_longer_than_zero(&self) -> bool {
+        self.x.abs() > T::zero() || self.y.abs() > T::zero()
     }
 
 
@@ -80,10 +85,61 @@ impl<T:Float> Vec2<T> {
         }
     }
 
+    pub fn dot(&self, other: &Self) -> T {
+        (self.x * other.x) + (self.y * other.y)
+    }
+
+    pub fn scale(&self, factor: T) -> Self {
+        Vec2{
+            x: self.x * factor,
+            y: self.y * factor
+        }
+    }
+
+    // TODO: implement as Sub trait
+    pub fn subtract(&self, other: &Self) -> Self {
+        Vec2{
+            x:self.x - other.x,
+            y:self.y - other.y
+        }
+    }
+
+    pub fn reflect(velocity: Self, collision_normal: T) -> Self {
+        let two = T::one() + T::one();
+        let normal = Vec2{
+            x:collision_normal.cos(),
+            y:collision_normal.sin()
+        };
+        let dot_product = velocity.dot(&normal);
+        velocity.subtract(&normal.scale(two * dot_product))
+    }
+
+    pub fn weighted_add(v1:Self, v2:Self, weight_1: T, weight_2: T) -> Self {
+        Self{
+            x: ((v1.x * weight_1) + (v2.x * weight_2)),
+            y: ((v1.y * weight_1) + (v2.y * weight_2)),
+        }
+    }
+
+    // pub fn blend(v1:Self, v2:Self, weight_1: T, weight_2: T, invert_y:bool) -> Self {
+    //     let two = T::one() + T::one();
+    //     if invert_y {
+    //         Self{
+    //             x: ((v1.x * weight_1) + (v2.x * weight_2)) / two,
+    //             y: ((v1.y * weight_1) + (-v2.y * weight_2)) / two,
+    //         }
+    //     } else {
+    //         Self{
+    //             x: ((v1.x * weight_1) + (v2.x * weight_2)) / two,
+    //             y: ((v1.y * weight_1) +( v2.y * weight_2)) / two,
+    //         }
+    //     }
+    // }
+
 }
 
 
-impl<T> core::ops::Add<Vec2<T>> for Vec2<T>
+impl<T> Add<Vec2<T>> for Vec2<T>
 where T:Add<Output = T> + Sub<Output = T> + Copy + PartialOrd {
     type Output = Self;
 
@@ -95,7 +151,7 @@ where T:Add<Output = T> + Sub<Output = T> + Copy + PartialOrd {
     }
 }
 
-impl<T> core::ops::Sub<Vec2<T>> for Vec2<T>
+impl<T> Sub<Vec2<T>> for Vec2<T>
 where T:Add<Output = T> + Sub<Output = T> + Copy + PartialOrd {
     type Output = Self;
 

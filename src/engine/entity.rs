@@ -1,8 +1,6 @@
 use crate::*;
 use slotmap::new_key_type;
-use core::f32::consts::PI;
 
-const COL_MARGIN:f32 = 0.25;
 
 new_key_type! {
     /// A key to the World slotmap containing entities.
@@ -20,6 +18,7 @@ pub struct Entity {
     pub visible: bool, //TODO: Flags? Would allow mirroring whole entity, with colliders and offset properly mirrored.
     pub shape: Shape,
     pub pos: Vec2<f32>,
+    // pub vel: Vec2<f32>,
     pub collider: Option<Collider>,
     pub render_offset: Vec2<i8>,
 }
@@ -36,6 +35,7 @@ impl Entity {
             visible: true,
             shape: Shape::None,
             pos: Vec2 { x: 0.0, y: 0.0 },
+            // vel: Vec2 { x: 0.0, y: 0.0 },
             render_offset: Vec2 { x: 0, y: 0 },
             collider: None,
         }
@@ -72,101 +72,109 @@ impl Entity {
         }
     }
 
-    #[allow(clippy::question_mark)]// I'd like to fix this as clippy suggests, but doesn't work?
-    pub fn check_collision(&mut self, vel:&mut Vec2<f32>, other:&Self, other_vel:Vec2<f32>) -> Option<Collision<f32>> {
-        let Some(col) = &self.collider else { return None };
-        let Some(other_col) = &other.collider else { return None };
-        match col.kind {
-            ColliderKind::Point => {
-                match other_col.kind {
-                    // Point to point
-                    ColliderKind::Point => {
-                        if self.pos.floor() == other.pos.floor() {
-                            Some(Collision{
-                                tile:None,
-                                point: self.pos,
-                                normal: (-vel.y).atan2(-vel.x), //TODO: "Bounce" off each other, instead of just reversing
-                                collider_velocity: other_vel
-                            })
-                        } else {
-                            None
-                        }
-                    },
-                    // Point to Rect
-                    ColliderKind::Rect(mut other_rect) => {
-                        // Apply position to rect
-                        other_rect.x += other.pos.x;
-                        other_rect.y += other.pos.y;
-                        if other_rect.contains(self.pos.x, self.pos.y){
-                            let trajectory = Ray { origin: self.pos, angle: vel.y.atan2(vel.x) + PI };
-                            if let Some((col_point, normal)) = other_rect.intersect_ray(&trajectory) {
-                                Some(Collision{
-                                    tile: None,
-                                    point: col_point,
-                                    normal,
-                                    collider_velocity: other_vel,
-                                })
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    },
-                }
-            }
-            ColliderKind::Rect(_rect) => {
-                None
-            }
-        }
+    pub fn world_collider(&self) -> Option<Collider> {
+        let col= self.collider?;
+        let mut world_collider = col;
+        world_collider.pos.x += self.pos.x;
+        world_collider.pos.y += self.pos.y;
+        Some(world_collider)
     }
 
+    // #[allow(clippy::question_mark)]// I'd like to fix this as clippy suggests, but doesn't work?
+    // pub fn check_collision(&mut self, vel:&mut Vec2<f32>, other:&Self, other_vel:Vec2<f32>) -> Option<Collision<f32>> {
+    //     let Some(col) = &self.collider else { return None };
+    //     let Some(other_col) = &other.collider else { return None };
+    //     match col.kind {
+    //         ColliderKind::Point(point) => {
+    //             match other_col.kind {
+    //                 // Point to point
+    //                 ColliderKind::Point => {
+    //                     if self.pos.floor() == other.pos.floor() {
+    //                         Some(Collision{
+    //                             tile:None,
+    //                             point: self.pos,
+    //                             normal: (-vel.y).atan2(-vel.x), //TODO: "Bounce" off each other, instead of just reversing
+    //                             collider_velocity: other_vel
+    //                         })
+    //                     } else {
+    //                         None
+    //                     }
+    //                 },
+    //                 // Point to Rect
+    //                 ColliderKind::Rect(mut other_rect) => {
+    //                     // Apply position to rect
+    //                     other_rect.x += other.pos.x;
+    //                     other_rect.y += other.pos.y;
+    //                     if other_rect.contains(self.pos.x, self.pos.y){
+    //                         let trajectory = Ray { origin: self.pos, angle: vel.y.atan2(vel.x) + PI };
+    //                         if let Some((col_point, normal)) = other_rect.intersect_ray(&trajectory) {
+    //                             Some(Collision{
+    //                                 tile: None,
+    //                                 point: col_point,
+    //                                 normal,
+    //                                 collider_velocity: other_vel,
+    //                             })
+    //                         } else {
+    //                             None
+    //                         }
+    //                     } else {
+    //                         None
+    //                     }
+    //                 },
+    //             }
+    //         }
+    //         ColliderKind::Rect(_rect) => {
+    //             None
+    //         }
+    //     }
+    // }
 
-    pub fn move_and_collide(&mut self, vel:&mut Vec2<f32>, other:&Self, other_vel:Vec2<f32>, elapsed:f32) -> Option<Collision<f32>> {
+
+    // pub fn move_and_collide(&mut self, vel:&mut Vec2<f32>, other:&Self, other_vel:Vec2<f32>, elapsed:f32) -> Option<Collision<f32>> {
         
-        let prev_pos = self.pos;
-        let mut probe_x = self.clone();
-        let mut probe_y = self.clone();
+    //     let prev_pos = self.pos;
+    //     let mut probe_x = self.clone();
+    //     let mut probe_y = self.clone();
 
-        probe_x.pos.x += vel.x * elapsed;
-        let result_x = probe_x.check_collision(vel, other, other_vel);
+    //     probe_x.pos.x += vel.x * elapsed;
+    //     let result_x = probe_x.check_collision(vel, other, other_vel);
         
-        probe_y.pos.y += vel.y * elapsed;
-        let result_y = probe_y.check_collision(vel, other, other_vel);
+    //     probe_y.pos.y += vel.y * elapsed;
+    //     let result_y = probe_y.check_collision(vel, other, other_vel);
 
-        self.pos.x += vel.x * elapsed;
-        self.pos.y += vel.y * elapsed;
+    //     self.pos.x += vel.x * elapsed;
+    //     self.pos.y += vel.y * elapsed;
 
-        fn set_outgoing_angle(vel:&mut Vec2<f32>, incoming_angle:f32, col:&Collision<f32>) {
-            let outgoing_angle = mirror_angle(incoming_angle, col.normal);
-            let len = vel.len();
-            vel.x = len * outgoing_angle.cos();
-            vel.y = len * outgoing_angle.sin();
-            // prevents "grabbing" the puck? TODO: Needs testing
-            vel.x += col.collider_velocity.x;
-            vel.y += col.collider_velocity.y;
-        }
+    //     fn set_outgoing_angle(vel:&mut Vec2<f32>, incoming_angle:f32, col:&Collision<f32>) {
+    //         let outgoing_angle = mirror_angle(incoming_angle, col.normal);
+    //         let len = vel.len();
+    //         vel.x = len * outgoing_angle.cos();
+    //         vel.y = len * outgoing_angle.sin();
+    //         // prevents "grabbing" the puck? TODO: Needs testing
+    //         vel.x += col.collider_velocity.x;
+    //         vel.y += col.collider_velocity.y;
+    //     }
 
-        if result_x.is_some() || result_y.is_some() {
-            let incoming_angle = self.pos.angle_between(&prev_pos);
+    //     if result_x.is_some() || result_y.is_some() {
+    //         let incoming_angle = self.pos.angle_between(&prev_pos);
 
-            // Resolution in X
-            if let Some(col) = &result_x {
-                set_outgoing_angle(vel, incoming_angle, col);
-                let margin = COL_MARGIN * vel.x.signum();
-                self.pos.x = col.point.x + margin;
-                return result_x;
-            }
+    //         // Resolution in X
+    //         if let Some(col) = &result_x {
+    //             set_outgoing_angle(vel, incoming_angle, col);
+    //             let margin = COL_MARGIN * vel.x.signum();
+    //             self.pos.x = col.point.x + margin;
+    //             return result_x;
+    //         }
 
-            // Resolution in Y
-            if let Some(col) = &result_y {
-                set_outgoing_angle(vel, incoming_angle, col);
-                let margin = COL_MARGIN * vel.y.signum();
-                self.pos.y = col.point.y + margin;
-                return result_y;
-            }
+    //         // Resolution in Y
+    //         if let Some(col) = &result_y {
+    //             set_outgoing_angle(vel, incoming_angle, col);
+    //             let margin = COL_MARGIN * vel.y.signum();
+    //             self.pos.y = col.point.y + margin;
+    //             return result_y;
+    //         }
 
-        } 
-        None
-    }
+    //     } 
+    //     None
+    // }
 }

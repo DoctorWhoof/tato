@@ -38,7 +38,7 @@ impl LayerPool {
     }
 
 
-    pub fn insert_layer(&mut self) -> LayerID {
+    pub fn add_layer(&mut self) -> LayerID {
         let key = self.layers.insert_with_key(|id|{
             Layer{
                 id,
@@ -54,7 +54,7 @@ impl LayerPool {
     }
 
 
-    pub fn insert_entity(&mut self, layer_id:LayerID) -> &mut Entity {
+    pub fn add_entity(&mut self, layer_id:LayerID) -> &mut Entity {
         if let Some(layer) = self.layers.get_mut(layer_id) {
             // Key generated when inserting the "layer_id" into self.entities
             // is re-used to insert the actual Entity into the Layer! Phew...

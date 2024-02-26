@@ -3,6 +3,9 @@ use slotmap::SlotMap;
 use crate::*;
 use core::mem::variant_count;
 
+const COLLISION_LAYER_COUNT:usize = 1;
+const MAX_COLLIDERS_PER_LAYER:usize = 6;
+
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
 pub struct World<
@@ -45,6 +48,14 @@ pub struct World<
     time_update: f32,
     time_elapsed: f32,
     time_idle: f32,
+
+    // pub collisions_probes:[Option<CollisionProbe<f32>>; MAX_COLLISIONS],
+    // collision_probes_head:usize,
+
+    pub collision_layers:[[Option<CollisionProbe<f32>>; MAX_COLLIDERS_PER_LAYER]; COLLISION_LAYER_COUNT],  // collision masks only allow 8 layers for now
+    collision_layer_heads:[usize; COLLISION_LAYER_COUNT],
+    // colliders: [Option<Collider>; MAX_COLLIDERS],
+    // colliders_head:usize,
 
     // Data Pools
     entities:SlotMap<EntityID, Entity>,    // Stores just the layer where each entity is
@@ -96,6 +107,14 @@ where
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
+            // collisions_probes: Default::default(),
+            // collision_probes_head: 0,
+
+            collision_layers: Default::default(),
+            collision_layer_heads: Default::default(),
+            // colliders: Default::default(),
+            // colliders_head: 0,
+
             entities: Default::default(), // entities: SlotMap::with_capacity_and_key(64),
         }
     }
@@ -131,17 +150,7 @@ where
         self.cam.h = rect.h as f32;
     }
 
-    // pub fn insert_layer(&mut self, palette:impl IntoPrimitive) -> LayerID {
-    // pub fn insert_layer(&mut self) -> LayerID {
-    //     self.layers.insert_layer()
-    // }
-
-    // Returns a reference to the entity right away so you can easily edit its fields
-    // pub fn insert_entity(&mut self, layer_id: LayerID) -> &mut Entity {
-    //     self.layers.insert_entity(layer_id)
-    // }
-
-    pub fn insert_entity(&mut self, depth:u8) -> EntityID {
+    pub fn add_entity(&mut self, depth:u8) -> EntityID {
         self.entities.insert_with_key(|key|{
             Entity::new(key, depth)
         })
@@ -199,103 +208,77 @@ where
         self.entities[id].shape = shape;
     }
 
+    // Internal
+    fn add_probe_to_colliders(&mut self, probe:CollisionProbe<f32>) {
+        let layer = probe.collider.layer as usize;
+        let collider_index = &mut self.collision_layer_heads[layer];
+        self.collision_layers[layer][*collider_index] = Some(probe);
+        *collider_index += 1;
+    }
 
-    pub fn move_and_collide( &mut self,entity_id: EntityID,entity_vel: &mut Vec2<f32>,other_id: EntityID,other_vel: Vec2<f32>) -> Option<Collision<f32>> {
-        let other = self.entities.get(other_id).unwrap().clone();
-        let entity = self.entities.get_mut(entity_id)?;
-
-        entity.move_and_collide(entity_vel, &other, other_vel, self.time_elapsed)
+    pub fn use_collider(&mut self, entity_id:EntityID, vel:Vec2<f32>) {
+        let entity = &self.entities[entity_id];
+        
+        if let Some(ref mut collider) = entity.world_collider() {
+            if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = collider.kind {
+                let rect = self.get_entity_rect(entity);
+                *w = rect.w;
+                *h = rect.h;
+                *tile_width = S::TILE_WIDTH;
+                *tile_height = S::TILE_HEIGHT;
+            }
+            let probe = CollisionProbe {
+                entity_id,
+                start_position:entity.pos,
+                collider: *collider,
+                velocity: vel
+            };
+            self.add_probe_to_colliders(probe)
+        }
     }
 
 
+    pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, bounce:f32) -> Option<Collision<f32>> {
+        let mut entity_clone = self.entities.get(entity_id)?.clone();
+        let start_position = entity_clone.pos;
+        entity_clone.pos.x += velocity.x * self.time_elapsed;
+        entity_clone.pos.y += velocity.y * self.time_elapsed;
 
+        // let mut result:Option<Collision<f32>> = None;
+        if let Some(collider) = entity_clone.world_collider() {
+            if !collider.enabled { return None }
+            let probe = CollisionProbe {
+                entity_id,
+                start_position,
+                collider,
+                velocity
+            };
 
-    // // Collides a POINT to a RECT.
-    // // TODO: Collider types: point, rect, circle, tilemap; then take colliders as input
-    // pub fn move_and_collide(
-    //     &mut self,
-    //     entity_id: EntityID,
-    //     entity_vel: &mut Vec2<f32>,
-    //     collider_id: EntityID,
-    //     collider_vel: &Vec2<f32>,
-    //     bg: EntityID,
-    // ) {
-    //     let mut collision: Option<Collision<f32>> = None;
-    //     let mut pos = self.get_position(entity_id);
-    //     // let mut rect = self.get_entity_rect_from_id(entity_id);
-    //     let col_rect = self.get_entity_rect_from_id(collider_id);
+            for other in &self.collision_layers[collider.mask as usize]{
+                let Some(ref other_probe) = other else { continue };
+                
+                    if let Some(response) = match other_probe.collider.kind {
+                        ColliderKind::Point | ColliderKind::Rect { .. } => {
+                            probe.collision_response(other_probe, bounce, None, self.time_elapsed)
+                        },
+                        ColliderKind::Tilemap { .. } => {
+                            let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
+                            let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
+                            probe.collision_response(other_probe, bounce, Some(tilemap), self.time_elapsed)
+                        },
+                    }{
+                        self.set_position(entity_id, response.point.x, response.point.y);
+                        return Some(response)
+                    }
+            }
+            // By adding the entity's collider at the end of this step
+            // we never have to worry about it colliding with itself.
+            self.add_probe_to_colliders(probe);
+        }
+        self.set_position(entity_id, entity_clone.pos.x, entity_clone.pos.y);
+        None
+    }
 
-    //     let prev_pos = pos;
-    //     // let prev_pos = if col_rect.contains(pos.x, pos.y) {
-    //     //     // Uh oh, collider is overlapping initial position, before we even move! 
-    //     //     rect.deintersect(*entity_vel, &col_rect);
-    //     //     let offset = self.get_entity(entity_id).unwrap().render_offset;
-    //     //     rect.pos() - offset.to_f32()
-    //     // } else {
-    //     //     // Safe to return to this position
-    //     //     pos
-    //     // };
-
-    //     // Advance pos (not source entity.pos yet)
-    //     pos.x += entity_vel.x * self.time_elapsed;
-    //     pos.y += entity_vel.y * self.time_elapsed;
-    //     // We add PI to the angle so that it points to the direction the point came from, out of the rectangle
-    //     let trajectory = Ray { origin: pos, angle: entity_vel.y.atan2(entity_vel.x) + PI };
-
-    //     // Check Collider
-    //     if col_rect.contains(pos.x, pos.y) {
-    //         // Entity movement
-    //         if let Some((point, normal)) = col_rect.intersect_ray(&trajectory) {
-    //             collision = Some(Collision{
-    //                 tile: None,
-    //                 point,
-    //                 normal,
-    //                 collider_velocity: *collider_vel,
-    //             });
-    //         } else {
-    //             println!("Point intersection fail! This message should never print...");
-    //         }
-    //     } else {
-    //         // Check Tilemap
-    //         let move_x = Vec2 {
-    //             x: pos.x,
-    //             y: prev_pos.y,
-    //         };
-    //         let move_y = Vec2 {
-    //             x: prev_pos.x,
-    //             y: pos.y,
-    //         };
-    //         if let Some(col) = self.tilemap_raycast(bg, prev_pos.x, prev_pos.y, move_x.x, move_x.y) {
-    //             collision = Some(col);
-    //         } else if let Some(col) = self.tilemap_raycast(bg, prev_pos.x, prev_pos.y, move_y.x, move_y.y){
-    //             collision = Some(col);
-    //         }
-    //     }
-
-    //     if let Some(col) = collision {
-    //         let incoming_angle = pos.angle_between(&prev_pos);
-    //         let outgoing_angle = mirror_angle(incoming_angle, col.normal);
-
-    //         // Adjust velocity reference (will be applied on next frame)
-    //         let len = entity_vel.len();
-    //         entity_vel.x = len * outgoing_angle.cos();
-    //         entity_vel.y = len * outgoing_angle.sin();
-
-    //         // prevents "grabbing" the puck? TODO: Needs testing
-    //         entity_vel.x += col.collider_velocity.x;
-    //         entity_vel.y += col.collider_velocity.y;
-        
-    //         // pos = prev_pos;
-    //         // pos = col.point;
-    //     }
-
-    //     // Apply position after transforms
-    //     if let Some(ent) = self.layers.get_mut(entity_id) {            
-    //         ent.pos = pos;
-    //     };
-        
-
-    // }
 
     pub fn get_position(&self, id: EntityID) -> Vec2<f32> {
         self.entities[id].pos
@@ -413,7 +396,8 @@ where
             tile: Some(collision.0),
             point: line_collision.point,
             normal: line_collision.normal,
-            collider_velocity: Vec2::default(),
+            entity_id: id,
+            velocity: Vec2::default(),
         })
         // #[cfg(feature = "std")]{
         //     println!("collision {},{} to {},{}: {:#?}", start_col, start_row, end_col, end_row, result);
@@ -425,27 +409,37 @@ where
         self.time = time_now;
 
         self.time_elapsed = quantize(self.time_elapsed_buffer.average(), 1.0 / 360.0);
+
+        // Reset collisions
+        // self.collision_probes_head = 0;
+        // for probe in self.collisions_probes.iter_mut() {
+        //     *probe = None
+        // }
+
+        for layer in 0 .. self.collision_layers.len() {
+            let head = &mut self.collision_layer_heads[layer];
+            for used_slot in 0 .. *head {
+                self.collision_layers[layer][used_slot] = None;
+            }
+            *head = 0;
+        }
     }
 
     // Fills the pixel buffer with current entities
     pub fn render_frame(&mut self) {
         // Iterate entities
+        let cam_rect = Rect {
+            x: self.cam.x + self.framebuf.viewport.x as f32,
+            y: self.cam.y + self.framebuf.viewport.y as f32,
+            w: self.framebuf.viewport.w as f32,
+            h: self.framebuf.viewport.h as f32,
+        };
+        let tile_width = S::TILE_WIDTH;
+        let tile_height = S::TILE_HEIGHT;
         for entity in self.entities.values() {
-            if !entity.visible {
-                continue;
-            }
-            let pos = entity.pos;
-            let cam_rect = Rect {
-                x: self.cam.x + self.framebuf.viewport.x as f32,
-                y: self.cam.y + self.framebuf.viewport.y as f32,
-                w: self.framebuf.viewport.w as f32,
-                h: self.framebuf.viewport.h as f32,
-            };
-
-            let tile_width = S::TILE_WIDTH;
-            let tile_height = S::TILE_HEIGHT;
-
             // Draw entity shape
+            if !entity.visible { continue }
+            let pos = entity.pos;
             match entity.shape {
                 Shape::None => {
                     // Do nothing!
@@ -596,28 +590,6 @@ where
                 }
             }
 
-            // Draw collider Wireframe
-            #[cfg(debug_assertions)]
-            if self.debug_colliders {
-                if let Some(col) = &entity.collider {
-                    match col.kind {
-                        ColliderKind::Point =>{
-                            let pos = entity.pos;
-                            if cam_rect.contains(pos.x, pos.y) {
-                                self.framebuf.draw_pixel(pos.x as usize, pos.y as usize, COLOR_COLLIDER);
-                            }
-                        },
-                        ColliderKind::Rect(rect) =>{
-                            let world_col = entity.world_rect(rect, false);
-                            let screen_col = world_col - cam_rect.pos();
-                            if cam_rect.overlaps(&world_col) {
-                                self.framebuf.draw_rect(screen_col.to_i32(), COLOR_COLLIDER);
-                            }
-                        },
-                    }
-                };
-            }
-
             // Draw pivot point
             #[cfg(debug_assertions)]
             if self.debug_pivot {
@@ -671,7 +643,25 @@ where
                 }
             }
         }
+
+        // Draw collider Wireframe
+        #[cfg(debug_assertions)]
+        if self.debug_colliders {
+            // Probes
+            // for probe in &self.collisions_probes {
+            //     let Some(probe) = probe else { continue };
+            //     Self::draw_collider(&mut self.framebuf, &cam_rect, &probe.collider, COLOR_COLLISION_PROBE);
+            // }
+            // Colliders
+            for layer in &self.collision_layers {
+                for probe in layer {
+                    let Some(probe) = probe else { continue };
+                    Self::draw_collider(&mut self.framebuf, &cam_rect, &probe.collider, COLOR_COLLIDER);
+                }
+            }
+        }
     }
+
 
     pub fn finish_frame(&mut self, time_now: f32) {
         self.time_update_buffer.push(time_now - self.time);
@@ -695,6 +685,25 @@ where
         //     self.time_idle = 0.0;
         // }
     }
+
+    fn draw_collider(framebuf:&mut FrameBuf<S>, cam_rect:&Rect<f32>, col:&Collider, color:Color){
+        match col.kind {
+            ColliderKind::Point =>{
+                let pos = col.pos;
+                if cam_rect.contains(pos.x, pos.y) {
+                    framebuf.draw_pixel(pos.x as usize, pos.y as usize, color);
+                }
+            },
+            ColliderKind::Rect{..} | ColliderKind::Tilemap{..} =>{
+                let rect = Rect::from(*col);
+                let screen_col = rect - cam_rect.pos();
+                if cam_rect.overlaps(&rect) {
+                    framebuf.draw_rect(screen_col.to_i32(), color);
+                }
+            },
+        }
+    }
+
 
     pub fn draw_text(
         &mut self,

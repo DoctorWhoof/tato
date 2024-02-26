@@ -26,22 +26,24 @@ async fn main() {
     let atlas: GameAtlas = Atlas::load(include_bytes!("../assets/converted/atlas"));
     let mut world: GameWorld = World::new();
     world.debug_colliders = true;
+    // world.debug_pivot = true;   
     world.render.load_palettes_from_atlas(&atlas);
     world.render.push_tileset(&atlas, TilesetID::Hud);
     world.render.push_tileset(&atlas, TilesetID::Bg);
     world.render.push_tileset(&atlas, TilesetID::Sprites);
 
-    let bg = world.insert_entity(0);
+    let bg = world.add_entity(0);
     world.set_shape(bg, Shape::Bg {
         tileset: TilesetID::Bg.into(),
         tilemap_id: 0,
     });
+    world.set_collider(bg, Collider::new_tilemap_collider());
 
     let mut paddle = Paddle {
         id: {
-            let paddle = world.insert_entity(0);
+            let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            world.set_collider(paddle, Collider::new_rect(-12.0, -8.0, 24.0, 16.0, 0, 0));
+            world.set_collider(paddle, Collider::from(spud::Rect{x:-12.0, y:-8.0, w:24.0, h:16.0}));
             world.set_position(paddle, 128.0, 168.0);
             world.set_render_offset(paddle, -12,-8);
             paddle
@@ -50,13 +52,13 @@ async fn main() {
         vel: spud::Vec2::default(),
     };
 
-    let initial_pos = spud::Vec2 { x: 128.0, y: 128.0 };
+    let initial_pos = spud::Vec2 { x: 128.0, y: 124.0 };
     let mut puck = Puck {
         id: {
-            let puck = world.insert_entity(0);
+            let puck = world.add_entity(0);
             world.set_shape(puck, Shape::sprite_from_anim(TilesetID::Sprites, 1));
             world.set_position(puck, initial_pos.x, initial_pos.y);
-            world.set_collider(puck, Collider::new_point(0, 0));
+            world.set_collider(puck, Collider::from(Vec2::zero()));
             world.set_render_offset(puck, -3, -4 );
             puck
         },
@@ -99,8 +101,9 @@ async fn main() {
             }
         }
 
+        world.use_collider(bg, Vec2::zero());
         update::move_player(&mut paddle, &mut world);
-        update::move_puck(&mut puck, &paddle, &mut world);
+        update::move_puck(&mut puck, &mut world);
 
         // world.resolve_collisions();
 

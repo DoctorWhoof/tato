@@ -36,6 +36,7 @@ pub const TILEMAP_LEN:usize = 48 * 48;
 pub const COLOR_TRANSPARENCY:Color = Color{r:0,g:255,b:0,a:255};
 pub const COLOR_ENTITY_RECT:Color = Color{r:0,g:255,b:255,a:255};
 pub const COLOR_COLLIDER:Color = Color{r:255,g:128,b:128,a:255};
+pub const COLOR_COLLISION_PROBE:Color = Color{r:255,g:128,b:0,a:255};
 
 
 // #[cfg(test)]

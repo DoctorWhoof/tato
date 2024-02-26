@@ -1,13 +1,7 @@
 use crate::{GameWorld, Paddle, Puck};
-use spud::{EntityID, Vec2};
-// use spud::{mirror, Collision, EntityID, Tile, Vec2, RAD_TO_DEG};
+use spud::Vec2;
 
 pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
-    let elapsed = world.time_elapsed();
-
-    let Some(ent) = world.get_entity_mut(paddle.id) else {
-        return;
-    };
     let speed_x = 20.0;
     let speed_y = 10.0;
 
@@ -42,38 +36,29 @@ pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
     paddle.vel.x = paddle.vel.x.clamp(-max_speed_x, max_speed_x);
     paddle.vel.y = paddle.vel.y.clamp(-max_speed_y, max_speed_y);
 
-    ent.pos.x += paddle.vel.x * elapsed;
-    ent.pos.y += paddle.vel.y * elapsed;
+    world.move_with_collision(paddle.id, paddle.vel, 0.0);
 
-    // Limits
-    if ent.pos.x > max_x {
-        paddle.vel.x = 0.0;
-        ent.pos.x = max_x;
-    } else if ent.pos.x < min_x {
-        paddle.vel.x = 0.0;
-        ent.pos.x = min_x;
-    }
+    if let Some(ent) = world.get_entity_mut(paddle.id) {
+        if ent.pos.x > max_x {
+            paddle.vel.x = 0.0;
+            ent.pos.x = max_x;
+        } else if ent.pos.x < min_x {
+            paddle.vel.x = 0.0;
+            ent.pos.x = min_x;
+        }
 
-    if ent.pos.y > max_y {
-        paddle.vel.y = 0.0;
-        ent.pos.y = max_y;
-    } else if ent.pos.y < min_y {
-        paddle.vel.y = 0.0;
-        ent.pos.y = min_y;
-    }
-
-    // Remove any residual velocity
-    if paddle.vel.x < speed_x && paddle.vel.x > -speed_x {
-        paddle.vel.x = 0.0;
-    }
-
-    if paddle.vel.y < speed_y && paddle.vel.y > -speed_y {
-        paddle.vel.y = 0.0;
+        if ent.pos.y > max_y {
+            paddle.vel.y = 0.0;
+            ent.pos.y = max_y;
+        } else if ent.pos.y < min_y {
+            paddle.vel.y = 0.0;
+            ent.pos.y = min_y;
+        }
     }
 }
 
 
-pub fn move_puck(puck: &mut Puck, paddle: &Paddle, world: &mut GameWorld) {
+pub fn move_puck(puck: &mut Puck, world: &mut GameWorld) {
     let max_speed = 120.0;
     let safety_speed = 180.0;
     let deccelerate_rate = 15.0;
@@ -94,7 +79,9 @@ pub fn move_puck(puck: &mut Puck, paddle: &Paddle, world: &mut GameWorld) {
         }
     }
 
-    world.move_and_collide(puck.id, &mut puck.vel, paddle.id, paddle.vel);
+    if let Some(col) = world.move_with_collision(puck.id, puck.vel, 1.0){
+        puck.vel = col.velocity
+    };
 
     if let Some(ent) = world.get_entity_mut(puck.id) {
         if ent.pos.x < 0.0 || ent.pos.x > 256.0 || ent.pos.y < 0.0 || ent.pos.y > 190.0 {
@@ -103,58 +90,3 @@ pub fn move_puck(puck: &mut Puck, paddle: &Paddle, world: &mut GameWorld) {
         }
     }
 }
-
-// TODO: Move to engine math
-
-// fn point_to_rect_normal(x:f32, y:f32, rect: &Rect<f32>) -> f32 {
-//     let distance_top = (y - rect.y).abs().floor();
-//     let distance_bottom = (y - rect.bottom()).abs().floor();
-//     let distance_left = (x - rect.x).abs();
-//     let distance_right = (x - rect.right()).abs();
-
-//     let min_distance = f32::min(
-//         f32::min(distance_top, distance_bottom),
-//         f32::min(distance_left, distance_right),
-//     );
-
-//     const RIGHT:f32 = 0.0 * DEG_TO_RAD;
-//     const UP:f32 = 90.0 * DEG_TO_RAD;
-//     const LEFT:f32 = 180.0 * DEG_TO_RAD;
-//     const DOWN:f32 = 270.0 * DEG_TO_RAD;
-
-//     if min_distance == distance_top {
-//         println!("Top");
-//         UP
-//     } else if min_distance == distance_bottom {
-//         println!("Bottom");
-//         DOWN
-//     } else if min_distance == distance_left {
-//         println!("Left");
-//         LEFT
-//     } else {
-//         println!("Right");
-//         RIGHT
-//     }
-// }
-
-// fn average_angle(a: f32, b: f32) -> f32 {
-//     println!("average between {a} and {b}");
-//     // Convert angles to 2D unit vectors on the unit circle
-//     let vec1 = (a.cos(), a.sin());
-//     let vec2 = (b.cos(), b.sin());
-
-//     // Calculate the average vector
-//     let avg_vec = ((vec1.0 + vec2.0) / 2.0, (vec1.1 + vec2.1) / 2.0);
-
-//     // Calculate the average angle from the average vector
-//     let avg_angle = avg_vec.1.atan2(avg_vec.0);
-
-//     // Ensure the result is positive and within the range [0, 360)
-//     if avg_angle < 0.0 {
-//         avg_angle + (360.0 * DEG_TO_RAD)
-//     } else if avg_angle >= (360.0 * DEG_TO_RAD) {
-//         avg_angle - (360.0 * DEG_TO_RAD)
-//     } else {
-//         avg_angle
-//     }
-// }

@@ -4,4 +4,8 @@
 .vscode
 .zed
 .DS_Store
-src/assets/converted
+converted
+
+*.anims
+*.fonts
+*.maps
