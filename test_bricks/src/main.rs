@@ -26,7 +26,6 @@ async fn main() {
     let atlas: GameAtlas = Atlas::load(include_bytes!("../assets/converted/atlas"));
     let mut world: GameWorld = World::new();
     world.debug_colliders = true;
-    // world.debug_pivot = true;   
     world.render.load_palettes_from_atlas(&atlas);
     world.render.push_tileset(&atlas, TilesetID::Hud);
     world.render.push_tileset(&atlas, TilesetID::Bg);
@@ -63,7 +62,7 @@ async fn main() {
             puck
         },
         initial_pos,
-        vel: Vec2 { x: 60.0, y: 0.0 },
+        vel: Vec2 { x: 120.0, y: 120.0 },
     };
 
     let time = std::time::Instant::now();
@@ -97,7 +96,7 @@ async fn main() {
         if is_key_pressed(KeyCode::Escape) {
             if let Some(ent) = world.get_entity_mut(puck.id) {
                 ent.pos = puck.initial_pos;
-                puck.vel = Vec2 { x: 60.0, y: 30.0 };
+                puck.vel = Vec2 { x: 60.0, y: 0.0 };
             }
         }
 

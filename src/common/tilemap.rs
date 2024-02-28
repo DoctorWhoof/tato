@@ -1,7 +1,8 @@
 use core::mem::size_of;
+use core::f32::consts::PI;
 // use libm::fabsf;
 use slotmap::SecondaryMap;
-use crate::{BgBuffer, ByteArray, Cursor, EntityID, Frame, Tile, Vec2, TILEMAP_LEN};
+use crate::{BgBuffer, ByteArray, Collision, Cursor, EntityID, Frame, Tile, Vec2, TILEMAP_LEN};
 
 const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tileset, cols(2 bytes), rows(2 bytes), palette, [tiles] 
 
@@ -68,7 +69,7 @@ impl Tilemap {
             bg_buffers: Default::default(),
             tiles: core::array::from_fn(|_|{
                 Tile::deserialize(cursor)
-            })
+            }),
         }
 
     }
@@ -154,43 +155,119 @@ impl Tilemap {
     pub fn height(&self, tile_height:u8) -> usize { self.rows as usize * tile_height as usize }
 
 
-    /// Checks if a tile on the given line coordinates is a collider, returns the collider tile and its coordinates, if any.
-    pub fn collide_with_line(&self, x0:i32, y0:i32, x1:i32, y1:i32) -> Option<(Tile, Vec2<i32>)> { 
+    /// Checks if a tile on the given line coordinates has its collider flag set to true
+    pub fn raycast<T:Into<f64>>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<Collision<f32>> {
+        let x0:f64 = x0.into();
+        let x1:f64 = x1.into();
+        let y0:f64 = y0.into();
+        let y1:f64 = y1.into();
 
-        if (x0, y0) == (x1, y1) { return  None }
+        let min = Vec2{
+            x: x0.min(x1).floor() as i32,
+            y: y0.min(y1).floor() as i32,
+        };
 
-        let w = x1 - x0;
-        let h = y1 - y0;
-        
-        let longest = if w.abs() > h.abs() { w.abs() } else { h.abs() };
-        let inc_x = w as f32 / longest as f32;
-        let inc_y = h as f32 / longest as f32;
+        let max = Vec2{
+            x: x0.max(x1).floor() as i32,
+            y: y0.max(y1).floor() as i32,
+        };
 
-        let mut float_x = x0 as f32;
-        let mut float_y = y0 as f32;
+        if min.x == max.x && min.y == max.y {
+            return None;
+        }
 
-        for _ in 0 ..= longest as usize {
-            float_x += inc_x;
-            float_y += inc_y;
-            let x = float_x.round() as i32;
-            let y = float_y.round() as i32;
-            if x < 0 || x >= self.cols as i32 { return None };
-            if y < 0 || y >= self.rows as i32 { return None };
-            if (x != x0) || (y != y0){
-                let tile = self.get_tile(
-                    u16::try_from(x).unwrap(),
-                    u16::try_from(y).unwrap()
-                );
+        let mut coords = Vec2{
+            x: x0.floor() as i32,
+            y: y0.floor() as i32
+        };
+
+
+        let dir = Vec2 { x: x1 - x0, y: y1 - y0 }.normalize();
+        let start_point = Vec2{ x:x0, y:y0 };
+        let end_point = Vec2{ x:x1, y:y1 };
+
+
+        let step_mult = Vec2 {
+            x: (1.0 + ((dir.y / dir.x) * (dir.y / dir.x))).sqrt(),
+            y: (1.0 + ((dir.x / dir.y) * (dir.x / dir.y))).sqrt(),
+        };
+
+        let step = Vec2{
+            x:if dir.x < 0.0 { -1 } else { 1 },
+            y:if dir.y < 0.0 { -1 } else { 1 },
+        };
+
+        let mut ray_len = Vec2{
+            // Initial values, will be mutated during the loop
+            x: if dir.x > 0.0 {
+                ((1 + coords.x) as f64 - x0) * step_mult.x
+            } else if dir.x < 0.0 {
+                (x0 - coords.x as f64) * step_mult.x
+            } else {
+                f64::MAX
+            },
+            y: if dir.y > 0.0 {
+                ((1 + coords.y) as f64 - y0) * step_mult.y
+            } else if dir.y < 0.0{
+                (y0 - coords.y as f64) * step_mult.y
+            }else {
+                f64::MAX
+            }
+        };
+
+        let line_length = start_point.distance_to(end_point);
+        let mut dist = 0.0;
+        let mut normal:f32;
+
+        // println!("\nRaycast: {:.2}, {:.2} -> {:.2}, {:.2}, coords:{:?}", x0, y0, x1, y1, coords);
+        while dist < line_length { // TODO: use max_dist as a function parameter, get the "min" from it and line length
+            if ray_len.x < ray_len.y {
+                coords.x += step.x;
+                dist = ray_len.x;
+                ray_len.x += step_mult.x;
+                if step.x < 0 {
+                    if coords.x < min.x { break }
+                    normal = 0.0;
+                } else {
+                    if coords.x > max.x { break }
+                    normal = PI
+                };
+                // println!("step X, ray_len.x:{:.2}, dist:{:.2}, coords:{:?}", ray_len.x, dist, coords);
+            } else {
+                coords.y += step.y;
+                dist = ray_len.y;
+                ray_len.y += step_mult.y;
+                if step.y < 0 {
+                    if coords.y < min.y { break }
+                    normal = 1.5 * PI
+                } else {
+                    if coords.y > max.y { break }
+                    normal = 0.5 * PI
+                };
+                // println!("step Y, ray_len.y:{:.2}, dist:{:.2}, coords:{:?}", ray_len.y, dist, coords);
+            }
+            
+            if dist > line_length {  break }
+            if coords.x > -1 && coords.x < self.cols as i32 && coords.y > -1 && coords.y < self.rows as i32 {
+                let tile = self.get_tile(coords.x as u16, coords.y as u16);
                 if tile.is_collider() {
-                    // println!("collision {},{} -> {},{}", x0, y0, x1, y1);
-                    // println!("{},{},{}; {},{}: {:?}", inc_x, inc_y, longest, x, y, tile);
-                    return Some((tile, Vec2{x, y}))
-                }  
+                    let intersection = Vec2 {
+                        x: (x0 + (dir.x * dist)) as f32,
+                        y: (y0 + (dir.y * dist)) as f32,
+                    };
+                    let col = Collision{
+                        tile: Some(tile),
+                        entity_id: Default::default(),
+                        velocity: Vec2::zero(), // Will be filled by the caller
+                        point: intersection,    // In float rows and columns! Must by scaled to tile dimensions
+                        normal,
+                    };
+                    // println!("Collision at {:?}, normal:{}", coords, normal);
+                    return Some(col)
+                }
             }
         }
         None
     }
-    
-
     
 }

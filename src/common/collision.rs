@@ -30,7 +30,6 @@ pub struct CollisionProbe<T> {
 }
 
 
-
 #[derive(Clone, Copy, Debug)]
 pub struct Collider{
     pub enabled: bool,
@@ -160,23 +159,6 @@ impl CollisionProbe<f32> {
         }
     }
 
-
-    // fn line_in_rect_collision(&self, other:&Self, rect:Rect<f32>) -> Option<Collision<f32>> {
-    //     let result_vel = Vec2::blend(self.velocity, other.velocity, 1.0, -1.0);
-    //     let trajectory = Ray { origin: self.collider.pos, angle: result_vel.y.atan2(result_vel.x) + PI };
-    //     if let Some((col_point, normal)) = rect.intersect_ray(&trajectory) {
-    //         Some(Collision{
-    //             tile: None,
-    //             point: col_point,
-    //             normal,
-    //             entity_id: self.entity_id,
-    //             velocity: result_vel,
-    //         })
-    //     } else {
-    //         None
-    //     }
-    // }
-
     fn line_in_rect_collision(&self, rect:Rect<f32>) -> Option<Collision<f32>> {
         let trajectory = Ray { origin: self.collider.pos, angle: self.velocity.y.atan2(self.velocity.x) + PI };
         if let Some((col_point, normal)) = rect.intersect_ray(&trajectory) {
@@ -207,24 +189,38 @@ impl CollisionProbe<f32> {
                         let other_rect = Rect::from(*other_col);
                         self.line_in_rect_collision(other_rect)
                     },
+                    // Point to tilemap
                     ColliderKind::Tilemap{ tile_width, tile_height, .. } => {
                         let tilemap = tilemap?;
                         let tile_width = tile_width as f32;
                         let tile_height = tile_height as f32;
-                        let other_rect = Rect::from(*other_col);
-                        let x0 = ((self.start_position.x - other_rect.x) / tile_width) as i32;
-                        let y0 = ((self.start_position.y - other_rect.y) / tile_height) as i32;
-                        let x1 = ((self.collider.pos.x - other_rect.x) / tile_width) as i32;
-                        let y1 = ((self.collider.pos.y - other_rect.y) / tile_height) as i32;
-                        if let Some((.., coord)) = tilemap.collide_with_line(x0, y0, x1, y1){
-                            let col_rect = Rect{
-                                x: coord.x as f32 * tile_width,
-                                y: coord.y as f32 * tile_height,
-                                w: tile_width,
-                                h: tile_height
-                            };
-                            return self.line_in_rect_collision(col_rect)
+                        let tilemap_rect = Rect::from(*other_col);
+                        // let x0 = ((self.start_position.x - tilemap_rect.x) / tile_width) as i32;
+                        // let y0 = ((self.start_position.y - tilemap_rect.y) / tile_height) as i32;
+                        // let x1 = ((self.collider.pos.x - tilemap_rect.x) / tile_width) as i32;
+                        // let y1 = ((self.collider.pos.y - tilemap_rect.y) / tile_height) as i32;
+                        let x0 = (self.start_position.x - tilemap_rect.x) / tile_width;
+                        let y0 = (self.start_position.y - tilemap_rect.y) / tile_height;
+                        let x1 = (self.collider.pos.x - tilemap_rect.x) / tile_width;
+                        let y1 = (self.collider.pos.y - tilemap_rect.y) / tile_height;
+                        // TODO: Use intersection point!!!!
+                        // tilemap.raycast(x0, y0, x1, y1)
+                        if let Some(mut col) = tilemap.raycast(x0, y0, x1, y1) {
+                            // col.velocity = Vec2::reflect(self.velocity, col.normal);
+                            col.point.x *= tile_width;
+                            col.point.y *= tile_height;
+                            return Some(col)
                         }
+                        // if let Some(col) = tilemap.raycast(x0, y0, x1, y1){
+                        //     let col_rect = Rect{
+                        //         x: col.point.x * tile_width,
+                        //         y: col.point.y * tile_height,
+                        //         w: tile_width,
+                        //         h: tile_height
+                        //     };
+                        //     println!("rect after processing: {:?}", col_rect);
+                        //     return self.line_in_rect_collision(col_rect)
+                        // }
                         None
                     },
                 }
@@ -236,43 +232,80 @@ impl CollisionProbe<f32> {
     }
 
 
-    pub fn collision_response(&self, other:&Self, bounce:f32, tilemap:Option<&Tilemap>, elapsed:f32) -> Option<Collision<f32>> {
+    pub fn collision_response(&self, other:&Self, bounce:f32, tilemap:Option<&Tilemap>, _elapsed:f32) -> Option<Collision<f32>> {
         if !self.overlaps(other) { return None }
 
         // Turns the incoming collider velocity into additional self velocity
         let result_velocity = Vec2::weighted_add(self.velocity, other.velocity, 1.0, -1.0);
-        let mut result = None;
 
-        // Resolution in X
-        let mut probe_x = self.clone();
-        probe_x.velocity = result_velocity;
-        probe_x.collider.pos.y -= result_velocity.y * elapsed;
-        let result_x = probe_x.refine_collision(&other.collider, tilemap);
 
-        if let Some(mut col) = result_x {
-            let margin = COL_MARGIN * self.velocity.x.signum();
-            col.point.x -= margin;
-            col.point.y = self.collider.pos.y;
-            col.velocity = Vec2::reflect(col.velocity, col.normal).scale(bounce);
-            // col.velocity.y = self.velocity.y + other.velocity.y;
-            result = Some(col);
+        let mut probe = self.clone();
+        probe.velocity = result_velocity;
+        if let Some(mut col) = probe.refine_collision(&other.collider, tilemap) {
+            // println!("collision after processing: {:?}", col);
+
+            let normal_x = col.normal.cos();
+            let normal_y = col.normal.sin();
+
+            let x = col.point.x + COL_MARGIN * normal_x;
+            let y = col.point.y - COL_MARGIN * normal_y;
+
+            col.point.x = lerp(self.collider.pos.x, x, normal_x.abs());
+            col.point.y = lerp(self.collider.pos.y, y, normal_y.abs());
+
+            col.velocity = Vec2::reflect(result_velocity, col.normal).scale(bounce);
+
+            // let mut secondary_probe = self.clone();
+            // secondary_probe.velocity = result_velocity
+            // let mut secondary_probe = CollisionProbe{
+            //     entity_id: self.entity_id,
+            //     collider: self.collider,
+            //     start_position: col.point,
+            //     velocity: col.velocity,
+            // };
+            // secondary_probe.collider.pos = col.point + (col.velocity.scale(_elapsed));
+            // if let Some(_new_col) = secondary_probe.refine_collision(&other.collider, tilemap) {
+            //     println!("Secondary collision");
+            //     // col.point = self.start_position;
+            //     // return Some(Collision{
+            //     //     tile: None,
+            //     //     entity_id: self.entity_id,
+            //     //     velocity: Vec2::reflect(col.velocity, col.normal).scale(bounce),
+            //     //     point: self.start_position,
+            //     //     normal: new_col.normal,
+            //     // })
+            // }
+            return Some(col);
         }
 
-        // Resolution in Y
-        let mut probe_y = self.clone();
-        probe_y.velocity = result_velocity;
-        probe_y.collider.pos.x -= result_velocity.x * elapsed;
-        let result_y = probe_y.refine_collision(&other.collider, tilemap); 
+        // // Resolution in X
+        // let mut probe_x = self.clone();
+        // probe_x.velocity = result_velocity;
+        // probe_x.collider.pos.y -= result_velocity.y * elapsed;
+        // let result_x = probe_x.refine_collision(&other.collider, tilemap);
 
-        if let Some(mut col) = result_y {
-            let margin = COL_MARGIN * self.velocity.y.signum();
-            col.point.x = self.collider.pos.x;
-            col.point.y -= margin;
-            col.velocity = Vec2::reflect(col.velocity, col.normal).scale(bounce);
-            // col.velocity.x = self.velocity.x + other.velocity.x;
-            result = Some(col);
-        }
+        // if let Some(mut col) = result_x {
+        //     let margin = COL_MARGIN * result_velocity.x.signum();
+        //     col.point.x -= margin;
+        //     col.point.y = self.collider.pos.y;
+        //     col.velocity = Vec2::reflect(col.velocity, col.normal).scale(bounce);
+        //     return Some(col);
+        // }
 
-        result
+        // // Resolution in Y
+        // let mut probe_y = self.clone();
+        // probe_y.velocity = result_velocity;
+        // probe_y.collider.pos.x -= result_velocity.x * elapsed;
+        // let result_y = probe_y.refine_collision(&other.collider, tilemap); 
+
+        // if let Some(mut col) = result_y {
+        //     let margin = COL_MARGIN * result_velocity.y.signum();
+        //     col.point.x = self.collider.pos.x;
+        //     col.point.y -= margin;
+        //     col.velocity = Vec2::reflect(col.velocity, col.normal).scale(bounce);
+        //     return Some(col);
+        // }
+
+        None
     }
 }

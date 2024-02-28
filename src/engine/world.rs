@@ -363,46 +363,7 @@ where
 
         Some((tilemap.get_tile(col, row), tile_rect))
     }
-
-    pub fn tilemap_raycast(&mut self, id: EntityID, x0: f32, y0: f32, x1: f32, y1: f32) -> Option<Collision<f32>> {
-        let (tilemap, tilemap_rect) = self.get_tilemap_and_rect(id)?;
-        if !tilemap_rect.contains(x0, y0) {
-            return None;
-        };
-        if !tilemap_rect.contains(x1, y1) {
-            return None;
-        };
-
-        let start_col = ((x0 - tilemap_rect.x) / S::TILE_WIDTH as f32) as i32;
-        let end_col = ((x1 - tilemap_rect.x) / S::TILE_WIDTH as f32) as i32;
-        let start_row = ((y0 - tilemap_rect.y) / S::TILE_HEIGHT as f32) as i32;
-        let end_row = ((y1 - tilemap_rect.y) / S::TILE_HEIGHT as f32) as i32;
-
-        let collision = tilemap.collide_with_line(start_col, start_row, end_col, end_row)?;
-
-        let w = S::TILE_WIDTH as f32;
-        let h = S::TILE_HEIGHT as f32;
-        let x = (collision.1.x as f32 * w) + tilemap_rect.x;
-        let y = (collision.1.y as f32 * h) + tilemap_rect.y;
-
-        let tile_rect = Rect { x, y, w, h };
-        let line_collision = tile_rect.intersect_line(Line {
-            start: Vec2 { x: x0, y: y0 },
-            end: Vec2 { x: x1, y: y1 },
-        })?;
-        // println!("Actual collision!");
-
-        Some(Collision {
-            tile: Some(collision.0),
-            point: line_collision.point,
-            normal: line_collision.normal,
-            entity_id: id,
-            velocity: Vec2::default(),
-        })
-        // #[cfg(feature = "std")]{
-        //     println!("collision {},{} to {},{}: {:#?}", start_col, start_row, end_col, end_row, result);
-        // }
-    }
+    
 
     pub fn start_frame(&mut self, time_now: f32) {
         self.time_elapsed_buffer.push(time_now - self.time);

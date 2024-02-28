@@ -121,6 +121,22 @@ impl<T:Float> Vec2<T> {
         }
     }
 
+    pub fn rotate(&self, angle: T) -> Self {
+        let cos_theta = angle.cos();
+        let sin_theta = angle.sin();
+        Vec2 {
+            x: self.x * cos_theta - self.y * sin_theta,
+            y: self.x * sin_theta + self.y * cos_theta,
+        }
+    }
+
+
+    pub fn distance_to(&self, other: Self) -> T {
+        let dist_x = other.x - self.x;
+        let dist_y = other.y - self.y;
+        ((dist_x * dist_x) + (dist_y * dist_y)).sqrt()
+    }
+
     // pub fn blend(v1:Self, v2:Self, weight_1: T, weight_2: T, invert_y:bool) -> Self {
     //     let two = T::one() + T::one();
     //     if invert_y {

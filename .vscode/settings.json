@@ -4,5 +4,6 @@
         "./Cargo.toml",
         "./test_collisions/Cargo.toml",
         "./Cargo.toml"
-    ]
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false
 }

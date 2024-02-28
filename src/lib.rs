@@ -7,20 +7,14 @@
 // #[cfg(feature = "std")] extern crate std;
 // #[cfg(feature = "std")] pub use std::{print, println};
 
+mod test;
 #[path ="common/_common.rs"] mod common;
 #[path ="engine/_engine.rs"] mod engine;
 
 pub use engine::*;
 pub use common::*;
 
-// Re-export for conveniency
-// #[macro_use]
-// pub extern crate num_enum;
-// pub extern crate num_enum_derive;
-// pub use num_enum::{IntoPrimitive, FromPrimitive};
-
 // Consts
-
 pub const GROUP_CAPACITY:usize = 64; // Currently tiles can't represent more than 64 groups (6 bits)
 
 pub const ATLAS_HEADER_TEXT:&str = "atlas_1.0";
@@ -39,12 +33,3 @@ pub const COLOR_COLLIDER:Color = Color{r:255,g:128,b:128,a:255};
 pub const COLOR_COLLISION_PROBE:Color = Color{r:255,g:128,b:0,a:255};
 
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::World;
-
-//     #[test]
-//     fn basic() {
-//         let world = World::new();
-//     }
-// }
