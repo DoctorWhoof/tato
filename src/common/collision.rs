@@ -4,10 +4,19 @@ use crate::*;
 
 const COL_MARGIN:f32 = 0.5;
 
-#[derive(Debug)]
-pub struct Ray<T> {
-    pub origin: Vec2<T>,
-    pub angle: T, // In radians
+#[derive(Clone, Copy, Debug)]#[repr(u8)]
+pub enum ColliderKind{
+    Point,
+    Rect{w:f32, h:f32},
+    Tilemap{w:f32, h:f32} // Is populated by World, values depend on the tilemap
+}
+
+
+#[derive(Debug)]#[repr(u8)]
+pub enum CollisionResponse {
+    None,
+    Stop,
+    Slide
 }
 
 
@@ -15,16 +24,17 @@ pub struct Ray<T> {
 pub struct Collision<T> where T:Float + PartialOrd + Copy{
     pub tile:Option<Tile>,
     pub entity_id: EntityID,
-    pub velocity:Vec2<T>,   //TODO: output velocity after resolution, instead of collider velocity?
+    pub velocity:Vec2<T>,
     pub pos:Vec2<T>,
     pub normal:f32,
 }
 
 
+/// Contains additional collider information, like velocity and start position
 #[derive(Clone, Debug)]
 pub struct CollisionProbe<T> {
-    pub entity_id: EntityID,
     pub collider:Collider,  // Contains the world space collider (obtained with entity.world_collider())
+    pub entity_id: EntityID,
     pub start_position: Vec2<T>,
     pub velocity:Vec2<T>,
 }
@@ -32,21 +42,20 @@ pub struct CollisionProbe<T> {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Collider{
-    pub enabled: bool,
-    pub pos: Vec2<f32>,
     pub kind: ColliderKind,
+    pub pos: Vec2<f32>,
+    pub enabled: bool,
     pub layer: u8,
     pub mask: u8
 }
 
 
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum ColliderKind{
-    Point,
-    Rect{w:f32, h:f32},
-    Tilemap{w:f32, h:f32, tile_width:u8, tile_height:u8}
+#[derive(Debug)]
+pub struct Ray<T> {
+    pub origin: Vec2<T>,
+    pub angle: T, // In radians
 }
+
 
 
 impl Collider {
@@ -57,7 +66,7 @@ impl Collider {
         Self {
             enabled: true,
             pos: Vec2::zero(),  
-            kind: ColliderKind::Tilemap { w:0.0, h:0.0, tile_width:0, tile_height:0 },
+            kind: ColliderKind::Tilemap { w:0.0, h:0.0 },
             layer: 0,
             mask: 0,
         }
@@ -87,6 +96,19 @@ impl Collider {
 
 
 impl CollisionProbe<f32> {
+
+    fn start_rect(&self) -> Rect<f32> {
+        let (w,h) = match self.collider.kind {
+            ColliderKind::Point => (1.0 ,1.0),
+            ColliderKind::Rect { w, h } | ColliderKind::Tilemap { w, h, .. } => (w, h)
+        };
+        Rect {
+            x: self.start_position.x,
+            y: self.start_position.y,
+            w, h
+        }
+    }
+
 
     pub fn collision_response(&self, other:&Self, bounce:f32, tilemap:Option<&Tilemap>) -> Option<Collision<f32>> {
         
@@ -120,63 +142,54 @@ impl CollisionProbe<f32> {
     // Performs collision checks using raycasts to obtain a collision normal and its location.
     // Assume broad AABB collision has already happened!
     fn refine_collision(&mut self, other_col:&Collider, tilemap:Option<&Tilemap>) -> Option<Collision<f32>> {
-        match self.collider.kind {
+        match other_col.kind {
             ColliderKind::Point => {
-                match other_col.kind {
-                    // Point to point
-                    ColliderKind::Point => {
-                        todo!()
-                    },
-                    // Point to Rect
-                    ColliderKind::Rect{..} => {
-                        let other_rect = Rect::from(*other_col);
-                        self.line_in_rect_collision(other_rect)
-                    },
-                    // Point to tilemap
-                    ColliderKind::Tilemap{ tile_width, tile_height, .. } => {
-                        let tilemap = tilemap?;
-
-                        let tile_width = tile_width as f32;
-                        let tile_height = tile_height as f32;
-                        let tilemap_rect = Rect::from(*other_col);
-
-                        let x0 = (self.start_position.x - tilemap_rect.x) / tile_width;
-                        let y0 = (self.start_position.y - tilemap_rect.y) / tile_height;
-                        let x1 = (self.collider.pos.x - tilemap_rect.x) / tile_width;
-                        let y1 = (self.collider.pos.y - tilemap_rect.y) / tile_height;
-
-                        if let Some(mut col) = tilemap.raycast(x0, y0, x1, y1) {
-                            // The collision data from the tilemap needs to be adjusted to tile dimensions
-                            col.pos.x *= tile_width;
-                            col.pos.y *= tile_height;
-                            return Some(col)
-                        }
-                        None
-                    },
-                }
-            }
-            ColliderKind::Rect{w,h} => { // no "Tilemap to other" collisions yet, only the opposite
-                // let rect = Rect::from(self.collider);
-                let rect = Rect {
-                    x: self.start_position.x,
-                    y: self.start_position.y,
-                    w, h
-                };
-                match other_col.kind {
-                    // Rect to Point
+                match self.collider.kind {
+                    // Point to Point
                     ColliderKind::Point => None,
-                    // Rect to Rect
-                    ColliderKind::Rect { .. } => {
-                        let other_rect = Rect::from(*other_col);
-                        Self::sweep_rect_to_rect_colllision(rect, other_rect, self.velocity)
-                    },
-                    // Rect to Tilemap
+                    // Rect to Point
+                    ColliderKind::Rect{ .. } => None,
+                    // Tilemap to Point
                     ColliderKind::Tilemap { .. } => None,
                 }
             },
-            ColliderKind::Tilemap { .. } => { // no "Tilemap to other" collisions yet, only the opposite
-                None
-            }
+            // Point to Rect
+            ColliderKind::Rect{..} => {
+                let other_rect = Rect::from(*other_col);
+                match self.collider.kind {
+                    // Point to Rect
+                    ColliderKind::Point => {
+                        self.line_in_rect_collision(other_rect)
+                    },
+                    // Rect to Rect
+                    ColliderKind::Rect{ .. } => {
+                        Self::sweep_rect_to_rect_colllision(self.start_rect(), other_rect, self.velocity)
+                    },
+                    // Tilemap to Rect
+                    ColliderKind::Tilemap { .. } => None,
+                }
+            },
+            // Point to tilemap
+            ColliderKind::Tilemap{ .. } => {
+                let tilemap = tilemap?;
+                let tilemap_rect = Rect::from(*other_col);
+
+                let x0 = self.start_position.x - tilemap_rect.x;
+                let y0 = self.start_position.y - tilemap_rect.y;
+                let x1 = self.collider.pos.x - tilemap_rect.x;
+                let y1 = self.collider.pos.y - tilemap_rect.y;
+
+                match self.collider.kind {
+                    // Point to Tilemap
+                    ColliderKind::Point => {
+                        tilemap.raycast(x0, y0, x1, y1)
+                    },
+                    // Rect to Tilemap
+                    ColliderKind::Rect{ .. } => None,
+                    // Tilemap to Tilemap
+                    ColliderKind::Tilemap { .. } => None,
+                }
+            },
         }
     }
 
@@ -192,11 +205,6 @@ impl CollisionProbe<f32> {
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
                         let rect = Rect::from(other.collider);
                         Self::broad_phase_point_in_rect(self.start_position, self.collider.pos, rect)
-                        // if Self::broad_phase_point_in_rect(self.start_position, self.collider.pos, rect){
-                        //     println!("overlap");
-                        //     return true
-                        // }
-                        // false
                     },
                 }
             },
@@ -231,6 +239,7 @@ impl CollisionProbe<f32> {
         }
     }
 
+
     fn line_in_rect_collision(&self, rect:Rect<f32>) -> Option<Collision<f32>> {
         let trajectory = Ray { origin: self.collider.pos, angle: self.velocity.y.atan2(self.velocity.x) + PI };
         if let Some((col_point, normal)) = rect.intersect_ray(&trajectory) {
@@ -245,6 +254,7 @@ impl CollisionProbe<f32> {
             None
         }
     }
+
 
     // A little too broad, will return true when the point is merely near the rect. But it's fast.
     fn broad_phase_point_in_rect(start: Vec2<f32>, end: Vec2<f32>, rect: Rect<f32>) -> bool {
@@ -370,23 +380,23 @@ impl From<Rect<f32>> for Collider {
     
 
     
-            // let mut secondary_probe = self.clone();
-            // secondary_probe.velocity = result_velocity
-            // let mut secondary_probe = CollisionProbe{
-            //     entity_id: self.entity_id,
-            //     collider: self.collider,
-            //     start_position: col.pos,
-            //     velocity: col.velocity,
-            // };
-            // secondary_probe.collider.pos = col.pos + (col.velocity.scale(_elapsed));
-            // if let Some(_new_col) = secondary_probe.refine_collision(&other.collider, tilemap) {
-            //     println!("Secondary collision");
-            //     // col.pos = self.start_position;
-            //     // return Some(Collision{
-            //     //     tile: None,
-            //     //     entity_id: self.entity_id,
-            //     //     velocity: Vec2::reflect(col.velocity, col.normal).scale(bounce),
-            //     //     point: self.start_position,
-            //     //     normal: new_col.normal,
-            //     // })
-            // }
+// let mut secondary_probe = self.clone();
+// secondary_probe.velocity = result_velocity
+// let mut secondary_probe = CollisionProbe{
+//     entity_id: self.entity_id,
+//     collider: self.collider,
+//     start_position: col.pos,
+//     velocity: col.velocity,
+// };
+// secondary_probe.collider.pos = col.pos + (col.velocity.scale(_elapsed));
+// if let Some(_new_col) = secondary_probe.refine_collision(&other.collider, tilemap) {
+//     println!("Secondary collision");
+//     // col.pos = self.start_position;
+//     // return Some(Collision{
+//     //     tile: None,
+//     //     entity_id: self.entity_id,
+//     //     velocity: Vec2::reflect(col.velocity, col.normal).scale(bounce),
+//     //     point: self.start_position,
+//     //     normal: new_col.normal,
+//     // })
+// }

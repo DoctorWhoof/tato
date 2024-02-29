@@ -22,11 +22,12 @@ async fn main() {
     world.debug_colliders = true;   
     world.debug_pivot = true;   
 
-    let ent_point = world.add_entity(0);
-    world.set_position(ent_point, 150.0, 96.0);
+    let ent_main = world.add_entity(0);
+    let initial_position = Vec2{x:140.0, y:100.0};
+    world.set_position(ent_main, initial_position.x, initial_position.y);
     let collider_point = Collider::from(spud::Vec2::zero());
     let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:16.0});
-    world.set_collider(ent_point, collider_point);
+    world.set_collider(ent_main, collider_point);
 
     let ent_rect_1 = world.add_entity(0);
     world.set_position(ent_rect_1, 160.0, 120.0);
@@ -57,18 +58,22 @@ async fn main() {
     world.set_collider(ent_wall_left, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
     let ent_wall_right = world.add_entity(0);
-    world.set_position(ent_wall_right, 0.0, 16.0);
-    world.set_collider(ent_wall_right, Collider::from(spud::Rect{x:304.0, y:0.0, w:16.0, h:208.0}));
+    world.set_position(ent_wall_right, 304.0, 16.0);
+    world.set_collider(ent_wall_right, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
-    // main loop (infinite until "break")
+    // main loop
     let time = std::time::Instant::now();
     let speed = 60.0;
     let mut vel = spud::Vec2::zero();
     loop {
         // Update
         world.start_frame(time.elapsed().as_secs_f32());
-        if (is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q)) || is_key_pressed(KeyCode::Escape) {
+        if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) {
             break;
+        }
+
+        if is_key_pressed(KeyCode::Escape){
+            world.set_position(ent_main, initial_position.x, initial_position.y)
         }
 
         // Render scaling pre-calc
@@ -79,11 +84,10 @@ async fn main() {
         let draw_rect_y = (screen_height() - render_height) / 2.0;
                 
         // Update
-
         if is_key_pressed(KeyCode::Key1){
-            world.set_collider(ent_point, collider_point);
+            world.set_collider(ent_main, collider_point);
         } else if is_key_pressed(KeyCode::Key2){
-            world.set_collider(ent_point, collider_rect);
+            world.set_collider(ent_main, collider_rect);
         }
 
         if is_key_down(KeyCode::Up) {
@@ -122,7 +126,7 @@ async fn main() {
         world.use_collider(ent_wall_right, spud::Vec2::zero());
 
         // Main Probe
-        let collision = world.move_with_collision(ent_point, vel, 0.0);  //TODO: not &mut, simply set vel to col.vel?
+        let collision = world.move_with_collision(ent_main, vel, 0.0);  //TODO: not &mut, simply set vel to col.vel?
         if let Some(col) = &collision { vel = col.velocity }
 
         world.framebuf.clear(spud::Color::gray_dark());

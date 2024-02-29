@@ -220,12 +220,14 @@ where
         let entity = &self.entities[entity_id];
         
         if let Some(ref mut collider) = entity.world_collider() {
-            if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = collider.kind {
+            // if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = collider.kind {
+            if let ColliderKind::Tilemap {ref mut w, ref mut h } = collider.kind {
+            
                 let rect = self.get_entity_rect(entity);
                 *w = rect.w;
                 *h = rect.h;
-                *tile_width = S::TILE_WIDTH;
-                *tile_height = S::TILE_HEIGHT;
+                // *tile_width = S::TILE_WIDTH;
+                // *tile_height = S::TILE_HEIGHT;
             }
             let probe = CollisionProbe {
                 entity_id,
@@ -263,8 +265,21 @@ where
                             },
                             ColliderKind::Tilemap { .. } => {
                                 let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
+
+                                let mut probe_scaled = probe.clone();
+                                probe_scaled.collider.pos.x /= S::TILE_WIDTH as f32;
+                                probe_scaled.collider.pos.y /= S::TILE_HEIGHT as f32;
+                                probe_scaled.start_position.x /= S::TILE_WIDTH as f32;
+                                probe_scaled.start_position.y /= S::TILE_HEIGHT as f32;
+                                
                                 let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
-                                probe.collision_response(other_probe, bounce, Some(tilemap))
+                                if let Some(mut col) = probe_scaled.collision_response(other_probe, bounce, Some(tilemap)){
+                                    col.pos.x *= S::TILE_WIDTH as f32;
+                                    col.pos.y *= S::TILE_HEIGHT as f32;
+                                    Some(col)
+                                } else {
+                                    None
+                                }
                             },
                         }{
                             self.set_position(entity_id, response.pos.x, response.pos.y);

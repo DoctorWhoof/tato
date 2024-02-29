@@ -83,9 +83,9 @@ pub fn move_puck(puck: &mut Puck, world: &mut GameWorld) {
         puck.vel = col.velocity
     };
 
+    // Out of bounds reset
     if let Some(ent) = world.get_entity_mut(puck.id) {
         if ent.pos.x < 0.0 || ent.pos.x > 256.0 || ent.pos.y < 0.0 || ent.pos.y > 190.0 {
-            
             puck.vel = Vec2::default();
             ent.pos = puck.initial_pos;
         }

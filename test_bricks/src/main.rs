@@ -104,8 +104,6 @@ async fn main() {
         update::move_player(&mut paddle, &mut world);
         update::move_puck(&mut puck, &mut world);
 
-        // world.resolve_collisions();
-
         // Render
         world.render_frame();
         world.draw_text("1234", 8, 8, TilesetID::Hud, 0, false);

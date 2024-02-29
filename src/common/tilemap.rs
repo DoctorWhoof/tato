@@ -1,6 +1,5 @@
 use core::mem::size_of;
 use core::f32::consts::PI;
-// use libm::fabsf;
 use slotmap::SecondaryMap;
 use crate::{BgBuffer, ByteArray, Collision, Cursor, EntityID, Frame, Tile, Vec2, TILEMAP_LEN};
 
