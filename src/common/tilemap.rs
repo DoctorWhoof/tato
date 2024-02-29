@@ -172,6 +172,7 @@ impl Tilemap {
             y: y0.max(y1).floor() as i32,
         };
 
+        // println!("\nRaycast: {:.2}, {:.2} -> {:.2}, {:.2}", x0, y0, x1, y1);
         if min.x == max.x && min.y == max.y {
             return None;
         }
@@ -259,7 +260,7 @@ impl Tilemap {
                         tile: Some(tile),
                         entity_id: Default::default(),
                         velocity: Vec2::zero(), // Will be filled by the caller
-                        point: intersection,    // In float rows and columns! Must by scaled to tile dimensions
+                        pos: intersection,    // In float rows and columns! Must by scaled to tile dimensions
                         normal,
                     };
                     // println!("Collision at {:?}, normal:{}", coords, normal);

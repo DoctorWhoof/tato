@@ -36,6 +36,13 @@ where
         self.y + self.h
     }
 
+    pub fn bottom_right(&self) -> Vec2<T> {
+        Vec2{
+            x: self.x + self.w,
+            y: self.y + self.h
+        }
+    }
+
     pub fn center(&self) -> Vec2<T> {
         let two:T = T::one() + T::one();
         Vec2 {
@@ -310,9 +317,9 @@ where
 
                 match closest {
                     Some(closest_point) => {
-                        if t < closest_point.point.x {
+                        if t < closest_point.pos.x {
                             *closest = Some(Collision {
-                                point: Vec2 {
+                                pos: Vec2 {
                                     x: intersection_x,
                                     y: intersection_y,    
                                 },
@@ -323,7 +330,7 @@ where
                     }
                     None => {
                         *closest = Some(Collision {
-                            point: Vec2 {
+                            pos: Vec2 {
                                 x: intersection_x,
                                 y: intersection_y,
                             },

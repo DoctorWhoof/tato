@@ -36,16 +36,16 @@ fn tilemap() {
     assert!(maybe_col.is_some());
 
     if let Some(col) = maybe_col{
-        println!("Collision at {:.1?}", col.point);
-        assert_eq!(col.point.x, 9.0)
+        println!("Collision at {:.1?}", col.pos);
+        assert_eq!(col.pos.x, 9.0)
     };
 
     let maybe_col = tilemap.raycast(8.0, 5.0, -1.0, 0.0);
     assert!(maybe_col.is_some());
 
     if let Some(col) = maybe_col{
-        println!("Collision at {:.1?}", col.point);
-        assert_eq!(col.point.x, 1.0)
+        println!("Collision at {:.1?}", col.pos);
+        assert_eq!(col.pos.x, 1.0)
     };
 
 }

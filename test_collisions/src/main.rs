@@ -24,7 +24,9 @@ async fn main() {
 
     let ent_point = world.add_entity(0);
     world.set_position(ent_point, 150.0, 96.0);
-    world.set_collider(ent_point, Collider::from(spud::Vec2::zero()));
+    let collider_point = Collider::from(spud::Vec2::zero());
+    let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:16.0});
+    world.set_collider(ent_point, collider_point);
 
     let ent_rect_1 = world.add_entity(0);
     world.set_position(ent_rect_1, 160.0, 120.0);
@@ -41,6 +43,22 @@ async fn main() {
     let ent_sine = world.add_entity(0);
     world.set_position(ent_sine, 80.0, 120.0);
     world.set_collider(ent_sine, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+
+    let ent_wall_top = world.add_entity(0);
+    world.set_position(ent_wall_top, 0.0, 0.0);
+    world.set_collider(ent_wall_top, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+
+    let ent_wall_bottom = world.add_entity(0);
+    world.set_position(ent_wall_bottom, 0.0, 224.0);
+    world.set_collider(ent_wall_bottom, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+
+    let ent_wall_left = world.add_entity(0);
+    world.set_position(ent_wall_left, 0.0, 16.0);
+    world.set_collider(ent_wall_left, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+
+    let ent_wall_right = world.add_entity(0);
+    world.set_position(ent_wall_right, 0.0, 16.0);
+    world.set_collider(ent_wall_right, Collider::from(spud::Rect{x:304.0, y:0.0, w:16.0, h:208.0}));
 
     // main loop (infinite until "break")
     let time = std::time::Instant::now();
@@ -61,6 +79,13 @@ async fn main() {
         let draw_rect_y = (screen_height() - render_height) / 2.0;
                 
         // Update
+
+        if is_key_pressed(KeyCode::Key1){
+            world.set_collider(ent_point, collider_point);
+        } else if is_key_pressed(KeyCode::Key2){
+            world.set_collider(ent_point, collider_rect);
+        }
+
         if is_key_down(KeyCode::Up) {
             vel.y = -speed
         }else if is_key_down(KeyCode::Down) {
@@ -89,10 +114,14 @@ async fn main() {
         let sine_vel = spud::Vec2{x: oscillator.sin() * 30.0, y:oscillator.cos() * 60.0};
         world.move_with_collision(ent_sine, sine_vel, 0.0);
 
-        // Static collider
+        // Static colliders
         world.use_collider(ent_rect_1, spud::Vec2::zero());
+        world.use_collider(ent_wall_top, spud::Vec2::zero());
+        world.use_collider(ent_wall_bottom, spud::Vec2::zero());
+        world.use_collider(ent_wall_left, spud::Vec2::zero());
+        world.use_collider(ent_wall_right, spud::Vec2::zero());
 
-        // Point
+        // Main Probe
         let collision = world.move_with_collision(ent_point, vel, 0.0);  //TODO: not &mut, simply set vel to col.vel?
         if let Some(col) = &collision { vel = col.velocity }
 
@@ -100,10 +129,10 @@ async fn main() {
         world.render_frame();
         if let Some(col) = &collision {
             let line_len = 10.0;
-            let x1 = col.point.x + (col.normal.cos() * line_len);
-            let y1 = col.point.y - (col.normal.sin() * line_len);
-            world.framebuf.draw_line(col.point.x as i32, col.point.y as i32, x1 as i32, y1 as i32, spud::Color::yellow());
-            world.framebuf.draw_filled_rect(spud::Rect { x: col.point.x as i32-1, y:col.point.y as i32-1, w:3, h:3 }, spud::Color::red());
+            let x1 = col.pos.x + (col.normal.cos() * line_len);
+            let y1 = col.pos.y - (col.normal.sin() * line_len);
+            world.framebuf.draw_line(col.pos.x as i32, col.pos.y as i32, x1 as i32, y1 as i32, spud::Color::yellow());
+            world.framebuf.draw_filled_rect(spud::Rect { x: col.pos.x as i32-1, y:col.pos.y as i32-1, w:3, h:3 }, spud::Color::red());
         }
 
         // Copy from framebuffer to macroquad texture

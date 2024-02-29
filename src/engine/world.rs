@@ -4,7 +4,7 @@ use crate::*;
 use core::mem::variant_count;
 
 const COLLISION_LAYER_COUNT:usize = 1;
-const MAX_COLLIDERS_PER_LAYER:usize = 6;
+const MAX_COLLIDERS_PER_LAYER:usize = 12;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
@@ -231,7 +231,7 @@ where
                 entity_id,
                 start_position:entity.pos,
                 collider: *collider,
-                velocity: vel
+                velocity: vel.scale(self.time_elapsed)
             };
             self.add_probe_to_colliders(probe)
         }
@@ -239,43 +239,50 @@ where
 
 
     pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, bounce:f32) -> Option<Collision<f32>> {
-        let mut entity_clone = self.entities.get(entity_id)?.clone();
-        let start_position = entity_clone.pos;
-        entity_clone.pos.x += velocity.x * self.time_elapsed;
-        entity_clone.pos.y += velocity.y * self.time_elapsed;
-
-        // let mut result:Option<Collision<f32>> = None;
-        if let Some(collider) = entity_clone.world_collider() {
-            if !collider.enabled { return None }
-            let probe = CollisionProbe {
-                entity_id,
-                start_position,
-                collider,
-                velocity
-            };
-
-            for other in &self.collision_layers[collider.mask as usize]{
-                let Some(ref other_probe) = other else { continue };
-                
-                    if let Some(response) = match other_probe.collider.kind {
-                        ColliderKind::Point | ColliderKind::Rect { .. } => {
-                            probe.collision_response(other_probe, bounce, None, self.time_elapsed)
-                        },
-                        ColliderKind::Tilemap { .. } => {
-                            let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
-                            let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
-                            probe.collision_response(other_probe, bounce, Some(tilemap), self.time_elapsed)
-                        },
-                    }{
-                        self.set_position(entity_id, response.point.x, response.point.y);
-                        return Some(response)
-                    }
+        let entity = &self.entities[entity_id];
+        let scaled_velocity = velocity.scale(self.time_elapsed);
+        
+        if let Some(mut collider) = entity.world_collider() {
+            collider.pos.x += scaled_velocity.x;
+            collider.pos.y += scaled_velocity.y;
+    
+            if collider.enabled {
+                let probe = CollisionProbe {
+                    entity_id,
+                    start_position: entity.pos,
+                    collider,
+                    velocity: scaled_velocity
+                };
+    
+                for other in &self.collision_layers[collider.mask as usize]{
+                    let Some(ref other_probe) = other else { continue };
+                    
+                        if let Some(mut response) = match other_probe.collider.kind {
+                            ColliderKind::Point | ColliderKind::Rect { .. } => {
+                                probe.collision_response(other_probe, bounce, None)
+                            },
+                            ColliderKind::Tilemap { .. } => {
+                                let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
+                                let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
+                                probe.collision_response(other_probe, bounce, Some(tilemap))
+                            },
+                        }{
+                            self.set_position(entity_id, response.pos.x, response.pos.y);
+                            
+                            // TODO: I don't like that this needs to be "unscaled"
+                            // Maybe do all collision response with just start and end points - no velocity?
+                            response.velocity = response.velocity.scale(1.0/self.time_elapsed);
+                            return Some(response)
+                        }
+                }
+                // By adding the entity's collider at the end of this step
+                // we never have to worry about it colliding with itself.
+                self.add_probe_to_colliders(probe);
             }
-            // By adding the entity's collider at the end of this step
-            // we never have to worry about it colliding with itself.
-            self.add_probe_to_colliders(probe);
         }
-        self.set_position(entity_id, entity_clone.pos.x, entity_clone.pos.y);
+        let entity = &mut self.entities[entity_id];
+        entity.pos.x += scaled_velocity.x;
+        entity.pos.y += scaled_velocity.y;
         None
     }
 

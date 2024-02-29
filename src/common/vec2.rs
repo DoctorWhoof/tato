@@ -10,11 +10,16 @@ pub struct Vec2<T> {
     pub y:T
 }
 
+impl<T> Vec2<T>  {
+    
+    pub fn new(x:T, y:T) -> Self {
+        Self {x, y}
+    }
+}
+
 
 impl Vec2<i8> {
-
     pub fn to_f32(self) -> Vec2<f32> { Vec2 { x:self.x as f32, y: self.y as f32 } }
-
 }
 
 
