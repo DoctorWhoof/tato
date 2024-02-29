@@ -261,6 +261,7 @@ impl Tilemap {
                         velocity: Vec2::zero(), // Will be filled by the caller
                         pos: intersection,    // In float rows and columns! Must by scaled to tile dimensions
                         normal,
+                        interp_amount: 0.0
                     };
                     // println!("Collision at {:?}, normal:{}", coords, normal);
                     return Some(col)

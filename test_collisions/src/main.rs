@@ -27,39 +27,39 @@ async fn main() {
     world.set_position(ent_main, initial_position.x, initial_position.y);
     let collider_point = Collider::from(spud::Vec2::zero());
     let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:16.0});
-    world.set_collider(ent_main, collider_point);
+    world.add_collider(ent_main, collider_point);
 
     let ent_rect_1 = world.add_entity(0);
     world.set_position(ent_rect_1, 160.0, 120.0);
-    world.set_collider(ent_rect_1, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:32.0}));
+    world.add_collider(ent_rect_1, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:32.0}));
 
     let ent_sine_x = world.add_entity(0);
     world.set_position(ent_sine_x, 100.0, 60.0);
-    world.set_collider(ent_sine_x, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.add_collider(ent_sine_x, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
 
     let ent_sine_y = world.add_entity(0);
     world.set_position(ent_sine_y, 40.0, 120.0);
-    world.set_collider(ent_sine_y, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.add_collider(ent_sine_y, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
 
     let ent_sine = world.add_entity(0);
     world.set_position(ent_sine, 80.0, 120.0);
-    world.set_collider(ent_sine, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.add_collider(ent_sine, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
 
     let ent_wall_top = world.add_entity(0);
     world.set_position(ent_wall_top, 0.0, 0.0);
-    world.set_collider(ent_wall_top, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+    world.add_collider(ent_wall_top, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
 
     let ent_wall_bottom = world.add_entity(0);
     world.set_position(ent_wall_bottom, 0.0, 224.0);
-    world.set_collider(ent_wall_bottom, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+    world.add_collider(ent_wall_bottom, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
 
     let ent_wall_left = world.add_entity(0);
     world.set_position(ent_wall_left, 0.0, 16.0);
-    world.set_collider(ent_wall_left, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+    world.add_collider(ent_wall_left, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
     let ent_wall_right = world.add_entity(0);
     world.set_position(ent_wall_right, 304.0, 16.0);
-    world.set_collider(ent_wall_right, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+    world.add_collider(ent_wall_right, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
     // main loop
     let time = std::time::Instant::now();
@@ -85,9 +85,9 @@ async fn main() {
                 
         // Update
         if is_key_pressed(KeyCode::Key1){
-            world.set_collider(ent_main, collider_point);
+            world.add_collider(ent_main, collider_point);
         } else if is_key_pressed(KeyCode::Key2){
-            world.set_collider(ent_main, collider_rect);
+            world.add_collider(ent_main, collider_rect);
         }
 
         if is_key_down(KeyCode::Up) {
@@ -108,15 +108,16 @@ async fn main() {
 
         // Moving colliders
         let oscillator = world.time() * 2.0;
-
+        
+        use spud::CollisionReaction;
         let sine_vel_x = spud::Vec2{x: oscillator.sin() * 60.0, y:0.0};
-        world.move_with_collision(ent_sine_x, sine_vel_x, 0.0);
+        world.move_with_collision(ent_sine_x, sine_vel_x, CollisionReaction::None);
 
         let sine_vel_y = spud::Vec2{x: 0.0, y:oscillator.sin() * 60.0};
-        world.move_with_collision(ent_sine_y, sine_vel_y, 0.0);
+        world.move_with_collision(ent_sine_y, sine_vel_y, CollisionReaction::None);
 
         let sine_vel = spud::Vec2{x: oscillator.sin() * 30.0, y:oscillator.cos() * 60.0};
-        world.move_with_collision(ent_sine, sine_vel, 0.0);
+        world.move_with_collision(ent_sine, sine_vel, CollisionReaction::None);
 
         // Static colliders
         world.use_collider(ent_rect_1, spud::Vec2::zero());
@@ -126,7 +127,7 @@ async fn main() {
         world.use_collider(ent_wall_right, spud::Vec2::zero());
 
         // Main Probe
-        let collision = world.move_with_collision(ent_main, vel, 0.0);  //TODO: not &mut, simply set vel to col.vel?
+        let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);  //TODO: not &mut, simply set vel to col.vel?
         if let Some(col) = &collision { vel = col.velocity }
 
         world.framebuf.clear(spud::Color::gray_dark());
@@ -180,7 +181,7 @@ async fn main() {
             );
 
             i += 24.0;
-            for layer in &world.collision_layers {
+            for layer in world.get_collision_layers() {
                 i += 8.0;
                 for col in layer {
                     i += 16.0;
@@ -194,7 +195,8 @@ async fn main() {
             i += 24.0;
             if let Some(col) = &collision {
                 draw_text(
-                    format!("Collision: {:.2?}", col).as_str(),
+                    // format!("Collision: {:.2?}", col).as_str(),
+                    format!("Collision: {:.2?}", col.interp_amount).as_str(),
                     10.0, i, 16.0, WHITE
                 );
             }

@@ -18,7 +18,6 @@ pub struct Entity {
     pub visible: bool, //TODO: Flags? Would allow mirroring whole entity, with colliders and offset properly mirrored.
     pub shape: Shape,
     pub pos: Vec2<f32>,
-    pub collider: Option<Collider>,
     pub render_offset: Vec2<i8>,
 }
 
@@ -35,7 +34,6 @@ impl Entity {
             shape: Shape::None,
             pos: Vec2 { x: 0.0, y: 0.0 },
             render_offset: Vec2 { x: 0, y: 0 },
-            collider: None,
         }
     }
 
@@ -70,11 +68,4 @@ impl Entity {
         }
     }
 
-    pub fn world_collider(&self) -> Option<Collider> {
-        let col= self.collider?;
-        let mut world_collider = col;
-        world_collider.pos.x += self.pos.x;
-        world_collider.pos.y += self.pos.y;
-        Some(world_collider)
-    }
 }

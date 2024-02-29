@@ -3,6 +3,8 @@ use spud::Specs;
 #[derive(Clone, Copy)]
 pub struct GameSpecs {}
 impl Specs for GameSpecs {
+    const MAX_COLLIDERS_PER_LAYER:usize = 10;
+
     const RENDER_WIDTH:usize = 320;
     const RENDER_HEIGHT:usize = 240;
 

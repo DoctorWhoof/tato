@@ -1,18 +1,17 @@
-use slotmap::SlotMap;
+use slotmap::{SecondaryMap, SlotMap};
 
 use crate::*;
 use core::mem::variant_count;
 
 const COLLISION_LAYER_COUNT:usize = 1;
-const MAX_COLLIDERS_PER_LAYER:usize = 12;
+// const MAX_COLLIDERS_PER_LAYER:usize = 12;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
-pub struct World<
-    S: Specs,
+pub struct World<S: Specs, TilesetEnum, PaletteEnum>
+where
     TilesetEnum: Into<u8> + Into<usize> + Copy,
     PaletteEnum: Into<u8> + Into<usize> + Copy,
-> where
     [(); variant_count::<TilesetEnum>()]: Sized,
     [(); variant_count::<PaletteEnum>()]: Sized,
     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
@@ -26,8 +25,8 @@ pub struct World<
     [(); S::MAX_LOADED_TILEMAPS]: Sized,
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
     [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]:
-        Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,
+    [(); S::MAX_COLLIDERS_PER_LAYER]: Sized,
 {
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
@@ -49,26 +48,20 @@ pub struct World<
     time_elapsed: f32,
     time_idle: f32,
 
-    // pub collisions_probes:[Option<CollisionProbe<f32>>; MAX_COLLISIONS],
-    // collision_probes_head:usize,
-
-    pub collision_layers:[[Option<CollisionProbe<f32>>; MAX_COLLIDERS_PER_LAYER]; COLLISION_LAYER_COUNT],  // collision masks only allow 8 layers for now
+    // collision masks only allow 8 layers for now (8 bit mask, each bit determines a layer collision)
+    collision_layers:[[Option<CollisionProbe<f32>>; S::MAX_COLLIDERS_PER_LAYER]; COLLISION_LAYER_COUNT], 
     collision_layer_heads:[usize; COLLISION_LAYER_COUNT],
-    // colliders: [Option<Collider>; MAX_COLLIDERS],
-    // colliders_head:usize,
-
+    
     // Data Pools
-    entities:SlotMap<EntityID, Entity>,    // Stores just the layer where each entity is
-    // layers: SlotMap<LayerID, Layer>,        // Each layer contains the actual entity
-    // layers: LayerPool,
+    entities:SlotMap<EntityID, Entity>,
+    colliders: SecondaryMap<EntityID, Collider>,
 }
 
-impl<
-        S: Specs,
-        TilesetEnum: Into<u8> + Into<usize> + Copy,
-        PaletteEnum: Into<u8> + Into<usize> + Copy,
-    > World<S, TilesetEnum, PaletteEnum>
+impl<S: Specs, TilesetEnum, PaletteEnum>
+World <S, TilesetEnum, PaletteEnum>
 where
+    TilesetEnum: Into<u8> + Into<usize> + Copy,
+    PaletteEnum: Into<u8> + Into<usize> + Copy,
     [(); variant_count::<TilesetEnum>()]: Sized,
     [(); variant_count::<PaletteEnum>()]: Sized,
     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
@@ -82,8 +75,8 @@ where
     [(); S::MAX_LOADED_TILEMAPS]: Sized,
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
     [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]:
-        Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,
+    [(); S::MAX_COLLIDERS_PER_LAYER]: Sized,
 {
     pub fn new() -> Self {
         World {
@@ -107,15 +100,13 @@ where
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            // collisions_probes: Default::default(),
-            // collision_probes_head: 0,
-
-            collision_layers: Default::default(),
+            collision_layers: core::array::from_fn(|_|{
+                core::array::from_fn(|_| None )
+            }),
             collision_layer_heads: Default::default(),
-            // colliders: Default::default(),
-            // colliders_head: 0,
 
             entities: Default::default(), // entities: SlotMap::with_capacity_and_key(64),
+            colliders: Default::default()
         }
     }
 
@@ -183,6 +174,12 @@ where
         (&mut self.entities, &mut self.render)
     }
 
+
+    pub fn get_collision_layers(&self) -> &[[Option<CollisionProbe<f32>>; S::MAX_COLLIDERS_PER_LAYER]; COLLISION_LAYER_COUNT]{
+        &self.collision_layers
+    }
+
+
     #[inline]
     pub fn get_entity(&self, id: EntityID) -> Option<&Entity> {
         self.entities.get(id)
@@ -194,13 +191,13 @@ where
     }
 
 
-    pub fn set_collider(&mut self, id:EntityID, collider:Collider) {
-        self.entities[id].collider = Some(collider);
+    pub fn add_collider(&mut self, id:EntityID, collider:Collider) {
+        self.colliders.insert(id, collider);
     }
 
 
     pub fn remove_collider(&mut self, id:EntityID) {
-        self.entities[id].collider = None;
+        self.colliders.remove(id);
     }
 
 
@@ -219,7 +216,7 @@ where
     pub fn use_collider(&mut self, entity_id:EntityID, vel:Vec2<f32>) {
         let entity = &self.entities[entity_id];
         
-        if let Some(ref mut collider) = entity.world_collider() {
+        if let Some(ref mut collider) =  self.get_world_collider(entity_id) {
             // if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = collider.kind {
             if let ColliderKind::Tilemap {ref mut w, ref mut h } = collider.kind {
             
@@ -240,11 +237,21 @@ where
     }
 
 
-    pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, bounce:f32) -> Option<Collision<f32>> {
+    pub fn get_world_collider(&self, id:EntityID) -> Option<Collider> {
+        let pos = self.entities.get(id)?.pos;
+        let mut world_collider = *self.colliders.get(id)?;
+        world_collider.pos.x += pos.x;
+        world_collider.pos.y += pos.y;
+        Some(world_collider)
+    }
+    
+
+
+    pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {
         let entity = &self.entities[entity_id];
         let scaled_velocity = velocity.scale(self.time_elapsed);
         
-        if let Some(mut collider) = entity.world_collider() {
+        if let Some(mut collider) = self.get_world_collider(entity_id) {
             collider.pos.x += scaled_velocity.x;
             collider.pos.y += scaled_velocity.y;
     
@@ -261,7 +268,7 @@ where
                     
                         if let Some(mut response) = match other_probe.collider.kind {
                             ColliderKind::Point | ColliderKind::Rect { .. } => {
-                                probe.collision_response(other_probe, bounce, None)
+                                probe.collision_response(other_probe, reaction, None)
                             },
                             ColliderKind::Tilemap { .. } => {
                                 let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
@@ -273,7 +280,7 @@ where
                                 probe_scaled.start_position.y /= S::TILE_HEIGHT as f32;
                                 
                                 let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
-                                if let Some(mut col) = probe_scaled.collision_response(other_probe, bounce, Some(tilemap)){
+                                if let Some(mut col) = probe_scaled.collision_response(other_probe, reaction, Some(tilemap)){
                                     col.pos.x *= S::TILE_WIDTH as f32;
                                     col.pos.y *= S::TILE_HEIGHT as f32;
                                     Some(col)
@@ -805,8 +812,8 @@ where
     [(); S::MAX_LOADED_TILEMAPS]: Sized,
     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
     [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]:
-        Sized,
+    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,
+    [(); S::MAX_COLLIDERS_PER_LAYER]: Sized,
 {
     fn default() -> Self {
         Self::new()

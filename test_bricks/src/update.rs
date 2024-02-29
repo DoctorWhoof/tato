@@ -1,5 +1,5 @@
 use crate::{GameWorld, Paddle, Puck};
-use spud::Vec2;
+use spud::{CollisionReaction, Vec2};
 
 pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
     let speed_x = 20.0;
@@ -36,7 +36,7 @@ pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
     paddle.vel.x = paddle.vel.x.clamp(-max_speed_x, max_speed_x);
     paddle.vel.y = paddle.vel.y.clamp(-max_speed_y, max_speed_y);
 
-    world.move_with_collision(paddle.id, paddle.vel, 0.0);
+    world.move_with_collision(paddle.id, paddle.vel, CollisionReaction::Slide);
 
     if let Some(ent) = world.get_entity_mut(paddle.id) {
         if ent.pos.x > max_x {
@@ -79,7 +79,7 @@ pub fn move_puck(puck: &mut Puck, world: &mut GameWorld) {
         }
     }
 
-    if let Some(col) = world.move_with_collision(puck.id, puck.vel, 1.0){
+    if let Some(col) = world.move_with_collision(puck.id, puck.vel, CollisionReaction::Bounce(1.0)){
         puck.vel = col.velocity
     };
 

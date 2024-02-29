@@ -1,4 +1,7 @@
 pub trait Specs: Clone {
+    // Collisions
+    const MAX_COLLIDERS_PER_LAYER:usize;
+
     // FrameBuf
     const RENDER_WIDTH:usize;
     const RENDER_HEIGHT:usize;

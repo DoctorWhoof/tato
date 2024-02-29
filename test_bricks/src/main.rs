@@ -36,13 +36,13 @@ async fn main() {
         tileset: TilesetID::Bg.into(),
         tilemap_id: 0,
     });
-    world.set_collider(bg, Collider::new_tilemap_collider());
+    world.add_collider(bg, Collider::new_tilemap_collider());
 
     let mut paddle = Paddle {
         id: {
             let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            world.set_collider(paddle, Collider::from(spud::Rect{x:-12.0, y:-8.0, w:24.0, h:16.0}));
+            world.add_collider(paddle, Collider::from(spud::Rect{x:-12.0, y:-8.0, w:24.0, h:16.0}));
             world.set_position(paddle, 128.0, 168.0);
             world.set_render_offset(paddle, -12,-8);
             paddle
@@ -57,7 +57,7 @@ async fn main() {
             let puck = world.add_entity(0);
             world.set_shape(puck, Shape::sprite_from_anim(TilesetID::Sprites, 1));
             world.set_position(puck, initial_pos.x, initial_pos.y);
-            world.set_collider(puck, Collider::from(Vec2::zero()));
+            world.add_collider(puck, Collider::from(Vec2::zero()));
             world.set_render_offset(puck, -3, -4 );
             puck
         },
