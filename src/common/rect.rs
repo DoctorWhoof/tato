@@ -1,6 +1,5 @@
 use super::*;
 use core::ops::{Add, AddAssign, Mul, Sub, SubAssign};
-use core::f32::consts::{PI, FRAC_PI_2};
 use libm::floorf;
 use num_traits::{Float, Num};
 
@@ -58,20 +57,20 @@ where
         if y < self.y {
             return false;
         }
-        if x >= self.x + self.w {
+        if x > self.x + self.w {
             return false;
         }
-        if y >= self.y + self.h {
+        if y > self.y + self.h {
             return false;
         }
         true
     }
 
     pub fn overlaps(&self, other: &Self) -> bool {
-        if other.x >= self.x + self.w {
+        if other.x > self.x + self.w {
             return false;
         }
-        if other.y >= self.y + self.h {
+        if other.y > self.y + self.h {
             return false;
         }
         if other.x + other.w < self.x {
@@ -104,97 +103,21 @@ impl<T> Rect<T>
 where
     T: Float + PartialOrd + MinMax + Copy + AddAssign + SubAssign + Default,
 {
-    // /// Adjusts the position of self along the x-axis to remove overlap with another rectangle
-    // pub fn deintersect_x(&mut self, other: &Rect<T>) {
-    //     // if doesn't overlap in x, skip it
-    //     if other.y >= self.y + self.h || other.y + other.h <= self.y {
-    //         return;
-    //     }
-
-    //     let self_right = self.right();
-    //     let other_right = other.right();
-
-    //     if self.x < other_right && self.x > other.x {
-    //         let overlap = other_right - self.x;
-    //         self.x += overlap;
-    //     } else if self.x < other.x && self_right > other.x {
-    //         let overlap = self_right - other.x;
-    //         self.x -= overlap;
-    //     }
-    // }
-
-    // /// Adjusts the position of self along the y-axis to remove overlap with another rectangle
-    // pub fn deintersect_y(&mut self, other: &Rect<T>) {
-    //     // if doesn't overlap in y, skip it
-    //     if other.x >= self.x + self.w || other.x + other.w <= self.x {
-    //         return;
-    //     }
-
-    //     let self_bottom = self.bottom();
-    //     let other_bottom = other.bottom();
-
-    //     if self.y < other_bottom && self.y > other.y {
-    //         let overlap = other_bottom - self.y;
-    //         self.y += overlap;
-    //     } else if self.y < other.y && self_bottom > other.y {
-    //         let overlap = self_bottom - other.y;
-    //         self.y -= overlap;
-    //     }
-    // }
-
-    // A ray starts at a point and extends into infinity
-    // pub fn intersect_ray(&self, ray: &Ray<T>) -> Option<Vec2<T>> {
-    //     let ray_direction = Vec2 {
-    //         x: ray.angle.cos(),
-    //         y: ray.angle.sin(),
-    //     };
-
-    //     let rectangle_sides = [
-    //         (Vec2 { x: self.x, y: self.y }, Vec2 { x: self.x + self.w, y: self.y }), // Top
-    //         (Vec2 { x: self.x, y: self.y }, Vec2 { x: self.x, y: self.y + self.h }), // Left
-    //         (Vec2 { x: self.x, y: self.y + self.h }, Vec2 { x: self.x + self.w, y: self.y + self.h }), // Bottom
-    //         (Vec2 { x: self.x + self.w, y: self.y }, Vec2 { x: self.x + self.w, y: self.y + self.h }), // Right
-    //     ];
-
-    //     for &(start, end) in &rectangle_sides {
-    //         let edge_direction = Vec2 { x: end.x - start.x, y: end.y - start.y };
-    //         let denom = ray_direction.x * edge_direction.y - ray_direction.y * edge_direction.x;
-
-    //         if denom.abs() > T::epsilon() {
-    //             let d = Vec2 { x: start.x - ray.origin.x, y: start.y - ray.origin.y };
-    //             let numerator = d.x * edge_direction.y - d.y * edge_direction.x;
-    //             let t = numerator / denom;
-
-    //             if t >= T::zero() {
-    //                 let u = (d.x * ray_direction.y - d.y * ray_direction.x) / denom;
-    //                 if u >= T::zero() && u <= T::one() {
-    //                     return Some(Vec2 {
-    //                         x: ray.origin.x + t * ray_direction.x,
-    //                         y: ray.origin.y + t * ray_direction.y,
-    //                     });
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     None
-    // }
-
-
-    pub fn intersect_ray(&self, ray: &Ray<T>) -> Option<(Vec2<T>, f32)> {
+    /// Returns intersection collision
+    pub fn intersect_ray(&self, ray: &Ray<T>) -> Option<Collision<T>> {
         let ray_direction = Vec2 {
             x: ray.angle.cos(),
             y: ray.angle.sin(),
         };
 
         let rectangle_sides = [
-            (Vec2 { x: self.x, y: self.y }, Vec2 { x: self.x + self.w, y: self.y }, FRAC_PI_2), // Top
-            (Vec2 { x: self.x, y: self.y }, Vec2 { x: self.x, y: self.y + self.h }, PI), // Left
-            (Vec2 { x: self.x, y: self.y + self.h }, Vec2 { x: self.x + self.w, y: self.y + self.h }, -FRAC_PI_2), // Bottom
-            (Vec2 { x: self.x + self.w, y: self.y }, Vec2 { x: self.x + self.w, y: self.y + self.h }, 0.0), // Right
+            (Vec2 { x: self.x, y: self.y }, Vec2 { x: self.x + self.w, y: self.y }, Vec2::up()),
+            (Vec2 { x: self.x, y: self.y }, Vec2 { x: self.x, y: self.y + self.h }, Vec2::left()),
+            (Vec2 { x: self.x, y: self.y + self.h }, Vec2 { x: self.x + self.w, y: self.y + self.h }, Vec2::down()),
+            (Vec2 { x: self.x + self.w, y: self.y }, Vec2 { x: self.x + self.w, y: self.y + self.h }, Vec2::right()),
         ];
 
-        for &(start, end, normal_angle) in &rectangle_sides {
+        for &(start, end, normal) in &rectangle_sides {
             let edge_direction = Vec2 { x: end.x - start.x, y: end.y - start.y };
             let denom = ray_direction.x * edge_direction.y - ray_direction.y * edge_direction.x;
 
@@ -206,13 +129,21 @@ where
                 if t >= T::zero() {
                     let u = (d.x * ray_direction.y - d.y * ray_direction.x) / denom;
                     if u >= T::zero() && u <= T::one() {
-                        return Some((Vec2 {
-                            x: ray.origin.x + t * ray_direction.x,
-                            y: ray.origin.y + t * ray_direction.y,
-                        }, normal_angle));
+                        return Some(Collision{
+                            tile: None,
+                            entity_id: Default::default(),
+                            velocity: Vec2::zero(),
+                            pos: Vec2 {
+                                x: ray.origin.x + (t * ray_direction.x),
+                                y: ray.origin.y + (t * ray_direction.y),
+                            },
+                            normal,
+                            interp_amount: t,
+                        })
                     }
                 }
             }
+            
         }
 
         None
@@ -235,7 +166,7 @@ where
                 },
             },
             &mut closest_intersection,
-            270.0 * DEG_TO_RAD, // Bottom
+            Vec2::down(),
         );
 
         self.update_intersection_point(
@@ -251,7 +182,7 @@ where
                 },
             },
             &mut closest_intersection,
-            90.0 * DEG_TO_RAD, // Top
+            Vec2::up(),
         );
 
         self.update_intersection_point(
@@ -267,7 +198,7 @@ where
                 },
             },
             &mut closest_intersection,
-            180.0 * DEG_TO_RAD, // Left
+            Vec2::left(),
         );
 
         self.update_intersection_point(
@@ -283,7 +214,7 @@ where
                 },
             },
             &mut closest_intersection,
-            0.0, // Right
+            Vec2::right(),
         );
 
         closest_intersection
@@ -294,7 +225,7 @@ where
         line1: &Line<T>,
         line2: &Line<T>,
         closest: &mut Option<Collision<T>>,
-        normal: f32,
+        normal: Vec2<T>,
     ) {
         let x = line1.start.x;
         let y = line1.start.y;

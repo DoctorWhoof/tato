@@ -1,5 +1,4 @@
 use core::mem::size_of;
-use core::f32::consts::PI;
 use slotmap::SecondaryMap;
 use crate::{BgBuffer, ByteArray, Collision, Cursor, EntityID, Frame, Tile, Vec2, TILEMAP_LEN};
 
@@ -217,7 +216,7 @@ impl Tilemap {
 
         let line_length = start_point.distance_to(end_point);
         let mut dist = 0.0;
-        let mut normal:f32;
+        let mut normal:Vec2<f32>;
 
         // println!("\nRaycast: {:.2}, {:.2} -> {:.2}, {:.2}, coords:{:?}", x0, y0, x1, y1, coords);
         while dist < line_length { // TODO: use max_dist as a function parameter, get the "min" from it and line length
@@ -227,10 +226,10 @@ impl Tilemap {
                 ray_len.x += step_mult.x;
                 if step.x < 0 {
                     if coords.x < min.x { break }
-                    normal = 0.0;
+                    normal = Vec2::right();
                 } else {
                     if coords.x > max.x { break }
-                    normal = PI
+                    normal = Vec2::left();
                 };
                 // println!("step X, ray_len.x:{:.2}, dist:{:.2}, coords:{:?}", ray_len.x, dist, coords);
             } else {
@@ -239,10 +238,10 @@ impl Tilemap {
                 ray_len.y += step_mult.y;
                 if step.y < 0 {
                     if coords.y < min.y { break }
-                    normal = 1.5 * PI
+                    normal = Vec2::up();
                 } else {
                     if coords.y > max.y { break }
-                    normal = 0.5 * PI
+                    normal = Vec2::down();
                 };
                 // println!("step Y, ray_len.y:{:.2}, dist:{:.2}, coords:{:?}", ray_len.y, dist, coords);
             }

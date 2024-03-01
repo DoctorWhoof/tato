@@ -2,7 +2,7 @@ use core::f32::consts::PI;
 use num_traits::Float;
 use crate::*;
 
-const COL_MARGIN:f32 = 0.5;
+const COL_MARGIN:f32 = 0.1;
 
 slotmap::new_key_type!{
     pub struct ColliderID;
@@ -32,8 +32,8 @@ pub struct Collision<T> where T:Float + PartialOrd + Copy{
     pub entity_id: EntityID,
     pub velocity:Vec2<T>,
     pub pos:Vec2<T>,
-    pub normal:f32,
-    pub interp_amount:f32
+    pub normal:Vec2<T>,
+    pub interp_amount:T
 }
 
 
@@ -122,45 +122,55 @@ impl CollisionProbe<f32> {
         if !self.broad_phase_overlaps(other) { return None }
 
         // Turns the incoming collider velocity into additional self velocity
-        let result_velocity = Vec2::weighted_add(self.velocity, other.velocity, 1.0, -1.0);
+        // let result_velocity = Vec2::weighted_add(self.velocity, other.velocity, 1.0, -1.0);
+        let result_velocity = Vec2 {
+            x: self.velocity.x - other.velocity.x ,
+            y: self.velocity.y - other.velocity.y
+        };
 
         let mut probe = self.clone();
         probe.velocity = result_velocity;
         if let Some(mut col) = probe.refine_collision(&other.collider, tilemap) {
-            let normal_x = col.normal.cos();
-            let normal_y = col.normal.sin();
+            // Apply margin
+            col.pos.x += COL_MARGIN * col.normal.x;
+            col.pos.y += COL_MARGIN * col.normal.y;
+            // Safety check, interpolation outside the unit range means no collision!
+            // Helps to prevent glitches, it feels like?
+            if col.interp_amount < 0.0 || col.interp_amount > 1.0 { return None };
 
-            let x = col.pos.x + (COL_MARGIN * normal_x);
-            let y = col.pos.y - (COL_MARGIN * normal_y);
-
-            col.pos.x = lerp(self.collider.pos.x, x, normal_x.abs());
-            col.pos.y = lerp(self.collider.pos.y, y, normal_y.abs());
-
-            use CollisionReaction::*;
+            // use CollisionReaction::*;
             match reaction {
-                Stop => {},
-                None => {
-                    //TODO: No reaction means we should never refine, just getting the broad collision is enough?
-                    col.pos = self.collider.pos
+                CollisionReaction::Stop => {
+                    // col.pos already contains the position the entity will be moved to
                 },
-                Bounce(amount) => {
+                CollisionReaction::None => {
+                    // TODO: No reaction means we should never refine, just getting the broad collision is enough?
+                    // That will probable report false positives in fast moving objects, since the broad phase is too broad...
+                    // Maybe additional parameters, like "Sweep" and "Instant" to account for fast objects,
+                    
+                    // Returns col.pos to its pre-collision state   
+                    col.pos = self.collider.pos;
+                },
+                CollisionReaction::Bounce(amount) => {
+                    // Redefines velocity
                     col.velocity = Vec2::reflect(result_velocity, col.normal).scale(amount);
+                    // Experimental! Fixes reverse speed inheritance from collider in the axis orthogonal to collision?
+                    col.velocity.x += 2.0 * other.velocity.x * col.normal.y.abs();
+                    col.velocity.y += 2.0 * other.velocity.y * col.normal.x.abs();
                 },
-                Slide => {
-                    // let dotprod = ((col.velocity.x * normal_y) + (col.velocity.y * normal_x)) * 0.5;//(1.0 - col.interp_amount); 
-                    // col.velocity = Vec2{
-                    //     x: dotprod * normal_y,
-                    //     y: dotprod * normal_x
-                    // };
-                    // col.pos.x += col.velocity.x * col.interp_amount;
-                    // col.pos.y += col.velocity.y * col.interp_amount;
+                CollisionReaction::Slide => {
+                    let post_col_vel = {
+                        let post_interp = 1.0 - col.interp_amount;
+                        Vec2{
+                            x: (self.velocity.x * post_interp) * col.normal.y.abs(),
+                            y: (self.velocity.y * post_interp) * col.normal.x.abs()
+                        }
+                    };
+                    col.pos.x += post_col_vel.x;
+                    col.pos.y += post_col_vel.y;
+                    col.velocity = post_col_vel;
                 },
             }
-
-
-            // if bounce > 0.0 {
-            //     
-            // }
             return Some(col);
         }
 
@@ -257,39 +267,26 @@ impl CollisionProbe<f32> {
             return None
         }
 
-        let (normal, margin_x, margin_y) = if entry_x > entry_y { 
+        let normal:Vec2<f32> = if entry_x > entry_y { 
             if dist_entry_x < 0.0 { 
-                (0.0, COL_MARGIN, 0.0)
+                Vec2::right()
             } else { 
-                (PI, -COL_MARGIN, 0.0)
+                Vec2::left()
             } 
         } else if dist_entry_y < 0.0 { 
-            (PI * 1.5, 0.0, COL_MARGIN)
+            Vec2::down()
         } else { 
-            (PI * 0.5, 0.0, -COL_MARGIN)
+            Vec2::up()
         };
 
-        // let normal = if entry_x > entry_y { 
-        //     if dist_entry_x < 0.0 { 
-        //         0.0
-        //     } else { 
-        //         PI
-        //     } 
-        // } else if dist_entry_y < 0.0 { 
-        //     PI * 1.5
-        // } else { 
-        //     PI * 0.5
-        // };
-
-        // TODO: No sliding yet!
-        println!("normal:{:.2}, entry_time:{:.2}, dist_x:{:.1}, entry_x:{:.1}", normal, entry_time, dist_entry_x, entry_x);
+        // println!("normal:{:.2?}, entry_time:{:.2}, dist_x:{:.1}, entry_x:{:.1}", normal, entry_time, dist_entry_x, entry_x);
         Some(Collision{
             tile: None,
             entity_id: Default::default(),
             velocity: vel_a,
             pos: Vec2{
-                x: a.x,// + (vel_a.x * entry_time),// + margin_x,
-                y: a.y// + (vel_a.y * entry_time),// + margin_y,
+                x: a.x + (vel_a.x * entry_time),
+                y: a.y + (vel_a.y * entry_time),
             },
             normal,
             interp_amount: entry_time
@@ -300,18 +297,20 @@ impl CollisionProbe<f32> {
 
     fn line_in_rect_collision(&self, rect:Rect<f32>) -> Option<Collision<f32>> {
         let trajectory = Ray { origin: self.collider.pos, angle: self.velocity.y.atan2(self.velocity.x) + PI };
-        if let Some((col_point, normal)) = rect.intersect_ray(&trajectory) {
-            Some(Collision{
-                tile: None,
-                pos: col_point,
-                normal,
-                entity_id: self.entity_id,
-                velocity: self.velocity,
-                interp_amount: 0.0
-            })
-        } else {
-            None
+        if let Some(mut col) = rect.intersect_ray(&trajectory){
+            // TODO: This seems slower than necessary?
+            // Maybe interset_ray can return the correct interpolation amount without further calculation?
+            let len = self.velocity.len();
+            if len > 0.0 {
+                // println!("start:{:.2?}, end:{:.2?}", self.start_position, col.pos);
+                let dist = self.start_position.distance_to(col.pos).abs();
+                // println!("distance:{:.02?}", dist);
+                col.interp_amount =  dist / len;
+            }
+
+            return Some(col)
         }
+        None
     }
 
 
@@ -325,7 +324,8 @@ impl CollisionProbe<f32> {
                     // Point in rect
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
                         let rect = Rect::from(other.collider);
-                        Self::broad_phase_point_in_rect(self.start_position, self.collider.pos, rect)
+                        // Self::broad_phase_point_in_rect(self.start_position, self.collider.pos, rect)
+                        Self::broad_phase_point_in_rect(self.start_position, self.velocity, rect, other.velocity)
                     },
                 }
             },
@@ -362,27 +362,44 @@ impl CollisionProbe<f32> {
 
 
 
-
-
-    // A little too broad, will return true when the point is merely near the rect. But it's fast.
-    fn broad_phase_point_in_rect(start: Vec2<f32>, end: Vec2<f32>, rect: Rect<f32>) -> bool {
-        let rect_from_point = Rect {
-            x: start.x,
-            y: start.y,
-            w: end.x - start.x,
-            h: end.y - start.y
-        };
-        rect.overlaps(&rect_from_point)
+    pub fn broad_rect(a:Rect<f32>, vel:Vec2<f32>) -> Rect<f32> {
+        Rect{
+            x: if vel.x > 0.0 { a.x } else { a.x + vel.x },
+            y: if vel.y > 0.0 { a.y } else { a.y + vel.y },
+            w: if vel.x > 0.0 { vel.x + a.w } else { a.w - vel.x },
+            h: if vel.y > 0.0 { vel.y + a.h } else { a.h - vel.y },
+        }
     }
 
 
-    fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>) -> bool {
-        let broad_rect = Rect{
-            x: if vel_a.x > 0.0 { a.x } else { a.x + vel_a.x },
-            y: if vel_a.y > 0.0 { a.y } else { a.y + vel_a.y },
-            w: if vel_a.x > 0.0 { vel_a.x + a.w } else { a.w - vel_a.x },
-            h: if vel_a.y > 0.0 { vel_a.y + a.h } else { a.h - vel_a.y },
-        };
+    pub fn broad_phase_point_in_rect(point: Vec2<f32>, point_vel: Vec2<f32>, rect: Rect<f32>, rect_vel:Vec2<f32>) -> bool {
+        // rect sweeping method, needs more testing! May fail at high speeds, AABB sweep may be too broad?
+        let broad_rect = Self::broad_rect(rect, rect_vel + point_vel.scale(-1.0));
+        broad_rect.contains(point.x, point.y)
+
+        // Simpler but imprecise method (does not sweep)
+        // let rect_end = rect + rect_vel;
+        // rect.contains(point.x, point.y) || rect.contains(point.x + point_vel.x, point.y + point_vel.y) ||
+        // rect_end.contains(point.x, point.y) || rect_end.contains(point.x + point_vel.x, point.y + point_vel.y)
+    }
+
+
+    // fn broad_phase_point_in_rect(start: Vec2<f32>, end: Vec2<f32>, rect: Rect<f32>) -> bool {
+    //     // rect sweeping method, needs more testing! May fail at high speeds, AABB sweep may be too broad?
+    //     let delta = Vec2{
+    //         x: start.x - end.x,
+    //         y: start.y - end.y
+    //     };
+    //     let broad_rect = Self::broad_rect(rect, delta);
+    //     broad_rect.contains(start.x, start.y)
+
+    //     // Simpler but imprecise method (does not sweep)
+    //     // rect.contains(start.x, start.y) || rect.contains(end.x, end.y)
+    // }
+
+
+    pub fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>) -> bool {
+        let broad_rect = Self::broad_rect(a, vel_a);
         broad_rect.overlaps(&b)
     }
 

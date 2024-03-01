@@ -49,6 +49,26 @@ impl<T:Float> Vec2<T> {
     }
 
 
+    pub fn up() -> Self {
+        Self{ x:T::zero(), y:-T::one() }
+    }
+
+
+    pub fn down() -> Self {
+        Self{ x:T::zero(), y:T::one() }
+    }
+
+
+    pub fn left() -> Self {
+        Self{ x:-T::one(), y:T::zero() }
+    }
+
+
+    pub fn right() -> Self {
+        Self{ x:T::one(), y:T::zero() }
+    }
+
+
     pub fn len(&self) -> T {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
@@ -109,15 +129,24 @@ impl<T:Float> Vec2<T> {
         }
     }
 
-    pub fn reflect(velocity: Self, collision_normal: T) -> Self {
+    // pub fn reflect(velocity: Self, collision_normal: T) -> Self {
+    //     let two = T::one() + T::one();
+    //     let normal = Vec2{
+    //         x:collision_normal.cos(),
+    //         y:collision_normal.sin()
+    //     };
+    //     let dot_product = velocity.dot(&normal);
+    //     velocity.subtract(&normal.scale(two * dot_product))
+    // }
+
+
+    pub fn reflect(incoming: Vec2<T>, normal: Vec2<T>) -> Vec2<T> {
         let two = T::one() + T::one();
-        let normal = Vec2{
-            x:collision_normal.cos(),
-            y:collision_normal.sin()
-        };
-        let dot_product = velocity.dot(&normal);
-        velocity.subtract(&normal.scale(two * dot_product))
+        let normalized_normal = normal.normalize();
+        let dot_product = incoming.dot(&normalized_normal);
+        incoming.subtract(&normalized_normal.scale(two * dot_product))
     }
+
 
     pub fn weighted_add(v1:Self, v2:Self, weight_1: T, weight_2: T) -> Self {
         Self{

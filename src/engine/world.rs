@@ -254,7 +254,7 @@ where
         if let Some(mut collider) = self.get_world_collider(entity_id) {
             collider.pos.x += scaled_velocity.x;
             collider.pos.y += scaled_velocity.y;
-    
+
             if collider.enabled {
                 let probe = CollisionProbe {
                     entity_id,
@@ -289,11 +289,15 @@ where
                                 }
                             },
                         }{
+                            // Apply collision position to entity ;
                             self.set_position(entity_id, response.pos.x, response.pos.y);
                             
                             // TODO: I don't like that this needs to be "unscaled"
                             // Maybe do all collision response with just start and end points - no velocity?
                             response.velocity = response.velocity.scale(1.0/self.time_elapsed);
+                            
+                            // Ensure entity's collider is added before exiting function
+                            self.add_probe_to_colliders(probe);
                             return Some(response)
                         }
                 }

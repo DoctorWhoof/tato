@@ -2,7 +2,7 @@ mod specs;
 pub use crate::specs::*;
 
 use macroquad::prelude::*;
-use spud::{Collider, Specs, World};
+use spud::{Collider, CollisionReaction, Specs, World};
 
 pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
 
@@ -23,11 +23,11 @@ async fn main() {
     world.debug_pivot = true;   
 
     let ent_main = world.add_entity(0);
-    let initial_position = Vec2{x:140.0, y:100.0};
+    let initial_position = Vec2{x:160.0, y:100.0};
     world.set_position(ent_main, initial_position.x, initial_position.y);
     let collider_point = Collider::from(spud::Vec2::zero());
     let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:16.0});
-    world.add_collider(ent_main, collider_point);
+    world.add_collider(ent_main, collider_rect);
 
     let ent_rect_1 = world.add_entity(0);
     world.set_position(ent_rect_1, 160.0, 120.0);
@@ -109,7 +109,6 @@ async fn main() {
         // Moving colliders
         let oscillator = world.time() * 2.0;
         
-        use spud::CollisionReaction;
         let sine_vel_x = spud::Vec2{x: oscillator.sin() * 60.0, y:0.0};
         world.move_with_collision(ent_sine_x, sine_vel_x, CollisionReaction::None);
 
@@ -134,8 +133,8 @@ async fn main() {
         world.render_frame();
         if let Some(col) = &collision {
             let line_len = 10.0;
-            let x1 = col.pos.x + (col.normal.cos() * line_len);
-            let y1 = col.pos.y - (col.normal.sin() * line_len);
+            let x1 = col.pos.x + (col.normal.x * line_len);
+            let y1 = col.pos.y + (col.normal.y * line_len);
             world.framebuf.draw_line(col.pos.x as i32, col.pos.y as i32, x1 as i32, y1 as i32, spud::Color::yellow());
             world.framebuf.draw_filled_rect(spud::Rect { x: col.pos.x as i32-1, y:col.pos.y as i32-1, w:3, h:3 }, spud::Color::red());
         }
