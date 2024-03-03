@@ -51,34 +51,18 @@ where
     }
 
     pub fn contains(&self, x: T, y: T) -> bool {
-        if x < self.x {
-            return false;
-        }
-        if y < self.y {
-            return false;
-        }
-        if x > self.x + self.w {
-            return false;
-        }
-        if y > self.y + self.h {
-            return false;
-        }
+        if x < self.x { return false }
+        if y < self.y { return false }
+        if x > self.x + self.w { return false }
+        if y > self.y + self.h { return false }
         true
     }
 
     pub fn overlaps(&self, other: &Self) -> bool {
-        if other.x > self.x + self.w {
-            return false;
-        }
-        if other.y > self.y + self.h {
-            return false;
-        }
-        if other.x + other.w < self.x {
-            return false;
-        }
-        if other.y + other.h < self.y {
-            return false;
-        }
+        if other.x > self.x + self.w { return false }
+        if other.y > self.y + self.h { return false }
+        if other.x + other.w < self.x { return false }
+        if other.y + other.h < self.y { return false }
         true
     }
 

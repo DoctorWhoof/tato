@@ -294,32 +294,13 @@ impl CollisionProbe<f32> {
 
 
 
-    // fn line_in_rect_collision(&self, rect:Rect<f32>) -> Option<IntermediateCollision<f32>> {
-    //     let trajectory = Ray { origin: self.pos, angle: self.velocity.y.atan2(self.velocity.x) + PI };
-    //     if let Some(mut col) = rect.intersect_line(&trajectory){
-    //         // TODO: This seems slower than necessary?
-    //         // Maybe interset_ray can return the correct interpolation amount without further calculation?
-    //         let len = self.velocity.len();
-    //         if len > 0.0 {
-    //             // println!("start:{:.2?}, end:{:.2?}", self.start_position, col.pos);
-    //             let dist = self.pos.distance_to(col.pos).abs();
-    //             // println!("distance:{:.02?}", dist);
-    //             col.t =  dist / len;
-    //         }
-
-    //         return Some(col)
-    //     }
-    //     None
-    // }
-
-
     fn broad_phase_overlaps(&self, other:&Self) -> bool {
         match self.kind {
             ColliderKind::Point => {
                 match other.kind {
                     // Point in point
                     ColliderKind::Point => self.pos.floor() == other.pos.floor(),
-                    // Point in rect
+                    // Point in rect / Point in whole tilemap rect
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
                         let rect = Rect::from(other);
                         Self::broad_phase_point_in_rect(self.pos, self.velocity, rect, other.velocity)
@@ -334,11 +315,13 @@ impl CollisionProbe<f32> {
                 };
                 match other.kind {
                     // Rect over point
-                    ColliderKind::Point => rect.contains(other.pos.x, other.pos.y),
-                    // Rect over Rect
+                    ColliderKind::Point => {
+                        Self::broad_phase_point_in_rect(other.pos, other.velocity, rect, self.velocity)
+                    }
+                    // Rect over Rect, including tilemap rect
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
                         let other_rect = Rect::from(other);
-                        Self::broad_phase_rects_overlap(rect, other_rect, self.velocity)
+                        Self::broad_phase_rects_overlap(rect, other_rect, self.velocity, other.velocity)
                     },
                 }
             },
@@ -346,11 +329,11 @@ impl CollisionProbe<f32> {
                 let rect = Rect::from(self);
                 match other.kind {
                     // Rect over point
-                    ColliderKind::Point => rect.contains(other.pos.x, other.pos.y),
+                    ColliderKind::Point => Self::broad_phase_point_in_rect(other.pos, other.velocity, rect, self.velocity),
                     // Rect over rect
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
                         let other_rect = Rect::from(other);
-                        rect.overlaps(&other_rect)
+                        Self::broad_phase_rects_overlap(rect, other_rect, self.velocity, other.velocity)
                     },
                 }
             }
@@ -377,9 +360,10 @@ impl CollisionProbe<f32> {
 
 
     // TODO: needs vel_b
-    pub fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>) -> bool {
-        let broad_rect = Self::broad_rect(a, vel_a);
-        broad_rect.overlaps(&b)
+    pub fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> bool {
+        let broad_rect_a = Self::broad_rect(a, vel_a);
+        let broad_rect_b = Self::broad_rect(b, vel_b);
+        broad_rect_a.overlaps(&broad_rect_b)
     }
 
 }
