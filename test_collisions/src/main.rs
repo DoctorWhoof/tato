@@ -23,42 +23,42 @@ async fn main() {
     world.debug_pivot = true;   
 
     let ent_main = world.add_entity(0);
-    let initial_position = Vec2{x:160.0, y:100.0};
-    world.set_position(ent_main, initial_position.x, initial_position.y);
-    let collider_point = Collider::from(spud::Vec2::zero());
-    let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:16.0});
+    let initial_position = spud::Vec2{x:160.0, y:100.0};
+    world.set_position(ent_main, initial_position);
+    let collider_point = Collider::from(spud::Vec2{x:0.0, y:0.0});
+    let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:4.0, h:4.0});
     world.add_collider(ent_main, collider_rect);
 
     let ent_rect_1 = world.add_entity(0);
-    world.set_position(ent_rect_1, 160.0, 120.0);
+    world.set_position(ent_rect_1, spud::Vec2::new(160.0, 120.0));
     world.add_collider(ent_rect_1, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:32.0}));
 
     let ent_sine_x = world.add_entity(0);
-    world.set_position(ent_sine_x, 100.0, 60.0);
+    world.set_position(ent_sine_x, spud::Vec2::new(100.0, 60.0));
     world.add_collider(ent_sine_x, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
 
     let ent_sine_y = world.add_entity(0);
-    world.set_position(ent_sine_y, 40.0, 120.0);
+    world.set_position(ent_sine_y, spud::Vec2::new(40.0, 120.0));
     world.add_collider(ent_sine_y, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
 
     let ent_sine = world.add_entity(0);
-    world.set_position(ent_sine, 80.0, 120.0);
+    world.set_position(ent_sine, spud::Vec2::new(80.0, 120.0));
     world.add_collider(ent_sine, Collider::from(spud::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
 
     let ent_wall_top = world.add_entity(0);
-    world.set_position(ent_wall_top, 0.0, 0.0);
+    world.set_position(ent_wall_top, spud::Vec2::new(0.0, 0.0));
     world.add_collider(ent_wall_top, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
 
     let ent_wall_bottom = world.add_entity(0);
-    world.set_position(ent_wall_bottom, 0.0, 224.0);
+    world.set_position(ent_wall_bottom, spud::Vec2::new(0.0, 224.0));
     world.add_collider(ent_wall_bottom, Collider::from(spud::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
 
     let ent_wall_left = world.add_entity(0);
-    world.set_position(ent_wall_left, 0.0, 16.0);
+    world.set_position(ent_wall_left, spud::Vec2::new(0.0, 16.0));
     world.add_collider(ent_wall_left, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
     let ent_wall_right = world.add_entity(0);
-    world.set_position(ent_wall_right, 304.0, 16.0);
+    world.set_position(ent_wall_right, spud::Vec2::new(304.0, 16.0));
     world.add_collider(ent_wall_right, Collider::from(spud::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
     // main loop
@@ -73,7 +73,7 @@ async fn main() {
         }
 
         if is_key_pressed(KeyCode::Escape){
-            world.set_position(ent_main, initial_position.x, initial_position.y)
+            world.set_position(ent_main, initial_position)
         }
 
         // Render scaling pre-calc
@@ -119,11 +119,11 @@ async fn main() {
         world.move_with_collision(ent_sine, sine_vel, CollisionReaction::None);
 
         // Static colliders
-        world.use_collider(ent_rect_1, spud::Vec2::zero());
-        world.use_collider(ent_wall_top, spud::Vec2::zero());
-        world.use_collider(ent_wall_bottom, spud::Vec2::zero());
-        world.use_collider(ent_wall_left, spud::Vec2::zero());
-        world.use_collider(ent_wall_right, spud::Vec2::zero());
+        world.use_static_collider(ent_rect_1);
+        world.use_static_collider(ent_wall_top);
+        world.use_static_collider(ent_wall_bottom);
+        world.use_static_collider(ent_wall_left);
+        world.use_static_collider(ent_wall_right);
 
         // Main Probe
         let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);  //TODO: not &mut, simply set vel to col.vel?
@@ -132,11 +132,12 @@ async fn main() {
         world.framebuf.clear(spud::Color::gray_dark());
         world.render_frame();
         if let Some(col) = &collision {
+            let pos = world.get_position(ent_main);
             let line_len = 10.0;
-            let x1 = col.pos.x + (col.normal.x * line_len);
-            let y1 = col.pos.y + (col.normal.y * line_len);
-            world.framebuf.draw_line(col.pos.x as i32, col.pos.y as i32, x1 as i32, y1 as i32, spud::Color::yellow());
-            world.framebuf.draw_filled_rect(spud::Rect { x: col.pos.x as i32-1, y:col.pos.y as i32-1, w:3, h:3 }, spud::Color::red());
+            let x1 = pos.x + (col.normal.x * line_len);
+            let y1 = pos.y + (col.normal.y * line_len);
+            world.framebuf.draw_line(pos.x as i32, pos.y as i32, x1 as i32, y1 as i32, spud::Color::yellow());
+            world.framebuf.draw_filled_rect(spud::Rect { x: pos.x as i32-1, y:pos.y as i32-1, w:3, h:3 }, spud::Color::red());
         }
 
         // Copy from framebuffer to macroquad texture
@@ -194,8 +195,7 @@ async fn main() {
             i += 24.0;
             if let Some(col) = &collision {
                 draw_text(
-                    // format!("Collision: {:.2?}", col).as_str(),
-                    format!("Collision: {:.2?}", col.interp_amount).as_str(),
+                    format!("Collision: {:.2?}", col).as_str(),
                     10.0, i, 16.0, WHITE
                 );
             }

@@ -1,6 +1,6 @@
 use core::mem::size_of;
 use slotmap::SecondaryMap;
-use crate::{BgBuffer, ByteArray, Collision, Cursor, EntityID, Frame, Tile, Vec2, TILEMAP_LEN};
+use crate::{BgBuffer, ByteArray, Cursor, EntityID, Frame, IntermediateCollision, Tile, Vec2, TILEMAP_LEN};
 
 const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tileset, cols(2 bytes), rows(2 bytes), palette, [tiles] 
 
@@ -154,7 +154,7 @@ impl Tilemap {
 
 
     /// Checks if a tile on the given line coordinates has its collider flag set to true
-    pub fn raycast<T:Into<f64>>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<Collision<f32>> {
+    pub fn raycast<T:Into<f64>>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<IntermediateCollision<f32>> {
         let x0:f64 = x0.into();
         let x1:f64 = x1.into();
         let y0:f64 = y0.into();
@@ -238,10 +238,10 @@ impl Tilemap {
                 ray_len.y += step_mult.y;
                 if step.y < 0 {
                     if coords.y < min.y { break }
-                    normal = Vec2::up();
+                    normal = Vec2::down();
                 } else {
                     if coords.y > max.y { break }
-                    normal = Vec2::down();
+                    normal = Vec2::up();
                 };
                 // println!("step Y, ray_len.y:{:.2}, dist:{:.2}, coords:{:?}", ray_len.y, dist, coords);
             }
@@ -254,13 +254,11 @@ impl Tilemap {
                         x: (x0 + (dir.x * dist)) as f32,
                         y: (y0 + (dir.y * dist)) as f32,
                     };
-                    let col = Collision{
-                        tile: Some(tile),
-                        entity_id: Default::default(),
-                        velocity: Vec2::zero(), // Will be filled by the caller
-                        pos: intersection,    // In float rows and columns! Must by scaled to tile dimensions
+                    let col = IntermediateCollision{
+                        // velocity: Vec2::zero(), // Will be filled by the caller
+                        pos: intersection,
                         normal,
-                        interp_amount: 0.0
+                        t: 0.0
                     };
                     // println!("Collision at {:?}, normal:{}", coords, normal);
                     return Some(col)

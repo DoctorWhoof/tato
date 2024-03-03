@@ -8,9 +8,9 @@ pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
     let max_speed_x = 120.0;
     let max_speed_y = 120.0;
 
-    let min_x = 20.0;
-    let max_x = 236.0;
-    let min_y = 8.0;
+    let min_x = 0.0;
+    let max_x = 256.0;
+    let min_y = 0.0;
     let max_y = 186.0;
 
     if paddle.input.left {
@@ -36,7 +36,9 @@ pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
     paddle.vel.x = paddle.vel.x.clamp(-max_speed_x, max_speed_x);
     paddle.vel.y = paddle.vel.y.clamp(-max_speed_y, max_speed_y);
 
-    world.move_with_collision(paddle.id, paddle.vel, CollisionReaction::Slide);
+    if let Some(col) = world.move_with_collision(paddle.id, paddle.vel, CollisionReaction::Slide) {
+        paddle.vel = col.velocity
+    }
 
     if let Some(ent) = world.get_entity_mut(paddle.id) {
         if ent.pos.x > max_x {

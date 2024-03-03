@@ -74,16 +74,16 @@ where
         let top = rect.y;
         let right = rect.x + rect.w - 1;
         let bottom = rect.y + rect.h - 1;
-        if left > -1 && left < S::RENDER_WIDTH as i32 {
+        if left > -1 && left < S::RENDER_WIDTH as i32 - 1 {
             draw_line(&mut self.pixels, S::RENDER_WIDTH, left, top, left, bottom, color)
         }
-        if right > -1 && right < S::RENDER_WIDTH as i32 {
+        if right > -1 && right < S::RENDER_WIDTH as i32 - 1 {
             draw_line(&mut self.pixels, S::RENDER_WIDTH,  right, top, right, bottom, color)
         }
-        if top > -1 && top < S::RENDER_HEIGHT as i32 {
+        if top > -1 && top < S::RENDER_HEIGHT as i32 - 1 {
             draw_line(&mut self.pixels, S::RENDER_WIDTH,  left + 1, top, right - 1, top, color)
         }
-        if bottom > -1 && bottom < S::RENDER_HEIGHT as i32 {
+        if bottom > -1 && bottom < S::RENDER_HEIGHT as i32 - 1 {
             draw_line(&mut self.pixels, S::RENDER_WIDTH,  left + 1, bottom, right - 1, bottom, color)
         }
     }

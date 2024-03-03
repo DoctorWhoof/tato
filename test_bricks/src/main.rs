@@ -23,6 +23,7 @@ async fn main() {
     render_texture.set_filter(FilterMode::Nearest);
 
     // spud init
+    let time = std::time::Instant::now();
     let atlas: GameAtlas = Atlas::load(include_bytes!("../assets/converted/atlas"));
     let mut world: GameWorld = World::new();
     world.debug_colliders = true;
@@ -38,12 +39,13 @@ async fn main() {
     });
     world.add_collider(bg, Collider::new_tilemap_collider());
 
+    let initial_paddle_pos = spud::Vec2 { x: 128.0, y: 160.0 };
     let mut paddle = Paddle {
         id: {
             let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
             world.add_collider(paddle, Collider::from(spud::Rect{x:-12.0, y:-8.0, w:24.0, h:16.0}));
-            world.set_position(paddle, 128.0, 168.0);
+            world.set_position(paddle, initial_paddle_pos);
             world.set_render_offset(paddle, -12,-8);
             paddle
         },
@@ -51,26 +53,25 @@ async fn main() {
         vel: spud::Vec2::default(),
     };
 
-    let initial_pos = spud::Vec2 { x: 128.0, y: 124.0 };
+    let initial_puck_pos = spud::Vec2 { x: 128.0, y: 124.0 };
     let mut puck = Puck {
         id: {
             let puck = world.add_entity(0);
             world.set_shape(puck, Shape::sprite_from_anim(TilesetID::Sprites, 1));
-            world.set_position(puck, initial_pos.x, initial_pos.y);
+            world.set_position(puck, initial_puck_pos);
             world.add_collider(puck, Collider::from(Vec2::zero()));
             world.set_render_offset(puck, -3, -4 );
             puck
         },
-        initial_pos,
-        vel: Vec2 { x: 120.0, y: 120.0 },
+        initial_pos: initial_puck_pos,
+        vel: Vec2 { x: 0.0, y: 0.0 },
     };
 
-    let time = std::time::Instant::now();
     // main loop (infinite until "break")
     loop {
-        // Update
         world.start_frame(time.elapsed().as_secs_f32());
-
+        
+        // Update
         paddle.input = Input::default();
         if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) {
             break;
@@ -94,13 +95,12 @@ async fn main() {
             world.debug_pivot = !world.debug_pivot
         }
         if is_key_pressed(KeyCode::Escape) {
-            if let Some(ent) = world.get_entity_mut(puck.id) {
-                ent.pos = puck.initial_pos;
-                puck.vel = Vec2 { x: 60.0, y: 0.0 };
-            }
+            puck.vel = Vec2 { x: 60.0, y: 0.0 };
+            world.set_position(paddle.id, initial_paddle_pos);
+            world.set_position(puck.id, initial_puck_pos);
         }
 
-        world.use_collider(bg, Vec2::zero());
+        world.use_static_collider(bg);
         update::move_player(&mut paddle, &mut world);
         update::move_puck(&mut puck, &mut world);
 
@@ -133,20 +133,14 @@ async fn main() {
         let y = (screen_height() - render_height) / 2.0;
 
         render_texture.update(&img);
-        draw_texture_ex(
-            &render_texture,
-            x,
-            y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(render_width, render_height)),
-                source: None,
-                rotation: 0.0,
-                flip_x: false,
-                flip_y: false,
-                pivot: None,
-            },
-        );
+        draw_texture_ex( &render_texture, x, y, WHITE, DrawTextureParams {
+            dest_size: Some(vec2(render_width, render_height)),
+            source: None,
+            rotation: 0.0,
+            flip_x: false,
+            flip_y: false,
+            pivot: None,
+        });
 
         // Finish (calculate timings)
         world.finish_frame(time.elapsed().as_secs_f32());
