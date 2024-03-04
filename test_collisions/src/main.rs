@@ -26,7 +26,7 @@ async fn main() {
     let initial_position = spud::Vec2{x:160.0, y:100.0};
     world.set_position(ent_main, initial_position);
     let collider_point = Collider::from(spud::Vec2{x:0.0, y:0.0});
-    let collider_rect = Collider::from(spud::Rect{x:0.0, y:0.0, w:4.0, h:4.0});
+    let collider_rect = Collider::from(spud::Rect{x:-8.0, y:-8.0, w:16.0, h:16.0});
     world.add_collider(ent_main, collider_rect);
 
     let ent_rect_1 = world.add_entity(0);
@@ -63,7 +63,7 @@ async fn main() {
 
     // main loop
     let time = std::time::Instant::now();
-    let speed = 60.0;
+    let speed = 120.0;
     let mut vel = spud::Vec2::zero();
     loop {
         // Update
@@ -127,7 +127,10 @@ async fn main() {
 
         // Main Probe
         let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);  //TODO: not &mut, simply set vel to col.vel?
-        if let Some(col) = &collision { vel = col.velocity }
+        if let Some(col) = &collision {
+            // println!("{:?}", col);
+            vel = col.velocity
+        }
 
         world.framebuf.clear(spud::Color::gray_dark());
         world.render_frame();

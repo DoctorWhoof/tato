@@ -250,13 +250,13 @@ impl Tilemap {
             if coords.x > -1 && coords.x < self.cols as i32 && coords.y > -1 && coords.y < self.rows as i32 {
                 let tile = self.get_tile(coords.x as u16, coords.y as u16);
                 if tile.is_collider() {
-                    let intersection = Vec2 {
-                        x: (x0 + (dir.x * dist)) as f32,
-                        y: (y0 + (dir.y * dist)) as f32,
-                    };
+                    // let intersection = Vec2 {
+                    //     x: (x0 + (dir.x * dist)) as f32,
+                    //     y: (y0 + (dir.y * dist)) as f32,
+                    // };
                     let col = IntermediateCollision{
                         // velocity: Vec2::zero(), // Will be filled by the caller
-                        pos: intersection,
+                        // pos: intersection,
                         normal,
                         t: 0.0
                     };

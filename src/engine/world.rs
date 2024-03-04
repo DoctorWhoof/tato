@@ -93,7 +93,6 @@ where
 
             time_elapsed_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
-            // time_internal_update_buffer: SmoothBuffer::new(),
             time: 0.0,
             time_update: 1.0 / 60.0,
 
@@ -105,7 +104,7 @@ where
             }),
             collision_layer_heads: Default::default(),
 
-            entities: Default::default(), // entities: SlotMap::with_capacity_and_key(64),
+            entities: Default::default(),
             colliders: Default::default()
         }
     }
@@ -214,21 +213,6 @@ where
     }
 
     
-    pub fn use_static_collider(&mut self, entity_id:EntityID) {
-        let entity = &self.entities[entity_id];
-        if let Some(mut probe) =  self.get_probe(entity_id, Vec2::zero()) {
-            if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
-                let rect = self.get_entity_rect(entity);
-                *w = rect.w;
-                *h = rect.h;
-                *tile_width = S::TILE_WIDTH;
-                *tile_height = S::TILE_HEIGHT;
-            }
-            self.add_probe_to_colliders(probe);
-        }
-    }
-
-
     fn get_probe(&self, id:EntityID, velocity:Vec2<f32>) -> Option<CollisionProbe<f32>> {
         let collider = *self.colliders.get(id)?;
         if !collider.enabled { return None }
@@ -242,15 +226,30 @@ where
             mask: collider.mask,
         })
     }
-    
 
+    pub fn use_static_collider(&mut self, entity_id:EntityID) {
+        let entity = &self.entities[entity_id];
+        if let Some(mut probe) =  self.get_probe(entity_id, Vec2::zero()) {
+            if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
+                let rect = self.get_entity_rect(entity);
+                *w = rect.w;
+                *h = rect.h;
+                *tile_width = S::TILE_WIDTH;
+                *tile_height = S::TILE_HEIGHT;
+            }
+            self.add_probe_to_colliders(probe);
+        }
+    }
+    
     pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {       
         // Passed to all collision calculations witn frame delta already applied
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
         // Modified on every collision
-        let mut response_accumulator:Option<Collision<f32>> = None;
-        
+        let mut col_accumulator:(Option<AxisCollision<f32>>, Option<AxisCollision<f32>>) = (None, None);
+        let mut latest_other = None;
+        let mut latest_other_vel = None;
+    
         if let Some(probe) = self.get_probe(entity_id, scaled_velocity) {
             for other in &self.collision_layers[probe.mask as usize]{
                 let Some(ref other_probe) = other else { continue };
@@ -259,96 +258,104 @@ where
                     ColliderKind::Point | ColliderKind::Rect { .. } => {
                         probe.collision_response(other_probe, None)
                     },
-                    
                     ColliderKind::Tilemap { .. } => {
-                        // Scale to/from tilemap space
                         let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
-                        let mut probe_scaled = probe.clone();
-                        probe_scaled.pos.x /= S::TILE_WIDTH as f32;
-                        probe_scaled.pos.y /= S::TILE_HEIGHT as f32;
-                        probe_scaled.velocity.x /= S::TILE_WIDTH as f32;
-                        probe_scaled.velocity.y /= S::TILE_HEIGHT as f32;
-                        // if let ColliderKind::Rect { ref mut w, ref mut h } = probe_scaled.kind {
-                        //     *w /= S::TILE_WIDTH as f32;
-                        //     *h /= S::TILE_HEIGHT as f32;
-                        // }
-                        
                         let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
-                        if let Some(mut col) = probe_scaled.collision_response(other_probe, Some(tilemap)){
-                            col.pre_col_delta.x *= S::TILE_WIDTH as f32;
-                            col.pre_col_delta.y *= S::TILE_HEIGHT as f32;
-                            col.velocity.x *= S::TILE_WIDTH as f32;
-                            col.velocity.y *= S::TILE_HEIGHT as f32;
-                            Some(col)
-                        } else {
-                            None
-                        }
+                        probe.collision_response(other_probe, Some(tilemap))
                     },
                 };
 
-                if let Some(current_col) = maybe_col {  
-                    if let Some(ref mut col) = response_accumulator {
-                        // println!("Step two: {:.1?}", current_col);
-                        col.velocity.x += current_col.velocity.x;
-                        col.velocity.y += current_col.velocity.y;
-                        col.pre_col_delta.x += current_col.pre_col_delta.x;
-                        col.pre_col_delta.y += current_col.pre_col_delta.y;
+                // Accumulate X
+                if let Some(current_col_x) = maybe_col.0 {  
+                    latest_other = Some(other_probe.entity_id);
+                    latest_other_vel = Some(other_probe.velocity);
+                    if let Some(ref mut col) = col_accumulator.0 {
+                        *col += current_col_x;
                     } else {
-                        // println!("Step one: {:.1?}", current_col);
-                        response_accumulator = Some(current_col.clone())
+                        col_accumulator.0 = Some(current_col_x)
+                    }
+                }
+
+                // Accumulate Y
+                if let Some(current_col_y) = maybe_col.1 {  
+                    latest_other = Some(other_probe.entity_id);
+                    latest_other_vel = Some(other_probe.velocity);
+                    if let Some(ref mut col) = col_accumulator.1 {
+                        *col += current_col_y;
+                    } else {
+                        col_accumulator.1 = Some(current_col_y)
                     }
                 }
             }
             self.add_probe_to_colliders(probe);
         }
 
-        if let Some(mut col) = response_accumulator {
-            match reaction {
-                CollisionReaction::Stop => {
-                    // No Additional step, col.pre_col_delta is already what we want.
-                },
-                CollisionReaction::None => {
-                    // TODO: No reaction means we should never refine, just getting the broad collision is enough?
-                    // That will probable report false positives in fast moving objects, since the broad phase is too broad...
-                    // Maybe additional parameters, like "Sweep" and "Instant" to account for fast objects,
-                    col.pre_col_delta.x = scaled_velocity.x;
-                    col.pre_col_delta.y = scaled_velocity.y;
-                },
-                CollisionReaction::Bounce(amount) => {
-                    col.velocity = Vec2::reflect(col.velocity, col.normal).scale(amount);
-                    // Experimental! Fixes reverse speed inheritance from collider in the axis orthogonal to collision?
-                    col.velocity.x += 2.0 * col.other_velocity.x * col.normal.y.abs();
-                    col.velocity.y += 2.0 * col.other_velocity.y * col.normal.x.abs();
-                },
-                CollisionReaction::Slide => {
-                    let post_col_vel = {
-                        let post_interp = 1.0 - col.t;
-                        Vec2{
-                            x: (scaled_velocity.x * post_interp) * col.normal.y.abs(),
-                            y: (scaled_velocity.y * post_interp) * col.normal.x.abs()
-                        }
-                    };
-                    col.pre_col_delta.x += post_col_vel.x;
-                    col.pre_col_delta.y += post_col_vel.y;
-                    col.velocity = post_col_vel;
-                },
+        let get_reaction = |acc:&Option<AxisCollision<f32>>, scaled_vel:f32| -> (f32, f32) {
+            if let Some(col) = &acc {
+                match reaction {
+                    CollisionReaction::None => {
+                        (scaled_vel, scaled_vel)
+                    },
+                    CollisionReaction::Bounce(amount) => {
+                        ((col.velocity * col.t) , col.velocity * -amount)
+                    },
+                    CollisionReaction::Slide => {
+                        ((scaled_vel * col.t), 0.0)
+                    },
+                }
+            } else {
+                (scaled_vel, scaled_vel)
             }
-            // "Unscale" result velocity, since the caller needs it in the same scale as provided
-            // TODO: I don't like that this needs to be "unscaled"
-            // Maybe do all collision response with just start and end points - no velocity?
-            col.velocity = col.velocity.scale(1.0/self.time_elapsed);
+        };
+        let (delta_x, vel_x) =  get_reaction(&col_accumulator.0, scaled_velocity.x);
+        let (delta_y, vel_y) =  get_reaction(&col_accumulator.1, scaled_velocity.y);
 
-            // println!("col:{:.2?}", response);
+        if col_accumulator.0.is_none() && col_accumulator.1.is_none() {
+            // No collisions, move freely and return nothing
             let entity = &mut self.entities[entity_id];
-            entity.pos.x += col.pre_col_delta.x;
-            entity.pos.y += col.pre_col_delta.y;
-            Some(col)
-        } else {
-            // No collider, collision or collider disabled
-            let entity = &mut self.entities[entity_id];
-            entity.pos.x += scaled_velocity.x;
-            entity.pos.y += scaled_velocity.y;
+            entity.pos.x += delta_x;
+            entity.pos.y += delta_y;
             None
+        } else {
+            // Unwrap collision values
+            let col_x = col_accumulator.0.unwrap_or_default();
+            let col_y = col_accumulator.1.unwrap_or_default();
+            let other_id = latest_other.unwrap_or_default();
+            let other_vel = latest_other_vel.unwrap_or_default();
+
+            // Stick to other surface if moving (i.e. on top of platform)
+            let (add_pos_x, add_pos_y) = match reaction {
+                CollisionReaction::None => (0.0, 0.0),
+                CollisionReaction::Bounce(_) |  CollisionReaction::Slide => {
+                    let inherit_x = other_vel.x * col_y.normal.abs();
+                    let inherit_y = other_vel.y * col_x.normal.abs();
+                    ( col_x.margin + inherit_x, col_y.margin + inherit_y )
+                },
+            };
+
+            // Inherit collision speed?
+            let (add_vel_x, add_vel_y) = match reaction {
+                CollisionReaction::None | CollisionReaction::Slide => (0.0, 0.0),
+                CollisionReaction::Bounce(_) => (other_vel.x, other_vel.y)
+            };
+
+            // Apply new position
+            let entity = &mut self.entities[entity_id];
+            entity.pos.x += delta_x + add_pos_x;
+            entity.pos.y += delta_y + add_pos_y;
+
+            // Return collision
+            let unscale = 1.0 / self.time_elapsed;
+            Some(Collision{
+                tile: None,
+                entity_id: other_id, // TODO: return more than one ID? Options?
+                velocity: Vec2::new(
+                    vel_x + add_vel_x,
+                    vel_y + add_vel_y
+                ).scale(unscale),   // "Unscaled"
+                margin: Vec2::new(col_x.margin, col_y.margin),
+                normal: Vec2::new(col_x.normal, col_y.normal),
+            })
         }
     }
 
@@ -825,9 +832,6 @@ where
         }
     }
 
-    // pub fn clear_layer(&mut self, layer_id: LayerID) {
-    //     self.layers.clear_layer(layer_id)
-    // }
 
     // pub(crate) fn draw_world_pixel(&mut self, x:f32, y:f32, color:u8) {
     //     let screen_x = x - cam_rect.x;
@@ -840,6 +844,7 @@ where
     //         color
     //     )
     // }
+
 }
 
 impl<S: Specs, TilesetEnum: Into<u8> + Into<usize> + Copy, PaletteEnum: Into<u8> + Into<usize> + Copy> Default for World<S, TilesetEnum, PaletteEnum>
@@ -864,24 +869,3 @@ where
         Self::new()
     }
 }
-
-// impl<
-//     S:Specs,
-//     TilesetEnum:Into<u8> + Into<usize> + Copy,
-//     PaletteEnum:Into<u8> + Into<usize> + Copy
-// > Default for World<S, TilesetEnum, PaletteEnum, AnimEnum>
-// where
-//     [(); variant_count::<TilesetEnum>()]: Sized,
-//     [(); variant_count::<PaletteEnum>()]: Sized,
-//     [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-//     [(); S::ATLAS_TILE_COUNT]: Sized,
-//     [(); S::ANIMS_PER_TILESET]: Sized,
-//     [(); S::FONTS_PER_TILESET]: Sized,
-//     [(); S::TILEMAPS_PER_TILESET]: Sized,
-//     [(); S::COLORS_PER_PALETTE]: Sized,
-//     [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized
-// {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }

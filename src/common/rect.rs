@@ -1,7 +1,8 @@
 use super::*;
-use core::ops::{Add, AddAssign, Mul, Sub, SubAssign};
+use core::ops::{Add, Mul, Sub};
+use core::fmt::Display;
 use libm::floorf;
-use num_traits::{Float, Num};
+use num_traits::Num;
 
 /// A generic rectangular area.
 #[derive(Clone, Copy, Debug, Default)]
@@ -14,7 +15,7 @@ pub struct Rect<T> {
 
 impl<T> Rect<T>
 where
-    T: Num + PartialOrd + MinMax + Copy,
+    T: Num + PartialOrd + MinMax + Copy + Display,
 {
     pub fn new(x: T, y: T, w: T, h: T) -> Self {
         Rect { x, y, w, h }
@@ -83,69 +84,6 @@ where
     }
 }
 
-
-struct Intersect<T:Float> {
-    pos: Vec2<T>,
-    t: T,
-}
-
-impl<T> Rect<T>
-where T: Float + PartialOrd + MinMax + Copy + AddAssign + SubAssign + Default {
-
-    fn line_intersection(line1: &Line<T>, line2: AxisLine<T>) -> Option<Intersect<T>> {
-        match line2 {
-            AxisLine::Vertical(x) => {
-                let direction = line1.end.x - line1.start.x;
-                let t = (x - line1.start.x) / direction;
-                if t >= T::zero() && t <= T::one() {
-                    let pos = Vec2 {
-                        x, y: line1.start.y + t * (line1.end.y - line1.start.y),
-                    };
-
-                    Some(Intersect{ pos, t})
-                } else {
-                    None
-                }
-            }
-            AxisLine::Horizontal(y) => {
-                let direction = line1.end.y - line1.start.y;
-                let t = (y - line1.start.y) / direction;
-                if t >= T::zero() && t <= T::one() {
-                    let pos = Vec2 {
-                        x: line1.start.x + t * (line1.end.x - line1.start.x), y
-                    };
-
-                    Some(Intersect{ pos, t})
-                } else {
-                    None
-                }
-            }
-        }
-    }
-
-
-    pub fn intersect_line(&self, line:&Line<T>) -> Option<IntermediateCollision<T>> {
-        let direction_x = line.end.x - line.start.x;
-        if direction_x > T::zero() {
-            if let Some(i) = Self::line_intersection(line, AxisLine::Vertical(self.x)) {
-                return Some(IntermediateCollision{ pos:i.pos, t:i.t, normal:Vec2::left() })
-            }
-        } else if let Some(i) = Self::line_intersection(line, AxisLine::Vertical(self.right())) { 
-            return Some(IntermediateCollision{ pos:i.pos, t:i.t, normal:Vec2::right() })
-        }
-
-        let direction_y = line.end.y - line.start.y;
-        if direction_y > T::zero() {
-            if let Some(i) = Self::line_intersection(line, AxisLine::Horizontal(self.y)) {
-                return Some(IntermediateCollision{ pos:i.pos, t:i.t, normal:Vec2::up() })
-            }
-        } else if let Some(i) = Self::line_intersection(line, AxisLine::Horizontal(self.bottom())) {
-            return Some(IntermediateCollision{ pos:i.pos, t:i.t, normal:Vec2::down() })
-        }
-        None
-    }
-
-}
 
 impl From<Rect<u8>> for Rect<i32> {
     fn from(val: Rect<u8>) -> Self {

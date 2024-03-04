@@ -1,10 +1,18 @@
+use core::ops::{Add,AddAssign};
 use num_traits::Float;
 use crate::*;
 
-const COL_MARGIN:f32 = 0.01;
+const COL_MARGIN:f32 = 0.1;
 
 slotmap::new_key_type!{
     pub struct ColliderID;
+}
+
+
+#[derive(Clone, Copy, Debug)]#[repr(u8)]
+enum Axis {
+    Horizontal,
+    Vertical
 }
 
 
@@ -19,9 +27,23 @@ pub enum ColliderKind{
 #[derive(Debug, Clone, Copy)]
 pub enum CollisionReaction {
     None,
-    Stop,
     Bounce(f32),
     Slide
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AxisCollision<T> where T:Float + PartialOrd + Copy{
+    pub velocity:T,
+    pub margin:T,
+    pub normal:T,
+    pub t:T,
+}
+
+
+#[derive(Clone, Debug, Default)]
+pub struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
+    pub normal:Vec2<T>,
+    pub t:T
 }
 
 
@@ -30,19 +52,10 @@ pub struct Collision<T> where T:Float + PartialOrd + Copy{
     pub tile:Option<Tile>,
     pub entity_id: EntityID,
     pub velocity:Vec2<T>,
-    pub other_velocity:Vec2<T>,
-    pub pre_col_delta:Vec2<T>,
+    pub margin:Vec2<T>,
     pub normal:Vec2<T>,
-    pub t:T
 }
 
-
-#[derive(Clone, Debug, Default)]
-pub struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
-    pub pos:Vec2<T>,
-    pub normal:Vec2<T>,
-    pub t:T
-}
 
 
 /// Contains additional collider information, like velocity and start position
@@ -67,23 +80,14 @@ pub struct Collider{
 }
 
 
-#[derive(Debug)]
-pub struct Ray<T> {
-    pub origin: Vec2<T>,
-    pub angle: T, // In radians
-}
-
-
 
 impl Collider {
 
-    // TODO: verify that pos, w and h are overwritten by world when adding the collision probe - even when the map moves!
-    // No tilemap reference used! The collider's values are set on the fly when the collider is added
     pub fn new_tilemap_collider() -> Self {
         Self {
             enabled: true,
             pos: Vec2::zero(),  
-            kind: ColliderKind::Tilemap { w:0.0, h:0.0, tile_width:0, tile_height:0 },
+            kind: ColliderKind::Tilemap { w:0.0, h:0.0, tile_width:0, tile_height:0 }, // Values will be written by World
             layer: 0,
             mask: 0,
         }
@@ -114,52 +118,49 @@ impl Collider {
 
 impl CollisionProbe<f32> {
 
-    fn collision_from_intermediate(&self, maybe_value: Option<IntermediateCollision<f32>>) -> Option<Collision<f32>> {
-        let value = maybe_value?;
-        Some(Collision {
-            tile: None,
-            entity_id: Default::default(),
-            normal: value.normal,
-            t: value.t,
-            // will be filled later. TODO: I don't like this
-            velocity: Vec2::zero(),
-            other_velocity: Vec2::zero(),
-            pre_col_delta: Vec2::zero(),  
-        })
-    }
-
-
-    pub fn collision_response(&self, other:&Self, tilemap:Option<&Tilemap>) -> Option<Collision<f32>> {
+    pub fn collision_response(&self, other:&Self, tilemap:Option<&Tilemap>) -> (Option<AxisCollision<f32>>, Option<AxisCollision<f32>>) {
         
-        if !self.broad_phase_overlaps(other) { return None }
-                
-        if let Some(col) = self.refine_collision(other, tilemap) {
-            let mut col = col;
-            // Safety check, interpolation outside the unit range means no collision!
-            // Seems to help preventing glitches?
-            if col.t < 0.0 || col.t > 1.0 { return None };
-            // Calculate margin
-            let margin_x = (COL_MARGIN * col.normal.x) + other.velocity.x;
-            let margin_y = (COL_MARGIN * col.normal.y) + other.velocity.y;
-            // "Stop" distance delta
-            col.pre_col_delta.x = (self.velocity.x * col.t) + margin_x;
-            col.pre_col_delta.y = (self.velocity.y * col.t) + margin_y;
-            // Turns the incoming collider velocity into additional self velocity
-            col.velocity = Vec2 {
-                x: self.velocity.x - other.velocity.x ,
-                y: self.velocity.y - other.velocity.y
-            };
-            col.other_velocity = other.velocity;
-            return Some(col);
+        let mut result = (None, None);
+
+        // X Step
+        if self.broad_phase(other, Axis::Horizontal) {
+            if let Some(col) = self.axis_collision(other, Axis::Horizontal, tilemap) {
+                let mut col_x = col;
+                // Expand margin on movement. Helps with stability
+                col_x.margin += other.velocity.x;
+                // Turns the incoming collider velocity into additional self velocity
+                col_x.velocity = self.velocity.x - other.velocity.x;
+                result.0 = Some(col_x);
+            } else {
+                // println!("uh oh, broad collision but not axis collision in X!")
+            }
         }
 
-        None
+        // Y Step
+        if self.broad_phase(other, Axis::Vertical) {
+            if let Some(col) = self.axis_collision(other, Axis::Vertical, tilemap) {
+                let mut col_y = col;
+                // Expand margin on movement. Helps with stability
+                col_y.margin += other.velocity.y;
+                // Turns the incoming collider velocity into additional self velocity
+                col_y.velocity = self.velocity.y - other.velocity.y;
+                result.1 = Some(col_y);
+            } else {
+                // println!("uh oh, broad collision but not axis collision in Y!")
+            }
+        }
+
+        result
     }
 
 
     // Performs collision checks using raycasts to obtain a collision normal and its location.
     // Assume broad AABB collision has already happened!
-    fn refine_collision(&self, other:&Self, tilemap:Option<&Tilemap>) -> Option<Collision<f32>> {
+    fn axis_collision(&self, other:&Self, axis:Axis, tilemap:Option<&Tilemap>) -> Option<AxisCollision<f32>> {
+        let (vel_self, vel_other) = match axis {
+            Axis::Horizontal => (self.velocity.horiz(), other.velocity.horiz()),
+            Axis::Vertical => (self.velocity.vert(), other.velocity.vert()),
+        };
         match other.kind {
             ColliderKind::Point => {
                 match self.kind {
@@ -178,13 +179,21 @@ impl CollisionProbe<f32> {
                 match self.kind {
                     // Point to Rect
                     ColliderKind::Point => {
-                        let line = Line{start:self.pos, end:self.pos + self.velocity - other.velocity};
-                        self.collision_from_intermediate( other_rect.intersect_line(&line) )
+                        self.axis_col_from_intermediate(
+                            match axis {
+                                Axis::Horizontal => Self::sweep_point_in_rect_x(self.pos.x, vel_self.x, other_rect, vel_other.x),
+                                Axis::Vertical => Self::sweep_point_in_rect_y(self.pos.y, vel_self.y, other_rect, vel_other.y),
+                            },
+                            axis
+                        )
                     },
                     // Rect to Rect
                     ColliderKind::Rect{ .. } => {
                         let rect = Rect::from(self);
-                        Self::sweep_rect_to_rect_colllision(rect, other_rect, self.velocity)
+                        self.axis_col_from_intermediate(
+                            Self::sweep_rect_to_rect_colllision(rect, other_rect, vel_self, vel_other)
+                            , axis
+                        )
                     },
                     // Tilemap to Rect
                     ColliderKind::Tilemap { .. } => None,
@@ -194,14 +203,21 @@ impl CollisionProbe<f32> {
             ColliderKind::Tilemap{ tile_width, tile_height, .. } => {
                 let tilemap = tilemap?;
                 let tilemap_rect = Rect::from(other);
+
+                // Scaling - needs testing!
+                let pos_x = self.pos.x / tile_width as f32;
+                let pos_y = self.pos.y / tile_height as f32;
+                let vel_x = vel_self.x / tile_width as f32;
+                let vel_y = vel_self.y / tile_height as f32;
+
                 match self.kind {
                     // Point to Tilemap
                     ColliderKind::Point => {
-                        let x0 = self.pos.x - tilemap_rect.x;
-                        let y0 = self.pos.y - tilemap_rect.y;
-                        let x1 = x0 + self.velocity.x;
-                        let y1 = y0 + self.velocity.y;
-                        self.collision_from_intermediate( tilemap.raycast(x0, y0, x1, y1) )
+                        let x0 = pos_x - tilemap_rect.x;
+                        let y0 = pos_y - tilemap_rect.y;
+                        let x1 = x0 + vel_x;
+                        let y1 = y0 + vel_y;
+                        self.axis_col_from_intermediate( tilemap.raycast(x0, y0, x1, y1), axis )
                     },
                     // Rect to Tilemap
                     ColliderKind::Rect{ w, h } => {
@@ -212,11 +228,11 @@ impl CollisionProbe<f32> {
                             let y = y as f32;
                             for x in 0 ..= tiles_h {
                                 let x = x as f32;
-                                let x0 = x + self.pos.x - tilemap_rect.x;
-                                let y0 = y + self.pos.y - tilemap_rect.y;
-                                let x1 = x0 + self.velocity.x;
-                                let y1 = y0 + self.velocity.y;
-                                if let Some(col) = self.collision_from_intermediate( tilemap.raycast(x0, y0, x1, y1) ){
+                                let x0 = x + pos_x - tilemap_rect.x;
+                                let y0 = y + pos_y - tilemap_rect.y;
+                                let x1 = x0 + vel_x;
+                                let y1 = y0 + vel_y;
+                                if let Some(col) = self.axis_col_from_intermediate( tilemap.raycast(x0, y0, x1, y1), axis ){
                                     return Some(col)
                                 }
                             }
@@ -231,79 +247,20 @@ impl CollisionProbe<f32> {
     }
 
 
-    // fn sweep_rect_to_rect_colllision(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> Option<Collision<f32>> {
-    fn sweep_rect_to_rect_colllision(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>) -> Option<Collision<f32>> {
-        // find the distance between the objects on the near and far sides for both x and y 
-        let (dist_entry_x, dist_exit_x) = if vel_a.x > 0.0 { 
-            (b.x - a.right(), b.right() - a.x)
-        } else { 
-            (b.right() - a.x, b.x - a.right())
+    fn broad_phase(&self, other:&Self, axis:Axis) -> bool {
+        let (vel_self, vel_other) = match axis {
+            Axis::Horizontal => (self.velocity.horiz(), other.velocity.horiz()),
+            Axis::Vertical => (self.velocity.vert(), other.velocity.vert()),
         };
-
-        let (dist_entry_y, dist_exit_y) = if vel_a.y > 0.0 { 
-            (b.y - a.bottom(),  b.bottom() - a.y)
-        } else { 
-            (b.bottom() - a.y, b.y - a.bottom())
-        };
-
-        let (entry_x, exit_x) = if vel_a.x == 0.0 { 
-            (f32::NEG_INFINITY, f32::INFINITY)
-        } else { 
-            (dist_entry_x / vel_a.x, dist_exit_x / vel_a.x)
-        };
-
-        let (entry_y, exit_y) = if vel_a.y == 0.0 { 
-            (f32::NEG_INFINITY, f32::INFINITY)
-        } else { 
-            (dist_entry_y / vel_a.y, dist_exit_y / vel_a.y)
-        };
-
-        let entry_time = entry_x.max(entry_y); 
-        let exit_time = exit_x.min(exit_y);
-
-        if (entry_time > exit_time) || (entry_x < 0.0 && entry_y < 0.0) || (entry_x > 1.0 || entry_y > 1.0) { 
-            return None
-        }
-
-        let normal:Vec2<f32> = if entry_x > entry_y { 
-            if dist_entry_x < 0.0 { 
-                Vec2::right()
-            } else { 
-                Vec2::left()
-            } 
-        } else if dist_entry_y < 0.0 { 
-            Vec2::down()
-        } else { 
-            Vec2::up()
-        };
-
-        // println!("normal:{:.2?}, entry_time:{:.2}, dist_x:{:.1}, entry_x:{:.1}", normal, entry_time, dist_entry_x, entry_x);
-        Some(Collision{
-            tile: None,
-            entity_id: Default::default(),
-            velocity: vel_a,
-            other_velocity: Vec2::zero(),   //vel_b
-            pre_col_delta: Vec2{
-                x: vel_a.x * entry_time,
-                y: vel_a.y * entry_time,
-            },
-            normal,
-            t: entry_time
-        })
-    }
-
-
-
-    fn broad_phase_overlaps(&self, other:&Self) -> bool {
         match self.kind {
             ColliderKind::Point => {
                 match other.kind {
                     // Point in point
-                    ColliderKind::Point => self.pos.floor() == other.pos.floor(),
+                    ColliderKind::Point => false,
                     // Point in rect / Point in whole tilemap rect
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
-                        let rect = Rect::from(other);
-                        Self::broad_phase_point_in_rect(self.pos, self.velocity, rect, other.velocity)
+                        let other_rect = Rect::from(other);
+                        Self::broad_phase_point_in_rect(self.pos, vel_self, other_rect, vel_other)
                     },
                 }
             },
@@ -316,26 +273,18 @@ impl CollisionProbe<f32> {
                 match other.kind {
                     // Rect over point
                     ColliderKind::Point => {
-                        Self::broad_phase_point_in_rect(other.pos, other.velocity, rect, self.velocity)
+                        Self::broad_phase_point_in_rect(other.pos, vel_other, rect, vel_self)
                     }
                     // Rect over Rect, including tilemap rect
                     ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
                         let other_rect = Rect::from(other);
-                        Self::broad_phase_rects_overlap(rect, other_rect, self.velocity, other.velocity)
+                        Self::broad_phase_rects_overlap(rect, other_rect, vel_self, vel_other)
                     },
                 }
             },
             ColliderKind::Tilemap { .. } => {
-                let rect = Rect::from(self);
-                match other.kind {
-                    // Rect over point
-                    ColliderKind::Point => Self::broad_phase_point_in_rect(other.pos, other.velocity, rect, self.velocity),
-                    // Rect over rect
-                    ColliderKind::Rect{ .. } | ColliderKind::Tilemap { .. }=> {
-                        let other_rect = Rect::from(other);
-                        Self::broad_phase_rects_overlap(rect, other_rect, self.velocity, other.velocity)
-                    },
-                }
+                // Collisions can't originate from tilemaps
+                false
             }
         }
     }
@@ -352,18 +301,134 @@ impl CollisionProbe<f32> {
     }
 
 
+    // rect sweeping method, needs more testing!
     pub fn broad_phase_point_in_rect(point: Vec2<f32>, point_vel: Vec2<f32>, rect: Rect<f32>, rect_vel:Vec2<f32>) -> bool {
-        // rect sweeping method, needs more testing! May fail at high speeds, AABB sweep may be too broad?
-        let broad_rect = Self::broad_rect(rect, rect_vel + point_vel.scale(-1.0));
-        broad_rect.contains(point.x, point.y)|| broad_rect.contains(point.x + point_vel.x, point.y + point_vel.y)
+        let broad_rect = Self::broad_rect(rect, rect_vel - point_vel);
+        broad_rect.contains(point.x, point.y)
     }
 
 
-    // TODO: needs vel_b
     pub fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> bool {
         let broad_rect_a = Self::broad_rect(a, vel_a);
         let broad_rect_b = Self::broad_rect(b, vel_b);
         broad_rect_a.overlaps(&broad_rect_b)
+    }
+
+    
+    pub fn sweep_point_in_rect_x(x:f32, vel_x:f32, rect:Rect<f32>, rect_vel_x:f32) ->  Option<IntermediateCollision<f32>> {
+        let rect_left = if rect_vel_x > 0.0 { rect.x } else { rect.x + rect_vel_x };
+        let rect_right = if rect_vel_x > 0.0 { rect.right() + rect_vel_x } else { rect.right() };
+        let result_vel = vel_x - rect_vel_x;
+        if result_vel == 0.0 {
+            None
+        } else if result_vel > 0.0 {
+            Some(IntermediateCollision{
+                normal: Vec2::left(),
+                t:(rect_left - x) / result_vel
+            })
+        } else if result_vel < 0.0 {
+            Some(IntermediateCollision{
+                normal: Vec2::right(),
+                t:(rect_right - x) / result_vel
+            })
+        } else {
+            None
+        }
+    }
+
+
+    pub fn sweep_point_in_rect_y(y:f32, vel_y:f32, rect:Rect<f32>, rect_vel_y:f32) ->  Option<IntermediateCollision<f32>> {
+        let rect_top = if rect_vel_y > 0.0 { rect.y } else { rect.y + rect_vel_y };
+        let rect_bottom = if rect_vel_y > 0.0 { rect.bottom() + rect_vel_y } else { rect.bottom() };
+        let result_vel = vel_y - rect_vel_y;
+        if result_vel == 0.0 {
+            None
+        } else if result_vel > 0.0 {
+            Some(IntermediateCollision{
+                normal: Vec2::up(),
+                t:(rect_top - y) / result_vel
+            })
+        } else if result_vel < 0.0 {
+            Some(IntermediateCollision{
+                normal: Vec2::down(),
+                t:(rect_bottom - y) / result_vel
+            })
+        } else {
+            None
+        }
+    }
+
+
+    fn sweep_rect_to_rect_colllision(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> Option<IntermediateCollision<f32>> {
+        // find the distance between the objects on the near and far sides for both x and y 
+        let vel = vel_a - vel_b;
+        
+        let (dist_entry_x, dist_exit_x) = if vel.x > 0.0 { 
+            (b.x - a.right(), b.right() - a.x)
+        } else { 
+            (b.right() - a.x, b.x - a.right())
+        };
+
+        let (dist_entry_y, dist_exit_y) = if vel.y > 0.0 { 
+            (b.y - a.bottom(),  b.bottom() - a.y)
+        } else { 
+            (b.bottom() - a.y, b.y - a.bottom())
+        };
+
+        let (entry_x, exit_x) = if vel.x == 0.0 { 
+            (f32::NEG_INFINITY, f32::INFINITY)
+        } else { 
+            (dist_entry_x / vel.x, dist_exit_x / vel.x)
+        };
+
+        let (entry_y, exit_y) = if vel.y == 0.0 { 
+            (f32::NEG_INFINITY, f32::INFINITY)
+        } else { 
+            (dist_entry_y / vel.y, dist_exit_y / vel.y)
+        };
+
+        let entry_time = entry_x.max(entry_y); 
+        // let exit_time = exit_x.min(exit_y);
+
+        // if (entry_time > exit_time) || (entry_x < 0.0 && entry_y < 0.0) || (entry_x > 1.0 || entry_y > 1.0) { 
+        if (entry_x < 0.0 && entry_y < 0.0) || (entry_x > 1.0 || entry_y > 1.0)  { 
+            return None
+        }
+
+        let normal:Vec2<f32> = if entry_x > entry_y { 
+            if dist_entry_x < 0.0 { 
+                Vec2::right()
+            } else { 
+                Vec2::left()
+            } 
+        } else if dist_entry_y < 0.0 { 
+            Vec2::down()
+        } else { 
+            Vec2::up()
+        };
+
+        // println!("normal:{:.2?}, entry_time:{:.2}, dist_x:{:.1}, entry_x:{:.1}", normal, entry_time, dist_entry_x, entry_x);
+        Some(IntermediateCollision{
+            normal,
+            t: entry_time
+        })
+    }
+
+
+    fn axis_col_from_intermediate(&self, maybe_value: Option<IntermediateCollision<f32>>, axis: Axis) -> Option<AxisCollision<f32>> {
+        let value = maybe_value?;
+        Some(AxisCollision {
+            normal: match axis {
+                Axis::Horizontal => value.normal.x,
+                Axis::Vertical => value.normal.y,
+            },
+            t: value.t,
+            margin: match axis {
+                Axis::Horizontal => COL_MARGIN * value.normal.x,
+                Axis::Vertical => COL_MARGIN * value.normal.y
+            },
+            velocity: 0.0,
+        })
     }
 
 }
@@ -404,6 +469,17 @@ impl From<Rect<f32>> for Collider {
             layer: 0,
             mask: 0,
         }
+    }
+}
+
+
+impl<T> AddAssign<AxisCollision<T>> for AxisCollision<T>
+where T:Add<Output = T> + AddAssign + Copy + PartialOrd + Float {    
+    fn add_assign(&mut self, other: AxisCollision<T>) {
+        self.velocity += other.velocity;
+        self.normal += other.normal;
+        self.margin += other.margin;
+        self.t = self.t.min(other.t);   //Smallest is best?
     }
 }
 

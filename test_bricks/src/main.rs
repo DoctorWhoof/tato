@@ -44,7 +44,7 @@ async fn main() {
         id: {
             let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            world.add_collider(paddle, Collider::from(spud::Rect{x:-12.0, y:-8.0, w:24.0, h:16.0}));
+            world.add_collider(paddle, Collider::from(spud::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
             world.set_position(paddle, initial_paddle_pos);
             world.set_render_offset(paddle, -12,-8);
             paddle
@@ -95,7 +95,7 @@ async fn main() {
             world.debug_pivot = !world.debug_pivot
         }
         if is_key_pressed(KeyCode::Escape) {
-            puck.vel = Vec2 { x: 60.0, y: 0.0 };
+            puck.vel = Vec2 { x: 0.0, y: -60.0 };
             world.set_position(paddle.id, initial_paddle_pos);
             world.set_position(puck.id, initial_puck_pos);
         }

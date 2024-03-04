@@ -64,6 +64,8 @@ where
     #[inline] #[allow(unused)]
     pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
+        if x0 < 0 || x1 > S::RENDER_WIDTH as i32 { return }
+        if y0 < 0 || y1 > S::RENDER_HEIGHT as i32 { return }
         draw_line(&mut self.pixels, S::RENDER_WIDTH, x0, y0, x1, y1, color)
     }
 

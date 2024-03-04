@@ -1,4 +1,5 @@
 use core::{f32::consts::PI, ops::{Add, Sub}};
+use core::ops::{AddAssign, SubAssign};
 use libm::floorf;
 use num_traits::Float;
 
@@ -66,6 +67,16 @@ impl<T:Float> Vec2<T> {
 
     pub fn right() -> Self {
         Self{ x:T::one(), y:T::zero() }
+    }
+
+
+    pub fn horiz(&self) -> Self {
+        Self{ x:self.x, y:T::zero() }
+    }
+
+
+    pub fn vert(&self) -> Self {
+        Self{ x:T::zero(), y:self.y }
     }
 
 
@@ -210,6 +221,22 @@ where T:Add<Output = T> + Sub<Output = T> + Copy + PartialOrd {
             x: self.x - other.x,
             y: self.y - other.y,
         }
+    }
+}
+
+impl<T> AddAssign<Vec2<T>> for Vec2<T>
+where T:Add<Output = T> + AddAssign + Copy + PartialOrd {    
+    fn add_assign(&mut self, other: Vec2<T>) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
+
+impl<T> SubAssign<Vec2<T>> for Vec2<T>
+where T:Sub<Output = T> + AddAssign + Copy + PartialOrd {    
+    fn sub_assign(&mut self, other: Vec2<T>) {
+        self.x += other.x;
+        self.y += other.y;
     }
 }
 
