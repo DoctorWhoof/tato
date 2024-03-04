@@ -2,7 +2,7 @@ use core::ops::{Add,AddAssign};
 use num_traits::Float;
 use crate::*;
 
-const COL_MARGIN:f32 = 0.1;
+const COL_MARGIN:f32 = 0.2;
 
 slotmap::new_key_type!{
     pub struct ColliderID;
@@ -363,35 +363,34 @@ impl CollisionProbe<f32> {
         // find the distance between the objects on the near and far sides for both x and y 
         let vel = vel_a - vel_b;
         
-        let (dist_entry_x, dist_exit_x) = if vel.x > 0.0 { 
-            (b.x - a.right(), b.right() - a.x)
+        let dist_entry_x = if vel.x > 0.0 { 
+            b.x - a.right()
         } else { 
-            (b.right() - a.x, b.x - a.right())
+            b.right() - a.x
         };
 
-        let (dist_entry_y, dist_exit_y) = if vel.y > 0.0 { 
-            (b.y - a.bottom(),  b.bottom() - a.y)
+        let dist_entry_y = if vel.y > 0.0 { 
+            b.y - a.bottom()
         } else { 
-            (b.bottom() - a.y, b.y - a.bottom())
+            b.bottom() - a.y
         };
 
-        let (entry_x, exit_x) = if vel.x == 0.0 { 
-            (f32::NEG_INFINITY, f32::INFINITY)
+        let entry_x = if vel.x == 0.0 { 
+            f32::NEG_INFINITY
         } else { 
-            (dist_entry_x / vel.x, dist_exit_x / vel.x)
+            dist_entry_x / vel.x
         };
 
-        let (entry_y, exit_y) = if vel.y == 0.0 { 
-            (f32::NEG_INFINITY, f32::INFINITY)
+        let entry_y = if vel.y == 0.0 { 
+            f32::NEG_INFINITY
         } else { 
-            (dist_entry_y / vel.y, dist_exit_y / vel.y)
+            dist_entry_y / vel.y
         };
 
         let entry_time = entry_x.max(entry_y); 
-        // let exit_time = exit_x.min(exit_y);
 
-        // if (entry_time > exit_time) || (entry_x < 0.0 && entry_y < 0.0) || (entry_x > 1.0 || entry_y > 1.0) { 
-        if (entry_x < 0.0 && entry_y < 0.0) || (entry_x > 1.0 || entry_y > 1.0)  { 
+        let safety = 16.0;   //Hack! TODO: Make more sense of this...
+        if (entry_x < -safety && entry_y < -safety) || (entry_x > safety || entry_y > safety)  { 
             return None
         }
 
