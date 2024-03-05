@@ -1,5 +1,5 @@
 Ridiculous old fashioned game engine. You probably shouldn't use this.
-For very simple games that would feel unconfortable in a large, bloated, modern engine.
+For very simple games that would feel uncomfortable in a large, bloated, modern engine.
 
 Features:
 - Minimal dependencies (slotmap, libm and num-traits). No standard library required.
