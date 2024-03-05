@@ -47,7 +47,6 @@ async fn main() {
         game.update();
         game.world.render_frame();
 
-
         // Copy from framebuffer to macroquad texture
         let source = game.world.framebuf.pixels();
         let width = GameSpecs::RENDER_WIDTH;
@@ -94,8 +93,8 @@ fn window_conf() -> Conf {
         high_dpi: true,
         sample_count: 0,
         window_resizable: true,
-        window_width: 320 * 3,
-        window_height: 240 * 3,
+        window_width: 256 * 3,
+        window_height: 192 * 3,
         ..Default::default()
     }
 }

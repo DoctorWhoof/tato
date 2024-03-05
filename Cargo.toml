@@ -1,7 +1,9 @@
 [package]
-name = "spud"
+name = "tato"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "A ridiculous, obsolete engine that aims to run very well on any computer. Even potato powered ones!"
 
 [features]
 std = []

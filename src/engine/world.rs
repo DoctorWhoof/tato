@@ -241,6 +241,13 @@ where
         }
     }
     
+
+    pub fn translate(&mut self, id:EntityID, delta:Vec2<f32>) {
+        let ent = &mut self.entities[id];
+        ent.pos += delta;
+    }
+
+
     pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {       
         // Passed to all collision calculations witn frame delta already applied
         let scaled_velocity = velocity.scale(self.time_elapsed);
