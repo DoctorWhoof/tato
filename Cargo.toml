@@ -7,7 +7,7 @@ edition = "2021"
 std = []
 
 [workspace]
-members = ["test_collisions", "test_bricks", "template_mquad"]
+members = ["test_collisions", "test_bricks", "test_bugs", "template_mquad"]
 
 [profile.release]
 # debug = true

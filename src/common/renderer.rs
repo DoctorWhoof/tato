@@ -1,4 +1,4 @@
-use crate::*;
+use super::*;
 use core::{mem::variant_count, array};
 
 /// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
@@ -75,8 +75,7 @@ where
                 let x = (tile_x % S::ATLAS_WIDTH) as u8;
                 let y = ((tile_x / S::ATLAS_WIDTH) * S::TILE_HEIGHT as usize) as u8;
                 Rect{
-                    x,
-                    y,
+                    x, y,
                     w:S::TILE_WIDTH,
                     h:S::TILE_HEIGHT
                 }
@@ -120,7 +119,7 @@ where
     }
 
 
-    pub fn push_tileset(&mut self, atlas:&Atlas<S, TilesetEnum, PaletteEnum>, tileset_id:TilesetEnum) {
+    pub fn load_tileset(&mut self, atlas:&Atlas<S, TilesetEnum, PaletteEnum>, tileset_id:TilesetEnum) {
         let id:usize = tileset_id.into();
         let tileset = &atlas.tilesets[id];
 

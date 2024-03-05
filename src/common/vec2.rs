@@ -1,7 +1,13 @@
-use core::{f32::consts::PI, ops::{Add, Sub}};
-use core::ops::{AddAssign, SubAssign};
+use num_traits::{Float, Num};
+use core::{
+    fmt::Display,
+    f32::consts::PI,
+    ops::{Add, Sub, AddAssign, SubAssign}
+};
 use libm::floorf;
-use num_traits::Float;
+use super::Rect;
+// use crate::MinMax;
+
 
 
 /// A generic 2D vector.
@@ -43,7 +49,8 @@ impl Vec2<f32> {
 }
 
 
-impl<T:Float> Vec2<T> {
+impl<T> Vec2<T>
+where T: Float + Num + PartialOrd + Copy + Display {
 
     pub fn zero() -> Self {
         Self{ x:T::zero(), y:T::zero() }
@@ -121,6 +128,15 @@ impl<T:Float> Vec2<T> {
         }
     }
 
+
+    pub fn clamp_to_rect(self, rect: Rect<T>) -> Vec2<T> {
+        Vec2 {
+            x: if self.x < rect.x { rect.x } else if self.x > rect.right() { rect.right() } else { self.x },
+            y: if self.y < rect.y { rect.y } else if self.y > rect.bottom() { rect.bottom() } else { self.y },
+        }
+    }
+
+
     pub fn dot(&self, other: &Self) -> T {
         (self.x * other.x) + (self.y * other.y)
     }
@@ -140,31 +156,6 @@ impl<T:Float> Vec2<T> {
         }
     }
 
-    // pub fn reflect(velocity: Self, collision_normal: T) -> Self {
-    //     let two = T::one() + T::one();
-    //     let normal = Vec2{
-    //         x:collision_normal.cos(),
-    //         y:collision_normal.sin()
-    //     };
-    //     let dot_product = velocity.dot(&normal);
-    //     velocity.subtract(&normal.scale(two * dot_product))
-    // }
-
-
-    pub fn reflect(incoming: Vec2<T>, normal: Vec2<T>) -> Vec2<T> {
-        let two = T::one() + T::one();
-        let normalized_normal = normal.normalize();
-        let dot_product = incoming.dot(&normalized_normal);
-        incoming.subtract(&normalized_normal.scale(two * dot_product))
-    }
-
-
-    pub fn weighted_add(v1:Self, v2:Self, weight_1: T, weight_2: T) -> Self {
-        Self{
-            x: ((v1.x * weight_1) + (v2.x * weight_2)),
-            y: ((v1.y * weight_1) + (v2.y * weight_2)),
-        }
-    }
 
     pub fn rotate(&self, angle: T) -> Self {
         let cos_theta = angle.cos();
@@ -181,21 +172,6 @@ impl<T:Float> Vec2<T> {
         let dist_y = other.y - self.y;
         ((dist_x * dist_x) + (dist_y * dist_y)).sqrt()
     }
-
-    // pub fn blend(v1:Self, v2:Self, weight_1: T, weight_2: T, invert_y:bool) -> Self {
-    //     let two = T::one() + T::one();
-    //     if invert_y {
-    //         Self{
-    //             x: ((v1.x * weight_1) + (v2.x * weight_2)) / two,
-    //             y: ((v1.y * weight_1) + (-v2.y * weight_2)) / two,
-    //         }
-    //     } else {
-    //         Self{
-    //             x: ((v1.x * weight_1) + (v2.x * weight_2)) / two,
-    //             y: ((v1.y * weight_1) +( v2.y * weight_2)) / two,
-    //         }
-    //     }
-    // }
 
 }
 

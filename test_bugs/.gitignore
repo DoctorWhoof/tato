@@ -1,0 +1,7 @@
+/target
+.target
+/Cargo.lock
+.vscode
+.zed
+.DS_Store
+src/assets/converted

@@ -1,17 +1,21 @@
 #### To Do:
 
     [ ] Test projects:
-        [ ] Breakout-like
-        [ ] Galaga-like
+        [.] Breakout-like
+        [.] Galaga-like
         [ ] Maze game
 
     [ ] Loading tilesets should allow specifying which assets to load, if the tileset contains more than the specs allow at once.
 
-    [ ] Tile revamp:
+--->[ ] Clear Init error messages!
+        . If anything is non-initialized (i.e. Palette) or over capacity, there should be a clear error for that!
+        . Maybe a Spud error type, and a function that displays useful messages for each type?
+
+--->[ ] Tile revamp:
         [ ] Get rid of layers, implement depth in tile flags?
         [ ] 4 bytes - Index(16 bit), Group(8 bit), Flags(flip_h, flip_v, depth)
 
-    [ ] Strong typed Anim, Font and Tilemap IDs
+    [ ] Stronger Anim, Font and Tilemap IDs
         - Each ID struct contains the TilesetID (u8) and the asset index (u8)
   
     [?] Renderer should provide its internal pixels as a framebuffer, for debugging purposes (allows drawing loaded tiles separate from main frame buffer)
@@ -144,7 +148,7 @@
                 [ ] Too many bugs caused by silly mistakes so far! Needs better pipeline design.
                     . Groups and Anims should be tied to tilesets, so you can't use a group intended for a tileset on another.
                     . Added "GroupEnum" generic parameter to TilesetBuilder
-    --------------->. Proceed to actually save that data so that initializing a group also restores its enum assignment
+                    . Proceed to actually save that data so that initializing a group also restores its enum assignment
                 [ ] Detect all door instances at build time, when importing the tilemap.
                 [ ] Save/Load basic Scene file containing door entities
                 [ ] Add "Group" functionality to anims (look at TilesetBuilder.init_group)

@@ -28,9 +28,9 @@ async fn main() {
     let mut world: GameWorld = World::new();
     world.debug_colliders = true;
     world.render.load_palettes_from_atlas(&atlas);
-    world.render.push_tileset(&atlas, TilesetID::Hud);
-    world.render.push_tileset(&atlas, TilesetID::Bg);
-    world.render.push_tileset(&atlas, TilesetID::Sprites);
+    world.render.load_tileset(&atlas, TilesetID::Hud);
+    world.render.load_tileset(&atlas, TilesetID::Bg);
+    world.render.load_tileset(&atlas, TilesetID::Sprites);
 
     let bg = world.add_entity(0);
     world.set_shape(bg, Shape::Bg {

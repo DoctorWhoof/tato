@@ -14,8 +14,7 @@ pub struct Rect<T> {
 }
 
 impl<T> Rect<T>
-where
-    T: Num + PartialOrd + MinMax + Copy + Display,
+where T: Num + PartialOrd + Copy + Display,
 {
     pub fn new(x: T, y: T, w: T, h: T) -> Self {
         Rect { x, y, w, h }
@@ -71,10 +70,10 @@ where
         if !self.overlaps(&other) {
             return None;
         }
-        let x = self.x.max(other.x);
-        let y = self.y.max(other.y);
-        let right = self.right().min(other.right());
-        let bottom = self.bottom().min(other.bottom());
+        let x = if self.x > other.x { self.x } else { other.x };
+        let y = if self.y > other.y { self.y } else { other.y };
+        let right = if self.right() < other.right() { self.right() } else { other.right() };
+        let bottom = if self.bottom() < other.bottom() { self.bottom() } else { other.bottom() };
         Some(Rect {
             x,
             y,
