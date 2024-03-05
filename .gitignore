@@ -1,6 +1,6 @@
 /target
 .target
-/Cargo.lock
+/*.lock
 .vscode
 .zed
 .DS_Store
