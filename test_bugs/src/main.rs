@@ -6,7 +6,7 @@ pub use game::*;
 pub use specs::*;
 pub use actors::*;
 
-use spud::{Atlas, Specs, World};
+use tato::{Atlas, Specs, World};
 use macroquad::{color::*, input::*, texture::*, window::*, math::*};
 
 pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;

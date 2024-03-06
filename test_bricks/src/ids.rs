@@ -1,6 +1,6 @@
-spud::implement_enum_index!(TilesetID);
-spud::implement_enum_index!(PaletteID);
-spud::implement_enum_index!(GroupID);
+tato::implement_enum_index!(TilesetID);
+tato::implement_enum_index!(PaletteID);
+tato::implement_enum_index!(GroupID);
 
 
 #[derive(Clone, Copy)]#[repr(u8)]

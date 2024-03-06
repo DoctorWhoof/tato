@@ -1,5 +1,5 @@
 use crate::{GameWorld, Paddle, Puck};
-use spud::{CollisionReaction, Vec2};
+use tato::{CollisionReaction, Vec2};
 
 pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
     let speed_x = 20.0;

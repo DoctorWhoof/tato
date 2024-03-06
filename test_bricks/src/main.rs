@@ -6,7 +6,7 @@ mod update;
 
 pub use crate::{gameplay::*, ids::*, input::*, specs::*};
 use macroquad::prelude::*;
-use spud::{Atlas, Collider, Shape, Specs, Vec2, World};
+use tato::{Atlas, Collider, Shape, Specs, Vec2, World};
 
 pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
 pub type GameAtlas = Atlas<GameSpecs, TilesetID, PaletteID>;
@@ -39,21 +39,21 @@ async fn main() {
     });
     world.add_collider(bg, Collider::new_tilemap_collider());
 
-    let initial_paddle_pos = spud::Vec2 { x: 128.0, y: 160.0 };
+    let initial_paddle_pos = tato::Vec2 { x: 128.0, y: 160.0 };
     let mut paddle = Paddle {
         id: {
             let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            world.add_collider(paddle, Collider::from(spud::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
+            world.add_collider(paddle, Collider::from(tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
             world.set_position(paddle, initial_paddle_pos);
             world.set_render_offset(paddle, -12,-8);
             paddle
         },
         input: Input::default(),
-        vel: spud::Vec2::default(),
+        vel: tato::Vec2::default(),
     };
 
-    let initial_puck_pos = spud::Vec2 { x: 128.0, y: 124.0 };
+    let initial_puck_pos = tato::Vec2 { x: 128.0, y: 124.0 };
     let mut puck = Puck {
         id: {
             let puck = world.add_entity(0);

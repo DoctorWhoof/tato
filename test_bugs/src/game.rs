@@ -1,4 +1,4 @@
-use spud::*;
+use tato::*;
 use macroquad::input::*;
 use crate::{GameWorld, GameAtlas, TilesetID, Player};
 

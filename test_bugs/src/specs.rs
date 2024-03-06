@@ -1,4 +1,4 @@
-use spud::Specs;
+use tato::Specs;
 
 #[derive(Clone, Copy)]
 pub struct GameSpecs {}
@@ -24,7 +24,7 @@ impl Specs for GameSpecs {
     const TILEMAPS_PER_TILESET:usize = 2;
 }
 
-spud::implement_enum_index!(TilesetID);
+tato::implement_enum_index!(TilesetID);
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum TilesetID {
@@ -34,7 +34,7 @@ pub enum TilesetID {
     Enemies,
 }
 
-spud::implement_enum_index!(PaletteID);
+tato::implement_enum_index!(PaletteID);
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum PaletteID {
@@ -43,7 +43,7 @@ pub enum PaletteID {
 }
 
 
-spud::implement_enum_index!(GroupID);
+tato::implement_enum_index!(GroupID);
 #[derive(Clone, Copy)]#[repr(u8)]
 pub enum GroupID {
     None,

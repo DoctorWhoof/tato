@@ -1,6 +1,6 @@
 #[derive(Clone)]
 pub struct GameSpecs {}
-impl spud::Specs for GameSpecs {
+impl tato::Specs for GameSpecs {
     const MAX_COLLIDERS_PER_LAYER:usize = 4;
 
     const RENDER_WIDTH: usize = 256;

@@ -2,7 +2,7 @@ mod specs;
 pub use crate::specs::*;
 
 use macroquad::prelude::*;
-use spud::{Specs, World};
+use tato::{Specs, World};
 
 pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
 
@@ -42,7 +42,7 @@ async fn main() {
         // *********************** Entity Update goes here *********************** 
 
         // Render
-        world.framebuf.clear(spud::Color::gray_dark());
+        world.framebuf.clear(tato::Color::gray_dark());
         world.render_frame();
 
         // Copy from framebuffer to macroquad texture

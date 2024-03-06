@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "A ridiculous, obsolete engine that aims to run very well on any computer. Even potato powered ones!"
+repository = "https://github.com/DoctorWhoof/tato"
+readme = "readme.md"
 
 [features]
 std = []
@@ -14,10 +16,10 @@ members = ["test_collisions", "test_bricks", "test_bugs", "template_mquad"]
 [profile.release]
 # debug = true
 panic = "abort"
-# These settings will increase compile times in release mode!
+# These settings are likely to increase compile times in release mode!
 strip = true
-opt-level = 3
 lto = true
+opt-level = 3
 codegen-units = 1
 
 [dependencies]

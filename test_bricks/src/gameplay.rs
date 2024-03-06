@@ -1,4 +1,4 @@
-use spud::{EntityID, Vec2};
+use tato::{EntityID, Vec2};
 use crate:: Input;
 
 pub struct Paddle {

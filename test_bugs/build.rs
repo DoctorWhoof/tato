@@ -1,6 +1,6 @@
 #[path ="src/specs.rs"]#[allow(unused)] mod specs;
 
-use spud_pipeline::*;
+use tato_pipe::*;
 use specs::*;
 
 fn main() {

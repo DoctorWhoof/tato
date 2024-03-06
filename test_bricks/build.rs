@@ -1,7 +1,7 @@
 #[path ="src/specs.rs"]#[allow(unused)] mod specs;
 #[path ="src/ids.rs"]#[allow(unused)] mod ids;
 
-use spud_pipeline::*;
+use tato_pipe::*;
 use specs::*;
 use ids::*;
 
