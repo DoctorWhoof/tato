@@ -6,7 +6,7 @@ pub struct Game {
     pub world:GameWorld,
     pub atlas:GameAtlas,
     player: Player,
-    human: EntityID,
+    // human: EntityID,
     // enemies: Vec<EntityID>, 
     stars_bg_0:EntityID,
     stars_bg_1:EntityID,
@@ -64,7 +64,7 @@ impl Game {
             world,
             atlas,
             player,
-            human,
+            // human,
             stars_bg_0, stars_bg_1, stars_fg_0, stars_fg_1
         }
     }
