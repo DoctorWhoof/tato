@@ -1,4 +1,4 @@
-#PLEASE DO NOT USE! IT IS NOT IN A RELIABLE STATE YET!
+# PLEASE DO NOT USE! IT IS NOT IN A RELIABLE STATE YET!
 
 Ridiculous old fashioned game engine. You probably shouldn't use this.
 For very simple games that would feel uncomfortable in a large, bloated, modern engine.
