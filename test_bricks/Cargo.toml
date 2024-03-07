@@ -7,8 +7,9 @@ edition = "2021"
 
 [dependencies]
 macroquad = "0.4.4"
-tato = "0.1.1"
+tato = { path = "../" }
 
 [build-dependencies]
-tato = "0.1.1"
-tato_pipe = "0.1.1"
+tato = { path = "../" }
+# tato_pipe = "0.1.2"
+tato_pipe = { path = "../../tato_pipe" }

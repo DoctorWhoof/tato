@@ -3,9 +3,9 @@
 #![allow(incomplete_features, unstable_features)]
 #![feature(generic_const_exprs, variant_count)]
 
-// #![no_std]
-// #[cfg(feature = "std")] extern crate std;
-// #[cfg(feature = "std")] pub use std::{print, println};
+#![no_std]
+#[cfg(feature = "std")] extern crate std;
+#[cfg(feature = "std")] pub use std::{print, println};
 
 mod test;
 #[path ="common/_common.rs"] mod common;

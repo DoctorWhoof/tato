@@ -147,7 +147,7 @@ where
     }
 
 
-    pub fn delete_entity(&mut self, id: EntityID) {
+    pub fn remove_entity(&mut self, id: EntityID) {
         if let Some(ent) = self.entities.get(id) {
             // Clean up BgTiles if needed.
             // Tilemap will be left "dirty" by the AnimTile entity if this is not performed
@@ -165,8 +165,15 @@ where
                 }
             }
             self.entities.remove(id);
+            self.colliders.remove(id);
         }
     }
+
+
+    pub fn entities(&self) -> &SlotMap<EntityID, Entity> {
+        &self.entities
+    }
+
 
     // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
     pub fn get_members(&mut self) -> (&mut SlotMap<EntityID, Entity>, &mut Renderer<S, TilesetEnum, PaletteEnum>) {
@@ -203,6 +210,17 @@ where
     pub fn set_shape(&mut self, id:EntityID, shape:Shape) {
         self.entities[id].shape = shape;
     }
+
+
+    pub fn is_visible(&mut self, id:EntityID) -> bool {
+        self.entities[id].visible
+    }
+
+
+    pub fn set_visible(&mut self, id:EntityID, visible:bool) {
+        self.entities[id].visible = visible;
+    }
+
 
     // Internal
     fn add_probe_to_colliders(&mut self, probe:CollisionProbe<f32>) {
@@ -244,7 +262,7 @@ where
 
     pub fn translate(&mut self, id:EntityID, delta:Vec2<f32>) {
         let ent = &mut self.entities[id];
-        ent.pos += delta;
+        ent.pos += delta.scale(self.time_elapsed);
     }
 
 

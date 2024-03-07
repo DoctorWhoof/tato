@@ -3,15 +3,17 @@
 mod bit_flags;
 // mod byte_id;
 mod color;
+mod fixed_pool;
 mod math;
 mod rand;
 mod smooth_buffer;
-mod pool;
+mod ring_pool;
 
 pub use bit_flags::*;
 // pub use byte_id::*;
 pub use color::*;
+pub use fixed_pool::*;
 pub use math::*;
 pub use rand::*;
 pub use smooth_buffer::*;
-pub use pool::*;
+pub use ring_pool::*;

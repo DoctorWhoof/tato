@@ -12,6 +12,7 @@ fn main() {
 
     atlas.init_tileset( TilesetID::Player, PaletteID::Fg );
     atlas.init_anim("assets/bug_idle.png", 20, 2, 2, TilesetID::Player, GroupID::None);
+    atlas.init_anim("assets/bug_shot.png", 10, 1, 1, TilesetID::Player, GroupID::None);
     
     atlas.init_tileset( TilesetID::Enemies, PaletteID::Fg );
     atlas.init_anim("assets/human_idle.png", 10, 2, 2, TilesetID::Enemies, GroupID::None);

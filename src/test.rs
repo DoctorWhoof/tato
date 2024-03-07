@@ -67,3 +67,53 @@ fn sweep_point_in_rect() {
     // println!("Collision result: {} for {:.1?} & {:.1?}", result, point + point_vel, rect + rect_vel);
 
 }
+
+
+
+#[test]
+fn ring_pool() {
+    let mut pool = RingPool::<i32, 10>::new();
+
+    // First 5 items
+    for n in 0 .. 5 {
+        let result = pool.push(n);
+        assert!(result.is_none());
+    }
+
+    // Add 5 more without pushing any value out
+    for n in 0 .. 5 {
+        let result = pool.push(n + 5);
+        assert!(result.is_none());
+    }
+
+    // Add 5 more, this time will push old values out
+    for n in 0 .. 5 {
+        let result = pool.push(n + 10);
+        assert!(result.is_some());
+        if let Some(value) = result {
+            assert_eq!(value, n);
+        }
+    }
+
+    // Pop 5 values, will reduce length
+    for n in 0 .. 5 {
+        let result = pool.pop();
+        assert!(result.is_some());
+        if let Some(value) = result {
+            assert_eq!(value, n + 5);
+        }
+    }
+    assert_eq!(pool.len(), 5);
+
+    // Re-add 5 values, no values will be pushed out
+    let len = pool.len();
+    for n in 1 ..= 5 {
+        let result = pool.push(100 * n);
+        assert!(result.is_none());
+        assert_eq!(pool.len(), len + n as usize);
+    }
+
+
+
+
+}

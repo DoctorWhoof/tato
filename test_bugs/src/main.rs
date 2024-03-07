@@ -1,3 +1,4 @@
+
 mod specs;
 mod game;
 mod actors; 
@@ -7,7 +8,7 @@ pub use specs::*;
 pub use actors::*;
 
 use tato::{Atlas, Specs, World};
-use macroquad::{color::*, input::*, texture::*, window::*, math::*};
+use macroquad::{color::*, input::*, math::*, text::draw_text, texture::*, window::*};
 
 pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
 pub type GameAtlas = Atlas<GameSpecs, TilesetID, PaletteID>;
@@ -79,6 +80,22 @@ async fn main() {
                 pivot: None,
             },
         );
+
+        // Overlay
+        let mut i = 10.0;
+        draw_text( format!("FPS: {:.1}", 1.0 / game.world.time_elapsed()).as_str(), 16.0, i as f32, 16.0, WHITE);
+        i += 16.0;
+        draw_text( format!("Entity count: {}", game.world.entities().len()).as_str(), 16.0, i as f32, 16.0, WHITE);
+        i += 16.0;
+        draw_text( format!("Update time: {:.2}", game.world.time_update() * 1000.0).as_str(), 16.0, i as f32, 16.0, WHITE);
+        i += 16.0;
+        for bullet in game.bullets.iter() {
+            draw_text(
+                format!("{:?}", bullet).as_str(),
+                16.0, i as f32, 16.0, WHITE
+            );
+            i += 16.0;
+        }
 
         // Finish (calculate timings)
         game.world.finish_frame(time.elapsed().as_secs_f32());
