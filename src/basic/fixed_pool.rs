@@ -1,5 +1,3 @@
-use core::fmt::Error;
-
 pub struct FixedPool<T, const CAP:usize>
 where T:Default + Clone {
     data:[T; CAP],
