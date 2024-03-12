@@ -8,7 +8,7 @@ use slotmap::{SecondaryMap, SlotMap};
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
 pub struct World<T, P>
-where T:EnumID, P:EnumID,
+where T:TilesetEnum, P:PaletteEnum,
 {
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
@@ -41,7 +41,7 @@ where T:EnumID, P:EnumID,
 }
 
 impl<T, P> World<T, P>
-where T:EnumID, P:EnumID,
+where T:TilesetEnum, P:PaletteEnum,
 {
     pub fn new(specs:Specs) -> Self {
         World {

@@ -4,7 +4,7 @@ use alloc::{vec, vec::Vec};
 
 
 pub struct Atlas<T, P>
-where T:EnumID, P:EnumID,
+where T:TilesetEnum, P:PaletteEnum,
 {
     pub(crate) tilesets:    Vec<Tileset>,
     pub(crate) palettes:    Vec<Palette>,
@@ -16,7 +16,7 @@ where T:EnumID, P:EnumID,
 
 
 impl<T, P> Atlas<T, P>
-where T:EnumID, P:EnumID,
+where T:TilesetEnum, P:PaletteEnum,
 {
     
     pub fn load(specs: Specs, bytes:&[u8]) -> Self {

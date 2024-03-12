@@ -1,10 +1,19 @@
 
-pub trait EnumID: Clone + Copy + PartialEq + Into<u8> + Into<usize> + From<u8> {
+pub trait ByteEnum: Clone + Copy + PartialEq + Into<u8> + Into<usize> + From<u8> {
     fn count() -> usize;
 }
 
+
+pub trait TilesetEnum: ByteEnum {}
+
+pub trait PaletteEnum: ByteEnum {}
+
+pub trait GroupEnum: ByteEnum {}
+
+
+#[doc(hidden)]
 #[macro_export]
-macro_rules! enum_id {
+macro_rules! implement_enum_id {
     ($name:ident { $($variants:ident),* $(,)? }) => {
         // Define the enum with the provided name and variants
         #[derive(Clone, Copy, Debug, PartialEq)]#[repr(u8)]
@@ -27,7 +36,7 @@ macro_rules! enum_id {
         }
 
 
-        impl EnumID for $name {
+        impl ByteEnum for $name {
             fn count() -> usize {
                 let variants = [$(stringify!($variants)),*];
                 variants.len()
@@ -37,3 +46,38 @@ macro_rules! enum_id {
 }
 
 
+#[macro_export]
+macro_rules! tileset_enum {
+    ($name:ident { $($variants:ident),* $(,)? }) => {
+        implement_enum_id! {
+            $name {
+                $($variants),*
+            }
+        }
+        impl TilesetEnum for $name {}
+    };
+}
+
+#[macro_export]
+macro_rules! palette_enum {
+    ($name:ident { $($variants:ident),* $(,)? }) => {
+        implement_enum_id! {
+            $name {
+                $($variants),*
+            }
+        }
+        impl PaletteEnum for $name {}
+    };
+}
+
+#[macro_export]
+macro_rules! group_enum {
+    ($name:ident { $($variants:ident),* $(,)? }) => {
+        implement_enum_id! {
+            $name {
+                $($variants),*
+            }
+        }
+        impl GroupEnum for $name {}
+    };
+}

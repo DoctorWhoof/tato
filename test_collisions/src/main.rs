@@ -29,8 +29,8 @@ async fn main() {
     };
 
     // Can't init World without tileset and palette ids, so let's make some basic ones
-    enum_id!{ TilesetID { Default } }
-    enum_id!{ PaletteID { Default } }
+    tileset_enum!{ TilesetID { Default } }
+    palette_enum!{ PaletteID { Default } }
 
     // Spud init
     let mut world = World::<TilesetID, PaletteID>::new(specs);

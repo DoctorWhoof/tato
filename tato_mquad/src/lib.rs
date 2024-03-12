@@ -1,11 +1,11 @@
 
 use std::{marker::PhantomData, time::Instant, vec};
 use macroquad::prelude::*;
-use tato::{EnumID, World};
+use tato::{PaletteEnum, TilesetEnum, World};
 
 
 pub struct App<T, P>
-where T:EnumID, P:EnumID
+where T:TilesetEnum, P:PaletteEnum
 {
     pub overlay_position: Vec2,
     pub overlay_line_spacing: f32,
@@ -19,10 +19,10 @@ where T:EnumID, P:EnumID
 
 
 impl<T,P> App<T,P>
-where T:EnumID, P:EnumID {
+where T:TilesetEnum, P:PaletteEnum {
 
     pub fn new(world:&World<T,P>) -> Self
-    where T:EnumID, P:EnumID {
+    where T:TilesetEnum, P:PaletteEnum {
         let render_image =  Image::gen_image_color( world.framebuf.width(), world.framebuf.height(), BLACK);
         let render_texture = Texture2D::from_image(&render_image);
         render_texture.set_filter(FilterMode::Nearest);
@@ -41,13 +41,13 @@ where T:EnumID, P:EnumID {
 
 
     pub fn start_frame(&mut self, world:&mut World<T,P>)
-    where T:EnumID, P:EnumID {
+    where T:TilesetEnum, P:PaletteEnum {
         world.start_frame(self.time.elapsed().as_secs_f32());
     }
 
 
     pub fn finish_frame(&mut self, world:&mut World<T,P>)
-    where T:EnumID, P:EnumID {
+    where T:TilesetEnum, P:PaletteEnum {
         // Render scaling pre-calc
         let width = world.framebuf.width();
         let height = world.framebuf.height();

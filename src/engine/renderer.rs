@@ -5,7 +5,7 @@ use alloc::{vec, vec::Vec};
 
 /// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
 pub struct Renderer<T, P>
-where T:EnumID, P:EnumID,
+where T:TilesetEnum, P:PaletteEnum,
 {
     pub(crate) partitions:  Vec<Option<Partition>>,
     pub(crate) palettes:    Vec<Option<Palette>>,
@@ -22,7 +22,7 @@ where T:EnumID, P:EnumID,
 
 
 impl<T, P> Renderer<T, P>
-where T:EnumID, P:EnumID,
+where T:TilesetEnum, P:PaletteEnum,
 {
     pub(crate) fn new(specs:Specs) -> Self {
         
@@ -93,7 +93,7 @@ where T:EnumID, P:EnumID,
     }
 
 
-    pub fn load_tileset(&mut self, atlas:&Atlas<T,P>, tileset_id:impl EnumID) {
+    pub fn load_tileset(&mut self, atlas:&Atlas<T,P>, tileset_id:impl TilesetEnum) {
         let id:u8 = tileset_id.into();
         let tileset = &atlas.tilesets[id as usize];
         let palette = &atlas.palettes[tileset.debug_palette as usize];

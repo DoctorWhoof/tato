@@ -1,4 +1,4 @@
-use tato::{Specs, EnumID};
+use tato::*;
 
 pub const SPECS:Specs = Specs {
     render_width: 256,
@@ -10,7 +10,7 @@ pub const SPECS:Specs = Specs {
     colors_per_palette: 16,
 };
 
-tato::enum_id!{
+tato::tileset_enum!{
     TilesetID {
         Hud,
         Sprites,
@@ -18,13 +18,13 @@ tato::enum_id!{
     }
 }
 
-tato::enum_id!{
+tato::palette_enum!{
     PaletteID {
         Main
     }
 }
 
-tato::enum_id!{
+tato::group_enum!{
     GroupID {
         None,
         Wall,
