@@ -1,11 +1,23 @@
-mod specs;
-use specs::*;
-
 use macroquad::prelude::*;
-use tato::{Specs, World, Collider, CollisionReaction};
+use tato::*;
+use tato_mquad::App;
+
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Collision Test".into(),
+        fullscreen: false,
+        high_dpi: true,
+        sample_count: 0,
+        window_resizable: true,
+        window_width: 320 * 3,
+        window_height: 240 * 3,
+        ..Default::default()
+    }
+}
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // World specs
     let specs = Specs {
         render_width: 320,
         render_height: 240,
@@ -16,10 +28,9 @@ async fn main() {
         colors_per_palette: 16,
     };
 
-    // macroquad init
-    let mut img = Image::gen_image_color( specs.render_width, specs.render_height, BLACK);
-    let render_texture = Texture2D::from_image(&img);
-    render_texture.set_filter(FilterMode::Nearest);
+    // Can't init World without tileset and palette ids, so let's make some basic ones
+    enum_id!{ TilesetID { Default } }
+    enum_id!{ PaletteID { Default } }
 
     // Spud init
     let mut world = World::<TilesetID, PaletteID>::new(specs);
@@ -65,13 +76,15 @@ async fn main() {
     world.set_position(ent_wall_right, tato::Vec2::new(304.0, 16.0));
     world.add_collider(ent_wall_right, Collider::from(tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
 
-    // main loop
-    let time = std::time::Instant::now();
     let speed = 120.0;
     let mut vel = tato::Vec2::zero();
+
+    // main loop
+    let mut app = App::new(&world);
     loop {
+        app.start_frame(&mut world);
+
         // Update
-        world.start_frame(time.elapsed().as_secs_f32());
         if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) {
             break;
         }
@@ -79,13 +92,6 @@ async fn main() {
         if is_key_pressed(KeyCode::Escape){
             world.set_position(ent_main, initial_position)
         }
-
-        // Render scaling pre-calc
-        let scale = (screen_height() / specs.render_height as f32).floor();
-        let render_width = specs.render_width as f32 * scale;
-        let render_height = specs.render_height as f32 * scale;
-        let draw_rect_x = (screen_width() - render_width) / 2.0;
-        let draw_rect_y = (screen_height() - render_height) / 2.0;
                 
         // Update
         if is_key_pressed(KeyCode::Key1){
@@ -132,7 +138,6 @@ async fn main() {
         // Main Probe
         let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);  //TODO: not &mut, simply set vel to col.vel?
         if let Some(col) = &collision {
-            // println!("{:?}", col);
             vel = col.velocity
         }
 
@@ -147,88 +152,16 @@ async fn main() {
             world.framebuf.draw_filled_rect(tato::Rect { x: pos.x as i32-1, y:pos.y as i32-1, w:3, h:3 }, tato::Color::red());
         }
 
-        // Copy from framebuffer to macroquad texture
-        let source = world.framebuf.pixels();
-        let width = specs.render_width as usize;
-        for y in 0..specs.render_height as usize {
-            for x in 0..specs.render_width as usize {
-                let source_index = (y * width) + x;
-                let color = source[source_index];
-                img.set_pixel(
-                    x as u32,
-                    y as u32,
-                    Color::from_rgba(color.r, color.g, color.b, color.a),
-                )
-            }
+        // Debug Overlay
+        app.push_overlay(format!("Update: {:.2?}", world.time_update() * 1000.0));
+        app.push_overlay(format!("Vel: {:.2?}", vel));
+        if let Some(col) = &collision {
+            app.push_overlay(format!("Collision: {:.2?}", col));
         }
 
-        // Render texture to screen
-        // clear_background(BLACK);
-        render_texture.update(&img);
-        draw_texture_ex(
-            &render_texture,
-            draw_rect_x,
-            draw_rect_y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(render_width, render_height)),
-                source: None,
-                rotation: 0.0,
-                flip_x: false,
-                flip_y: false,
-                pivot: None,
-            },
-        );
-
-        {   // Debug text
-            let mut i = 10.0;
-            draw_text(
-                format!("Update: {:.2?}", world.time_update() * 1000.0).as_str(),
-                10.0, i, 16.0, WHITE
-            );
-
-            i += 16.0;
-            draw_text(
-                format!("Vel: {:.2?}", vel).as_str(),
-                10.0, i, 16.0, WHITE
-            );
-
-            // i += 24.0;
-            // for layer in world.get_collision_layers() {
-            //     i += 8.0;
-            //     for col in layer {
-            //         i += 16.0;
-            //         draw_text(
-            //             format!("Collider: {:.2?}", col).as_str(),
-            //             10.0, i, 16.0, WHITE
-            //         );
-            //     }
-            // }
-
-            i += 24.0;
-            if let Some(col) = &collision {
-                draw_text(
-                    format!("Collision: {:.2?}", col).as_str(),
-                    10.0, i, 16.0, WHITE
-                );
-            }
-        }
-
-        // Finish (calculate timings)
-        world.finish_frame(time.elapsed().as_secs_f32());
+        // Finish
+        app.finish_frame(&mut world);
         next_frame().await;
     }
 }
 
-fn window_conf() -> Conf {
-    Conf {
-        window_title: "Collision Test".into(),
-        fullscreen: false,
-        high_dpi: true,
-        sample_count: 0,
-        window_resizable: true,
-        window_width: 320 * 3,
-        window_height: 240 * 3,
-        ..Default::default()
-    }
-}

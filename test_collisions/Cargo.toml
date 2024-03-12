@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 tato = { path = "../", features = ["std"] }
+tato_mquad = { path = "../tato_mquad" }
 macroquad = "0.4.4"

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 macroquad = "0.4.4"
 tato = { path = "../", features = ["std"] }
+tato_mquad = { path = "../tato_mquad" }
 
 [build-dependencies]
 tato = { path = "../", features = ["std"] }

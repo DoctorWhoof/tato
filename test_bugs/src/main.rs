@@ -1,104 +1,32 @@
 
-mod game;
+mod update;
 mod actors; 
 mod specs;
+mod init;
 
-pub use game::*;
-pub use actors::*;
-pub use specs::*;
+pub use crate::{actors::*, specs::*};
 
-use tato::{Atlas, World};
-use macroquad::{color::*, input::*, math::*, text::draw_text, texture::*, window::*};
+use macroquad::prelude as mquad;
+use tato_mquad::App;
+use tato::*;
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    // macroquad init
-    let mut img = Image::gen_image_color( SPECS.render_width, SPECS.render_height, BLACK);
-    let render_texture = Texture2D::from_image(&img);
-    render_texture.set_filter(FilterMode::Nearest);
-
-    // Game Init 
-    let mut game = Game::new(SPECS);
-    
-    // Main loop
-    let time = std::time::Instant::now();
-    loop {
-        game.world.start_frame(time.elapsed().as_secs_f32());
-        
-        // Global Input
-        if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) { break; }
-        if is_key_pressed(KeyCode::A) { game.world.debug_atlas = !game.world.debug_atlas }
-        if is_key_pressed(KeyCode::W) { game.world.debug_pivot = !game.world.debug_pivot }
-
-        // Render scaling pre-calc
-        let scale = (screen_height() / SPECS.render_height as f32).floor();
-        let render_width = SPECS.render_width as f32 * scale;
-        let render_height = SPECS.render_height as f32 * scale;
-        let draw_rect_x = (screen_width() - render_width) / 2.0;
-        let draw_rect_y = (screen_height() - render_height) / 2.0;
-                
-        // Update game and render entities 
-        game.update();
-        game.world.render_frame();
-
-        // Copy from framebuffer to macroquad texture
-        let source = game.world.framebuf.pixels();
-        let width = SPECS.render_width;
-        for y in 0..SPECS.render_height {
-            for x in 0..SPECS.render_width {
-                let source_index = (y * width) + x;
-                let color = source[source_index as usize];
-                img.set_pixel(
-                    x as u32,
-                    y as u32,
-                    Color::from_rgba(color.r, color.g, color.b, color.a),
-                )
-            }
-        }
-
-        // Render texture to screen
-        clear_background(BLACK);
-        render_texture.update(&img);
-        draw_texture_ex(
-            &render_texture,
-            draw_rect_x,
-            draw_rect_y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(render_width, render_height)),
-                source: None,
-                rotation: 0.0,
-                flip_x: false,
-                flip_y: false,
-                pivot: None,
-            },
-        );
-
-        // Overlay
-        let mut i = 10.0;
-        draw_text( format!("FPS: {:.1}", 1.0 / game.world.time_elapsed()).as_str(), 16.0, i as f32, 16.0, WHITE);
-        i += 16.0;
-        draw_text( format!("Entity count: {}", game.world.entities().len()).as_str(), 16.0, i as f32, 16.0, WHITE);
-        i += 16.0;
-        draw_text( format!("Update time: {:.2}", game.world.time_update() * 1000.0).as_str(), 16.0, i as f32, 16.0, WHITE);
-        i += 16.0;
-        for bullet in game.bullets.iter() {
-            draw_text(
-                format!("{:?}", bullet).as_str(),
-                16.0, i as f32, 16.0, WHITE
-            );
-            i += 16.0;
-        }
-
-        // Finish (calculate timings)
-        game.world.finish_frame(time.elapsed().as_secs_f32());
-        next_frame().await;
-    }
+pub struct Game {
+    pub world:World<TilesetID, PaletteID>,
+    pub atlas:Atlas<TilesetID, PaletteID>,
+    player: Player,
+    // human: EntityID,
+    // enemies: Vec<EntityID>, 
+    stars_bg_0:EntityID,
+    stars_bg_1:EntityID,
+    stars_fg_0:EntityID,
+    stars_fg_1:EntityID,
+    pub cooldown:f32,
+    pub bullets:RingPool<EntityID, 16>,
 }
 
-fn window_conf() -> Conf {
-    Conf {
-        window_title: "Collision Test".into(),
+fn window_conf() -> mquad::Conf {
+    mquad::Conf {
+        window_title: "Bug's Revenge".into(),
         fullscreen: false,
         high_dpi: true,
         sample_count: 0,
@@ -108,3 +36,35 @@ fn window_conf() -> Conf {
         ..Default::default()
     }
 }
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    // Init 
+    let mut game = Game::new(SPECS);
+    let mut app = App::new(&game.world);
+    
+    // Main loop
+    loop {
+        app.start_frame(&mut game.world);
+                
+        // Update game and render entities 
+        if mquad::is_key_down(mquad::KeyCode::LeftSuper) && mquad::is_key_pressed(mquad::KeyCode::Q) { break; }
+
+        game.update();
+        game.world.render_frame();
+
+        // Overlay
+        app.push_overlay(format!("FPS: {:.1}", 1.0 / game.world.time_elapsed()));
+        app.push_overlay(format!("Entity count: {}", game.world.entities().len()));
+        app.push_overlay(format!("Update time: {:.2}", game.world.time_update() * 1000.0));
+        for bullet in game.bullets.iter() {
+            app.push_overlay(format!("{:?}", bullet));
+        }
+
+        // Finish frame
+        app.finish_frame(&mut game.world);
+        mquad::next_frame().await;
+    }
+}
+
+

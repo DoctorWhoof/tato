@@ -4,26 +4,37 @@ mod update;
 mod specs;
 
 pub use crate::{gameplay::*, input::*, specs::*};
+
+use tato_mquad::App;
 use macroquad::prelude::*;
 use tato::{Atlas, Collider, Shape, Vec2, World};
 
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Paddlenoid".into(),
+        fullscreen: false,
+        high_dpi: true,
+        sample_count: 0,
+        window_resizable: true,
+        window_width: (216.0 * 1.79) as i32 * 3,
+        window_height: 216 * 3,
+        ..Default::default()
+    }
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    // macroquad init
-    let mut img = Image::gen_image_color(SPECS.render_width, SPECS.render_height, BLACK);
-    let render_texture = Texture2D::from_image(&img);
-    render_texture.set_filter(FilterMode::Nearest);
-
     // spud init
-    let time = std::time::Instant::now();
-    let atlas = Atlas::<TilesetID, PaletteID>::load(SPECS, include_bytes!("../assets/converted/atlas"));
     let mut world = World::new(SPECS);
+    let atlas = Atlas::<TilesetID, PaletteID>::load(SPECS, include_bytes!("../assets/converted/atlas"));
+
     world.debug_colliders = true;
     world.renderer.load_palettes_from_atlas(&atlas);
     world.renderer.load_tileset(&atlas, TilesetID::Hud);
     world.renderer.load_tileset(&atlas, TilesetID::Bg);
     world.renderer.load_tileset(&atlas, TilesetID::Sprites);
 
+    // Game init
     let bg = world.add_entity(0);
     world.set_shape(bg, Shape::Bg {
         tileset: TilesetID::Bg.into(),
@@ -58,34 +69,21 @@ async fn main() {
         initial_pos: initial_puck_pos,
         vel: Vec2 { x: 0.0, y: 0.0 },
     };
-
-    // main loop (infinite until "break")
+    
+    // Mquad App init and loop
+    let mut app = App::new(&world);
     loop {
-        world.start_frame(time.elapsed().as_secs_f32());
+        app.start_frame(&mut world);
         
         // Update
         paddle.input = Input::default();
-        if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) {
-            break;
-        }
-        if is_key_down(KeyCode::Up) {
-            paddle.input.up = true
-        }
-        if is_key_down(KeyCode::Down) {
-            paddle.input.down = true
-        }
-        if is_key_down(KeyCode::Left) {
-            paddle.input.left = true
-        }
-        if is_key_down(KeyCode::Right) {
-            paddle.input.right = true
-        }
-        if is_key_pressed(KeyCode::A) {
-            world.debug_atlas = !world.debug_atlas
-        }
-        if is_key_pressed(KeyCode::D) {
-            world.debug_pivot = !world.debug_pivot
-        }
+        if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) { break; }
+        if is_key_down(KeyCode::Up) { paddle.input.up = true }
+        if is_key_down(KeyCode::Down) { paddle.input.down = true }
+        if is_key_down(KeyCode::Left) { paddle.input.left = true }
+        if is_key_down(KeyCode::Right) { paddle.input.right = true }
+        if is_key_pressed(KeyCode::A) { world.debug_atlas = !world.debug_atlas }
+        if is_key_pressed(KeyCode::D) { world.debug_pivot = !world.debug_pivot }
         if is_key_pressed(KeyCode::Escape) {
             puck.vel = Vec2 { x: 0.0, y: -60.0 };
             world.set_position(paddle.id, initial_paddle_pos);
@@ -93,6 +91,7 @@ async fn main() {
         }
 
         world.use_static_collider(bg);
+
         update::move_player(&mut paddle, &mut world);
         update::move_puck(&mut puck, &mut world);
 
@@ -101,54 +100,14 @@ async fn main() {
         world.draw_text("1234", 8, 8, TilesetID::Hud, 0, false);
         world.draw_text("ZONE 1", 248, 8, TilesetID::Hud, 0, true);
 
-        // Copy from framebuffer to macroquad texture
-        let source = world.framebuf.pixels();
-        let width = SPECS.render_width;
-        for y in 0..SPECS.render_height {
-            for x in 0..SPECS.render_width {
-                let source_index = (y * width) + x;
-                let color = source[source_index as usize];
-                img.set_pixel(
-                    x as u32,
-                    y as u32,
-                    Color::from_rgba(color.r, color.g, color.b, color.a),
-                )
-            }
-        }
+        // Overlay
+        app.push_overlay(format!("FPS: {:.1}", 1.0 / world.time_elapsed()));
+        app.push_overlay(format!("Entity count: {}", world.entities().len()));
+        app.push_overlay(format!("Update time: {:.2}", world.time_update() * 1000.0));
 
-        // Render texture to screen
-        clear_background(BLACK);
-        let scale = (screen_height() / SPECS.render_height as f32).floor();
-        let render_width = SPECS.render_width as f32 * scale;
-        let render_height = SPECS.render_height as f32 * scale;
-        let x = (screen_width() - render_width) / 2.0;
-        let y = (screen_height() - render_height) / 2.0;
-
-        render_texture.update(&img);
-        draw_texture_ex( &render_texture, x, y, WHITE, DrawTextureParams {
-            dest_size: Some(vec2(render_width, render_height)),
-            source: None,
-            rotation: 0.0,
-            flip_x: false,
-            flip_y: false,
-            pivot: None,
-        });
-
-        // Finish (calculate timings)
-        world.finish_frame(time.elapsed().as_secs_f32());
+        // Finish frame
+        app.finish_frame(&mut world);
         next_frame().await;
     }
 }
 
-fn window_conf() -> Conf {
-    Conf {
-        window_title: "Paddlenoid".into(),
-        fullscreen: false,
-        high_dpi: true,
-        sample_count: 0,
-        window_resizable: true,
-        window_width: (216.0 * 1.79) as i32 * 3,
-        window_height: 216 * 3,
-        ..Default::default()
-    }
-}
