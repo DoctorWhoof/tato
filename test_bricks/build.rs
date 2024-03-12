@@ -1,13 +1,11 @@
 #[path ="src/specs.rs"]#[allow(unused)] mod specs;
-#[path ="src/ids.rs"]#[allow(unused)] mod ids;
-
-use tato_pipe::*;
 use specs::*;
-use ids::*;
+use tato_pipe::*;
+
 
 fn main() {
     println!("cargo:warning=Running Build Script!");
-    let mut atlas = AtlasBuilder::<GameSpecs, TilesetID, PaletteID, GroupID>::new();
+    let mut atlas = AtlasBuilder::<TilesetID, PaletteID, GroupID>::new(SPECS);
     
     atlas.init_tileset( TilesetID::Hud, PaletteID::Main );
     atlas.init_font("assets/font.png", TilesetID::Hud, GroupID::None);

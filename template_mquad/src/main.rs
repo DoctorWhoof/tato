@@ -1,24 +1,25 @@
-mod specs;
-pub use crate::specs::*;
-
 use macroquad::prelude::*;
 use tato::{Specs, World};
 
-pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
-
 #[macroquad::main(window_conf)]
 async fn main() {
+    let specs = Specs {
+        render_width: 320,
+        render_height: 240,
+        atlas_width: 128,
+        atlas_height: 128,
+        tile_width: 8,
+        tile_height: 8,
+        colors_per_palette: 16,
+    };
+
     // macroquad init
-    let mut img = Image::gen_image_color(
-        GameSpecs::RENDER_WIDTH as u16,
-        GameSpecs::RENDER_HEIGHT as u16,
-        BLACK,
-    );
+    let mut img = Image::gen_image_color( specs.render_width, specs.render_height, BLACK);
     let render_texture = Texture2D::from_image(&img);
     render_texture.set_filter(FilterMode::Nearest);
 
     // Spud init
-    let mut world: GameWorld = World::new();
+    let mut world = World::new(specs);
     
     // *********************** Add entities here! *********************** 
     
@@ -33,9 +34,9 @@ async fn main() {
         }
 
         // Render scaling pre-calc
-        let scale = (screen_height() / GameSpecs::RENDER_HEIGHT as f32).floor();
-        let render_width = GameSpecs::RENDER_WIDTH as f32 * scale;
-        let render_height = GameSpecs::RENDER_HEIGHT as f32 * scale;
+        let scale = (screen_height() / specs.render_height as f32).floor();
+        let render_width = specs.render_width as f32 * scale;
+        let render_height = specs.render_height as f32 * scale;
         let draw_rect_x = (screen_width() - render_width) / 2.0;
         let draw_rect_y = (screen_height() - render_height) / 2.0;
                 
@@ -47,11 +48,11 @@ async fn main() {
 
         // Copy from framebuffer to macroquad texture
         let source = world.framebuf.pixels();
-        let width = GameSpecs::RENDER_WIDTH;
-        for y in 0..GameSpecs::RENDER_HEIGHT {
-            for x in 0..GameSpecs::RENDER_WIDTH {
+        let width = specs.render_width;
+        for y in 0..specs.render_height {
+            for x in 0..specs.render_width {
                 let source_index = (y * width) + x;
-                let color = source[source_index];
+                let color = source[source_index as usize];
                 img.set_pixel(
                     x as u32,
                     y as u32,

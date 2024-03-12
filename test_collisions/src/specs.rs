@@ -1,49 +1,37 @@
-use tato::Specs;
+use tato::*;
+// use tato::strum::EnumCount;
+// use tato::strum_macros::EnumCount as EnumCountMacro;
 
-#[derive(Clone, Copy)]
-pub struct GameSpecs {}
-impl Specs for GameSpecs {
-    const MAX_COLLIDERS_PER_LAYER:usize = 10;
+// pub const SPECS:Specs = Specs {
+//     render_width: 256,
+//     render_height: 192,
+//     atlas_width: 128,
+//     atlas_height: 128,
+//     tile_width: 8,
+//     tile_height: 8,
+//     colors_per_palette: 16,
+// };
 
-    const RENDER_WIDTH:usize = 320;
-    const RENDER_HEIGHT:usize = 240;
+enum_id!{
+    TilesetID {
+        Default
+    }
+}
+    
 
-    const TILE_WIDTH:u8 = 16;
-    const TILE_HEIGHT:u8 = 16;
-
-    const ATLAS_WIDTH:usize = 128;
-    const ATLAS_HEIGHT:usize = 128;
-
-    const MAX_LOADED_TILESETS:usize = 1;
-    const MAX_LOADED_FONTS:usize = 1;
-    const MAX_LOADED_ANIMS:usize = 1;
-    const MAX_LOADED_TILEMAPS:usize = 1;
-    const COLORS_PER_PALETTE:usize = 4;
-    const ANIMS_PER_TILESET:usize = 1;
-    const FONTS_PER_TILESET:usize = 1;
-    const TILEMAPS_PER_TILESET:usize = 1;
+enum_id!{
+    PaletteID {
+        Default
+    }
 }
 
-tato::implement_enum_index!(TilesetID);
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum TilesetID {
-    Default
-}
 
-tato::implement_enum_index!(PaletteID);
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum PaletteID {
-    Default
-}
-
-tato::implement_enum_index!(GroupID);
-#[derive(Clone, Copy)]#[repr(u8)]
-pub enum GroupID {
-    None,
-    Wall,
-    Brick
+enum_id!{
+    GroupID {
+        None,
+        Wall,
+        Brick
+    }
 }
 
 

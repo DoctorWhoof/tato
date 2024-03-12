@@ -1,36 +1,28 @@
 mod gameplay;
-mod ids;
 mod input;
-mod specs;
 mod update;
+mod specs;
 
-pub use crate::{gameplay::*, ids::*, input::*, specs::*};
+pub use crate::{gameplay::*, input::*, specs::*};
 use macroquad::prelude::*;
-use tato::{Atlas, Collider, Shape, Specs, Vec2, World};
-
-pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
-pub type GameAtlas = Atlas<GameSpecs, TilesetID, PaletteID>;
+use tato::{Atlas, Collider, Shape, Vec2, World};
 
 #[macroquad::main(window_conf)]
 async fn main() {
     // macroquad init
-    let mut img = Image::gen_image_color(
-        GameSpecs::RENDER_WIDTH as u16,
-        GameSpecs::RENDER_HEIGHT as u16,
-        BLACK,
-    );
+    let mut img = Image::gen_image_color(SPECS.render_width, SPECS.render_height, BLACK);
     let render_texture = Texture2D::from_image(&img);
     render_texture.set_filter(FilterMode::Nearest);
 
     // spud init
     let time = std::time::Instant::now();
-    let atlas: GameAtlas = Atlas::load(include_bytes!("../assets/converted/atlas"));
-    let mut world: GameWorld = World::new();
+    let atlas = Atlas::<TilesetID, PaletteID>::load(SPECS, include_bytes!("../assets/converted/atlas"));
+    let mut world = World::new(SPECS);
     world.debug_colliders = true;
-    world.render.load_palettes_from_atlas(&atlas);
-    world.render.load_tileset(&atlas, TilesetID::Hud);
-    world.render.load_tileset(&atlas, TilesetID::Bg);
-    world.render.load_tileset(&atlas, TilesetID::Sprites);
+    world.renderer.load_palettes_from_atlas(&atlas);
+    world.renderer.load_tileset(&atlas, TilesetID::Hud);
+    world.renderer.load_tileset(&atlas, TilesetID::Bg);
+    world.renderer.load_tileset(&atlas, TilesetID::Sprites);
 
     let bg = world.add_entity(0);
     world.set_shape(bg, Shape::Bg {
@@ -111,11 +103,11 @@ async fn main() {
 
         // Copy from framebuffer to macroquad texture
         let source = world.framebuf.pixels();
-        let width = GameSpecs::RENDER_WIDTH;
-        for y in 0..GameSpecs::RENDER_HEIGHT {
-            for x in 0..GameSpecs::RENDER_WIDTH {
+        let width = SPECS.render_width;
+        for y in 0..SPECS.render_height {
+            for x in 0..SPECS.render_width {
                 let source_index = (y * width) + x;
-                let color = source[source_index];
+                let color = source[source_index as usize];
                 img.set_pixel(
                     x as u32,
                     y as u32,
@@ -126,9 +118,9 @@ async fn main() {
 
         // Render texture to screen
         clear_background(BLACK);
-        let scale = (screen_height() / GameSpecs::RENDER_HEIGHT as f32).floor();
-        let render_width = GameSpecs::RENDER_WIDTH as f32 * scale;
-        let render_height = GameSpecs::RENDER_HEIGHT as f32 * scale;
+        let scale = (screen_height() / SPECS.render_height as f32).floor();
+        let render_width = SPECS.render_width as f32 * scale;
+        let render_height = SPECS.render_height as f32 * scale;
         let x = (screen_width() - render_width) / 2.0;
         let y = (screen_height() - render_height) / 2.0;
 

@@ -1,36 +1,32 @@
-use crate::{Color, Rect, Specs, Vec2};
+use crate::{Color, Rect, Vec2};
+use alloc::{vec, vec::Vec};
+use crate::common::*;
 
 /// Allows writing pixels to a frame buffer.
-pub struct FrameBuf<S:Specs> 
-where
-    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
-{
-    pub(super) pixels: [Color; S::RENDER_WIDTH * S::RENDER_HEIGHT],
+pub struct FrameBuf  {
+    pub(super) pixels: Vec<Color>,
     pub(super) viewport: Rect<i32>,
+    pub(super) specs: Specs,
 }
 
-impl<S:Specs> FrameBuf<S>
-where
-    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT)/(S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,     //Tile count
-{
+impl FrameBuf {
 
-    pub(super) fn new() -> Self {
+    pub(super) fn new(specs:Specs) -> Self {
         FrameBuf {
-            pixels: [Color::default(); S::RENDER_WIDTH * S::RENDER_HEIGHT],
-            viewport: Rect { x:0, y:0, w:S::RENDER_WIDTH as i32, h:S::RENDER_HEIGHT as i32 },
+            pixels: vec![Color::default(); specs.render_width as usize * specs.render_height as usize],
+            viewport: Rect { x:0, y:0, w:specs.render_width as i32, h:specs.render_height as i32 },
+            specs
         }
     }
 
 
-    pub fn width(&self) -> usize { S::RENDER_WIDTH }
+    pub fn width(&self) -> u16 { self.specs.render_width }
 
 
-    pub fn height(&self) -> usize { S::RENDER_HEIGHT }
+    pub fn height(&self) -> u16 { self.specs.render_height }
 
 
-    pub fn pixels(&self) -> &[Color; S::RENDER_WIDTH * S::RENDER_HEIGHT] { &self.pixels }
+    pub fn pixels(&self) -> &[Color] { &self.pixels }
 
 
     pub fn viewport(&self) -> &Rect<i32> { &self.viewport }
@@ -57,16 +53,16 @@ where
 
     #[inline]
     pub fn draw_pixel(&mut self, x:usize, y:usize, color:Color){
-        draw_pixel(&mut self.pixels, S::RENDER_WIDTH, x, y, color)
+        draw_pixel(&mut self.pixels, self.specs.render_width, x, y, color)
     }
     
 
     #[inline] #[allow(unused)]
     pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
         // TODO: Take viewport into account
-        if x0 < 0 || x1 > S::RENDER_WIDTH as i32 { return }
-        if y0 < 0 || y1 > S::RENDER_HEIGHT as i32 { return }
-        draw_line(&mut self.pixels, S::RENDER_WIDTH, x0, y0, x1, y1, color)
+        if x0 < 0 || x1 > self.specs.render_width as i32 { return }
+        if y0 < 0 || y1 > self.specs.render_height as i32 { return }
+        draw_line(&mut self.pixels, self.specs.render_width, x0, y0, x1, y1, color)
     }
 
 
@@ -76,17 +72,17 @@ where
         let top = rect.y;
         let right = rect.x + rect.w - 1;
         let bottom = rect.y + rect.h - 1;
-        if left > -1 && left < S::RENDER_WIDTH as i32 - 1 {
-            draw_line(&mut self.pixels, S::RENDER_WIDTH, left, top, left, bottom, color)
+        if left > -1 && left < self.specs.render_width as i32 - 1 {
+            draw_line(&mut self.pixels, self.specs.render_width, left, top, left, bottom, color)
         }
-        if right > -1 && right < S::RENDER_WIDTH as i32 - 1 {
-            draw_line(&mut self.pixels, S::RENDER_WIDTH,  right, top, right, bottom, color)
+        if right > -1 && right < self.specs.render_width as i32 - 1 {
+            draw_line(&mut self.pixels, self.specs.render_width,  right, top, right, bottom, color)
         }
-        if top > -1 && top < S::RENDER_HEIGHT as i32 - 1 {
-            draw_line(&mut self.pixels, S::RENDER_WIDTH,  left + 1, top, right - 1, top, color)
+        if top > -1 && top < self.specs.render_height as i32 - 1 {
+            draw_line(&mut self.pixels, self.specs.render_width,  left + 1, top, right - 1, top, color)
         }
-        if bottom > -1 && bottom < S::RENDER_HEIGHT as i32 - 1 {
-            draw_line(&mut self.pixels, S::RENDER_WIDTH,  left + 1, bottom, right - 1, bottom, color)
+        if bottom > -1 && bottom < self.specs.render_height as i32 - 1 {
+            draw_line(&mut self.pixels, self.specs.render_width,  left + 1, bottom, right - 1, bottom, color)
         }
     }
 
@@ -94,10 +90,10 @@ where
     pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:Color){
         // TODO: Take viewport into account
         let rect = {
-            let x = i32::clamp(rect.x, 0, S::RENDER_WIDTH as i32 -1);
-            let right = i32::clamp(rect.x + rect.w - 1, 0, S::RENDER_WIDTH as i32 - 1);
-            let y = i32::clamp(rect.y, 0, S::RENDER_HEIGHT as i32 -1);
-            let bottom = i32::clamp(rect.y + rect.h - 1, 0, S::RENDER_HEIGHT as i32 - 1);
+            let x = i32::clamp(rect.x, 0, self.specs.render_width as i32 -1);
+            let right = i32::clamp(rect.x + rect.w - 1, 0, self.specs.render_width as i32 - 1);
+            let y = i32::clamp(rect.y, 0, self.specs.render_height as i32 -1);
+            let bottom = i32::clamp(rect.y + rect.h - 1, 0, self.specs.render_height as i32 - 1);
             Rect { x, y, w: right-x, h: bottom - y }
         };
         for y in rect.y ..= rect.bottom() {
@@ -112,16 +108,16 @@ where
 
 
 #[inline]
-pub(crate) fn draw_pixel(pixels: &mut [Color], buffer_width:usize, x:usize, y:usize, color:Color){
-    let index = (y * buffer_width) + x;
+pub(crate) fn draw_pixel(pixels: &mut [Color], buffer_width:u16, x:usize, y:usize, color:Color){
+    let index = (y * buffer_width as usize) + x;
     if index > pixels.len() { return }
     pixels[index] = color;
 }
 
 
-pub(crate) fn draw_line(pixels: &mut [Color], buffer_width:usize, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
+pub(crate) fn draw_line(pixels: &mut [Color], buffer_width:u16, x0:i32, y0:i32, x1:i32, y1:i32, color:Color) {
 
-    let buffer_height = pixels.len() / buffer_width;
+    let buffer_height = pixels.len() / buffer_width as usize;
         
     let mut x_head = (x0 as f32).clamp(0.0, buffer_width as f32);
     let mut y_head = (y0 as f32).clamp(0.0, buffer_height as f32);
@@ -138,7 +134,7 @@ pub(crate) fn draw_line(pixels: &mut [Color], buffer_width:usize, x0:i32, y0:i32
         draw_pixel(pixels, buffer_width, x_head as usize, y_head as usize, color);
         x_head += inc_x;
         y_head += inc_y;
-        if x_head as usize >= buffer_width || y_head as usize >= buffer_height { break };
+        if x_head as usize >= buffer_width as usize || y_head as usize >= buffer_height { break };
     }
 }
 

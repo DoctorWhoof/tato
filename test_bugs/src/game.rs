@@ -1,10 +1,10 @@
 use tato::*;
 use macroquad::input::*;
-use crate::{GameWorld, GameAtlas, TilesetID, Player};
+use crate::{World, Atlas, Player, specs::*};
 
 pub struct Game {
-    pub world:GameWorld,
-    pub atlas:GameAtlas,
+    pub world:World<TilesetID, PaletteID>,
+    pub atlas:Atlas<TilesetID, PaletteID>,
     player: Player,
     // human: EntityID,
     // enemies: Vec<EntityID>, 
@@ -21,14 +21,14 @@ impl Game {
     // **************************************** Init ****************************************
 
     
-    pub fn new() -> Self{
+    pub fn new(specs:Specs) -> Self{
         // Spud init
-        let mut world: GameWorld = World::new();
-        let atlas = GameAtlas::load( include_bytes!("../assets/converted/atlas") );
-        world.render.load_palettes_from_atlas(&atlas);  // TODO: get rid of this step... I always forget it!
-        world.render.load_tileset(&atlas, TilesetID::Bg);
-        world.render.load_tileset(&atlas, TilesetID::Player);
-        world.render.load_tileset(&atlas, TilesetID::Enemies);
+        let mut world = World::<TilesetID, PaletteID>::new(specs);
+        let atlas = Atlas::load( specs, include_bytes!("../assets/converted/atlas") );
+        world.renderer.load_palettes_from_atlas(&atlas);  // TODO: get rid of this step... I always forget it!
+        world.renderer.load_tileset(&atlas, TilesetID::Bg);
+        world.renderer.load_tileset(&atlas, TilesetID::Player);
+        world.renderer.load_tileset(&atlas, TilesetID::Enemies);
     
         let stars_bg_0 = world.add_entity(0);
         world.set_shape(stars_bg_0, Shape::Bg{ tileset: TilesetID::Bg.into(), tilemap_id: 0 });
@@ -159,28 +159,26 @@ impl Game {
         scroll(self.stars_fg_0, bg_speed * 2.0);
         scroll(self.stars_fg_1, bg_speed * 2.0);
 
-        // if let Some(ent) = self.world.get_entity_mut(self.stars_bg_0){
-        //     if ent.pos.y > height { ent.pos.y = -height }
-        //     ent.pos.y += bg_speed * elapsed
-        // }
+        if let Some(ent) = self.world.get_entity_mut(self.stars_bg_0){
+            if ent.pos.y > height { ent.pos.y = -height }
+            ent.pos.y += bg_speed * elapsed
+        }
 
-        // if let Some(ent) = self.world.get_entity_mut(self.stars_bg_1){
-        //     if ent.pos.y > height { ent.pos.y = -height }
-        //     ent.pos.y += bg_speed * elapsed
-        // }
+        if let Some(ent) = self.world.get_entity_mut(self.stars_bg_1){
+            if ent.pos.y > height { ent.pos.y = -height }
+            ent.pos.y += bg_speed * elapsed
+        }
 
-        // if let Some(ent) = self.world.get_entity_mut(self.stars_fg_0){
-        //     if ent.pos.y > height { ent.pos.y = -height }
-        //     ent.pos.y += bg_speed * 2.0 * elapsed
-        // }
+        if let Some(ent) = self.world.get_entity_mut(self.stars_fg_0){
+            if ent.pos.y > height { ent.pos.y = -height }
+            ent.pos.y += bg_speed * 2.0 * elapsed
+        }
 
-        // if let Some(ent) = self.world.get_entity_mut(self.stars_fg_1){
-        //     if ent.pos.y > height { ent.pos.y = -height }
-        //     ent.pos.y += bg_speed * 2.0 * elapsed
-        // }
+        if let Some(ent) = self.world.get_entity_mut(self.stars_fg_1){
+            if ent.pos.y > height { ent.pos.y = -height }
+            ent.pos.y += bg_speed * 2.0 * elapsed
+        }
 
     }
 }
 
-
-impl Default for Game { fn default() -> Self { Self::new() } }

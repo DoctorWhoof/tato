@@ -1,24 +1,16 @@
-pub trait Specs: Clone {
-    // Collisions
-    const MAX_COLLIDERS_PER_LAYER:usize;
 
+#[derive(Clone, Copy, Debug)]
+pub struct Specs {
     // FrameBuf
-    const RENDER_WIDTH:usize;
-    const RENDER_HEIGHT:usize;
+    pub render_width:u16,
+    pub render_height:u16,
 
     // Renderer
-    const TILE_WIDTH:u8;
-    const TILE_HEIGHT:u8;
-    const ATLAS_WIDTH:usize;
-    const ATLAS_HEIGHT:usize; 
-    const MAX_LOADED_TILESETS:usize;
-    const MAX_LOADED_FONTS:usize;
-    const MAX_LOADED_ANIMS:usize;
-    const MAX_LOADED_TILEMAPS:usize;
+    pub atlas_width:u16,
+    pub atlas_height:u16, 
+    pub tile_width:u8,
+    pub tile_height:u8,
 
     //Assets
-    const COLORS_PER_PALETTE:usize;
-    const ANIMS_PER_TILESET:usize;
-    const FONTS_PER_TILESET:usize;
-    const TILEMAPS_PER_TILESET:usize;
+    pub colors_per_palette:u8,
 } 

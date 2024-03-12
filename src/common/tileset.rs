@@ -1,61 +1,75 @@
-// use slotmap::SlotMap;
-
+use alloc::{vec, vec::Vec};
 use super::*;
-use core::array::from_fn;
 
 // Max 256 tiles
-pub struct Tileset<S:Specs>
-where
-    [(); S::FONTS_PER_TILESET]: Sized,
-    [(); S::ANIMS_PER_TILESET]: Sized,
-    [(); S::TILEMAPS_PER_TILESET]: Sized,
-    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-{
-    pub pixels: [u8; 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)],
-    pub fonts: [Option<Font>; S::FONTS_PER_TILESET],
-    pub anims: [Option<Anim>; S::ANIMS_PER_TILESET],
-    pub tilemaps: [Option<Tilemap>; S::TILEMAPS_PER_TILESET],
-    pub debug_palette: u8,
-    pub tile_count:u8,
-    pub font_count: u8,
-    pub anim_count: u8,
-    pub tilemap_count: u8,
+pub struct Tileset {
+    pub(crate) pixels: Vec<u8>,
+    pub(crate) debug_palette: u8,
+    fonts: Vec<Font>,
+    anims: Vec<Anim>,
+    tilemaps: Vec<Tilemap>,
+    tile_count:u8,
+    // font_count: u8,
+    // anim_count: u8,
+    // tilemap_count: u8,
 }
 
 
-impl<S:Specs> Tileset<S>
-where
-    [(); S::FONTS_PER_TILESET]: Sized,
-    [(); S::ANIMS_PER_TILESET]: Sized,
-    [(); S::TILEMAPS_PER_TILESET]: Sized,
-    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-{
+impl Tileset {
     
     /// Returns an empty tileset
-    pub fn new() -> Self {
+    pub fn new(pixel_count:usize, tile_count:u8) -> Self {
         Self {
-            pixels: from_fn(|_| 0),
-            fonts: from_fn(|_| None ),
-            anims: from_fn(|_| None ),
-            tilemaps: from_fn(|_| None ),
+            pixels: vec![0; pixel_count],
+            fonts: vec![],
+            anims: vec![],
+            tilemaps: vec![],
             debug_palette: Default::default(),
-            tile_count: 0,
-            font_count: 0,
-            anim_count: 0,
-            tilemap_count: 0,
+            tile_count,
+            // font_count: 0,
+            // anim_count: 0,
+            // tilemap_count: 0,
         }
     }
 
-}
+    pub fn tile_count(&self) -> u8 { self.tile_count }
 
-impl<S:Specs> Default for Tileset<S>
-where
-    [(); S::FONTS_PER_TILESET]: Sized,
-    [(); S::ANIMS_PER_TILESET]: Sized,
-    [(); S::TILEMAPS_PER_TILESET]: Sized,
-    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-{
-    fn default() -> Self {
-        Self::new()
+    pub fn debug_palette(&self) -> u8 { self.debug_palette }
+
+    pub fn anims(&self) -> &Vec<Anim> { &self.anims }
+
+    pub fn fonts(&self) -> &Vec<Font> { &self.fonts }
+
+    pub fn tilemaps(&self) -> &Vec<Tilemap> { &self.tilemaps }
+
+    pub fn anim_count(&self) -> u8 { self.anims.len() as u8 }
+
+    pub fn font_count(&self) -> u8 { self.fonts.len() as u8 }
+
+    pub fn tilemap_count(&self) -> u8 { self.tilemaps.len() as u8 }
+
+    pub fn push_anim(&mut self, anim:Anim) {
+        if self.anims.len() < u8::MAX as usize {
+            self.anims.push(anim)
+        } else {
+            panic!("Tileset error: Anim Capacity of 255 exceeded.")
+        }
     }
+
+    pub fn push_font(&mut self, font:Font) {
+        if self.fonts.len() < u8::MAX as usize {
+            self.fonts.push(font)
+        } else {
+            panic!("Tileset error: Font Capacity of 255 exceeded.")
+        }
+    }
+
+    pub fn push_tilemap(&mut self, map:Tilemap) {
+        if self.tilemaps.len() < u8::MAX as usize {
+            self.tilemaps.push(map)
+        } else {
+            panic!("Tileset error: Tilemap Capacity of 255 exceeded.")
+        }
+    }
+
 }

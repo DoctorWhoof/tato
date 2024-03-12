@@ -1,24 +1,28 @@
 mod specs;
-pub use crate::specs::*;
+use specs::*;
 
 use macroquad::prelude::*;
-use tato::{Collider, CollisionReaction, Specs, World};
-
-pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
+use tato::{Specs, World, Collider, CollisionReaction};
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    let specs = Specs {
+        render_width: 320,
+        render_height: 240,
+        atlas_width: 128,
+        atlas_height: 128,
+        tile_width: 8,
+        tile_height: 8,
+        colors_per_palette: 16,
+    };
+
     // macroquad init
-    let mut img = Image::gen_image_color(
-        GameSpecs::RENDER_WIDTH as u16,
-        GameSpecs::RENDER_HEIGHT as u16,
-        BLACK,
-    );
+    let mut img = Image::gen_image_color( specs.render_width, specs.render_height, BLACK);
     let render_texture = Texture2D::from_image(&img);
     render_texture.set_filter(FilterMode::Nearest);
 
     // Spud init
-    let mut world: GameWorld = World::new();
+    let mut world = World::<TilesetID, PaletteID>::new(specs);
     world.debug_colliders = true;   
     world.debug_pivot = true;   
 
@@ -77,9 +81,9 @@ async fn main() {
         }
 
         // Render scaling pre-calc
-        let scale = (screen_height() / GameSpecs::RENDER_HEIGHT as f32).floor();
-        let render_width = GameSpecs::RENDER_WIDTH as f32 * scale;
-        let render_height = GameSpecs::RENDER_HEIGHT as f32 * scale;
+        let scale = (screen_height() / specs.render_height as f32).floor();
+        let render_width = specs.render_width as f32 * scale;
+        let render_height = specs.render_height as f32 * scale;
         let draw_rect_x = (screen_width() - render_width) / 2.0;
         let draw_rect_y = (screen_height() - render_height) / 2.0;
                 
@@ -145,9 +149,9 @@ async fn main() {
 
         // Copy from framebuffer to macroquad texture
         let source = world.framebuf.pixels();
-        let width = GameSpecs::RENDER_WIDTH;
-        for y in 0..GameSpecs::RENDER_HEIGHT {
-            for x in 0..GameSpecs::RENDER_WIDTH {
+        let width = specs.render_width as usize;
+        for y in 0..specs.render_height as usize {
+            for x in 0..specs.render_width as usize {
                 let source_index = (y * width) + x;
                 let color = source[source_index];
                 img.set_pixel(
@@ -159,7 +163,7 @@ async fn main() {
         }
 
         // Render texture to screen
-        clear_background(BLACK);
+        // clear_background(BLACK);
         render_texture.update(&img);
         draw_texture_ex(
             &render_texture,
@@ -179,21 +183,27 @@ async fn main() {
         {   // Debug text
             let mut i = 10.0;
             draw_text(
+                format!("Update: {:.2?}", world.time_update() * 1000.0).as_str(),
+                10.0, i, 16.0, WHITE
+            );
+
+            i += 16.0;
+            draw_text(
                 format!("Vel: {:.2?}", vel).as_str(),
                 10.0, i, 16.0, WHITE
             );
 
-            i += 24.0;
-            for layer in world.get_collision_layers() {
-                i += 8.0;
-                for col in layer {
-                    i += 16.0;
-                    draw_text(
-                        format!("Collider: {:.2?}", col).as_str(),
-                        10.0, i, 16.0, WHITE
-                    );
-                }
-            }
+            // i += 24.0;
+            // for layer in world.get_collision_layers() {
+            //     i += 8.0;
+            //     for col in layer {
+            //         i += 16.0;
+            //         draw_text(
+            //             format!("Collider: {:.2?}", col).as_str(),
+            //             10.0, i, 16.0, WHITE
+            //         );
+            //     }
+            // }
 
             i += 24.0;
             if let Some(col) = &collision {

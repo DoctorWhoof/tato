@@ -1,31 +1,24 @@
 
-mod specs;
 mod game;
 mod actors; 
+mod specs;
 
 pub use game::*;
-pub use specs::*;
 pub use actors::*;
+pub use specs::*;
 
-use tato::{Atlas, Specs, World};
+use tato::{Atlas, World};
 use macroquad::{color::*, input::*, math::*, text::draw_text, texture::*, window::*};
-
-pub type GameWorld = World<GameSpecs, TilesetID, PaletteID>;
-pub type GameAtlas = Atlas<GameSpecs, TilesetID, PaletteID>;
 
 #[macroquad::main(window_conf)]
 async fn main() {
     // macroquad init
-    let mut img = Image::gen_image_color(
-        GameSpecs::RENDER_WIDTH as u16,
-        GameSpecs::RENDER_HEIGHT as u16,
-        BLACK,
-    );
+    let mut img = Image::gen_image_color( SPECS.render_width, SPECS.render_height, BLACK);
     let render_texture = Texture2D::from_image(&img);
     render_texture.set_filter(FilterMode::Nearest);
 
     // Game Init 
-    let mut game = Game::new();
+    let mut game = Game::new(SPECS);
     
     // Main loop
     let time = std::time::Instant::now();
@@ -38,9 +31,9 @@ async fn main() {
         if is_key_pressed(KeyCode::W) { game.world.debug_pivot = !game.world.debug_pivot }
 
         // Render scaling pre-calc
-        let scale = (screen_height() / GameSpecs::RENDER_HEIGHT as f32).floor();
-        let render_width = GameSpecs::RENDER_WIDTH as f32 * scale;
-        let render_height = GameSpecs::RENDER_HEIGHT as f32 * scale;
+        let scale = (screen_height() / SPECS.render_height as f32).floor();
+        let render_width = SPECS.render_width as f32 * scale;
+        let render_height = SPECS.render_height as f32 * scale;
         let draw_rect_x = (screen_width() - render_width) / 2.0;
         let draw_rect_y = (screen_height() - render_height) / 2.0;
                 
@@ -50,11 +43,11 @@ async fn main() {
 
         // Copy from framebuffer to macroquad texture
         let source = game.world.framebuf.pixels();
-        let width = GameSpecs::RENDER_WIDTH;
-        for y in 0..GameSpecs::RENDER_HEIGHT {
-            for x in 0..GameSpecs::RENDER_WIDTH {
+        let width = SPECS.render_width;
+        for y in 0..SPECS.render_height {
+            for x in 0..SPECS.render_width {
                 let source_index = (y * width) + x;
-                let color = source[source_index];
+                let color = source[source_index as usize];
                 img.set_pixel(
                     x as u32,
                     y as u32,

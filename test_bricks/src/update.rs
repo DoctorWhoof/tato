@@ -1,7 +1,7 @@
-use crate::{GameWorld, Paddle, Puck};
-use tato::{CollisionReaction, Vec2};
+use crate::{Paddle, PaletteID, Puck, TilesetID};
+use tato::{World, CollisionReaction, Vec2};
 
-pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
+pub fn move_player(paddle: &mut Paddle, world: &mut World<TilesetID, PaletteID>) {
     let speed_x = 20.0;
     let speed_y = 10.0;
 
@@ -60,7 +60,7 @@ pub fn move_player(paddle: &mut Paddle, world: &mut GameWorld) {
 }
 
 
-pub fn move_puck(puck: &mut Puck, world: &mut GameWorld) {
+pub fn move_puck(puck: &mut Puck, world: &mut World<TilesetID, PaletteID>) {
     let max_speed = 120.0;
     let safety_speed = 180.0;
     let deccelerate_rate = 15.0;

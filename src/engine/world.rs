@@ -1,32 +1,14 @@
+use crate::*;
+use alloc::{vec, vec::Vec};
 use slotmap::{SecondaryMap, SlotMap};
 
-use crate::*;
-use core::mem::variant_count;
-
-const COLLISION_LAYER_COUNT:usize = 1;
+// const COLLISION_LAYER_COUNT:usize = 1;
 // const MAX_COLLIDERS_PER_LAYER:usize = 12;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
-pub struct World<S: Specs, TilesetEnum, PaletteEnum>
-where
-    TilesetEnum: Into<u8> + Into<usize> + Copy,
-    PaletteEnum: Into<u8> + Into<usize> + Copy,
-    [(); variant_count::<TilesetEnum>()]: Sized,
-    [(); variant_count::<PaletteEnum>()]: Sized,
-    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ANIMS_PER_TILESET]: Sized,
-    [(); S::FONTS_PER_TILESET]: Sized,
-    [(); S::TILEMAPS_PER_TILESET]: Sized,
-    [(); S::COLORS_PER_PALETTE]: Sized,
-    [(); S::MAX_LOADED_TILESETS]: Sized,
-    [(); S::MAX_LOADED_FONTS]: Sized,
-    [(); S::MAX_LOADED_ANIMS]: Sized,
-    [(); S::MAX_LOADED_TILEMAPS]: Sized,
-    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
-    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,
-    [(); S::MAX_COLLIDERS_PER_LAYER]: Sized,
+pub struct World<T, P>
+where T:EnumID, P:EnumID,
 {
     // Visible to Host App
     pub limit_frame_rate: Option<f32>,
@@ -37,10 +19,11 @@ where
     pub draw_tilemaps: bool,
     pub cam: Rect<f32>,
     // Main components
-    pub framebuf: FrameBuf<S>,
-    pub render: Renderer<S, TilesetEnum, PaletteEnum>,
-
+    pub framebuf: FrameBuf,
+    pub renderer: Renderer<T, P>,
+    
     // Private
+    specs: Specs,
     time_elapsed_buffer: SmoothBuffer<15>, // Affects gameplay speed (used to calculate frame deltas)
     time_update_buffer: SmoothBuffer<120>, // For performance info only, doesn't affect gameplay
     time: f32,
@@ -49,36 +32,18 @@ where
     time_idle: f32,
 
     // collision masks only allow 8 layers for now (8 bit mask, each bit determines a layer collision)
-    collision_layers:[[Option<CollisionProbe<f32>>; S::MAX_COLLIDERS_PER_LAYER]; COLLISION_LAYER_COUNT], 
-    collision_layer_heads:[usize; COLLISION_LAYER_COUNT],
+    collision_layers:Vec<Vec<CollisionProbe<f32>>>, 
+    // collision_layer_heads:Vec<usize>,
     
     // Data Pools
     entities:SlotMap<EntityID, Entity>,
     colliders: SecondaryMap<EntityID, Collider>,
 }
 
-impl<S: Specs, TilesetEnum, PaletteEnum>
-World <S, TilesetEnum, PaletteEnum>
-where
-    TilesetEnum: Into<u8> + Into<usize> + Copy,
-    PaletteEnum: Into<u8> + Into<usize> + Copy,
-    [(); variant_count::<TilesetEnum>()]: Sized,
-    [(); variant_count::<PaletteEnum>()]: Sized,
-    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ANIMS_PER_TILESET]: Sized,
-    [(); S::FONTS_PER_TILESET]: Sized,
-    [(); S::TILEMAPS_PER_TILESET]: Sized,
-    [(); S::COLORS_PER_PALETTE]: Sized,
-    [(); S::MAX_LOADED_TILESETS]: Sized,
-    [(); S::MAX_LOADED_FONTS]: Sized,
-    [(); S::MAX_LOADED_ANIMS]: Sized,
-    [(); S::MAX_LOADED_TILEMAPS]: Sized,
-    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
-    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,
-    [(); S::MAX_COLLIDERS_PER_LAYER]: Sized,
+impl<T, P> World<T, P>
+where T:EnumID, P:EnumID,
 {
-    pub fn new() -> Self {
+    pub fn new(specs:Specs) -> Self {
         World {
             limit_frame_rate: None,
             debug_colliders: false,
@@ -87,9 +52,10 @@ where
             draw_sprites: true,
             draw_tilemaps: true,
 
-            cam: Rect::new(0.0, 0.0, S::RENDER_WIDTH as f32, S::RENDER_HEIGHT as f32),
-            framebuf: FrameBuf::new(),
-            render: Renderer::new(),
+            
+            cam: Rect::new(0.0, 0.0, specs.render_width as f32, specs.render_height as f32),
+            framebuf: FrameBuf::new(specs),
+            renderer: Renderer::new(specs),
 
             time_elapsed_buffer: SmoothBuffer::new(),
             time_update_buffer: SmoothBuffer::new(),
@@ -99,13 +65,12 @@ where
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            collision_layers: core::array::from_fn(|_|{
-                core::array::from_fn(|_| None )
-            }),
-            collision_layer_heads: Default::default(),
+            collision_layers: vec![vec![]; 8],
+            // collision_layer_heads: Default::default(),
 
             entities: Default::default(),
-            colliders: Default::default()
+            colliders: Default::default(),
+            specs,
         }
     }
 
@@ -158,7 +123,7 @@ where
                         tilemap_id,
                     } = tilemap_ent.shape
                     {
-                        let tilemap = self.render.get_tilemap_mut(tileset, tilemap_id);
+                        let tilemap = self.renderer.get_tilemap_mut(tileset, tilemap_id);
                         tilemap.restore_bg_buffer(ent.id);
                         tilemap.bg_buffers.remove(id);
                     }
@@ -170,18 +135,23 @@ where
     }
 
 
+    pub fn remove_collider(&mut self, id:EntityID) {
+        self.colliders.remove(id);
+    }
+
+
     pub fn entities(&self) -> &SlotMap<EntityID, Entity> {
         &self.entities
     }
 
 
     // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
-    pub fn get_members(&mut self) -> (&mut SlotMap<EntityID, Entity>, &mut Renderer<S, TilesetEnum, PaletteEnum>) {
-        (&mut self.entities, &mut self.render)
+    pub fn get_members(&mut self) -> (&mut SlotMap<EntityID, Entity>, &mut Renderer<T,P>) {
+        (&mut self.entities, &mut self.renderer)
     }
 
 
-    pub fn get_collision_layers(&self) -> &[[Option<CollisionProbe<f32>>; S::MAX_COLLIDERS_PER_LAYER]; COLLISION_LAYER_COUNT]{
+    pub fn get_collision_layers(&self) -> &Vec<Vec<CollisionProbe<f32>>> {
         &self.collision_layers
     }
 
@@ -199,11 +169,6 @@ where
 
     pub fn add_collider(&mut self, id:EntityID, collider:Collider) {
         self.colliders.insert(id, collider);
-    }
-
-
-    pub fn remove_collider(&mut self, id:EntityID) {
-        self.colliders.remove(id);
     }
 
 
@@ -225,9 +190,10 @@ where
     // Internal
     fn add_probe_to_colliders(&mut self, probe:CollisionProbe<f32>) {
         let layer = probe.layer as usize;
-        let collider_index = &mut self.collision_layer_heads[layer];
-        self.collision_layers[layer][*collider_index] = Some(probe);
-        *collider_index += 1;
+        // let collider_index = &mut self.collision_layer_heads[layer];
+        // self.collision_layers[layer][*collider_index] = Some(probe);
+        self.collision_layers[layer].push(probe);
+        // *collider_index += 1;
     }
 
     
@@ -252,8 +218,8 @@ where
                 let rect = self.get_entity_rect(entity);
                 *w = rect.w;
                 *h = rect.h;
-                *tile_width = S::TILE_WIDTH;
-                *tile_height = S::TILE_HEIGHT;
+                *tile_width = self.specs.tile_width;
+                *tile_height = self.specs.tile_height;
             }
             self.add_probe_to_colliders(probe);
         }
@@ -276,8 +242,8 @@ where
         let mut latest_other_vel = None;
     
         if let Some(probe) = self.get_probe(entity_id, scaled_velocity) {
-            for other in &self.collision_layers[probe.mask as usize]{
-                let Some(ref other_probe) = other else { continue };
+            for other_probe in &self.collision_layers[probe.mask as usize]{
+                // let Some(ref other_probe) = other else { continue };
                 
                 let maybe_col = match other_probe.kind {
                     ColliderKind::Point | ColliderKind::Rect { .. } => {
@@ -285,7 +251,7 @@ where
                     },
                     ColliderKind::Tilemap { .. } => {
                         let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
-                        let tilemap = self.render.get_tilemap(*tileset, *tilemap_id);
+                        let tilemap = self.renderer.get_tilemap(*tileset, *tilemap_id);
                         probe.collision_response(other_probe, Some(tilemap))
                     },
                 };
@@ -412,22 +378,22 @@ where
         match entity.shape {
             Shape::None => Default::default(),
             Shape::Sprite {tileset, anim_id, ..} | Shape::BgTiles {tileset, anim_id, ..} => {
-                let anim = self.render.get_anim(tileset, anim_id);
+                let anim = self.renderer.get_anim(tileset, anim_id);
                 let frame = anim.frame(self.time);
                 Rect {
                     x: entity.pos.x + entity.render_offset.x as f32,
                     y: entity.pos.y + entity.render_offset.y as f32,
-                    w: (frame.cols as usize * S::TILE_WIDTH as usize) as f32,
-                    h: (frame.rows as usize * S::TILE_HEIGHT as usize) as f32,
+                    w: (frame.cols as usize * self.specs.tile_width as usize) as f32,
+                    h: (frame.rows as usize * self.specs.tile_height as usize) as f32,
                 }
             }
             Shape::Bg {tileset,tilemap_id} => {
-                let tilemap = &self.render.get_tilemap(tileset, tilemap_id);
+                let tilemap = &self.renderer.get_tilemap(tileset, tilemap_id);
                 Rect {
                     x: entity.pos.x + entity.render_offset.x as f32,
                     y: entity.pos.y + entity.render_offset.y as f32,
-                    w: tilemap.width(S::TILE_WIDTH) as f32,
-                    h: tilemap.height(S::TILE_HEIGHT) as f32,
+                    w: tilemap.width(self.specs.tile_width) as f32,
+                    h: tilemap.height(self.specs.tile_height) as f32,
                 }
             }
         }
@@ -442,7 +408,7 @@ where
         else {
             return None;
         };
-        let tilemap = &self.render.get_tilemap(tileset, tilemap_id);
+        let tilemap = &self.renderer.get_tilemap(tileset, tilemap_id);
         Some((tilemap, self.get_entity_rect(tilemap_entity)))
     }
 
@@ -452,13 +418,13 @@ where
             return None;
         };
 
-        let col = u16::try_from((x - tilemap_rect.x) as usize / S::TILE_WIDTH as usize)
+        let col = u16::try_from((x - tilemap_rect.x) as usize / self.specs.tile_width as usize)
             .unwrap();
-        let row = u16::try_from((y - tilemap_rect.y) as usize / S::TILE_HEIGHT as usize)
+        let row = u16::try_from((y - tilemap_rect.y) as usize / self.specs.tile_height as usize)
             .unwrap();
 
-        let w = S::TILE_WIDTH as f32;
-        let h = S::TILE_HEIGHT as f32;
+        let w = self.specs.tile_width as f32;
+        let h = self.specs.tile_height as f32;
         let tile_rect = Rect {
             x: tilemap_rect.x + (col as f32 * w),
             y: tilemap_rect.y + (row as f32 * h),
@@ -482,12 +448,15 @@ where
         //     *probe = None
         // }
 
-        for layer in 0 .. self.collision_layers.len() {
-            let head = &mut self.collision_layer_heads[layer];
-            for used_slot in 0 .. *head {
-                self.collision_layers[layer][used_slot] = None;
-            }
-            *head = 0;
+        // for layer in 0 .. self.collision_layers.len() {
+        //     let head = &mut self.collision_layer_heads[layer];
+        //     for used_slot in 0 .. *head {
+        //         self.collision_layers[layer][used_slot] = None;
+        //     }
+        //     *head = 0;
+        // }
+        for layer in self.collision_layers.iter_mut() {
+            layer.clear()
         }
     }
 
@@ -500,8 +469,8 @@ where
             w: self.framebuf.viewport.w as f32,
             h: self.framebuf.viewport.h as f32,
         };
-        let tile_width = S::TILE_WIDTH;
-        let tile_height = S::TILE_HEIGHT;
+        let tile_width = self.specs.tile_width;
+        let tile_height = self.specs.tile_height;
         for entity in self.entities.values() {
             // Draw entity shape
             if !entity.visible { continue }
@@ -520,11 +489,11 @@ where
                     // let Some(..) = world_rect.intersect(cam_rect) else { continue };
 
                     // let tilemap_rect = self.get_entity_rect(tilemap_entity);
-                    // // let tileset = &mut self.render.tilesets[tileset as usize];
-                    // let anim = self.render.get_anim(tileset, anim_id);
+                    // // let tileset = &mut self.renderer.tilesets[tileset as usize];
+                    // let anim = self.renderer.get_anim(tileset, anim_id);
                     // let frame = anim.frame(self.time);
 
-                    // let tilemap = self.render.get_tilemap(tileset, tilemap_id);
+                    // let tilemap = self.renderer.get_tilemap(tileset, tilemap_id);
 
                     // let left_col = (world_rect.x - tilemap_rect.x) as i32 / tile_width as i32;
                     // let top_row = (world_rect.y - tilemap_rect.y) as i32 / tile_height as i32;
@@ -547,22 +516,19 @@ where
                 }
 
                 Shape::Sprite {tileset, anim_id, flip_h, .. } => {
-                    if !self.draw_sprites {
-                        continue;
-                    }
+                    if !self.draw_sprites { continue }
                     // Draw tiles
-                    let anim = self.render.get_anim(tileset, anim_id);
+                    let anim = self.renderer.get_anim(tileset, anim_id);
                     let frame = anim.frame(self.time);
-                    let palette = &self.render.palettes[anim.palette as usize];
+                    let Some(palette) = &self.renderer.palettes[anim.palette as usize] else { return };
 
                     let mut draw_tile = |col: u8, row: u8| {
                         let flipped_col = if flip_h { frame.cols - 1 - col } else { col };
                         let subtile = (row * frame.cols) + flipped_col;
                         let tile = frame.get_tile(subtile);
-                        let abs_tile_id =
-                            self.render.get_tile(tile.index, anim.tileset as usize);
+                        let abs_tile_id = self.renderer.get_tile(tile.index, anim.tileset as usize);
 
-                        let tile_rect = self.render.get_rect(abs_tile_id.get());
+                        let tile_rect = self.renderer.get_rect(abs_tile_id.get());
                         let quad_rect = Rect {
                             x: pos.x + (col * 8) as f32 + entity.render_offset.x as f32,
                             y: pos.y + (row * 8) as f32 + entity.render_offset.y as f32,
@@ -577,7 +543,7 @@ where
 
                         Self::draw_tile(
                             &mut self.framebuf,
-                            &self.render,
+                            &self.renderer,
                             screen_rect.to_i32(),
                             abs_tile_id,
                             palette,
@@ -596,14 +562,14 @@ where
                     if !self.draw_tilemaps {
                         continue;
                     }
-                    // let tileset = &self.render.tilesets[tileset as usize];
+                    // let tileset = &self.renderer.tilesets[tileset as usize];
                     let world_rect = self.get_entity_rect(entity);
-                    let tilemap = self.render.get_tilemap(tileset, tilemap_id);
+                    let tilemap = self.renderer.get_tilemap(tileset, tilemap_id);
 
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else {
                         continue;
                     };
-                    let palette = &self.render.palettes[tilemap.palette as usize];
+                    let Some(palette) = &self.renderer.palettes[tilemap.palette as usize] else { return };
 
                     // At least a part of tilemap is visible. Render visible tiles within it.
                     let left_col = ((vis_rect.x - world_rect.x) / tile_width as f32) as usize;
@@ -626,11 +592,10 @@ where
                     for row in top_col..bottom_col {
                         for col in left_col..right_col {
                             let tile = tilemap.get_tile(col as u16, row as u16);
-                            let tile_id =
-                                self.render.get_tile(tile.index, tilemap.tileset as usize);
+                            let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset as usize);
 
                             let tile_rect =
-                                Rect::<i32>::from(self.render.get_rect(tile.index as usize));
+                                Rect::<i32>::from(self.renderer.get_rect(tile.index as usize));
                             let world_tile_rect = Rect {
                                 x: pos.x
                                     + (col * tile_width as usize) as f32
@@ -645,7 +610,7 @@ where
                             };
                             Self::draw_tile(
                                 &mut self.framebuf,
-                                &self.render,
+                                &self.renderer,
                                 world_tile_rect.to_i32(),
                                 tile_id,
                                 palette,
@@ -689,18 +654,18 @@ where
         // Debug Renderer
         #[cfg(debug_assertions)]
         if self.debug_atlas {
-            for partition in &self.render.partitions {
+            for partition in &self.renderer.partitions {
                 let Some(partition) = partition else { continue };
                 for tile_index in partition.tiles_start_index
                     ..partition.tiles_start_index + partition.tiles_len as u16
                 {
-                    let rect = self.render.get_rect(tile_index as usize);
-                    let palette = &self.render.palettes[partition.debug_palette as usize];
+                    let rect = self.renderer.get_rect(tile_index as usize);
+                    let Some(palette) = &self.renderer.palettes[partition.debug_palette as usize] else { return };
                     self.framebuf
                         .draw_filled_rect(rect.into(), Color::green_light());
                     Self::draw_tile(
                         &mut self.framebuf,
-                        &self.render,
+                        &self.renderer,
                         rect.into(),
                         TileID(tile_index),
                         palette,
@@ -721,7 +686,7 @@ where
             // Colliders
             for layer in &self.collision_layers {
                 for probe in layer {
-                    let Some(probe) = probe else { continue };
+                    // let Some(probe) = probe else { continue };
                     Self::draw_collider(&mut self.framebuf, &cam_rect, probe, COLOR_COLLIDER);
                 }
             }
@@ -753,7 +718,7 @@ where
     }
 
     
-    fn draw_collider(framebuf:&mut FrameBuf<S>, cam_rect:&Rect<f32>, probe:&CollisionProbe<f32>, color:Color){
+    fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<f32>, probe:&CollisionProbe<f32>, color:Color){
         match probe.kind {
             ColliderKind::Point =>{
                 let pos = probe.pos;
@@ -781,7 +746,7 @@ where
         font: impl Into<u8>,
         align_right: bool,
     ) {
-        let font = &self.render.get_font(tileset_id, font.into());
+        let font = &self.renderer.get_font(tileset_id, font.into());
         for (i, letter) in text.chars().enumerate() {
             let letter = letter as u32;
             let index = if letter > 47 {
@@ -795,37 +760,37 @@ where
             };
 
             let offset_x = if align_right {
-                (S::TILE_WIDTH as usize * text.len()) as i32
+                (self.specs.tile_width as usize * text.len()) as i32
             } else {
                 0
             };
 
             let abs_tile_id = self
-                .render
+                .renderer
                 .get_tile(u8::try_from(index).unwrap(), font.tileset_id as usize);
 
             Self::draw_tile(
                 &mut self.framebuf,
-                &self.render,
+                &self.renderer,
                 Rect {
-                    x: x + (i * S::TILE_WIDTH as usize) as i32 - offset_x,
+                    x: x + (i * self.specs.tile_width as usize) as i32 - offset_x,
                     y,
-                    w: S::TILE_WIDTH as i32,
-                    h: S::TILE_HEIGHT as i32,
+                    w: self.specs.tile_width as i32,
+                    h: self.specs.tile_height as i32,
                 },
                 abs_tile_id,
-                self.render.get_tileset_palette(tileset_id),
+                self.renderer.get_tileset_palette(tileset_id),
                 false,
             )
         }
     }
 
     fn draw_tile(
-        frame_buf: &mut FrameBuf<S>,
-        renderer: &Renderer<S, TilesetEnum, PaletteEnum>,
+        frame_buf: &mut FrameBuf,
+        renderer: &Renderer<T,P>,
         world_rect: Rect<i32>,
         tile: TileID,
-        palette: &Palette<S>,
+        palette: &Palette,
         flip_h: bool,
     ) {
         let Some(visible_rect) = world_rect.intersect(frame_buf.viewport) else {
@@ -870,27 +835,4 @@ where
     //     )
     // }
 
-}
-
-impl<S: Specs, TilesetEnum: Into<u8> + Into<usize> + Copy, PaletteEnum: Into<u8> + Into<usize> + Copy> Default for World<S, TilesetEnum, PaletteEnum>
-where
-    [(); variant_count::<TilesetEnum>()]: Sized,
-    [(); variant_count::<PaletteEnum>()]: Sized,
-    [(); S::ATLAS_WIDTH * S::ATLAS_HEIGHT]: Sized,
-    [(); S::ANIMS_PER_TILESET]: Sized,
-    [(); S::FONTS_PER_TILESET]: Sized,
-    [(); S::TILEMAPS_PER_TILESET]: Sized,
-    [(); S::COLORS_PER_PALETTE]: Sized,
-    [(); S::MAX_LOADED_TILESETS]: Sized,
-    [(); S::MAX_LOADED_FONTS]: Sized,
-    [(); S::MAX_LOADED_ANIMS]: Sized,
-    [(); S::MAX_LOADED_TILEMAPS]: Sized,
-    [(); S::RENDER_WIDTH * S::RENDER_HEIGHT]: Sized,
-    [(); 256 * (S::TILE_WIDTH as usize) * (S::TILE_HEIGHT as usize)]: Sized,
-    [(); (S::ATLAS_WIDTH * S::ATLAS_HEIGHT) / (S::TILE_WIDTH as usize * S::TILE_HEIGHT as usize)]: Sized,
-    [(); S::MAX_COLLIDERS_PER_LAYER]: Sized,
-{
-    fn default() -> Self {
-        Self::new()
-    }
 }
