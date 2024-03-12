@@ -28,7 +28,7 @@ pub enum Shape {
 
 impl Shape {
 
-    pub fn sprite_from_anim(tileset:impl Into<u8>, anim_id:impl Into<u8>) -> Self {
+    pub fn sprite_from_anim(tileset:impl EnumID, anim_id:impl Into<u8>) -> Self {
         Shape::Sprite {
             tileset: tileset.into(),
             anim_id: anim_id.into(),
@@ -38,7 +38,7 @@ impl Shape {
     }
 
 
-    pub fn anim_tiles_from_anim(tileset:impl Into<u8>, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
+    pub fn anim_tiles_from_anim(tileset:impl EnumID, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
         Shape::BgTiles {
             tileset: tileset.into(),
             anim_id: anim_id.into(),
