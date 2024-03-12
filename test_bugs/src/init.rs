@@ -11,7 +11,8 @@ impl Game {
         world.renderer.load_tileset(&atlas, TilesetID::Bg);
         world.renderer.load_tileset(&atlas, TilesetID::Player);
         world.renderer.load_tileset(&atlas, TilesetID::Enemies);
-    
+
+        // Background
         let stars_bg_0 = world.add_entity(0);
         world.set_shape(stars_bg_0, Shape::Bg{ tileset: TilesetID::Bg.into(), tilemap_id: 0 });
 
@@ -26,6 +27,7 @@ impl Game {
         world.set_shape(stars_fg_1, Shape::Bg{ tileset: TilesetID::Bg.into(), tilemap_id: 1 });
         world.set_position(stars_fg_1, Vec2{x:0.0, y:-192.0});
     
+        // Sprites
         let player = Player {
             id: {
                 let id = world.add_entity(0);
@@ -46,7 +48,8 @@ impl Game {
 
         let bullets = RingPool::new();
 
-        Self{
+        // Return
+        Self {
             world,
             atlas,
             player,

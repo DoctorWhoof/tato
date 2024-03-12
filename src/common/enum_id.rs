@@ -1,14 +1,14 @@
 
-pub trait ByteEnum: Clone + Copy + PartialEq + Into<u8> + Into<usize> + From<u8> {
-    fn count() -> usize;
-}
+pub trait Countable { fn count() -> usize; }
 
+#[doc(hidden)]
+pub trait EnumID: Clone + Copy + PartialEq + Into<u8> + Into<usize> + From<u8> + Countable {}
 
-pub trait TilesetEnum: ByteEnum {}
+pub trait TilesetEnum: EnumID {}
 
-pub trait PaletteEnum: ByteEnum {}
+pub trait PaletteEnum: EnumID {}
 
-pub trait GroupEnum: ByteEnum {}
+pub trait GroupEnum: EnumID {}
 
 
 #[doc(hidden)]
@@ -16,12 +16,12 @@ pub trait GroupEnum: ByteEnum {}
 macro_rules! implement_enum_id {
     ($name:ident { $($variants:ident),* $(,)? }) => {
         // Define the enum with the provided name and variants
-        #[derive(Clone, Copy, Debug, PartialEq)]#[repr(u8)]
+        #[derive(Clone, Copy, Debug, PartialEq)
+        ]#[repr(u8)]
         pub enum $name {
             $($variants),*
         }
 
-        #[allow(clippy::from_over_into)]
         impl Into<u8> for $name { fn into(self) -> u8 { self as u8 } }
 
 
@@ -36,7 +36,7 @@ macro_rules! implement_enum_id {
         }
 
 
-        impl ByteEnum for $name {
+        impl Countable for $name {
             fn count() -> usize {
                 let variants = [$(stringify!($variants)),*];
                 variants.len()
@@ -54,6 +54,7 @@ macro_rules! tileset_enum {
                 $($variants),*
             }
         }
+        impl EnumID for $name {}
         impl TilesetEnum for $name {}
     };
 }
@@ -66,6 +67,7 @@ macro_rules! palette_enum {
                 $($variants),*
             }
         }
+        impl EnumID for $name {}
         impl PaletteEnum for $name {}
     };
 }
@@ -78,6 +80,7 @@ macro_rules! group_enum {
                 $($variants),*
             }
         }
+        impl EnumID for $name {}
         impl GroupEnum for $name {}
     };
 }
