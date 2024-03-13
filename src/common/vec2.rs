@@ -6,8 +6,6 @@ use core::{
 };
 use libm::floorf;
 use super::Rect;
-// use crate::MinMax;
-
 
 
 /// A generic 2D vector.

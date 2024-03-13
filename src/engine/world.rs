@@ -679,11 +679,6 @@ where T:TilesetEnum, P:PaletteEnum,
         // Draw collider Wireframe
         #[cfg(debug_assertions)]
         if self.debug_colliders {
-            // Probes
-            // for probe in &self.collisions_probes {
-            //     let Some(probe) = probe else { continue };
-            //     Self::draw_collider(&mut self.framebuf, &cam_rect, &probe.collider, COLOR_COLLISION_PROBE);
-            // }
             // Colliders
             for layer in &self.collision_layers {
                 for probe in layer {
