@@ -25,7 +25,7 @@ impl Anim {
 
 
     pub fn is_empty(&self) -> bool { self.len == 0 }
-    
+
 
     pub fn frames(&self) -> &[Frame] { &self.frames }
 
@@ -38,7 +38,7 @@ impl Anim {
         bytes.push(self.len);
         bytes.push(self.palette);
         bytes.push(self.tileset);
-        
+
         for frame in &self.frames {
             let frame_data = frame.serialize();
             bytes.push_array(&frame_data)
@@ -58,7 +58,7 @@ impl Anim {
             frames: core::array::from_fn(|_| Frame::deserialize(cursor) )
         }
     }
-    
+
     pub fn frame(&self, time:f32) -> &Frame {
         &self.frames[self.current_frame_number(time)]
     }
@@ -70,8 +70,3 @@ impl Anim {
     }
 
 }
-
-
-
-
-

@@ -1,7 +1,7 @@
 use alloc::{vec, vec::Vec};
 use super::*;
 
-// Max 256 tiles
+/// The main way to organize different tiles and their associated assets: Fonts, Anims and Tilemaps.
 pub struct Tileset {
     pub(crate) pixels: Vec<u8>,
     pub(crate) debug_palette: u8,
@@ -9,9 +9,6 @@ pub struct Tileset {
     anims: Vec<Anim>,
     tilemaps: Vec<Tilemap>,
     tile_count:u8,
-    // font_count: u8,
-    // anim_count: u8,
-    // tilemap_count: u8,
 }
 
 
@@ -26,9 +23,6 @@ impl Tileset {
             tilemaps: vec![],
             debug_palette: Default::default(),
             tile_count,
-            // font_count: 0,
-            // anim_count: 0,
-            // tilemap_count: 0,
         }
     }
 

@@ -21,7 +21,7 @@ where T:TilesetEnum, P:PaletteEnum,
     // Main components
     pub framebuf: FrameBuf,
     pub renderer: Renderer<T, P>,
-    
+
     // Private
     specs: Specs,
     time_elapsed_buffer: SmoothBuffer<15>, // Affects gameplay speed (used to calculate frame deltas)
@@ -32,8 +32,8 @@ where T:TilesetEnum, P:PaletteEnum,
     time_idle: f32,
 
     // collision masks only allow 8 layers for now (8 bit mask, each bit determines a layer collision)
-    collision_layers:Vec<Vec<CollisionProbe<f32>>>, 
-    
+    collision_layers:Vec<Vec<CollisionProbe<f32>>>,
+
     // Data Pools
     entities:SlotMap<EntityID, Entity>,
     colliders: SecondaryMap<EntityID, Collider>,
@@ -51,7 +51,7 @@ where T:TilesetEnum, P:PaletteEnum,
             draw_sprites: true,
             draw_tilemaps: true,
 
-            
+
             cam: Rect::new(0.0, 0.0, specs.render_width as f32, specs.render_height as f32),
             framebuf: FrameBuf::new(specs),
             renderer: Renderer::new(specs),
@@ -115,7 +115,7 @@ where T:TilesetEnum, P:PaletteEnum,
         if let Some(ent) = self.entities.get(id) {
             // Clean up BgTiles if needed.
             // Tilemap will be left "dirty" by the AnimTile entity if this is not performed
-            if let Shape::BgTiles { tilemap_entity, .. } = ent.shape {
+            if let Shape::BgSprite { tilemap_entity, .. } = ent.shape {
                 if let Some(tilemap_ent) = self.entities.get(tilemap_entity) {
                     if let Shape::Bg {
                         tileset,
@@ -192,7 +192,7 @@ where T:TilesetEnum, P:PaletteEnum,
         self.collision_layers[layer].push(probe);
     }
 
-    
+
     fn get_probe(&self, id:EntityID, velocity:Vec2<f32>) -> Option<CollisionProbe<f32>> {
         let collider = *self.colliders.get(id)?;
         if !collider.enabled { return None }
@@ -220,7 +220,7 @@ where T:TilesetEnum, P:PaletteEnum,
             self.add_probe_to_colliders(probe);
         }
     }
-    
+
 
     pub fn translate(&mut self, id:EntityID, delta:Vec2<f32>) {
         let ent = &mut self.entities[id];
@@ -228,7 +228,7 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {       
+    pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {
         // Passed to all collision calculations witn frame delta already applied
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
@@ -236,11 +236,11 @@ where T:TilesetEnum, P:PaletteEnum,
         let mut col_accumulator:(Option<AxisCollision<f32>>, Option<AxisCollision<f32>>) = (None, None);
         let mut latest_other = None;
         let mut latest_other_vel = None;
-    
+
         if let Some(probe) = self.get_probe(entity_id, scaled_velocity) {
             for other_probe in &self.collision_layers[probe.mask as usize]{
                 // let Some(ref other_probe) = other else { continue };
-                
+
                 let maybe_col = match other_probe.kind {
                     ColliderKind::Point | ColliderKind::Rect { .. } => {
                         probe.collision_response(other_probe, None)
@@ -253,7 +253,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 };
 
                 // Accumulate X
-                if let Some(current_col_x) = maybe_col.0 {  
+                if let Some(current_col_x) = maybe_col.0 {
                     latest_other = Some(other_probe.entity_id);
                     latest_other_vel = Some(other_probe.velocity);
                     if let Some(ref mut col) = col_accumulator.0 {
@@ -264,7 +264,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 }
 
                 // Accumulate Y
-                if let Some(current_col_y) = maybe_col.1 {  
+                if let Some(current_col_y) = maybe_col.1 {
                     latest_other = Some(other_probe.entity_id);
                     latest_other_vel = Some(other_probe.velocity);
                     if let Some(ref mut col) = col_accumulator.1 {
@@ -360,7 +360,7 @@ where T:TilesetEnum, P:PaletteEnum,
     pub fn set_render_offset(&mut self, id: EntityID, x:i8, y:i8) {
         self.entities[id].render_offset = Vec2 { x, y };
     }
-    
+
 
     pub fn get_entity_rect_from_id(&self, id: EntityID) -> Rect<f32> {
         if let Some(entity) = self.get_entity(id) {
@@ -373,7 +373,7 @@ where T:TilesetEnum, P:PaletteEnum,
     pub fn get_entity_rect(&self, entity: &Entity) -> Rect<f32> {
         match entity.shape {
             Shape::None => Default::default(),
-            Shape::Sprite {tileset, anim_id, ..} | Shape::BgTiles {tileset, anim_id, ..} => {
+            Shape::Sprite {tileset, anim_id, ..} | Shape::BgSprite {tileset, anim_id, ..} => {
                 let anim = self.renderer.get_anim(tileset, anim_id);
                 let frame = anim.frame(self.time);
                 Rect {
@@ -430,7 +430,7 @@ where T:TilesetEnum, P:PaletteEnum,
 
         Some((tilemap.get_tile(col, row), tile_rect))
     }
-    
+
 
     pub fn start_frame(&mut self, time_now: f32) {
         self.time_elapsed_buffer.push(time_now - self.time);
@@ -476,7 +476,7 @@ where T:TilesetEnum, P:PaletteEnum,
                     // Do nothing!
                 }
 
-                Shape::BgTiles { .. } => {
+                Shape::BgSprite { .. } => {
                     // Shape::BgTiles { tileset, anim_id, tilemap_entity, flip_h, flip_v } => {
                     // let Some(tilemap_entity) = layer.data.get(tilemap_entity) else { continue }; // TODO: remove this "must be in same layer" requirement
                     // let Shape::Bg { tilemap_id, .. } = tilemap_entity.shape else { continue };
@@ -718,7 +718,7 @@ where T:TilesetEnum, P:PaletteEnum,
         // }
     }
 
-    
+
     fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<f32>, probe:&CollisionProbe<f32>, color:Color24){
         match probe.kind {
             ColliderKind::Point =>{

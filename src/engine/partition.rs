@@ -1,7 +1,7 @@
 /// A subset of an Renderer.
 #[derive(Debug, Default, Clone)]
-pub struct Partition {
-    pub id:u8,
+pub(crate) struct Partition {
+    // pub id:u8,
     pub previous: Option<u8>,     // The tileset loaded right before this, allows "popping" tilesets
     pub tiles_start_index:u16,    // Start Tile index
     pub tiles_len:u8,            // Tile count

@@ -2,7 +2,7 @@ use core::mem::size_of;
 use slotmap::SecondaryMap;
 use crate::*;
 
-const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tileset, cols(2 bytes), rows(2 bytes), palette, [tiles] 
+const SIZE_OF_TILEMAP:usize = 7 + (size_of::<Tile>() * TILEMAP_LEN); // id, tileset, cols(2 bytes), rows(2 bytes), palette, [tiles]
 
 /// A rectangular array of tiles that belong to a single Tileset. Also provides "BgBuffers" so that
 /// BgTiles can restore the BG contents they overwrite.
@@ -142,7 +142,7 @@ impl Tilemap {
 
 
     pub fn get_tile(&self, col:u16, row:u16) -> Tile {
-        let index = self.get_index(col, row); 
+        let index = self.get_index(col, row);
         self.tiles[index]
     }
 
@@ -154,7 +154,7 @@ impl Tilemap {
 
 
     /// Checks if a tile on the given line coordinates has its collider flag set to true
-    pub fn raycast<T:Into<f64>>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<IntermediateCollision<f32>> {
+    pub(crate) fn raycast<T:Into<f64>>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<IntermediateCollision<f32>> {
         let x0:f64 = x0.into();
         let x1:f64 = x1.into();
         let y0:f64 = y0.into();
@@ -245,7 +245,7 @@ impl Tilemap {
                 };
                 // println!("step Y, ray_len.y:{:.2}, dist:{:.2}, coords:{:?}", ray_len.y, dist, coords);
             }
-            
+
             if dist > line_length {  break }
             if coords.x > -1 && coords.x < self.cols as i32 && coords.y > -1 && coords.y < self.rows as i32 {
                 let tile = self.get_tile(coords.x as u16, coords.y as u16);
@@ -267,5 +267,5 @@ impl Tilemap {
         }
         None
     }
-    
+
 }

@@ -1,8 +1,9 @@
-/// A contiguous group of tiles in an Renderer (i.e. a text font, or the many tiles of a single object).
 use super::*;
 
 const SIZE_OF_FONT:usize = core::mem::size_of::<Font>();
 
+/// A contiguous group of tiles representing text characters and numbers.
+/// Currently only supports 0 to 9, followed by 'A' to 'Z', upper case only.
 #[derive(Clone, Debug)]
 pub struct Font {
     pub id: u8,

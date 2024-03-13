@@ -25,7 +25,7 @@ impl<T, P> Renderer<T, P>
 where T:TilesetEnum, P:PaletteEnum,
 {
     pub(crate) fn new(specs:Specs) -> Self {
-        
+
         #[cfg(feature = "std")]{
             let tile_count = (specs.atlas_width as usize * specs.atlas_height as usize) / (specs.tile_width as usize * specs.tile_height as usize);
             println!("Renderer: Creating new Renderer with {} tiles.", tile_count);
@@ -75,7 +75,7 @@ where T:TilesetEnum, P:PaletteEnum,
         };
     }
 
-    
+
     pub fn pop_tileset(&mut self) {
         // self.partitions.pop();
         if let Some(ref mut top_index) = self.partition_top {
@@ -88,7 +88,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 *top_index = previous;
             } else {
                 self.partition_top = None;
-            }   
+            }
         }
     }
 
@@ -102,7 +102,6 @@ where T:TilesetEnum, P:PaletteEnum,
         let partition = if let Some(top_index) = self.partition_top {
             let Some(top) = &self.partitions[top_index as usize] else { unreachable!() };
              Partition {
-                id,
                 previous: Some(top_index),
                 tiles_start_index: top.tiles_start_index + top.tiles_len as u16,
                 fonts_start_index: top.fonts_start_index + top.fonts_len,
@@ -116,7 +115,6 @@ where T:TilesetEnum, P:PaletteEnum,
             }
         } else {
             Partition {
-                id,
                 previous: None,
                 tiles_start_index: 0,
                 fonts_start_index: 0,
@@ -134,7 +132,9 @@ where T:TilesetEnum, P:PaletteEnum,
         // TODO: I use this conversion in more than one place (here and in renderer debug view), so convert it to a function?
         let dest_columns = self.specs.atlas_width as usize / self.specs.tile_width as usize;
         let source_columns = partition.tiles_len as usize % dest_columns;
-        println!("source cols: {}", source_columns);
+        #[cfg(feature = "std")]{
+            println!("source cols: {}", source_columns);
+        }
         for t in 0 .. partition.tiles_len as usize {
             let dest_col = (t + partition.tiles_start_index as usize) % dest_columns;
             let dest_row = (t + partition.tiles_start_index as usize) / dest_columns;
@@ -150,7 +150,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 }
             }
         }
-        
+
         for i in 0 .. tileset.fonts().len() {
             self.fonts.push(tileset.fonts()[i].clone())
         }

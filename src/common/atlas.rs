@@ -2,7 +2,8 @@ use crate::*;
 use core::marker::PhantomData;
 use alloc::{vec, vec::Vec};
 
-
+/// Stores all tilesets and their associated data like Anims, Fonts and Tilemaps.
+/// Can be referenced by a Renderer to load only the tilesets you need at a time.
 pub struct Atlas<T, P>
 where T:TilesetEnum, P:PaletteEnum,
 {
@@ -18,7 +19,7 @@ where T:TilesetEnum, P:PaletteEnum,
 impl<T, P> Atlas<T, P>
 where T:TilesetEnum, P:PaletteEnum,
 {
-    
+
     pub fn load(specs: Specs, bytes:&[u8]) -> Self {
 
         let mut cursor = Cursor::new(bytes);
@@ -26,7 +27,7 @@ where T:TilesetEnum, P:PaletteEnum,
         for letter in ATLAS_HEADER_TEXT.as_bytes() {
             assert!(*letter== cursor.advance(), "Atlas Error: Invalid header.")
         }
-        
+
         // Header data
         let tile_width = cursor.advance();
         let tile_height = cursor.advance();
@@ -46,7 +47,7 @@ where T:TilesetEnum, P:PaletteEnum,
         };
 
         // Palette Count
-        let palette_count =  cursor.advance() as usize; 
+        let palette_count =  cursor.advance() as usize;
 
         // Tileset Count
         let tileset_count = cursor.advance() as usize;
@@ -93,7 +94,7 @@ where T:TilesetEnum, P:PaletteEnum,
 
             // Debug palette
             tileset.debug_palette = cursor.advance();
-            
+
             // Pixels (linear formatted)
             for px_index in 0 .. pixel_count {
                 tileset.pixels[px_index] = cursor.advance()

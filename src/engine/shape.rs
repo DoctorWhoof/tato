@@ -11,14 +11,14 @@ pub enum Shape {
         anim_id:u8,
         flip_h:bool,
         flip_v:bool
-    },   
-    BgTiles {  // Renders its tile data to a tilemap, instead of the world
+    },
+    BgSprite {  // Renders its tile data to a tilemap, instead of the world
         tileset:u8,
         anim_id:u8,
         tilemap_entity:EntityID,
         flip_h:bool,
         flip_v:bool,
-    }, 
+    },
     Bg {  // Allows an entity to draw a tilemap
         tileset:u8,
         tilemap_id:u8
@@ -39,7 +39,7 @@ impl Shape {
 
 
     pub fn anim_tiles_from_anim(tileset:impl TilesetEnum, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
-        Shape::BgTiles {
+        Shape::BgSprite {
             tileset: tileset.into(),
             anim_id: anim_id.into(),
             flip_h: false,
@@ -47,5 +47,5 @@ impl Shape {
             tilemap_entity,
         }
     }
-    
+
 }

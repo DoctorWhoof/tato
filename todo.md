@@ -1,37 +1,37 @@
 #### To Do:
 
     [ ] Test projects:
+        [ ] Collisions
         [.] Breakout-like
         [.] Galaga-like
         [ ] Maze game
-
-    [ ] Loading tilesets should allow specifying which assets to load, if the tileset contains more than the specs allow at once.
 
 --->[ ] Clear Init error messages!
         . If anything is non-initialized (i.e. Palette) or over capacity, there should be a clear error for that!
         . Maybe a Spud error type, and a function that displays useful messages for each type?
 
---->[ ] Tile revamp:
-        [ ] Get rid of layers, implement depth in tile flags?
-        [ ] 4 bytes - Index(16 bit), Group(8 bit), Flags(flip_h, flip_v, depth)
+    [ ] Tile revamp:
+        [x] Get rid of layers, implement depth in tile flags?
+        [x] 3 bytes - Index(8 bit), Group(8 bit), Flags(flip_h, flip_v, collider)
+        [ ] Add depth as part of flags?.
 
     [ ] Stronger Anim, Font and Tilemap IDs
         - Each ID struct contains the TilesetID (u8) and the asset index (u8)
-  
+
     [ ] Multi layer collision masking not working yet (mask is used as an index, not a per-bit mask)
-  
+
     [ ] Renderer should provide its internal pixels as a framebuffer, for debugging purposes (allows drawing loaded tiles separate from main frame buffer)
 
     [ ] Switch Anim frames to Pool<Frames>, so that only used frames are saved?
 
-    [ ] Combine table of contents into Atlas, including const search function 
+    [ ] Combine table of contents into Atlas, including const search function
 
     [ ] Safety checks:
         - Ensure everything works (no crash) even if world.atlas is not loaded
 
     [ ] Generic Partition<T> and PartitionTable structs to allow pushing and popping assets
         - Already protyped in Renderer.partition, needs to be split up into individual partitions?
-    
+
     [ ] Rendering
         [x] Proper Palettes:
             [x] Palette struct containing array with colors
@@ -39,7 +39,7 @@
                 . Abandoned in lieu of RGBA frame buffer for the host app, while the Renderer contains byte indices + palettes.
             [x] Generate palette during build, from RGB .png files
             [x] Bonus: directly support palettized png? Seems to be working already, img is converted to RGBA, then re-palettized in ImageBuilder.
-            [ ] Switch color to RGB instead of RGBA to save memory bandwidth on low end devices
+            [x] Switch color to RGB instead of RGBA to save memory bandwidth on low end devices
 
     [ ] World
         [ ] Separate rendering and collision into slices.
@@ -72,12 +72,14 @@
         - Display overlay with text, wait 2 seconds
         - Load Scene 2
         - Resume interaction
-    
+
     [ ] Add additional debug-only data?
         [ ] Entity Names
         [ ] Debug only scene list (App side)
 
 #### Done:
+
+    [/] Loading tilesets should allow specifying which assets to load, if the tileset contains more than the specs allow at once.
 
     [x] Problem: Multiple swappable tilesets would require unique Enum types for various assets (i.e. AnimID), making the cascading generics an absolute mess.
         Solution:

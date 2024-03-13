@@ -1,4 +1,5 @@
-
+#[doc(hidden)]
+/// Deserialization helper
 pub struct Cursor<'a, T:Copy> {
     data:&'a[T],
     head:usize
@@ -39,7 +40,7 @@ impl<const LEN:usize> ByteArray<LEN> {
             tail: 0
         }
     }
-    
+
     pub fn push(&mut self, value:u8) {
         self.data[self.head] = value;
         self.head += 1

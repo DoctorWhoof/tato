@@ -4,9 +4,12 @@ pub trait Countable { fn count() -> usize; }
 #[doc(hidden)]
 pub trait EnumID: Clone + Copy + PartialEq + Into<u8> + Into<usize> + From<u8> + Countable {}
 
+
 pub trait TilesetEnum: EnumID {}
 
+
 pub trait PaletteEnum: EnumID {}
+
 
 pub trait GroupEnum: EnumID {}
 
@@ -30,7 +33,7 @@ macro_rules! implement_enum_id {
 
         impl From<u8> for $name {
             fn from(value: u8) -> Self {
-                if value < $name::count() as u8 { return unsafe { core::mem::transmute(value) } } 
+                if value < $name::count() as u8 { return unsafe { core::mem::transmute(value) } }
                 panic!("Invalid source value for Group enum")
             }
         }
@@ -45,7 +48,7 @@ macro_rules! implement_enum_id {
     };
 }
 
-
+/// Generates a new Enum type capable of indexing all Tilesets.
 #[macro_export]
 macro_rules! tileset_enum {
     ($name:ident { $($variants:ident),* $(,)? }) => {
@@ -59,6 +62,7 @@ macro_rules! tileset_enum {
     };
 }
 
+/// Generates a new Enum type capable of indexing all Palettes.
 #[macro_export]
 macro_rules! palette_enum {
     ($name:ident { $($variants:ident),* $(,)? }) => {
@@ -72,6 +76,7 @@ macro_rules! palette_enum {
     };
 }
 
+/// Generates a new Enum type capable of indexing all Groups.
 #[macro_export]
 macro_rules! group_enum {
     ($name:ident { $($variants:ident),* $(,)? }) => {

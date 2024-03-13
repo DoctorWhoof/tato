@@ -55,7 +55,7 @@ impl FrameBuf {
     pub fn draw_pixel(&mut self, x:usize, y:usize, color:Color24, depth:u8){
         draw_pixel(&mut self.pixels, self.specs.render_width, x, y, color, depth)
     }
-    
+
 
     #[inline] #[allow(unused)]
     pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color24, depth:u8) {
@@ -121,7 +121,7 @@ pub(crate) fn draw_pixel(pixels: &mut [Pixel], buffer_width:u16, x:usize, y:usiz
 pub(crate) fn draw_line(pixels: &mut [Pixel], buffer_width:u16, x0:i32, y0:i32, x1:i32, y1:i32, color:Color24, depth:u8) {
 
     let buffer_height = pixels.len() / buffer_width as usize;
-        
+
     let mut x_head = (x0 as f32).clamp(0.0, buffer_width as f32);
     let mut y_head = (y0 as f32).clamp(0.0, buffer_height as f32);
     let x_tail = x1.clamp(0, buffer_width as i32);
@@ -140,4 +140,3 @@ pub(crate) fn draw_line(pixels: &mut [Pixel], buffer_width:u16, x0:i32, y0:i32, 
         if x_head as usize >= buffer_width as usize || y_head as usize >= buffer_height { break };
     }
 }
-

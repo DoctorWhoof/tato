@@ -4,10 +4,6 @@ use crate::*;
 
 const COL_MARGIN:f32 = 0.2;
 
-slotmap::new_key_type!{
-    pub struct ColliderID;
-}
-
 
 #[derive(Clone, Copy, Debug)]#[repr(u8)]
 enum Axis {
@@ -32,7 +28,7 @@ pub enum CollisionReaction {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct AxisCollision<T> where T:Float + PartialOrd + Copy{
+pub(crate) struct AxisCollision<T> where T:Float + PartialOrd + Copy{
     pub velocity:T,
     pub margin:T,
     pub normal:T,
@@ -41,12 +37,12 @@ pub struct AxisCollision<T> where T:Float + PartialOrd + Copy{
 
 
 #[derive(Clone, Debug, Default)]
-pub struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
+pub(crate) struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
     pub normal:Vec2<T>,
     pub t:T
 }
 
-
+/// Contains details about a collision that occurred in the current frame.
 #[derive(Clone, Debug, Default)]
 pub struct Collision<T> where T:Float + PartialOrd + Copy{
     pub tile:Option<Tile>,
@@ -58,7 +54,7 @@ pub struct Collision<T> where T:Float + PartialOrd + Copy{
 
 
 
-/// Contains additional collider information, like velocity and start position
+/// Generated when checking for collisions, contains additional collider information like velocity and start position.
 #[derive(Clone, Debug)]
 pub struct CollisionProbe<T> {
     pub kind: ColliderKind,
@@ -69,7 +65,7 @@ pub struct CollisionProbe<T> {
     pub mask: u8
 }
 
-
+/// Allows an entity to specify a collision shape, a position offset and collision layer masking.
 #[derive(Clone, Copy, Debug)]
 pub struct Collider{
     pub kind: ColliderKind,
@@ -86,7 +82,7 @@ impl Collider {
     pub fn new_tilemap_collider() -> Self {
         Self {
             enabled: true,
-            pos: Vec2::zero(),  
+            pos: Vec2::zero(),
             kind: ColliderKind::Tilemap { w:0.0, h:0.0, tile_width:0, tile_height:0 }, // Values will be written by World
             layer: 0,
             mask: 0,
@@ -112,14 +108,14 @@ impl Collider {
             mask: 0,
         }
     }
-    
+
 }
 
 
 impl CollisionProbe<f32> {
 
-    pub fn collision_response(&self, other:&Self, tilemap:Option<&Tilemap>) -> (Option<AxisCollision<f32>>, Option<AxisCollision<f32>>) {
-        
+    pub(crate) fn collision_response(&self, other:&Self, tilemap:Option<&Tilemap>) -> (Option<AxisCollision<f32>>, Option<AxisCollision<f32>>) {
+
         let mut result = (None, None);
 
         // X Step
@@ -291,7 +287,7 @@ impl CollisionProbe<f32> {
 
 
 
-    pub fn broad_rect(a:Rect<f32>, vel:Vec2<f32>) -> Rect<f32> {
+    pub(crate) fn broad_rect(a:Rect<f32>, vel:Vec2<f32>) -> Rect<f32> {
         Rect{
             x: if vel.x > 0.0 { a.x } else { a.x + vel.x },
             y: if vel.y > 0.0 { a.y } else { a.y + vel.y },
@@ -302,20 +298,20 @@ impl CollisionProbe<f32> {
 
 
     // rect sweeping method, needs more testing!
-    pub fn broad_phase_point_in_rect(point: Vec2<f32>, point_vel: Vec2<f32>, rect: Rect<f32>, rect_vel:Vec2<f32>) -> bool {
+    pub(crate) fn broad_phase_point_in_rect(point: Vec2<f32>, point_vel: Vec2<f32>, rect: Rect<f32>, rect_vel:Vec2<f32>) -> bool {
         let broad_rect = Self::broad_rect(rect, rect_vel - point_vel);
         broad_rect.contains(point.x, point.y)
     }
 
 
-    pub fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> bool {
+    pub(crate) fn broad_phase_rects_overlap(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> bool {
         let broad_rect_a = Self::broad_rect(a, vel_a);
         let broad_rect_b = Self::broad_rect(b, vel_b);
         broad_rect_a.overlaps(&broad_rect_b)
     }
 
-    
-    pub fn sweep_point_in_rect_x(x:f32, vel_x:f32, rect:Rect<f32>, rect_vel_x:f32) ->  Option<IntermediateCollision<f32>> {
+
+    pub(crate) fn sweep_point_in_rect_x(x:f32, vel_x:f32, rect:Rect<f32>, rect_vel_x:f32) ->  Option<IntermediateCollision<f32>> {
         let rect_left = if rect_vel_x > 0.0 { rect.x } else { rect.x + rect_vel_x };
         let rect_right = if rect_vel_x > 0.0 { rect.right() + rect_vel_x } else { rect.right() };
         let result_vel = vel_x - rect_vel_x;
@@ -337,7 +333,7 @@ impl CollisionProbe<f32> {
     }
 
 
-    pub fn sweep_point_in_rect_y(y:f32, vel_y:f32, rect:Rect<f32>, rect_vel_y:f32) ->  Option<IntermediateCollision<f32>> {
+    pub(crate) fn sweep_point_in_rect_y(y:f32, vel_y:f32, rect:Rect<f32>, rect_vel_y:f32) ->  Option<IntermediateCollision<f32>> {
         let rect_top = if rect_vel_y > 0.0 { rect.y } else { rect.y + rect_vel_y };
         let rect_bottom = if rect_vel_y > 0.0 { rect.bottom() + rect_vel_y } else { rect.bottom() };
         let result_vel = vel_y - rect_vel_y;
@@ -360,49 +356,49 @@ impl CollisionProbe<f32> {
 
 
     fn sweep_rect_to_rect_colllision(a:Rect<f32>, b:Rect<f32>, vel_a:Vec2<f32>, vel_b:Vec2<f32>) -> Option<IntermediateCollision<f32>> {
-        // find the distance between the objects on the near and far sides for both x and y 
+        // find the distance between the objects on the near and far sides for both x and y
         let vel = vel_a - vel_b;
-        
-        let dist_entry_x = if vel.x > 0.0 { 
+
+        let dist_entry_x = if vel.x > 0.0 {
             b.x - a.right()
-        } else { 
+        } else {
             b.right() - a.x
         };
 
-        let dist_entry_y = if vel.y > 0.0 { 
+        let dist_entry_y = if vel.y > 0.0 {
             b.y - a.bottom()
-        } else { 
+        } else {
             b.bottom() - a.y
         };
 
-        let entry_x = if vel.x == 0.0 { 
+        let entry_x = if vel.x == 0.0 {
             f32::NEG_INFINITY
-        } else { 
+        } else {
             dist_entry_x / vel.x
         };
 
-        let entry_y = if vel.y == 0.0 { 
+        let entry_y = if vel.y == 0.0 {
             f32::NEG_INFINITY
-        } else { 
+        } else {
             dist_entry_y / vel.y
         };
 
-        let entry_time = entry_x.max(entry_y); 
+        let entry_time = entry_x.max(entry_y);
 
         let safety = 16.0;   //Hack! TODO: Make more sense of this...
-        if (entry_x < -safety && entry_y < -safety) || (entry_x > safety || entry_y > safety)  { 
+        if (entry_x < -safety && entry_y < -safety) || (entry_x > safety || entry_y > safety)  {
             return None
         }
 
-        let normal:Vec2<f32> = if entry_x > entry_y { 
-            if dist_entry_x < 0.0 { 
+        let normal:Vec2<f32> = if entry_x > entry_y {
+            if dist_entry_x < 0.0 {
                 Vec2::right()
-            } else { 
+            } else {
                 Vec2::left()
-            } 
-        } else if dist_entry_y < 0.0 { 
+            }
+        } else if dist_entry_y < 0.0 {
             Vec2::down()
-        } else { 
+        } else {
             Vec2::up()
         };
 
@@ -473,7 +469,7 @@ impl From<Rect<f32>> for Collider {
 
 
 impl<T> AddAssign<AxisCollision<T>> for AxisCollision<T>
-where T:Add<Output = T> + AddAssign + Copy + PartialOrd + Float {    
+where T:Add<Output = T> + AddAssign + Copy + PartialOrd + Float {
     fn add_assign(&mut self, other: AxisCollision<T>) {
         self.velocity += other.velocity;
         self.normal += other.normal;
@@ -484,7 +480,7 @@ where T:Add<Output = T> + AddAssign + Copy + PartialOrd + Float {
 
 
 
-    
+
 // let mut secondary_probe = self.clone();
 // secondary_probe.velocity = result_velocity
 // let mut secondary_probe = CollisionProbe{
