@@ -19,6 +19,5 @@ fn main() {
     atlas.init_tilemap("assets/stars_bg.png", TilesetID::Bg, GroupID::None); // tilemap 0
     atlas.init_tilemap("assets/stars_fg.png", TilesetID::Bg, GroupID::None); // tilemap 1
 
-
     atlas.save("assets/converted/atlas");
 }

@@ -40,7 +40,7 @@ fn window_conf() -> mquad::Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     // Init 
-    let mut game = Game::new(SPECS);
+    let mut game = init::new_game(SPECS);
     let mut app = App::new(&game.world);
     
     // Main loop
@@ -50,7 +50,8 @@ async fn main() {
         // Update game and render entities 
         if mquad::is_key_down(mquad::KeyCode::LeftSuper) && mquad::is_key_pressed(mquad::KeyCode::Q) { break; }
 
-        game.update();
+        update::frame(&mut game);
+        game.world.framebuf.clear(Color24::gray_dark());
         game.world.render_frame();
 
         // Overlay

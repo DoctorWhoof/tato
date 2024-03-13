@@ -141,15 +141,15 @@ async fn main() {
             vel = col.velocity
         }
 
-        world.framebuf.clear(tato::Color::gray_dark());
+        world.framebuf.clear(tato::Color24::gray_dark());
         world.render_frame();
         if let Some(col) = &collision {
             let pos = world.get_position(ent_main);
             let line_len = 10.0;
             let x1 = pos.x + (col.normal.x * line_len);
             let y1 = pos.y + (col.normal.y * line_len);
-            world.framebuf.draw_line(pos.x as i32, pos.y as i32, x1 as i32, y1 as i32, tato::Color::yellow());
-            world.framebuf.draw_filled_rect(tato::Rect { x: pos.x as i32-1, y:pos.y as i32-1, w:3, h:3 }, tato::Color::red());
+            world.framebuf.draw_line(pos.x as i32, pos.y as i32, x1 as i32, y1 as i32, tato::Color24::yellow(), 255);
+            world.framebuf.draw_filled_rect(tato::Rect { x: pos.x as i32-1, y:pos.y as i32-1, w:3, h:3 }, tato::Color24::red());
         }
 
         // Debug Overlay

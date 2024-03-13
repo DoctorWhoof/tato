@@ -62,11 +62,11 @@ where T:TilesetEnum, P:PaletteEnum {
         for y in 0 .. height {
             for x in 0 .. width {
                 let source_index = (y as usize * width as usize) + x as usize;
-                let color = source[source_index];
+                let rgb = source[source_index].color;
                 self.render_image.set_pixel(
                     x as u32,
                     y as u32,
-                    Color::from_rgba(color.r, color.g, color.b, color.a),
+                    Color::from_rgba(rgb.r, rgb.g, rgb.b, 255),
                 )
             }
         }

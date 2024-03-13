@@ -43,7 +43,7 @@ async fn main() {
         // *********************** Entity Update goes here *********************** 
 
         // Render
-        world.framebuf.clear(tato::Color::gray_dark());
+        world.framebuf.clear(tato::Color24::gray_dark());
         world.render_frame();
 
         // Copy from framebuffer to macroquad texture
@@ -56,7 +56,7 @@ async fn main() {
                 img.set_pixel(
                     x as u32,
                     y as u32,
-                    Color::from_rgba(color.r, color.g, color.b, color.a),
+                    Color24::from_rgba(color.r, color.g, color.b, color.a),
                 )
             }
         }

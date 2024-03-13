@@ -7,7 +7,7 @@ pub use crate::{gameplay::*, input::*, specs::*};
 
 use tato_mquad::App;
 use macroquad::prelude::*;
-use tato::{Atlas, Collider, Shape, Vec2, World};
+use tato::{Atlas, Collider, Color24, Shape, Vec2, World};
 
 fn window_conf() -> Conf {
     Conf {
@@ -96,9 +96,10 @@ async fn main() {
         update::move_puck(&mut puck, &mut world);
 
         // Render
+        world.framebuf.clear(Color24::gray_dark());
         world.render_frame();
-        world.draw_text("1234", 8, 8, TilesetID::Hud, 0, false);
-        world.draw_text("ZONE 1", 248, 8, TilesetID::Hud, 0, true);
+        world.draw_text("1234", 8, 8, TilesetID::Hud, 0, false, 255);
+        world.draw_text("ZONE 1", 248, 8, TilesetID::Hud, 0, true, 255);
 
         // Overlay
         app.push_overlay(format!("FPS: {:.1}", 1.0 / world.time_elapsed()));

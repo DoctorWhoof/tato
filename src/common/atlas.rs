@@ -58,13 +58,13 @@ where T:TilesetEnum, P:PaletteEnum,
             if palette_id as usize != p {
                 panic!("Atlas error: Palettes saved in atlas can't have gaps! Looked for index {}, found {}", p, palette_id)
             }
-            // let mut palette = vec![Color::default(); atlas.specs.colors_per_palette as usize];
+            // let mut palette = vec![Color24::default(); atlas.specs.colors_per_palette as usize];
             let mut palette = Palette::new(specs, palette_id);
             for color in palette.colors.iter_mut() {
                 color.r =  cursor.advance();
                 color.g =  cursor.advance();
                 color.b =  cursor.advance();
-                color.a =  cursor.advance();
+                color.a = cursor.advance();
                 #[cfg(feature = "std")]{ println!("        {:?}", color); }
             }
             atlas.palettes.push(palette);

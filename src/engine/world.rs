@@ -2,7 +2,7 @@ use crate::*;
 use alloc::{vec, vec::Vec};
 use slotmap::{SecondaryMap, SlotMap};
 
-// const COLLISION_LAYER_COUNT:usize = 1;
+const COLLISION_LAYER_COUNT:usize = 8;
 // const MAX_COLLIDERS_PER_LAYER:usize = 12;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
@@ -33,7 +33,6 @@ where T:TilesetEnum, P:PaletteEnum,
 
     // collision masks only allow 8 layers for now (8 bit mask, each bit determines a layer collision)
     collision_layers:Vec<Vec<CollisionProbe<f32>>>, 
-    // collision_layer_heads:Vec<usize>,
     
     // Data Pools
     entities:SlotMap<EntityID, Entity>,
@@ -65,7 +64,7 @@ where T:TilesetEnum, P:PaletteEnum,
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            collision_layers: vec![vec![]; 8],
+            collision_layers: vec![vec![]; COLLISION_LAYER_COUNT],
             // collision_layer_heads: Default::default(),
 
             entities: Default::default(),
@@ -190,10 +189,7 @@ where T:TilesetEnum, P:PaletteEnum,
     // Internal
     fn add_probe_to_colliders(&mut self, probe:CollisionProbe<f32>) {
         let layer = probe.layer as usize;
-        // let collider_index = &mut self.collision_layer_heads[layer];
-        // self.collision_layers[layer][*collider_index] = Some(probe);
         self.collision_layers[layer].push(probe);
-        // *collider_index += 1;
     }
 
     
@@ -548,6 +544,7 @@ where T:TilesetEnum, P:PaletteEnum,
                             abs_tile_id,
                             palette,
                             flip_h ^ tile.flipped_h(), //resulting flip is a XOR
+                            entity.depth
                         );
                     };
 
@@ -615,6 +612,7 @@ where T:TilesetEnum, P:PaletteEnum,
                                 tile_id,
                                 palette,
                                 tile.flipped_h(),
+                                entity.depth
                             );
                         }
                     }
@@ -639,6 +637,7 @@ where T:TilesetEnum, P:PaletteEnum,
                         point.x,
                         point.y,
                         COLOR_ENTITY_RECT,
+                        255
                     );
                     self.framebuf.draw_line(
                         point.x - 1,
@@ -646,6 +645,7 @@ where T:TilesetEnum, P:PaletteEnum,
                         point.x + 1,
                         point.y - 1,
                         COLOR_ENTITY_RECT,
+                        255
                     );
                 }
             }
@@ -662,7 +662,7 @@ where T:TilesetEnum, P:PaletteEnum,
                     let rect = self.renderer.get_rect(tile_index as usize);
                     let Some(palette) = &self.renderer.palettes[partition.debug_palette as usize] else { return };
                     self.framebuf
-                        .draw_filled_rect(rect.into(), Color::green_light());
+                        .draw_filled_rect(rect.into(), Color24::green_light());
                     Self::draw_tile(
                         &mut self.framebuf,
                         &self.renderer,
@@ -670,6 +670,7 @@ where T:TilesetEnum, P:PaletteEnum,
                         TileID(tile_index),
                         palette,
                         false,
+                        255
                     );
                 }
             }
@@ -718,12 +719,12 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
     
-    fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<f32>, probe:&CollisionProbe<f32>, color:Color){
+    fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<f32>, probe:&CollisionProbe<f32>, color:Color24){
         match probe.kind {
             ColliderKind::Point =>{
                 let pos = probe.pos;
                 if cam_rect.contains(pos.x, pos.y) {
-                    framebuf.draw_pixel(pos.x as usize, pos.y as usize, color);
+                    framebuf.draw_pixel(pos.x as usize, pos.y as usize, color, 255);
                 }
             },
             ColliderKind::Rect{..} | ColliderKind::Tilemap{..} =>{
@@ -736,7 +737,7 @@ where T:TilesetEnum, P:PaletteEnum,
         }
     }
 
-
+    #[allow(clippy::too_many_arguments)]
     pub fn draw_text(
         &mut self,
         text: &str,
@@ -745,6 +746,7 @@ where T:TilesetEnum, P:PaletteEnum,
         tileset_id: impl Into<usize> + Copy,
         font: impl Into<u8>,
         align_right: bool,
+        depth:u8
     ) {
         let font = &self.renderer.get_font(tileset_id, font.into());
         for (i, letter) in text.chars().enumerate() {
@@ -781,6 +783,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 abs_tile_id,
                 self.renderer.get_tileset_palette(tileset_id),
                 false,
+                depth
             )
         }
     }
@@ -792,6 +795,7 @@ where T:TilesetEnum, P:PaletteEnum,
         tile: TileID,
         palette: &Palette,
         flip_h: bool,
+        depth:u8
     ) {
         let Some(visible_rect) = world_rect.intersect(frame_buf.viewport) else {
             return;
@@ -817,7 +821,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 if color.a < 255 {
                     continue;
                 }
-                draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, *color);
+                draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, Color24::from(color), depth);
             }
         }
     }
