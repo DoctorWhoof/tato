@@ -5,6 +5,7 @@ pub use basic::*;
 
 mod anim;
 mod bg_buffer;
+mod collision_layer_id;
 mod enum_id;
 mod find_tag;
 mod frame;
@@ -22,6 +23,7 @@ mod vec2;
 
 pub use anim::*;
 pub use bg_buffer::*;
+pub use collision_layer_id::*;
 pub use enum_id::*;
 pub use find_tag::*;
 pub use frame::*;

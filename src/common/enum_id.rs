@@ -19,8 +19,8 @@ pub trait GroupEnum: EnumID {}
 macro_rules! implement_enum_id {
     ($name:ident { $($variants:ident),* $(,)? }) => {
         // Define the enum with the provided name and variants
-        #[derive(Clone, Copy, Debug, PartialEq)
-        ]#[repr(u8)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[repr(u8)]
         pub enum $name {
             $($variants),*
         }

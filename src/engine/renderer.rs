@@ -131,10 +131,6 @@ where T:TilesetEnum, P:PaletteEnum,
         // Copying pixels has to be tile-formatted, otherwise tile rows that end halfway through don't copy correctly
         // TODO: I use this conversion in more than one place (here and in renderer debug view), so convert it to a function?
         let dest_columns = self.specs.atlas_width as usize / self.specs.tile_width as usize;
-        let source_columns = partition.tiles_len as usize % dest_columns;
-        #[cfg(feature = "std")]{
-            println!("source cols: {}", source_columns);
-        }
         for t in 0 .. partition.tiles_len as usize {
             let dest_col = (t + partition.tiles_start_index as usize) % dest_columns;
             let dest_row = (t + partition.tiles_start_index as usize) / dest_columns;

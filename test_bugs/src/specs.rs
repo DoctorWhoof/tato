@@ -10,10 +10,18 @@ pub const SPECS:Specs = Specs {
     colors_per_palette: 16,
 };
 
+collision_layer_enum!{
+    Layer {
+        // None,
+        Hero,
+        Enemies,
+        Bullet
+    }
+}
+
 tato::tileset_enum!{
     TilesetID {
         Bg,
-        // Hud,
         Player,
         Enemies,
     }

@@ -10,6 +10,14 @@ pub const SPECS:Specs = Specs {
     colors_per_palette: 16,
 };
 
+tato::collision_layer_enum!{
+    Layer {
+        None,
+        Paddle,
+        Bricks,
+    }
+}
+
 tato::tileset_enum!{
     TilesetID {
         Hud,

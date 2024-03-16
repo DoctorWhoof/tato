@@ -61,8 +61,8 @@ pub struct CollisionProbe<T> {
     pub entity_id: EntityID,
     pub pos: Vec2<T>,
     pub velocity:Vec2<T>,
-    pub layer: u8,
-    pub mask: u8
+    pub layer: u16,
+    pub mask: u16
 }
 
 /// Allows an entity to specify a collision shape, a position offset and collision layer masking.
@@ -71,8 +71,8 @@ pub struct Collider{
     pub kind: ColliderKind,
     pub pos: Vec2<f32>,
     pub enabled: bool,
-    pub layer: u8,
-    pub mask: u8
+    pub mask: u16,
+    pub(crate) layer: u16,
 }
 
 
@@ -99,12 +99,12 @@ impl Collider {
         }
     }
 
-    pub fn new_rect_collider(x:f32, y:f32, w:f32, h:f32) -> Self {
+    pub fn new_rect_collider(layer:impl CollisionLayer, rect:Rect<f32>) -> Self {
         Self {
             enabled: true,
-            pos: Vec2 { x, y },
-            kind: ColliderKind::Rect{ w, h },
-            layer: 0,
+            pos: Vec2 { x:rect.x, y:rect.y },
+            kind: ColliderKind::Rect{ w:rect.w, h:rect.h },
+            layer: layer.to_u16(),
             mask: 0,
         }
     }

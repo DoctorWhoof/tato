@@ -166,8 +166,33 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn add_collider(&mut self, id:EntityID, collider:Collider) {
-        self.colliders.insert(id, collider);
+    pub fn add_collider(&mut self, id:EntityID, collider:Collider, layer:impl CollisionLayer) {
+        // println!("{:?}", collider);
+        self.colliders.insert(id, Collider{
+            kind: collider.kind,
+            pos: collider.pos,
+            enabled: collider.enabled,
+            mask: collider.mask,
+            layer: layer.to_u16(),
+        });
+    }
+
+
+    pub fn enable_collision_with_layer(&mut self, id:EntityID, layer:impl CollisionLayer) {
+        if let Some(collider) = self.colliders.get_mut(id){
+            let layer_value = layer.to_u16();
+            if layer_value > 0 {
+                let layer = 2u16.pow(layer_value as u32 - 1);
+                collider.mask |= layer;
+                // println!("Enabling collision with layer {:08b}", layer_value);
+            } else {
+                println!("World: Warning, can't enable collision to layer 0 ({:?})! Suggestions:", layer);
+                println!("       - Set collider.enabled to 'false' instead.");
+                println!("       - If collision to {:?} is what you want, make sure your collision layers contain a 'None' variant!", layer);
+            }
+        } else {
+            println!("World: Warning, collider {:?} not found", id);
+        }
     }
 
 
@@ -188,8 +213,10 @@ where T:TilesetEnum, P:PaletteEnum,
 
     // Internal
     fn add_probe_to_colliders(&mut self, probe:CollisionProbe<f32>) {
-        let layer = probe.layer as usize;
-        self.collision_layers[layer].push(probe);
+        if probe.layer > 0 {
+            let layer = probe.layer as usize;
+            self.collision_layers[layer-1].push(probe);
+        }
     }
 
 
@@ -229,6 +256,8 @@ where T:TilesetEnum, P:PaletteEnum,
 
 
     pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {
+        if !self.entities.contains_key(entity_id) { return None }
+        
         // Passed to all collision calculations witn frame delta already applied
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
@@ -238,42 +267,52 @@ where T:TilesetEnum, P:PaletteEnum,
         let mut latest_other_vel = None;
 
         if let Some(probe) = self.get_probe(entity_id, scaled_velocity) {
-            for other_probe in &self.collision_layers[probe.mask as usize]{
-                // let Some(ref other_probe) = other else { continue };
 
-                let maybe_col = match other_probe.kind {
-                    ColliderKind::Point | ColliderKind::Rect { .. } => {
-                        probe.collision_response(other_probe, None)
-                    },
-                    ColliderKind::Tilemap { .. } => {
-                        let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
-                        let tilemap = self.renderer.get_tilemap(*tileset, *tilemap_id);
-                        probe.collision_response(other_probe, Some(tilemap))
-                    },
-                };
-
-                // Accumulate X
-                if let Some(current_col_x) = maybe_col.0 {
-                    latest_other = Some(other_probe.entity_id);
-                    latest_other_vel = Some(other_probe.velocity);
-                    if let Some(ref mut col) = col_accumulator.0 {
-                        *col += current_col_x;
-                    } else {
-                        col_accumulator.0 = Some(current_col_x)
+            for layer in 0 .. self.collision_layers.len() as u32 {
+                let bitmask = 1 << layer;
+                if probe.mask as u32 & bitmask != 0 {
+                    // println!("masK: {} *  layer:{} (bitmask:{})", probe.mask, layer, bitmask);
+                    // println!("MATCH on layer {} with {} items", layer, self.collision_layers[layer as usize].len());
+                    for other_probe in &self.collision_layers[layer as usize]{
+                        // println!("     Checking probes on layer {}", layer);
+        
+                        let maybe_col = match other_probe.kind {
+                            ColliderKind::Point | ColliderKind::Rect { .. } => {
+                                probe.collision_response(other_probe, None)
+                            },
+                            ColliderKind::Tilemap { .. } => {
+                                let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
+                                let tilemap = self.renderer.get_tilemap(*tileset, *tilemap_id);
+                                probe.collision_response(other_probe, Some(tilemap))
+                            },
+                        };
+        
+                        // Accumulate X
+                        if let Some(current_col_x) = maybe_col.0 {
+                            latest_other = Some(other_probe.entity_id);
+                            latest_other_vel = Some(other_probe.velocity);
+                            if let Some(ref mut col) = col_accumulator.0 {
+                                *col += current_col_x;
+                            } else {
+                                col_accumulator.0 = Some(current_col_x)
+                            }
+                        }
+        
+                        // Accumulate Y
+                        if let Some(current_col_y) = maybe_col.1 {
+                            latest_other = Some(other_probe.entity_id);
+                            latest_other_vel = Some(other_probe.velocity);
+                            if let Some(ref mut col) = col_accumulator.1 {
+                                *col += current_col_y;
+                            } else {
+                                col_accumulator.1 = Some(current_col_y)
+                            }
+                        }
                     }
-                }
 
-                // Accumulate Y
-                if let Some(current_col_y) = maybe_col.1 {
-                    latest_other = Some(other_probe.entity_id);
-                    latest_other_vel = Some(other_probe.velocity);
-                    if let Some(ref mut col) = col_accumulator.1 {
-                        *col += current_col_y;
-                    } else {
-                        col_accumulator.1 = Some(current_col_y)
-                    }
                 }
             }
+
             self.add_probe_to_colliders(probe);
         }
 

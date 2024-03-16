@@ -20,7 +20,7 @@ pub struct Tile{
 
 
 impl Tile {
-    
+
 
     pub fn flipped_h(&self) -> bool { get_bit(self.flags, 0)  }
 
@@ -30,7 +30,7 @@ impl Tile {
 
     pub fn flipped_v(&self) -> bool { get_bit(self.flags, 1)  }
 
-    
+
     pub fn set_flipped_v(&mut self, value:bool) { set_bit(&mut self.flags, value, 1) }
 
 
@@ -38,12 +38,6 @@ impl Tile {
 
 
     pub fn set_collider(&mut self, value:bool) { set_bit(&mut self.flags, value, 2) }
-
-
-    // pub fn is_colliding(&self) -> bool { get_bit(self.flags, 3)  }
-
-
-    // pub fn set_colliding(&mut self, value:bool) { set_bit(&mut self.flags, value, 3) }
 
 
     pub fn serialize(&self) -> [u8; SIZE_OF_TILE] {

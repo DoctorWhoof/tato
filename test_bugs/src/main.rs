@@ -3,26 +3,31 @@ mod update;
 mod actors; 
 mod specs;
 mod init;
+mod grid;
 
-pub use crate::{actors::*, specs::*};
+pub use crate::{
+    actors::*,
+    specs::*,
+    grid::*
+};
 
 use macroquad::prelude as mquad;
 use tato_mquad::App;
 use tato::*;
 
+
 pub struct Game {
-    pub world:World<TilesetID, PaletteID>,
-    pub atlas:Atlas<TilesetID, PaletteID>,
+    world:World<TilesetID, PaletteID>,
     player: Player,
-    // human: EntityID,
-    // enemies: Vec<EntityID>, 
     stars_bg_0:EntityID,
     stars_bg_1:EntityID,
     stars_fg_0:EntityID,
     stars_fg_1:EntityID,
-    pub cooldown:f32,
-    pub bullets:RingPool<EntityID, 16>,
+    bullets:RingPool<EntityID, 16>,
+    enemies: Grid,
+    cooldown:f32,
 }
+
 
 fn window_conf() -> mquad::Conf {
     mquad::Conf {

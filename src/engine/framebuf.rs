@@ -73,16 +73,16 @@ impl FrameBuf {
         let right = rect.x + rect.w - 1;
         let bottom = rect.y + rect.h - 1;
         if left > -1 && left < self.specs.render_width as i32 - 1 {
-            draw_line(&mut self.pixels, self.specs.render_width, left, top, left, bottom, color, 255)
+            draw_line(&mut self.pixels, self.specs.render_width, left, top, left, bottom - 1, color, 255)
         }
         if right > -1 && right < self.specs.render_width as i32 - 1 {
-            draw_line(&mut self.pixels, self.specs.render_width,  right, top, right, bottom, color, 255)
+            draw_line(&mut self.pixels, self.specs.render_width,  right, top, right, bottom - 1, color, 255)
         }
         if top > -1 && top < self.specs.render_height as i32 - 1 {
-            draw_line(&mut self.pixels, self.specs.render_width,  left + 1, top, right - 1, top, color, 255)
+            draw_line(&mut self.pixels, self.specs.render_width,  left, top, right, top, color, 255)
         }
         if bottom > -1 && bottom < self.specs.render_height as i32 - 1 {
-            draw_line(&mut self.pixels, self.specs.render_width,  left + 1, bottom, right - 1, bottom, color, 255)
+            draw_line(&mut self.pixels, self.specs.render_width,  left, bottom, right, bottom, color, 255)
         }
     }
 
@@ -122,10 +122,10 @@ pub(crate) fn draw_line(pixels: &mut [Pixel], buffer_width:u16, x0:i32, y0:i32, 
 
     let buffer_height = pixels.len() / buffer_width as usize;
 
-    let mut x_head = (x0 as f32).clamp(0.0, buffer_width as f32);
-    let mut y_head = (y0 as f32).clamp(0.0, buffer_height as f32);
-    let x_tail = x1.clamp(0, buffer_width as i32);
-    let y_tail = y1.clamp(0, buffer_height as i32);
+    let mut x_head = (x0 as f32).clamp(0.0, buffer_width as f32 - 1.0);
+    let mut y_head = (y0 as f32).clamp(0.0, buffer_height as f32 - 1.0);
+    let x_tail = x1.clamp(0, buffer_width as i32 - 1);
+    let y_tail = y1.clamp(0, buffer_height as i32 - 1);
 
     let w = x_tail - x_head as i32;
     let h = y_tail - y_head as i32;

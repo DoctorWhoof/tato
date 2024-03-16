@@ -40,14 +40,14 @@ async fn main() {
         tileset: TilesetID::Bg.into(),
         tilemap_id: 0,
     });
-    world.add_collider(bg, Collider::new_tilemap_collider());
+    world.add_collider(bg, Collider::new_tilemap_collider(), Layer::Bricks);
 
     let initial_paddle_pos = tato::Vec2 { x: 128.0, y: 160.0 };
     let mut paddle = Paddle {
         id: {
             let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            world.add_collider(paddle, Collider::from(tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
+            world.add_collider(paddle, Collider::from(tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}), Layer::Paddle);
             world.set_position(paddle, initial_paddle_pos);
             world.set_render_offset(paddle, -12,-8);
             paddle
@@ -62,7 +62,9 @@ async fn main() {
             let puck = world.add_entity(0);
             world.set_shape(puck, Shape::sprite_from_anim(TilesetID::Sprites, 1));
             world.set_position(puck, initial_puck_pos);
-            world.add_collider(puck, Collider::from(Vec2::zero()));
+            world.add_collider(puck, Collider::from(Vec2::zero()), Layer::None);
+            world.enable_collision_with_layer(puck, Layer::Bricks);
+            world.enable_collision_with_layer(puck, Layer::Paddle);
             world.set_render_offset(puck, -3, -4 );
             puck
         },

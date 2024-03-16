@@ -15,6 +15,15 @@ fn window_conf() -> Conf {
     }
 }
 
+
+collision_layer_enum!{
+    Layer {
+        None,
+        Shapes
+    }
+}
+
+
 #[macroquad::main(window_conf)]
 async fn main() {
     // World specs
@@ -39,42 +48,46 @@ async fn main() {
 
     let ent_main = world.add_entity(0);
     let initial_position = tato::Vec2{x:160.0, y:100.0};
+    let mut collider_point = Collider::from(tato::Vec2{x:0.0, y:0.0});
+    let mut collider_rect = Collider::from(tato::Rect{x:-8.0, y:-8.0, w:16.0, h:16.0});
+    
+    collider_point.mask = Layer::Shapes.into();
+    collider_rect.mask = Layer::Shapes.into();
+
     world.set_position(ent_main, initial_position);
-    let collider_point = Collider::from(tato::Vec2{x:0.0, y:0.0});
-    let collider_rect = Collider::from(tato::Rect{x:-8.0, y:-8.0, w:16.0, h:16.0});
-    world.add_collider(ent_main, collider_rect);
+    world.add_collider(ent_main, collider_rect, Layer::Shapes);
 
     let ent_rect_1 = world.add_entity(0);
     world.set_position(ent_rect_1, tato::Vec2::new(160.0, 120.0));
-    world.add_collider(ent_rect_1, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:32.0}));
+    world.add_collider(ent_rect_1, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:32.0}), Layer::Shapes);
 
     let ent_sine_x = world.add_entity(0);
     world.set_position(ent_sine_x, tato::Vec2::new(100.0, 60.0));
-    world.add_collider(ent_sine_x, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.add_collider(ent_sine_x, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), Layer::Shapes);
 
     let ent_sine_y = world.add_entity(0);
     world.set_position(ent_sine_y, tato::Vec2::new(40.0, 120.0));
-    world.add_collider(ent_sine_y, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.add_collider(ent_sine_y, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), Layer::Shapes);
 
     let ent_sine = world.add_entity(0);
     world.set_position(ent_sine, tato::Vec2::new(80.0, 120.0));
-    world.add_collider(ent_sine, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.add_collider(ent_sine, Collider::from(tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), Layer::Shapes);
 
     let ent_wall_top = world.add_entity(0);
     world.set_position(ent_wall_top, tato::Vec2::new(0.0, 0.0));
-    world.add_collider(ent_wall_top, Collider::from(tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+    world.add_collider(ent_wall_top, Collider::from(tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}), Layer::Shapes);
 
     let ent_wall_bottom = world.add_entity(0);
     world.set_position(ent_wall_bottom, tato::Vec2::new(0.0, 224.0));
-    world.add_collider(ent_wall_bottom, Collider::from(tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+    world.add_collider(ent_wall_bottom, Collider::from(tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}), Layer::Shapes);
 
     let ent_wall_left = world.add_entity(0);
     world.set_position(ent_wall_left, tato::Vec2::new(0.0, 16.0));
-    world.add_collider(ent_wall_left, Collider::from(tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+    world.add_collider(ent_wall_left, Collider::from(tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}), Layer::Shapes);
 
     let ent_wall_right = world.add_entity(0);
     world.set_position(ent_wall_right, tato::Vec2::new(304.0, 16.0));
-    world.add_collider(ent_wall_right, Collider::from(tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+    world.add_collider(ent_wall_right, Collider::from(tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}), Layer::Shapes);
 
     let speed = 120.0;
     let mut vel = tato::Vec2::zero();
@@ -95,9 +108,9 @@ async fn main() {
                 
         // Update
         if is_key_pressed(KeyCode::Key1){
-            world.add_collider(ent_main, collider_point);
+            world.add_collider(ent_main, collider_point, Layer::Shapes);
         } else if is_key_pressed(KeyCode::Key2){
-            world.add_collider(ent_main, collider_rect);
+            world.add_collider(ent_main, collider_rect, Layer::Shapes);
         }
 
         if is_key_down(KeyCode::Up) {
