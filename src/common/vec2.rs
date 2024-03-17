@@ -1,7 +1,6 @@
-use num_traits::{Float, Num};
+use num_traits::{Float, FloatConst, Num};
 use core::{
     fmt::Display,
-    f32::consts::PI,
     ops::{Add, Sub, AddAssign, SubAssign}
 };
 use libm::floorf;
@@ -16,7 +15,6 @@ pub struct Vec2<T> {
 }
 
 impl<T> Vec2<T>  {
-    
     pub fn new(x:T, y:T) -> Self {
         Self {x, y}
     }
@@ -29,26 +27,12 @@ impl Vec2<i8> {
 
 
 impl Vec2<f32> {
-
     pub fn to_i32(self) -> Vec2<i32> { Vec2 { x: floorf(self.x) as i32, y: floorf(self.y) as i32 } }
-
-    // Can't figure out a way to make PI generic without complicating the API
-    pub fn angle_between(&self, other:&Self) -> f32 {
-        let dx = other.x - self.x;
-        let dy = other.y - self.y;
-        let angle = dy.atan2(dx);
-        if angle < 0.0 {
-            angle + 2.0 * PI
-        } else {
-            angle
-        }
-    }
-    
 }
 
 
 impl<T> Vec2<T>
-where T: Float + Num + PartialOrd + Copy + Display {
+where T: Float + FloatConst + Num + PartialOrd + Copy + Display {
 
     pub fn zero() -> Self {
         Self{ x:T::zero(), y:T::zero() }
@@ -100,6 +84,18 @@ where T: Float + Num + PartialOrd + Copy + Display {
     }
 
 
+    pub fn angle_between(&self, other:&Self) -> T {
+        let dx = other.x - self.x;
+        let dy = other.y - self.y;
+        let angle = dy.atan2(dx);
+        if angle < T::zero() {
+            angle + (T::one() + T::one()) * T::PI()
+        } else {
+            angle
+        }
+    }
+
+
     pub fn normalize(&self) -> Self {
         let len = self.len();
         if len > T::epsilon() {
@@ -139,18 +135,11 @@ where T: Float + Num + PartialOrd + Copy + Display {
         (self.x * other.x) + (self.y * other.y)
     }
 
+    
     pub fn scale(&self, factor: T) -> Self {
         Vec2{
             x: self.x * factor,
             y: self.y * factor
-        }
-    }
-
-    // TODO: implement as Sub trait
-    pub fn subtract(&self, other: &Self) -> Self {
-        Vec2{
-            x:self.x - other.x,
-            y:self.y - other.y
         }
     }
 

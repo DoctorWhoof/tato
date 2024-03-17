@@ -23,12 +23,12 @@ impl<'a, T:Copy> Cursor<'a,T> {
 }
 
 /// Helps building up a byte array for serialization. Similar to Pool.
-pub struct ByteArray<const LEN:usize> {
+pub(crate) struct ByteArray<const LEN:usize> {
     // TODO: Maybe just use an improved Pool<u8>?
     // TODO: Add more methods like "push_u16" that breaks up the data into bytes internally
     pub data:[u8; LEN],
     head: usize,
-    tail: usize
+    // tail: usize
 }
 
 impl<const LEN:usize> ByteArray<LEN> {
@@ -37,7 +37,7 @@ impl<const LEN:usize> ByteArray<LEN> {
         Self {
             data: core::array::from_fn(|_| 0 ),
             head: 0,
-            tail: 0
+            // tail: 0
         }
     }
 
@@ -50,15 +50,6 @@ impl<const LEN:usize> ByteArray<LEN> {
         for value in arr {
             self.push(*value);
         }
-    }
-
-    // pub fn pop_tail(&mut self) -> u8 {
-    //     self.tail += 1;
-    //     self.data[self.tail-1]
-    // }
-
-    pub fn is_empty(&self) -> bool {
-        self.tail == self.head
     }
 
     // Ensures struct is completely filled before giving away its data array.

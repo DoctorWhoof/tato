@@ -71,6 +71,6 @@ pub fn new_game(specs:Specs) -> Game{
         bullets,
         stars_bg_0, stars_bg_1,
         stars_fg_0, stars_fg_1,
-        cooldown: 0.0
+        // cooldown: 0.0
     }
 }

@@ -25,7 +25,7 @@ pub struct Game {
     stars_fg_1:EntityID,
     bullets:RingPool<EntityID, 16>,
     enemies: Grid,
-    cooldown:f32,
+    // cooldown:f32,
 }
 
 

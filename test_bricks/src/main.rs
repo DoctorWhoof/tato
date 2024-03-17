@@ -48,6 +48,7 @@ async fn main() {
             let paddle = world.add_entity(0);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
             world.add_collider(paddle, Collider::from(tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}), Layer::Paddle);
+            world.enable_collision_with_layer(paddle, Layer::Bricks);
             world.set_position(paddle, initial_paddle_pos);
             world.set_render_offset(paddle, -12,-8);
             paddle

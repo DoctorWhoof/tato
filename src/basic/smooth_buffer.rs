@@ -28,7 +28,7 @@ impl<const CAP:usize>  SmoothBuffer<CAP>{
         }
     }
 
-    // Fast! "Sum" is always kept up to date on push. No need iterate.
+    // Fast! Sum is always kept up to date on push. No need iterate.
     pub fn average(&self) -> f32 {
         if self.filled_len > 0.0 {
             return self.sum.unwrap_or(0.0) / self.filled_len

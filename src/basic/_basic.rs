@@ -1,7 +1,6 @@
 /// Basic modules don't rely on anything (besides Rust's standard library).
 
 mod bit_flags;
-// mod byte_id;
 mod color;
 mod fixed_pool;
 mod math;
@@ -10,7 +9,6 @@ mod smooth_buffer;
 mod ring_pool;
 
 pub use bit_flags::*;
-// pub use byte_id::*;
 pub use color::*;
 pub use fixed_pool::*;
 pub use math::*;

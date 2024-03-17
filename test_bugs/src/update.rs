@@ -43,9 +43,9 @@ pub fn frame(game:&mut Game) {
 
     // Enemies
     let time = game.world.time();
-    game.enemies.pos.x = (time.sin() * 32.0) + 128.0;
+    game.enemies.pos.x = (time.sin() * 16.0) + 128.0;
 
-    let spacing = Vec2::new(24.0, 24.0);
+    let spacing = Vec2::new(32.0, 24.0);
     let center_x = ((game.enemies.size().x as f32 - 1.0) * spacing.x) / 2.0;
     let center_y = ((game.enemies.size().y as f32 - 1.0) * spacing.y) / 2.0;
     
@@ -57,7 +57,6 @@ pub fn frame(game:&mut Game) {
                 let y_offset = columm_wave.sin() * 4.0;
                 let x = game.enemies.pos.x + (col as f32 * spacing.x) - center_x;
                 let y = game.enemies.pos.y + (row as f32 * spacing.y) - center_y + y_offset;
-                // game.world.set_position(id, Vec2::new(x, y));
                 ent.pos = Vec2::new(x, y);
                 game.world.use_static_collider(id);
             }
@@ -89,10 +88,11 @@ pub fn frame(game:&mut Game) {
         if let Some(removed_bullet) = game.bullets.push(bullet) {
             game.world.remove_entity(removed_bullet);
         }
-    } else {
-        // Move timer closer to zero (zero or less means Ok to shoot)
-        game.cooldown -=1.0 * game.world.time_elapsed()
     }
+    // } else {
+    //     // Move timer closer to zero (zero or less means Ok to shoot)
+    //     game.cooldown -=1.0 * game.world.time_elapsed()
+    // }
 
 
     // Iterate bullets, remove any too far in the y coordinate.

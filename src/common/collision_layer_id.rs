@@ -7,7 +7,7 @@ pub trait CollisionLayer: core::fmt::Debug {
 #[macro_export]
 macro_rules! collision_layer_enum {
     ($name:ident { $($variants:ident),* $(,)? }) => {
-        #[derive(Clone, Copy, PartialEq)]
+        #[derive(Clone, Copy, PartialEq, Debug)]
         #[repr(u16)]
         
         pub enum $name {
@@ -15,17 +15,6 @@ macro_rules! collision_layer_enum {
         }
 
         impl Into<u16> for $name { fn into(self) -> u16 { self as u16 } }
-
-
-        impl core::fmt::Debug for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(
-                        $name::$variants => write!(f, "{}", stringify!($variants)),
-                    )+
-                }
-            }
-        }
 
 
         impl CollisionLayer for $name {

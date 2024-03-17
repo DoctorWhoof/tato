@@ -11,7 +11,6 @@ where T:TilesetEnum, P:PaletteEnum,
     pub(crate) palettes:    Vec<Palette>,
     tileset_marker:         PhantomData<T>,
     palette_marker:         PhantomData<P>,
-    // specs: Specs
 }
 
 
@@ -43,7 +42,6 @@ where T:TilesetEnum, P:PaletteEnum,
             palettes: vec![],
             palette_marker: Default::default(),
             tileset_marker: Default::default(),
-            // specs
         };
 
         // Palette Count

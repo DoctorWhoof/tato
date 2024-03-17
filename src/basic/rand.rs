@@ -9,7 +9,7 @@ pub fn seed(value:i32){
     RAND_INC.store(value, Ordering::Relaxed);
 }
 
-/// Get a random number between 0.0 and 1.0.
+/// Get a pseudorandom number between 0.0 and 1.0.
 pub fn random() -> f32 {
     let inc = RAND_INC.load(Ordering::Acquire) as f64;
     let result = fract(fabs(sin(inc) * 1111111.1)) as f32;
@@ -17,7 +17,7 @@ pub fn random() -> f32 {
     result
 }
 
-/// Get a random number in the provided range.
+/// Get a pseudorandom number in the provided range.
 pub fn random_in_range(a:f32, b:f32) -> f32 {
     let range = b - a;
     (random() * range) + a
