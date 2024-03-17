@@ -12,14 +12,14 @@ pub const SPECS:Specs = Specs {
 
 collision_layer_enum!{
     Layer {
-        // None,
+        None,
         Hero,
         Enemies,
         Bullet
     }
 }
 
-tato::tileset_enum!{
+tileset_enum!{
     TilesetID {
         Bg,
         Player,
@@ -27,14 +27,14 @@ tato::tileset_enum!{
     }
 }
 
-tato::palette_enum!{
+palette_enum!{
     PaletteID {
         Bg,
         Fg
     }
 }
 
-tato::group_enum!{
+group_enum!{
     GroupID {
         None,
         Wall,

@@ -1,10 +1,10 @@
 use tato::{EntityID, Vec2};
-use crate:: Input;
 
 pub struct Paddle {
     pub id: EntityID,
     pub vel: Vec2<f32>,
-    pub input: Input,
+    pub initial_pos: Vec2<f32>,
+    // pub input: Input,
 }
 
 #[derive(Default)]

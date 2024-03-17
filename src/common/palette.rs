@@ -10,6 +10,7 @@ pub struct Palette {
 }
 
 impl Palette {
+    
     pub fn new(specs:Specs, from_id:u8) -> Self {
         Palette {
             id: from_id,

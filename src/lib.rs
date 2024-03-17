@@ -14,8 +14,6 @@ pub use engine::*;
 pub use common::*;
 
 // Consts
-pub const GROUP_CAPACITY:usize = 64; // Currently tiles can't represent more than 64 groups (6 bits)
-
 pub const ATLAS_HEADER_TEXT:&str = "atlas_1.0";
 pub const TILESET_HEADER_TEXT:&str = "tileset_1.0";
 pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;

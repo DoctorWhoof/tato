@@ -13,8 +13,10 @@ pub const SPECS:Specs = Specs {
 tato::collision_layer_enum!{
     Layer {
         None,
+        Puck,
         Paddle,
         Bricks,
+        Wall
     }
 }
 
@@ -22,6 +24,7 @@ tato::tileset_enum!{
     TilesetID {
         Hud,
         Sprites,
+        Bricks,
         Bg,
     }
 }
@@ -35,8 +38,15 @@ tato::palette_enum!{
 tato::group_enum!{
     GroupID {
         None,
-        Wall,
-        Brick
+        BrickSilver,
+        BrickGold,
+        BrickBlue,
+        BrickRed,
+        FloorGrille,
+        FloorMetal,
+        FloorGreen,
+        WallBlue,
+        WallGreen
     }
 }
 

@@ -1,5 +1,7 @@
-pub trait CollisionLayer: core::fmt::Debug {
-    fn to_u16(&self) -> u16;
+use super::Countable;
+use core::fmt::Debug;
+
+pub trait CollisionLayer: Debug + Countable + Clone + Copy + Into<u16> {
     fn pow2(self) -> u16;
 }
 
@@ -18,7 +20,6 @@ macro_rules! collision_layer_enum {
 
 
         impl CollisionLayer for $name {
-            fn to_u16(&self) -> u16 { *self as u16 }
             fn pow2(self) -> u16 { 2u16.pow(self as u32) }
         }
         

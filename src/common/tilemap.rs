@@ -136,8 +136,8 @@ impl Tilemap {
 
 
     #[allow(unused)]
-    pub fn set_tile_index(&mut self, col:u16, row:u16, value:u8) {
-        self.tiles[ self.get_index(col, row) ].index = value;
+    pub fn set_tile(&mut self, col:u16, row:u16, value:Tile) {
+        self.tiles[ self.get_index(col, row) ] = value;
     }
 
 
@@ -255,8 +255,7 @@ impl Tilemap {
                     //     y: (y0 + (dir.y * dist)) as f32,
                     // };
                     let col = IntermediateCollision{
-                        // velocity: Vec2::zero(), // Will be filled by the caller
-                        // pos: intersection,
+                        // pos: coords.x as f32,
                         normal,
                         t: 0.0
                     };

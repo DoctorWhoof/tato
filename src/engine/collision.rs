@@ -29,6 +29,7 @@ pub enum CollisionReaction {
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct AxisCollision<T> where T:Float + PartialOrd + Copy{
+    // pub pos:T,
     pub velocity:T,
     pub margin:T,
     pub normal:T,
@@ -38,6 +39,7 @@ pub(crate) struct AxisCollision<T> where T:Float + PartialOrd + Copy{
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
+    // pub pos: Vec2<T>,
     pub normal:Vec2<T>,
     pub t:T
 }
@@ -46,6 +48,7 @@ pub(crate) struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
 #[derive(Clone, Debug, Default)]
 pub struct Collision<T> where T:Float + PartialOrd + Copy{
     pub tile:Option<Tile>,
+    // pub pos: Vec2<T>,
     pub entity_id: EntityID,
     pub velocity:Vec2<T>,
     pub margin:Vec2<T>,
@@ -58,8 +61,8 @@ pub struct Collision<T> where T:Float + PartialOrd + Copy{
 #[derive(Clone, Debug)]
 pub struct CollisionProbe<T> {
     pub kind: ColliderKind,
-    pub entity_id: EntityID,
     pub pos: Vec2<T>,
+    pub entity_id: EntityID,
     pub velocity:Vec2<T>,
     pub layer: u16,
     pub mask: u16
@@ -79,22 +82,22 @@ pub struct Collider{
 
 impl Collider {
 
-    pub fn new_tilemap_collider() -> Self {
+    pub fn new_tilemap_collider(layer:impl CollisionLayer) -> Self {
         Self {
             enabled: true,
             pos: Vec2::zero(),
             kind: ColliderKind::Tilemap { w:0.0, h:0.0, tile_width:0, tile_height:0 }, // Values will be written by World
-            layer: 0,
+            layer: layer.into(),
             mask: 0,
         }
     }
 
-    pub fn new_point_collider(x:f32, y:f32) -> Self {
+    pub fn new_point_collider(layer:impl CollisionLayer, x:f32, y:f32) -> Self {
         Self {
             enabled: true,
             pos: Vec2 { x, y },
             kind: ColliderKind::Point,
-            layer: 0,
+            layer: layer.into(),
             mask: 0,
         }
     }
@@ -104,7 +107,7 @@ impl Collider {
             enabled: true,
             pos: Vec2 { x:rect.x, y:rect.y },
             kind: ColliderKind::Rect{ w:rect.w, h:rect.h },
-            layer: layer.to_u16(),
+            layer: layer.into(),
             mask: 0,
         }
     }
@@ -319,11 +322,13 @@ impl CollisionProbe<f32> {
             None
         } else if result_vel > 0.0 {
             Some(IntermediateCollision{
+                // pos: rect_left,
                 normal: Vec2::left(),
                 t:(rect_left - x) / result_vel
             })
         } else if result_vel < 0.0 {
             Some(IntermediateCollision{
+                // pos: rect_right,
                 normal: Vec2::right(),
                 t:(rect_right - x) / result_vel
             })
@@ -341,11 +346,13 @@ impl CollisionProbe<f32> {
             None
         } else if result_vel > 0.0 {
             Some(IntermediateCollision{
+                // pos: rect_top,
                 normal: Vec2::up(),
                 t:(rect_top - y) / result_vel
             })
         } else if result_vel < 0.0 {
             Some(IntermediateCollision{
+                // pos: rect_bottom,
                 normal: Vec2::down(),
                 t:(rect_bottom - y) / result_vel
             })
@@ -404,6 +411,7 @@ impl CollisionProbe<f32> {
 
         // println!("normal:{:.2?}, entry_time:{:.2}, dist_x:{:.1}, entry_x:{:.1}", normal, entry_time, dist_entry_x, entry_x);
         Some(IntermediateCollision{
+            // pos: 
             normal,
             t: entry_time
         })
@@ -413,6 +421,7 @@ impl CollisionProbe<f32> {
     fn axis_col_from_intermediate(&self, maybe_value: Option<IntermediateCollision<f32>>, axis: Axis) -> Option<AxisCollision<f32>> {
         let value = maybe_value?;
         Some(AxisCollision {
+            // pos: 
             normal: match axis {
                 Axis::Horizontal => value.normal.x,
                 Axis::Vertical => value.normal.y,
@@ -442,30 +451,30 @@ impl From<&CollisionProbe<f32>> for Rect<f32> {
 }
 
 
-impl From<Vec2<f32>> for Collider {
-    fn from(value: Vec2<f32>) -> Self {
-        Self {
-            enabled: true,
-            pos: value,
-            kind: ColliderKind::Point,
-            layer: 0,
-            mask: 0,
-        }
-    }
-}
+// impl From<Vec2<f32>> for Collider {
+//     fn from(value: Vec2<f32>) -> Self {
+//         Self {
+//             enabled: true,
+//             pos: value,
+//             kind: ColliderKind::Point,
+//             layer: 0,
+//             mask: 0,
+//         }
+//     }
+// }
 
 
-impl From<Rect<f32>> for Collider {
-    fn from(value: Rect<f32>) -> Self {
-        Self {
-            enabled: true,
-            pos: Vec2 { x:value.x, y:value.y },
-            kind: ColliderKind::Rect{ w:value.w, h:value.h },
-            layer: 0,
-            mask: 0,
-        }
-    }
-}
+// impl From<Rect<f32>> for Collider {
+//     fn from(value: Rect<f32>) -> Self {
+//         Self {
+//             enabled: true,
+//             pos: Vec2 { x:value.x, y:value.y },
+//             kind: ColliderKind::Rect{ w:value.w, h:value.h },
+//             layer: 0,
+//             mask: 0,
+//         }
+//     }
+// }
 
 
 impl<T> AddAssign<AxisCollision<T>> for AxisCollision<T>

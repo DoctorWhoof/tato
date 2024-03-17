@@ -72,13 +72,13 @@ pub fn frame(game:&mut Game) {
 
         // TODO: new_collider(layer, col:impl ToCollider), in order to remove individual collider creation functions
         let collider = Collider::new_rect_collider(Layer::Bullet, Rect::new(-2.0, 0.0, 4.0, 4.0));
-        game.world.add_collider(bullet, collider, Layer::Bullet);
+        game.world.add_collider(bullet, collider);
         game.world.enable_collision_with_layer(bullet, Layer::Enemies);
 
         game.world.set_render_offset(bullet, -3, -2);
         game.world.set_position(bullet, pos);
         game.world.set_shape(bullet, Shape::Sprite {
-            tileset:TilesetID::Player.into(),
+            tileset_id:TilesetID::Player.into(),
             anim_id:1,
             flip_h: false,
             flip_v: false 

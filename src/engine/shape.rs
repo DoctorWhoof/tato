@@ -7,20 +7,20 @@ pub enum Shape {
     None,
     // Invisible,
     Sprite {     // Sprites can be placed anywhere in the world
-        tileset:u8,
+        tileset_id:u8,
         anim_id:u8,
         flip_h:bool,
         flip_v:bool
     },
     BgSprite {  // Renders its tile data to a tilemap, instead of the world
-        tileset:u8,
+        tileset_id:u8,
         anim_id:u8,
         tilemap_entity:EntityID,
         flip_h:bool,
         flip_v:bool,
     },
     Bg {  // Allows an entity to draw a tilemap
-        tileset:u8,
+        tileset_id:u8,
         tilemap_id:u8
     },
 }
@@ -28,9 +28,9 @@ pub enum Shape {
 
 impl Shape {
 
-    pub fn sprite_from_anim(tileset:impl TilesetEnum, anim_id:impl Into<u8>) -> Self {
+    pub fn sprite_from_anim(tileset_id:impl TilesetEnum, anim_id:impl Into<u8>) -> Self {
         Shape::Sprite {
-            tileset: tileset.into(),
+            tileset_id: tileset_id.into(),
             anim_id: anim_id.into(),
             flip_h: false,
             flip_v: false,
@@ -38,9 +38,9 @@ impl Shape {
     }
 
 
-    pub fn anim_tiles_from_anim(tileset:impl TilesetEnum, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
+    pub fn anim_tiles_from_anim(tileset_id:impl TilesetEnum, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
         Shape::BgSprite {
-            tileset: tileset.into(),
+            tileset_id: tileset_id.into(),
             anim_id: anim_id.into(),
             flip_h: false,
             flip_v: false,

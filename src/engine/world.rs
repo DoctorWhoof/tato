@@ -2,8 +2,7 @@ use crate::*;
 use alloc::{vec, vec::Vec};
 use slotmap::{SecondaryMap, SlotMap};
 
-const COLLISION_LAYER_COUNT:usize = 8;
-// const MAX_COLLIDERS_PER_LAYER:usize = 12;
+const COLLISION_LAYER_COUNT:usize = 16;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
@@ -118,11 +117,11 @@ where T:TilesetEnum, P:PaletteEnum,
             if let Shape::BgSprite { tilemap_entity, .. } = ent.shape {
                 if let Some(tilemap_ent) = self.entities.get(tilemap_entity) {
                     if let Shape::Bg {
-                        tileset,
+                        tileset_id,
                         tilemap_id,
                     } = tilemap_ent.shape
                     {
-                        let tilemap = self.renderer.get_tilemap_mut(tileset, tilemap_id);
+                        let tilemap = self.renderer.get_tilemap_mut(tileset_id, tilemap_id);
                         tilemap.restore_bg_buffer(ent.id);
                         tilemap.bg_buffers.remove(id);
                     }
@@ -166,21 +165,14 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn add_collider(&mut self, id:EntityID, collider:Collider, layer:impl CollisionLayer) {
-        // println!("{:?}", collider);
-        self.colliders.insert(id, Collider{
-            kind: collider.kind,
-            pos: collider.pos,
-            enabled: collider.enabled,
-            mask: collider.mask,
-            layer: layer.to_u16(),
-        });
+    pub fn add_collider(&mut self, id:EntityID, collider:Collider) {
+        self.colliders.insert(id, collider);
     }
 
 
     pub fn enable_collision_with_layer(&mut self, id:EntityID, layer:impl CollisionLayer) {
         if let Some(collider) = self.colliders.get_mut(id){
-            let layer_value = layer.to_u16();
+            let layer_value:u16 = layer.into();
             if layer_value > 0 {
                 let layer = 2u16.pow(layer_value as u32 - 1);
                 collider.mask |= layer;
@@ -281,8 +273,8 @@ where T:TilesetEnum, P:PaletteEnum,
                                 probe.collision_response(other_probe, None)
                             },
                             ColliderKind::Tilemap { .. } => {
-                                let Shape::Bg { tileset, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
-                                let tilemap = self.renderer.get_tilemap(*tileset, *tilemap_id);
+                                let Shape::Bg { tileset_id, tilemap_id } = &self.entities[other_probe.entity_id].shape else { continue };
+                                let tilemap = self.renderer.get_tilemap(*tileset_id, *tilemap_id);
                                 probe.collision_response(other_probe, Some(tilemap))
                             },
                         };
@@ -374,6 +366,7 @@ where T:TilesetEnum, P:PaletteEnum,
             let unscale = 1.0 / self.time_elapsed;
             Some(Collision{
                 tile: None,
+                // pos: Vec2::new(col_x.)
                 entity_id: other_id, // TODO: return more than one ID? Options?
                 velocity: Vec2::new(
                     vel_x + add_vel_x,
@@ -412,8 +405,8 @@ where T:TilesetEnum, P:PaletteEnum,
     pub fn get_entity_rect(&self, entity: &Entity) -> Rect<f32> {
         match entity.shape {
             Shape::None => Default::default(),
-            Shape::Sprite {tileset, anim_id, ..} | Shape::BgSprite {tileset, anim_id, ..} => {
-                let anim = self.renderer.get_anim(tileset, anim_id);
+            Shape::Sprite {tileset_id, anim_id, ..} | Shape::BgSprite {tileset_id, anim_id, ..} => {
+                let anim = self.renderer.get_anim(tileset_id, anim_id);
                 let frame = anim.frame(self.time);
                 Rect {
                     x: entity.pos.x + entity.render_offset.x as f32,
@@ -422,8 +415,8 @@ where T:TilesetEnum, P:PaletteEnum,
                     h: (frame.rows as usize * self.specs.tile_height as usize) as f32,
                 }
             }
-            Shape::Bg {tileset,tilemap_id} => {
-                let tilemap = &self.renderer.get_tilemap(tileset, tilemap_id);
+            Shape::Bg {tileset_id,tilemap_id} => {
+                let tilemap = &self.renderer.get_tilemap(tileset_id, tilemap_id);
                 Rect {
                     x: entity.pos.x + entity.render_offset.x as f32,
                     y: entity.pos.y + entity.render_offset.y as f32,
@@ -437,13 +430,13 @@ where T:TilesetEnum, P:PaletteEnum,
     pub fn get_tilemap_and_rect(&self, id: EntityID) -> Option<(&Tilemap, Rect<f32>)> {
         let tilemap_entity = self.get_entity(id)?;
         let Shape::Bg {
-            tileset,
+            tileset_id,
             tilemap_id,
         } = tilemap_entity.shape
         else {
             return None;
         };
-        let tilemap = &self.renderer.get_tilemap(tileset, tilemap_id);
+        let tilemap = &self.renderer.get_tilemap(tileset_id, tilemap_id);
         Some((tilemap, self.get_entity_rect(tilemap_entity)))
     }
 
@@ -550,10 +543,10 @@ where T:TilesetEnum, P:PaletteEnum,
                     // }
                 }
 
-                Shape::Sprite {tileset, anim_id, flip_h, .. } => {
+                Shape::Sprite {tileset_id, anim_id, flip_h, .. } => {
                     if !self.draw_sprites { continue }
                     // Draw tiles
-                    let anim = self.renderer.get_anim(tileset, anim_id);
+                    let anim = self.renderer.get_anim(tileset_id, anim_id);
                     let frame = anim.frame(self.time);
                     let Some(palette) = &self.renderer.palettes[anim.palette as usize] else { return };
 
@@ -594,13 +587,13 @@ where T:TilesetEnum, P:PaletteEnum,
                     }
                 }
 
-                Shape::Bg { tileset, tilemap_id} => {
+                Shape::Bg { tileset_id, tilemap_id} => {
                     if !self.draw_tilemaps {
                         continue;
                     }
                     // let tileset = &self.renderer.tilesets[tileset as usize];
                     let world_rect = self.get_entity_rect(entity);
-                    let tilemap = self.renderer.get_tilemap(tileset, tilemap_id);
+                    let tilemap = self.renderer.get_tilemap(tileset_id, tilemap_id);
 
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else {
                         continue;
