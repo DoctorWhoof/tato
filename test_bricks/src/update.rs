@@ -83,36 +83,34 @@ pub fn move_puck(game:&mut Game) {
     }
 
     if let Some(col) = game.world.move_with_collision(game.puck.id, game.puck.vel, CollisionReaction::Bounce(1.0)){
+        // Update puck velocity with "bounced" velocity
         game.puck.vel = col.velocity;
+
+        // Destroy bricks!
         if col.entity_id == game.bricks {
-            let pos = game.world.get_position(game.puck.id);
-            let col = (pos.x / game.world.renderer.tile_width() as f32) as u16;
-            let row = (pos.y / game.world.renderer.tile_height() as f32) as u16;
-            // println!("brick at {},{}", col, row);
+            if let Some(pos) = col.tile_coords {           
+                     
+                fn remove_brick(tilemap: &mut Tilemap, col:u16, row:u16) {
+                    tilemap.set_tile(col, row, Tile::default());
+                    tilemap.set_tile(col, row+1, Tile::default());
+                    if col % 2 == 0 {
+                        tilemap.set_tile(col-1, row, Tile::default());
+                        tilemap.set_tile(col-1, row+1, Tile::default());
+                    } else {
+                        tilemap.set_tile(col+1, row, Tile::default());
+                        tilemap.set_tile(col+1, row+1, Tile::default());
+                    }
+                }
 
-            // TODO: Collisions need to report the position. Tilemaps report back the column and row!
-            // TODO: MAYBE an enum for collisions, to differentiate tilemaps and regular entities?
-            fn remove_brick(tilemap: &mut Tilemap, col:u16, row:u16) {
-                let group = tilemap.get_tile(col, row).group;
-                tilemap.set_tile(col, row, Tile::default());
-                if tilemap.get_tile(col-1, row-1).group == group { tilemap.set_tile(col-1, row-1, Tile::default()) }
-                if tilemap.get_tile(col, row-1).group == group { tilemap.set_tile(col, row-1, Tile::default()) }
-                if tilemap.get_tile(col+1, row-1).group == group { tilemap.set_tile(col+1, row-1, Tile::default()) }
-                if tilemap.get_tile(col+1, row).group == group { tilemap.set_tile(col+1, row, Tile::default()) }
-                if tilemap.get_tile(col+1, row+1).group == group { tilemap.set_tile(col+1, row+1, Tile::default()) }
-                if tilemap.get_tile(col, row+1).group == group { tilemap.set_tile(col, row+1, Tile::default()) }
-                if tilemap.get_tile(col-1, row+1).group == group { tilemap.set_tile(col-1, row+1, Tile::default()) }
-                if tilemap.get_tile(col-1, row).group == group { tilemap.set_tile(col-1, row, Tile::default()) }
-            }
-
-            if let Some(ent) = game.world.get_entity_mut(game.bricks){
-                if let Shape::Bg { tileset_id, tilemap_id } = ent.shape {
-                    let tilemap = game.world.renderer.get_tilemap_mut(tileset_id, tilemap_id);
-                    remove_brick(tilemap, col, row);
+                if let Some(ent) = game.world.get_entity_mut(game.bricks){
+                    if let Shape::Bg { tileset_id, tilemap_id } = ent.shape {
+                        let tilemap = game.world.renderer.get_tilemap_mut(tileset_id, tilemap_id);
+                        remove_brick(tilemap, pos.x as u16, pos.y as u16);
+                    }
                 }
             }
         }
-    };
+    }
 
     // Out of bounds reset
     if let Some(ent) = game.world.get_entity_mut(game.puck.id) {

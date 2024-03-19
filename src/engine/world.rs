@@ -364,9 +364,17 @@ where T:TilesetEnum, P:PaletteEnum,
 
             // Return collision
             let unscale = 1.0 / self.time_elapsed;
+
+            let tile_coords =  if let Coords::Tile{col, row} = col_x.pos {
+                Some(Vec2::new(col, row))
+            } else if let Coords::Tile{col, row} = col_y.pos {
+                Some(Vec2::new(col, row))
+            } else {
+                None
+            };
+
             Some(Collision{
-                tile: None,
-                // pos: Vec2::new(col_x.)
+                tile_coords, 
                 entity_id: other_id, // TODO: return more than one ID? Options?
                 velocity: Vec2::new(
                     vel_x + add_vel_x,

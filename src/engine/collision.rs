@@ -27,28 +27,47 @@ pub enum CollisionReaction {
     Slide
 }
 
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct AxisCollision<T> where T:Float + PartialOrd + Copy{
-    // pub pos:T,
+    pub pos:Coords,
+    // pub tile_coord:Option<i32>,
     pub velocity:T,
     pub margin:T,
     pub normal:T,
     pub t:T,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) enum Coords {
+    #[default]
+    None,
+    Tile { col:i32, row:i32 },
+    World { x:f32, y:f32 },
+    Horizontal(f32),
+    Vertical(f32)
+}
 
-#[derive(Clone, Debug, Default)]
+// #[derive(Clone, Copy, Debug)]
+// pub(crate) enum Coord {
+//     Tile(i32),
+//     World(f32),
+// }
+
+
+#[derive(Clone, Debug)]
 pub(crate) struct IntermediateCollision<T> where T:Float + PartialOrd + Copy{
-    // pub pos: Vec2<T>,
+    pub pos: Coords,
     pub normal:Vec2<T>,
     pub t:T
 }
 
 /// Contains details about a collision that occurred in the current frame.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Collision<T> where T:Float + PartialOrd + Copy{
-    pub tile:Option<Tile>,
-    // pub pos: Vec2<T>,
+    // pub tile:Option<Tile>,
+    // pub pos: Coords,
+    pub tile_coords:Option<Vec2<i32>>,
     pub entity_id: EntityID,
     pub velocity:Vec2<T>,
     pub margin:Vec2<T>,
@@ -322,13 +341,13 @@ impl CollisionProbe<f32> {
             None
         } else if result_vel > 0.0 {
             Some(IntermediateCollision{
-                // pos: rect_left,
+                pos: Coords::Horizontal(rect_left),
                 normal: Vec2::left(),
                 t:(rect_left - x) / result_vel
             })
         } else if result_vel < 0.0 {
             Some(IntermediateCollision{
-                // pos: rect_right,
+                pos: Coords::Horizontal(rect_right),
                 normal: Vec2::right(),
                 t:(rect_right - x) / result_vel
             })
@@ -346,13 +365,13 @@ impl CollisionProbe<f32> {
             None
         } else if result_vel > 0.0 {
             Some(IntermediateCollision{
-                // pos: rect_top,
+                pos: Coords::Vertical(rect_top),
                 normal: Vec2::up(),
                 t:(rect_top - y) / result_vel
             })
         } else if result_vel < 0.0 {
             Some(IntermediateCollision{
-                // pos: rect_bottom,
+                pos: Coords::Vertical(rect_bottom),
                 normal: Vec2::down(),
                 t:(rect_bottom - y) / result_vel
             })
@@ -411,7 +430,7 @@ impl CollisionProbe<f32> {
 
         // println!("normal:{:.2?}, entry_time:{:.2}, dist_x:{:.1}, entry_x:{:.1}", normal, entry_time, dist_entry_x, entry_x);
         Some(IntermediateCollision{
-            // pos: 
+            pos: Coords::World { x: a.x + dist_entry_x, y: a.y + dist_entry_y }, //TODO: Needs testing
             normal,
             t: entry_time
         })
@@ -421,7 +440,7 @@ impl CollisionProbe<f32> {
     fn axis_col_from_intermediate(&self, maybe_value: Option<IntermediateCollision<f32>>, axis: Axis) -> Option<AxisCollision<f32>> {
         let value = maybe_value?;
         Some(AxisCollision {
-            // pos: 
+            pos: value.pos,
             normal: match axis {
                 Axis::Horizontal => value.normal.x,
                 Axis::Vertical => value.normal.y,

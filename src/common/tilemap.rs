@@ -255,7 +255,7 @@ impl Tilemap {
                     //     y: (y0 + (dir.y * dist)) as f32,
                     // };
                     let col = IntermediateCollision{
-                        // pos: coords.x as f32,
+                        pos: Coords::Tile{ col:coords.x, row:coords.y },
                         normal,
                         t: 0.0
                     };
