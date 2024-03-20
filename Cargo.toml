@@ -11,7 +11,13 @@ readme = "readme.md"
 std = []
 
 [workspace]
-members = ["test_collisions", "test_bugs", "test_bricks", "tato_mquad"]
+members = [
+    "test_collisions",
+    "test_bugs",
+    "test_bricks",
+    "test_pattern",
+    "tato_mquad",
+]
 
 [profile.release]
 # debug = true

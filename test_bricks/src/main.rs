@@ -70,6 +70,7 @@ async fn main() {
         app.push_overlay(format!("FPS: {:.1}", 1.0 / game.world.time_elapsed()));
         app.push_overlay(format!("Entity count: {}", game.world.entities().len()));
         app.push_overlay(format!("Update time: {:.2}", game.world.time_update() * 1000.0));
+        app.push_overlay(format!("Pos: {:?}", game.world.get_position(game.paddle.id)));
 
         // Finish frame
         app.finish_frame(&mut game.world);

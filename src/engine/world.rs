@@ -63,11 +63,10 @@ where T:TilesetEnum, P:PaletteEnum,
             time_elapsed: 1.0 / 60.0,
             time_idle: 0.0,
 
-            collision_layers: vec![vec![]; COLLISION_LAYER_COUNT],
-            // collision_layer_heads: Default::default(),
-
             entities: Default::default(),
+            
             colliders: Default::default(),
+            collision_layers: vec![vec![]; COLLISION_LAYER_COUNT],
             specs,
         }
     }

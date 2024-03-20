@@ -218,7 +218,6 @@ impl Tilemap {
         let mut dist = 0.0;
         let mut normal:Vec2<f32>;
 
-        // println!("\nRaycast: {:.2}, {:.2} -> {:.2}, {:.2}, coords:{:?}", x0, y0, x1, y1, coords);
         while dist < line_length { // TODO: use max_dist as a function parameter, get the "min" from it and line length
             if ray_len.x < ray_len.y {
                 coords.x += step.x;
@@ -231,7 +230,6 @@ impl Tilemap {
                     if coords.x > max.x { break }
                     normal = Vec2::left();
                 };
-                // println!("step X, ray_len.x:{:.2}, dist:{:.2}, coords:{:?}", ray_len.x, dist, coords);
             } else {
                 coords.y += step.y;
                 dist = ray_len.y;
@@ -243,23 +241,17 @@ impl Tilemap {
                     if coords.y > max.y { break }
                     normal = Vec2::up();
                 };
-                // println!("step Y, ray_len.y:{:.2}, dist:{:.2}, coords:{:?}", ray_len.y, dist, coords);
             }
 
             if dist > line_length {  break }
             if coords.x > -1 && coords.x < self.cols as i32 && coords.y > -1 && coords.y < self.rows as i32 {
                 let tile = self.get_tile(coords.x as u16, coords.y as u16);
                 if tile.is_collider() {
-                    // let intersection = Vec2 {
-                    //     x: (x0 + (dir.x * dist)) as f32,
-                    //     y: (y0 + (dir.y * dist)) as f32,
-                    // };
                     let col = IntermediateCollision{
                         pos: Coords::Tile{ col:coords.x, row:coords.y },
                         normal,
                         t: 0.0
                     };
-                    // println!("Collision at {:?}, normal:{}", coords, normal);
                     return Some(col)
                 }
             }

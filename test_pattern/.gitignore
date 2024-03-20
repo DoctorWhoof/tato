@@ -1,0 +1,11 @@
+/target
+.target
+/*.lock
+.vscode
+.zed
+.DS_Store
+converted
+
+*.anims
+*.fonts
+*.maps

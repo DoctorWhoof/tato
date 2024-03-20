@@ -38,7 +38,7 @@ impl Shape {
     }
 
 
-    pub fn anim_tiles_from_anim(tileset_id:impl TilesetEnum, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
+    pub fn bg_sprite_from_anim(tileset_id:impl TilesetEnum, anim_id:impl Into<u8>, tilemap_entity:EntityID) -> Self {
         Shape::BgSprite {
             tileset_id: tileset_id.into(),
             anim_id: anim_id.into(),
