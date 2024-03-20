@@ -6,11 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tato = { path = "../", features = ["std"] }
+tato = { path = "../" }
 tato_mquad = { path = "../tato_mquad" }
 macroquad = "0.4.4"
 
 [build-dependencies]
-tato = { path = "../", features = ["std"] }
+tato = { path = "../" }
 # tato_pipe = "0.1.2"
 tato_pipe = { path = "../../tato_pipe" }

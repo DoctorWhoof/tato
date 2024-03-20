@@ -1,7 +1,6 @@
 use super::*;
 use core::ops::{Add, Mul, Sub};
 use core::fmt::Display;
-use libm::floorf;
 use num_traits::Num;
 
 /// A generic rectangular area.
@@ -95,6 +94,18 @@ impl From<Rect<u8>> for Rect<i32> {
     }
 }
 
+impl From<Rect<u16>> for Rect<i32> {
+    fn from(val: Rect<u16>) -> Self {
+        Rect {
+            x: val.x.into(),
+            y: val.y.into(),
+            w: val.w.into(),
+            h: val.h.into(),
+        }
+    }
+}
+
+
 impl From<Rect<i8>> for Rect<i32> {
     fn from(val: Rect<i8>) -> Self {
         Rect {
@@ -108,11 +119,12 @@ impl From<Rect<i8>> for Rect<i32> {
 
 impl Rect<f32> {
     pub fn to_i32(self) -> Rect<i32> {
+        let pos = self.pos().to_i32();
         Rect {
-            x: floorf(self.x) as i32,
-            y: floorf(self.y) as i32,
-            w: floorf(self.w) as i32,
-            h: floorf(self.h) as i32,
+            x: pos.x,
+            y: pos.y,
+            w: self.w.floor() as i32,
+            h: self.h.floor() as i32,
         }
     }
 }

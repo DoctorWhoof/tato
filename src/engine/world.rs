@@ -64,7 +64,7 @@ where T:TilesetEnum, P:PaletteEnum,
             time_idle: 0.0,
 
             entities: Default::default(),
-            
+
             colliders: Default::default(),
             collision_layers: vec![vec![]; COLLISION_LAYER_COUNT],
             specs,
@@ -499,17 +499,20 @@ where T:TilesetEnum, P:PaletteEnum,
     pub fn render_frame(&mut self) {
         // Iterate entities
         let cam_rect = Rect {
-            x: self.cam.x + self.framebuf.viewport.x as f32,
-            y: self.cam.y + self.framebuf.viewport.y as f32,
-            w: self.framebuf.viewport.w as f32,
-            h: self.framebuf.viewport.h as f32,
+            x: self.cam.x.floor() as i32 + self.framebuf.viewport.x,
+            y: self.cam.y.floor() as i32 + self.framebuf.viewport.y,
+            w: self.framebuf.viewport.w,
+            h: self.framebuf.viewport.h,
         };
-        let tile_width = self.specs.tile_width;
-        let tile_height = self.specs.tile_height;
+        let tile_width = self.specs.tile_width as i32;
+        let tile_height = self.specs.tile_height as i32;
+
         for entity in self.entities.values() {
             // Draw entity shape
             if !entity.visible { continue }
-            let pos = entity.pos;
+
+            let pos = entity.pos.to_i32();
+
             match entity.shape {
                 Shape::None => {
                     // Do nothing!
@@ -563,23 +566,20 @@ where T:TilesetEnum, P:PaletteEnum,
                         let tile = frame.get_tile(subtile);
                         let abs_tile_id = self.renderer.get_tile(tile.index, anim.tileset as usize);
 
-                        let tile_rect = self.renderer.get_rect(abs_tile_id.get());
                         let quad_rect = Rect {
-                            x: pos.x + (col * 8) as f32 + entity.render_offset.x as f32,
-                            y: pos.y + (row * 8) as f32 + entity.render_offset.y as f32,
-                            w: tile_rect.w as f32,
-                            h: tile_rect.h as f32,
+                            x: pos.x + (col as i32 * tile_width)  + entity.render_offset.x as i32,
+                            y: pos.y + (row as i32 * tile_height) + entity.render_offset.y as i32,
+                            w: tile_width,
+                            h: tile_height,
                         };
 
-                        if !cam_rect.overlaps(&quad_rect) {
-                            return;
-                        }
                         let screen_rect = quad_rect - cam_rect.pos();
 
+                        // self.framebuf.draw_filled_rect(screen_rect, Color24::yellow());
                         Self::draw_tile(
                             &mut self.framebuf,
                             &self.renderer,
-                            screen_rect.to_i32(),
+                            screen_rect,
                             abs_tile_id,
                             palette,
                             flip_h ^ tile.flipped_h(), //resulting flip is a XOR
@@ -599,7 +599,7 @@ where T:TilesetEnum, P:PaletteEnum,
                         continue;
                     }
                     // let tileset = &self.renderer.tilesets[tileset as usize];
-                    let world_rect = self.get_entity_rect(entity);
+                    let world_rect = self.get_entity_rect(entity).to_i32();
                     let tilemap = self.renderer.get_tilemap(tileset_id, tilemap_id);
 
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else {
@@ -608,21 +608,17 @@ where T:TilesetEnum, P:PaletteEnum,
                     let Some(palette) = &self.renderer.palettes[tilemap.palette as usize] else { return };
 
                     // At least a part of tilemap is visible. Render visible tiles within it.
-                    let left_col = ((vis_rect.x - world_rect.x) / tile_width as f32) as usize;
+                    let left_col = (vis_rect.x - world_rect.x) / tile_width;
                     let mut right_col =
-                        ((vis_rect.right() - world_rect.x) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
+                        ((vis_rect.right() - world_rect.x) / tile_width) + 1; // +1 prevents cutting off tile too early
 
-                    let top_col = ((vis_rect.y - world_rect.y) / tile_height as f32) as usize;
+                    let top_col = (vis_rect.y - world_rect.y) / tile_height;
                     let mut bottom_col =
-                        ((vis_rect.bottom() - world_rect.y) / tile_width as f32) as usize + 1; // +1 prevents cutting off tile too early
+                        ((vis_rect.bottom() - world_rect.y) / tile_width) + 1; // +1 prevents cutting off tile too early
 
                     // However, those +1's up there will cause invalid coordinates when we reach the end of the tilemap, so...
-                    if right_col > tilemap.cols as usize {
-                        right_col -= 1
-                    };
-                    if bottom_col > tilemap.rows as usize {
-                        bottom_col -= 1
-                    };
+                    if right_col > tilemap.cols as i32 { right_col -= 1 };
+                    if bottom_col > tilemap.rows as i32 { bottom_col -= 1 };
 
                     // Acquire and render tiles
                     for row in top_col..bottom_col {
@@ -630,24 +626,23 @@ where T:TilesetEnum, P:PaletteEnum,
                             let tile = tilemap.get_tile(col as u16, row as u16);
                             let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset as usize);
 
-                            let tile_rect =
-                                Rect::<i32>::from(self.renderer.get_rect(tile.index as usize));
+                            let tile_rect = Rect::<i32>::from(self.renderer.get_rect(tile.index as usize));
                             let world_tile_rect = Rect {
                                 x: pos.x
-                                    + (col * tile_width as usize) as f32
-                                    + entity.render_offset.x as f32
+                                    + (col * tile_width)
+                                    + entity.render_offset.x as i32
                                     - cam_rect.x,
                                 y: pos.y
-                                    + (row * tile_height as usize) as f32
-                                    + entity.render_offset.y as f32
+                                    + (row * tile_height)
+                                    + entity.render_offset.y as i32
                                     - cam_rect.y,
-                                w: tile_rect.w as f32,
-                                h: tile_rect.h as f32,
+                                w: tile_rect.w,
+                                h: tile_rect.h,
                             };
                             Self::draw_tile(
                                 &mut self.framebuf,
                                 &self.renderer,
-                                world_tile_rect.to_i32(),
+                                world_tile_rect,
                                 tile_id,
                                 palette,
                                 tile.flipped_h(),
@@ -661,14 +656,14 @@ where T:TilesetEnum, P:PaletteEnum,
             // Draw pivot point
             #[cfg(debug_assertions)]
             if self.debug_pivot {
-                let rect = self.get_entity_rect(entity);
+                let rect = self.get_entity_rect(entity).to_i32();
                 if let Some(vis_rect) = rect.intersect(cam_rect) {
                     self.framebuf
-                        .draw_rect((vis_rect - cam_rect).to_i32(), COLOR_ENTITY_RECT);
+                        .draw_rect(vis_rect - cam_rect, COLOR_ENTITY_RECT);
                 };
                 if let Some(point) = self
                     .framebuf
-                    .get_visible_point((pos - cam_rect.pos()).to_i32())
+                    .get_visible_point(pos - cam_rect.pos())
                 {
                     self.framebuf.draw_line(
                         point.x,
@@ -753,19 +748,19 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<f32>, probe:&CollisionProbe<f32>, color:Color24){
+    fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<i32>, probe:&CollisionProbe<f32>, color:Color24){
         match probe.kind {
             ColliderKind::Point =>{
-                let pos = probe.pos;
+                let pos = probe.pos.to_i32();
                 if cam_rect.contains(pos.x, pos.y) {
                     framebuf.draw_pixel(pos.x as usize, pos.y as usize, color, 255);
                 }
             },
             ColliderKind::Rect{..} | ColliderKind::Tilemap{..} =>{
-                let rect = Rect::from(probe);
+                let rect = Rect::from(probe).to_i32();
                 let screen_col = rect - cam_rect.pos();
                 if cam_rect.overlaps(&rect) {
-                    framebuf.draw_rect(screen_col.to_i32(), color);
+                    framebuf.draw_rect(screen_col, color);
                 }
             },
         }
@@ -832,15 +827,20 @@ where T:TilesetEnum, P:PaletteEnum,
         depth:u8
     ) {
         let Some(visible_rect) = world_rect.intersect(frame_buf.viewport) else {
+            // println!("Out of frame");
             return;
         };
         let tile_rect = renderer.get_rect(tile.get());
         let width = frame_buf.width();
 
-        for y in visible_rect.y..visible_rect.bottom() {
-            let source_y = (y - world_rect.y) as usize + tile_rect.y as usize;
+        for y in visible_rect.y .. visible_rect.bottom() {
+            let source_y = y - world_rect.y;
+            #[cfg(debug_assertions)]{
+                if source_y < 0 { panic!("Whoops, coordinate can't be negative!") }
+            }
+            let source_y = source_y as usize + tile_rect.y as usize;
 
-            for x in visible_rect.x..visible_rect.right() {
+            for x in visible_rect.x .. visible_rect.right() {
                 let source_x = if flip_h {
                     let local_x = renderer.tile_width() as usize - (x - world_rect.x) as usize - 1;
                     local_x + tile_rect.x as usize
@@ -848,13 +848,13 @@ where T:TilesetEnum, P:PaletteEnum,
                     let local_x = (x - world_rect.x) as usize;
                     local_x + tile_rect.x as usize
                 };
+
                 let color = renderer.get_pixel(source_x, source_y);
-                let Some(color) = palette.colors.get(color as usize) else {
-                    continue;
-                };
-                if color.a < 255 {
-                    continue;
-                }
+
+                let Some(color) = palette.colors.get(color as usize) else { continue };
+
+                if color.a < 255 { continue }
+
                 draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, Color24::from(color), depth);
             }
         }

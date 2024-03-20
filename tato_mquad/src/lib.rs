@@ -7,6 +7,7 @@ use tato::{PaletteEnum, TilesetEnum, World};
 pub struct App<T, P>
 where T:TilesetEnum, P:PaletteEnum
 {
+    pub integer_scaling:bool,
     pub overlay_position: Vec2,
     pub overlay_line_spacing: f32,
     overlay: Vec<String>,
@@ -28,6 +29,7 @@ where T:TilesetEnum, P:PaletteEnum {
         render_texture.set_filter(FilterMode::Nearest);
 
         Self {
+            integer_scaling: true,
             overlay_position: Vec2::new(10.0, 20.0),
             overlay_line_spacing: 16.0,
             overlay: vec![],
@@ -51,7 +53,9 @@ where T:TilesetEnum, P:PaletteEnum {
         // Render scaling pre-calc
         let width = world.framebuf.width();
         let height = world.framebuf.height();
-        let scale = (screen_height() / height as f32).floor();
+        let mut scale = screen_height() / height as f32;
+        if self.integer_scaling { scale = scale.floor() }
+
         let render_width = width as f32 * scale;
         let render_height = height as f32 * scale;
         let draw_rect_x = (screen_width() - render_width) / 2.0;
@@ -72,7 +76,7 @@ where T:TilesetEnum, P:PaletteEnum {
         }
 
         // Render texture to screen
-        clear_background(BLACK);
+        // clear_background(BLACK);
         self.render_texture.update(&self.render_image);
         draw_texture_ex(
             &self.render_texture,
@@ -89,14 +93,14 @@ where T:TilesetEnum, P:PaletteEnum {
             },
         );
 
-        // Overlay
+        // Draw Overlay
         for (i,item) in self.overlay.iter().enumerate() {
             let y = (i as f32 * self.overlay_line_spacing) + self.overlay_position.y ;
             draw_text( item, self.overlay_position.x, y, self.overlay_line_spacing, WHITE);
         }
+        self.overlay.clear();
 
         // Finish (calculate timings)
-        self.overlay.clear();
         world.finish_frame(self.time.elapsed().as_secs_f32());
     }
 

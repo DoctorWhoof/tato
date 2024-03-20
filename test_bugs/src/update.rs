@@ -131,5 +131,8 @@ pub fn frame(game:&mut Game) {
     scroll(game.stars_fg_0, bg_speed * 2.0);
     scroll(game.stars_fg_1, bg_speed * 2.0);
 
+    // Test
+    // game.world.center_camera_on(game.player.id);
+
 }
 

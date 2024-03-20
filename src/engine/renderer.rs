@@ -14,7 +14,7 @@ where T:TilesetEnum, P:PaletteEnum,
     anims:                  Vec<Anim>,
     tilemaps:               Vec<Tilemap>,
     pixels:                 Vec<u8>,
-    rects:                  Vec<Rect<u8>>,
+    rect_coords:                 Vec<Vec2<u16>>,
     tileset_marker:         PhantomData<T>,
     palette_marker:         PhantomData<P>,
     specs: Specs,
@@ -40,15 +40,11 @@ where T:TilesetEnum, P:PaletteEnum,
             anims: vec![],
             tilemaps: vec![],
             // Generates all tile rects
-            rects: (0 .. 256).map( |i| {
+            rect_coords: (0 .. 256).map( |i| {
                 let tile_x = i * specs.tile_width as usize;
-                let x = u8::try_from(tile_x % specs.atlas_width as usize).unwrap();
-                let y = u8::try_from((tile_x / specs.atlas_height as usize) * specs.tile_height as usize).unwrap();
-                Rect{
-                    x, y,
-                    w:specs.tile_width,
-                    h:specs.tile_height
-                }
+                let x = u16::try_from(tile_x % specs.atlas_width as usize).unwrap();
+                let y = u16::try_from((tile_x / specs.atlas_height as usize) * specs.tile_height as usize).unwrap();
+                Vec2{ x, y }
             }).collect(),
             specs,
             tileset_marker: Default::default(),
@@ -247,8 +243,14 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn get_rect(&self, index:usize) -> Rect<u8> {
-        self.rects[index]
+    pub fn get_rect(&self, index:usize) -> Rect<u16> {
+        let coord = self.rect_coords[index];
+        Rect {
+            x: coord.x,
+            y: coord.y,
+            w: self.specs.tile_width as u16,
+            h: self.specs.tile_height as u16
+        }
     }
 
 

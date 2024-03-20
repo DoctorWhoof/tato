@@ -1,4 +1,3 @@
-use libm::{sin, fabs};
 use core::sync::atomic::{Ordering, AtomicI32};
 
 static RAND_INC:AtomicI32 = AtomicI32::new(0);
@@ -12,7 +11,7 @@ pub fn seed(value:i32){
 /// Get a pseudorandom number between 0.0 and 1.0.
 pub fn random() -> f32 {
     let inc = RAND_INC.load(Ordering::Acquire) as f64;
-    let result = fract(fabs(sin(inc) * 1111111.1)) as f32;
+    let result = fract((inc.sin().abs()) * 1111111.1) as f32;
     RAND_INC.fetch_add(1, Ordering::Release);
     result
 }

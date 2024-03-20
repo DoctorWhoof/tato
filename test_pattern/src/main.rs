@@ -28,7 +28,7 @@ async fn main() {
 
     let mut grid = vec![];
     let start_x = (SPECS.render_width - (10 * SPECS.tile_width as u16)) as f32 / 2.0;
-    for row in 0 .. 22 {
+    for row in 0 .. 23 {
         for col in 0 .. 10 {
             let tile = world.add_entity(0);
             world.set_shape(tile, Shape::sprite_from_anim(TilesetID::Bg, 0));
@@ -49,6 +49,7 @@ async fn main() {
         // Update game and render entities 
         if mquad::is_key_down(mquad::KeyCode::LeftSuper) && mquad::is_key_pressed(mquad::KeyCode::Q) { break; }
         if mquad::is_key_pressed(mquad::KeyCode::A) { world.debug_atlas = !world.debug_atlas }
+        if mquad::is_key_pressed(mquad::KeyCode::W) { world.debug_pivot = !world.debug_pivot }
 
         // Update
         for tile in grid.iter() {
@@ -56,10 +57,14 @@ async fn main() {
             if pos.y > SPECS.render_height as f32 - SPECS.tile_height as f32 {
                 pos.y = 0.0;
             }
-            world.set_position(*tile, pos + Vec2{x:0.0, y:0.1});
+            let inc = Vec2{
+                x:0.0,
+                y:0.05 * (((pos.x - start_x) / SPECS.tile_width as f32) + 1.0)
+            };
+            world.set_position(*tile, pos + inc);
             
         }
-        world.framebuf.clear(Color24::gray_dark());
+        world.framebuf.clear(Color24::green_dark());
         world.render_frame();
 
         // Overlay

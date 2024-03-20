@@ -3,7 +3,6 @@ use core::{
     fmt::Display,
     ops::{Add, Sub, AddAssign, SubAssign}
 };
-use libm::floorf;
 use super::Rect;
 
 
@@ -27,7 +26,14 @@ impl Vec2<i8> {
 
 
 impl Vec2<f32> {
-    pub fn to_i32(self) -> Vec2<i32> { Vec2 { x: floorf(self.x) as i32, y: floorf(self.y) as i32 } }
+    pub fn to_i32(self) -> Vec2<i32> {
+        Vec2 {
+            // x: crate::quantize(self.x, 0.1) as i32,
+            // y: crate::quantize(self.y, 0.1) as i32,
+            x: self.x.floor() as i32,
+            y: self.y.floor() as i32
+        }
+    }
 }
 
 
