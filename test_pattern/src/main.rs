@@ -27,9 +27,11 @@ async fn main() {
     world.renderer.load_tileset(&atlas, TilesetID::Bg);
 
     let mut grid = vec![];
-    let start_x = (SPECS.render_width - (10 * SPECS.tile_width as u16)) as f32 / 2.0;
-    for row in 0 .. 23 {
-        for col in 0 .. 10 {
+    let columns = 30;
+    let rows = 24;
+    let start_x = (SPECS.render_width as usize - (columns * SPECS.tile_width as usize)) as f32 / 2.0;
+    for row in 0 .. rows {
+        for col in 0 .. columns {
             let tile = world.add_entity(0);
             world.set_shape(tile, Shape::sprite_from_anim(TilesetID::Bg, 0));
             world.set_position(tile, Vec2{
@@ -52,17 +54,13 @@ async fn main() {
         if mquad::is_key_pressed(mquad::KeyCode::W) { world.debug_pivot = !world.debug_pivot }
 
         // Update
-        for tile in grid.iter() {
-            let mut pos = world.get_position(*tile);
-            if pos.y > SPECS.render_height as f32 - SPECS.tile_height as f32 {
-                pos.y = 0.0;
-            }
-            let inc = Vec2{
-                x:0.0,
-                y:0.05 * (((pos.x - start_x) / SPECS.tile_width as f32) + 1.0)
-            };
-            world.set_position(*tile, pos + inc);
-            
+        for (i, tile) in grid.iter().enumerate() {
+            let col = (i % columns) as f32;
+            let row = (i / columns) as f32;
+            world.set_position(*tile, Vec2 {
+                x: (col * 8.0) + start_x,
+                y: ((row + (world.time() * (col + 1.0) * 0.125)) * 8.0) % SPECS.render_height as f32
+            })
         }
         world.framebuf.clear(Color24::green_dark());
         world.render_frame();

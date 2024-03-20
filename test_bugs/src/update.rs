@@ -121,8 +121,8 @@ pub fn frame(game:&mut Game) {
     let mut scroll = | id:EntityID, speed: f32 | {
         let height = game.world.get_entity_rect_from_id(id).h;
         if let Some(ent) = game.world.get_entity_mut(id){
-            if ent.pos.y > height { ent.pos.y = -height }
             ent.pos.y += speed * elapsed;
+            if ent.pos.y > height { ent.pos.y = -height }
         }
     };
 

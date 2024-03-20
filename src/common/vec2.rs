@@ -28,8 +28,9 @@ impl Vec2<i8> {
 impl Vec2<f32> {
     pub fn to_i32(self) -> Vec2<i32> {
         Vec2 {
-            // x: crate::quantize(self.x, 0.1) as i32,
-            // y: crate::quantize(self.y, 0.1) as i32,
+            // This seems sufficient to avoid seams! Check the test_pattern example.
+            // If you're seeing seams in neighbor entities, the problem is very likely in the logic positioning them,
+            // specially if they "loop" around i.e. their coordinates reset every once in a while.
             x: self.x.floor() as i32,
             y: self.y.floor() as i32
         }

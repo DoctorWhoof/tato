@@ -56,7 +56,7 @@ async fn main() {
         if mquad::is_key_down(mquad::KeyCode::LeftSuper) && mquad::is_key_pressed(mquad::KeyCode::Q) { break; }
 
         update::frame(&mut game);
-        game.world.framebuf.clear(Color24::gray_dark());
+        game.world.framebuf.clear(Color24::black());
         game.world.render_frame();
 
         // Overlay

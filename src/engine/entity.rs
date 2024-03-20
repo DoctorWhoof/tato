@@ -37,35 +37,35 @@ impl Entity {
         }
     }
 
-    fn world_vec2<T:Into<f32>>(&self, pos: Vec2<T>, use_render_offset: bool) -> Vec2<f32> {
-        Vec2 {
-            x: if use_render_offset {
-                self.pos.x + pos.x.into() + self.render_offset.x as f32
-            } else {
-                self.pos.x + pos.x.into()
-            },
-            y: if use_render_offset {
-                self.pos.y + pos.y.into() + self.render_offset.y as f32
-            } else {
-                self.pos.y + pos.y.into()
-            },
-        }
-    }
+    // fn world_vec2<T:Into<f32>>(&self, pos: Vec2<T>, use_render_offset: bool) -> Vec2<f32> {
+    //     Vec2 {
+    //         x: if use_render_offset {
+    //             self.pos.x + pos.x.into() + self.render_offset.x as f32
+    //         } else {
+    //             self.pos.x + pos.x.into()
+    //         },
+    //         y: if use_render_offset {
+    //             self.pos.y + pos.y.into() + self.render_offset.y as f32
+    //         } else {
+    //             self.pos.y + pos.y.into()
+    //         },
+    //     }
+    // }
 
-    pub fn world_rect<T: Into<f32>>(&self, rect: Rect<T>, use_render_offset: bool) -> Rect<f32> {
-        let pos = self.world_vec2(
-            Vec2 {
-                x: rect.x,
-                y: rect.y,
-            },
-            use_render_offset,
-        );
-        Rect {
-            x: pos.x,
-            y: pos.y,
-            w: rect.w.into(),
-            h: rect.h.into(),
-        }
-    }
+    // pub fn world_rect<T: Into<f32>>(&self, rect: Rect<T>, use_render_offset: bool) -> Rect<f32> {
+    //     let pos = self.world_vec2(
+    //         Vec2 {
+    //             x: rect.x,
+    //             y: rect.y,
+    //         },
+    //         use_render_offset,
+    //     );
+    //     Rect {
+    //         x: pos.x,
+    //         y: pos.y,
+    //         w: rect.w.into(),
+    //         h: rect.h.into(),
+    //     }
+    // }
 
 }
