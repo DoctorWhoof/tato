@@ -19,19 +19,21 @@ fn tilemap() {
         bg_buffers: Default::default(),
     };
 
-    // for row in 0 .. tilemap.rows {
-    //     for col in 0 ..tilemap.cols {
-    //         let tile = tilemap.get_tile(col, row);
-    //         if tile.is_collider(){
-    //             print!("#")
-    //         } else {
-    //             print!(".")
-    //         }
-    //     }
-    //     println!()
-    // }
+    for row in 0 .. tilemap.rows {
+        for col in 0 ..tilemap.cols {
+            let tile = tilemap.get_tile(col, row);
+            if tile.is_collider(){
+                print!("#")
+            } else {
+                print!(".")
+            }
+        }
+        println!()
+    }
+
     let maybe_col = tilemap.raycast(1.0, 0.0, 8.0, 9.0);
     assert!(maybe_col.is_none());
+
     let maybe_col = tilemap.raycast(1.0, 0.0, 9.0, 9.0);
     assert!(maybe_col.is_some());
 

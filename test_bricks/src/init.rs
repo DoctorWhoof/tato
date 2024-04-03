@@ -29,6 +29,7 @@ pub fn new_game() -> Game {
             let paddle = world.add_entity(1);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
             world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
+            // world.add_collider(paddle, Collider::new_point_collider(Layer::Paddle, 0.0, 0.0));
             world.enable_collision_with_layer(paddle, Layer::Bricks);
             world.enable_collision_with_layer(paddle, Layer::Wall);
             world.set_position(paddle, initial_paddle_pos);
@@ -40,7 +41,7 @@ pub fn new_game() -> Game {
     };
 
     // Puck
-    let initial_puck_pos = tato::Vec2 { x: 128.0, y: 124.0 };
+    let initial_puck_pos = tato::Vec2 { x: 160.0, y: 124.0 };
     let puck = Puck {
         id: {
             let puck = world.add_entity(1);
@@ -66,6 +67,7 @@ pub fn new_game() -> Game {
         paddle,
         puck,
         bg,
-        bricks
+        bricks,
+        overlay: vec![]
     }
 }

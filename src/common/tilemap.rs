@@ -154,71 +154,69 @@ impl Tilemap {
 
 
     /// Checks if a tile on the given line coordinates has its collider flag set to true
-    pub(crate) fn raycast<T:Into<f64>>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<IntermediateCollision<f32>> {
-        let x0:f64 = x0.into();
-        let x1:f64 = x1.into();
-        let y0:f64 = y0.into();
-        let y1:f64 = y1.into();
+    pub(crate) fn raycast<T>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<Collision<T>>
+    where T: Float {
 
         let min = Vec2{
-            x: x0.min(x1).floor() as i32,
-            y: y0.min(y1).floor() as i32,
+            x: x0.min(x1).floor().to_i32()?,
+            y: y0.min(y1).floor().to_i32()?,
         };
 
         let max = Vec2{
-            x: x0.max(x1).floor() as i32,
-            y: y0.max(y1).floor() as i32,
+            x: x0.max(x1).floor().to_i32()?,
+            y: y0.max(y1).floor().to_i32()?,
         };
 
         // println!("\nRaycast: {:.2}, {:.2} -> {:.2}, {:.2}", x0, y0, x1, y1);
-        if min.x == max.x && min.y == max.y {
-            return None;
-        }
+        if min.x == max.x && min.y == max.y { return None; }
 
         let mut coords = Vec2{
-            x: x0.floor() as i32,
-            y: y0.floor() as i32
+            x: x0.floor().to_i32()?,
+            y: y0.floor().to_i32()?
         };
 
+        let dx = x1 - x0;
+        let dy = y1 - y0;
 
-        let dir = Vec2 { x: x1 - x0, y: y1 - y0 }.normalize();
+        let dir = Vec2 { x: dx, y: dy }.normalize();
         let start_point = Vec2{ x:x0, y:y0 };
         let end_point = Vec2{ x:x1, y:y1 };
 
-
         let step_mult = Vec2 {
-            x: (1.0 + ((dir.y / dir.x) * (dir.y / dir.x))).sqrt(),
-            y: (1.0 + ((dir.x / dir.y) * (dir.x / dir.y))).sqrt(),
+            x: (T::one() + ((dir.y / dir.x) * (dir.y / dir.x))).sqrt(),
+            y: (T::one() + ((dir.x / dir.y) * (dir.x / dir.y))).sqrt(),
         };
 
         let step = Vec2{
-            x:if dir.x < 0.0 { -1 } else { 1 },
-            y:if dir.y < 0.0 { -1 } else { 1 },
+            x:if dir.x < T::zero() { -1 } else { 1 },
+            y:if dir.y < T::zero() { -1 } else { 1 },
         };
 
         let mut ray_len = Vec2{
             // Initial values, will be mutated during the loop
-            x: if dir.x > 0.0 {
-                ((1 + coords.x) as f64 - x0) * step_mult.x
-            } else if dir.x < 0.0 {
-                (x0 - coords.x as f64) * step_mult.x
+            x: if dir.x > T::zero() {
+                (T::from_i32(1 + coords.x)? - x0) * step_mult.x
+            } else if dir.x < T::zero() {
+                (x0 - T::from_i32(coords.x)?) * step_mult.x
             } else {
-                f64::MAX
+                T::max_value()
             },
-            y: if dir.y > 0.0 {
-                ((1 + coords.y) as f64 - y0) * step_mult.y
-            } else if dir.y < 0.0{
-                (y0 - coords.y as f64) * step_mult.y
+            y: if dir.y > T::zero() {
+                (T::from_i32(1 + coords.y)? - y0) * step_mult.y
+            } else if dir.y < T::zero(){
+                (y0 - T::from_i32(coords.y)?) * step_mult.y
             }else {
-                f64::MAX
+                T::max_value()
             }
         };
 
         let line_length = start_point.distance_to(end_point);
-        let mut dist = 0.0;
-        let mut normal:Vec2<f32>;
+
+        let mut dist = T::zero();
+        let mut normal:Vec2<T>;
 
         while dist < line_length { // TODO: use max_dist as a function parameter, get the "min" from it and line length
+
             if ray_len.x < ray_len.y {
                 coords.x += step.x;
                 dist = ray_len.x;
@@ -247,11 +245,40 @@ impl Tilemap {
             if coords.x > -1 && coords.x < self.cols as i32 && coords.y > -1 && coords.y < self.rows as i32 {
                 let tile = self.get_tile(coords.x as u16, coords.y as u16);
                 if tile.is_collider() {
-                    let col = IntermediateCollision{
-                        pos: Coords::Tile{ col:coords.x, row:coords.y },
-                        normal,
-                        t: 0.0
+                    // Calculate the precise intersection point
+                    let edge_x = T::from(if dir.x < T::zero() { coords.x + 1 } else { coords.x })?;
+                    let edge_y = T::from(if dir.y < T::zero() { coords.y + 1 } else { coords.y })?;
+
+                    let pos = Vec2{
+                        x: if dx == T::zero() {
+                            x0
+                        } else {
+                            edge_x
+                        },
+                        y: if dy == T::zero() {
+                            y0
+                        } else {
+                            edge_y
+                        }
                     };
+                    
+                    let col = Collision {
+                        pos,
+                        normal,
+                        t: Vec2 {
+                            x: normal.y.abs(),
+                            y:normal.x.abs()
+                        },
+                        tile: Some(TileCollision{
+                            tile,
+                            col: coords.x as u16,
+                            row: coords.y as u16,
+                        }),
+                        // TODO: Will need to be populated by world!
+                        velocity: Vec2::zero(),
+                        colliding_entity: Default::default(),
+                    };
+                    // println!("{:?}", col);
                     return Some(col)
                 }
             }

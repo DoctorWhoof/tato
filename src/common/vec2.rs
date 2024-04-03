@@ -1,9 +1,5 @@
-use num_traits::{Float, FloatConst, Num};
-use core::{
-    fmt::Display,
-    ops::{Add, Sub, AddAssign, SubAssign}
-};
-use super::Rect;
+use core:: ops::{Add, Sub, AddAssign, SubAssign};
+use crate::Float;
 
 
 /// A generic 2D vector.
@@ -26,11 +22,11 @@ impl Vec2<i8> {
 
 
 impl Vec2<f32> {
+    // This seems sufficient to avoid seams between entities! Check the "test_pattern" example.
+    // If you're seeing seams in neighbor entities, the problem is very likely in the logic positioning them,
+    // specially if they "loop" around i.e. their coordinates reset every once in a while.
     pub fn to_i32(self) -> Vec2<i32> {
         Vec2 {
-            // This seems sufficient to avoid seams! Check the test_pattern example.
-            // If you're seeing seams in neighbor entities, the problem is very likely in the logic positioning them,
-            // specially if they "loop" around i.e. their coordinates reset every once in a while.
             x: self.x.floor() as i32,
             y: self.y.floor() as i32
         }
@@ -39,7 +35,7 @@ impl Vec2<f32> {
 
 
 impl<T> Vec2<T>
-where T: Float + FloatConst + Num + PartialOrd + Copy + Display {
+where T: Float {
 
     pub fn zero() -> Self {
         Self{ x:T::zero(), y:T::zero() }
@@ -130,14 +126,6 @@ where T: Float + FloatConst + Num + PartialOrd + Copy + Display {
     }
 
 
-    pub fn clamp_to_rect(self, rect: Rect<T>) -> Vec2<T> {
-        Vec2 {
-            x: if self.x < rect.x { rect.x } else if self.x > rect.right() { rect.right() } else { self.x },
-            y: if self.y < rect.y { rect.y } else if self.y > rect.bottom() { rect.bottom() } else { self.y },
-        }
-    }
-
-
     pub fn dot(&self, other: &Self) -> T {
         (self.x * other.x) + (self.y * other.y)
     }
@@ -148,6 +136,16 @@ where T: Float + FloatConst + Num + PartialOrd + Copy + Display {
             x: self.x * factor,
             y: self.y * factor
         }
+    }
+
+
+    pub fn reflect(v:Self, n:Self) -> Self {
+        let two = T::one() + T::one();
+        let dot_product = v.x * n.x + v.y * n.y;
+        Vec2{
+            x: v.x - two * dot_product * n.x,
+            y: v.y - two * dot_product * n.y
+        }    
     }
 
 
@@ -166,6 +164,7 @@ where T: Float + FloatConst + Num + PartialOrd + Copy + Display {
         let dist_y = other.y - self.y;
         ((dist_x * dist_x) + (dist_y * dist_y)).sqrt()
     }
+
 
 }
 

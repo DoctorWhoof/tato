@@ -5,13 +5,14 @@ mod color;
 mod fixed_pool;
 mod math;
 mod rand;
-mod smooth_buffer;
 mod ring_pool;
+mod smooth_buffer;
 
 pub use bit_flags::*;
 pub use color::*;
 pub use fixed_pool::*;
 pub use math::*;
 pub use rand::*;
-pub use smooth_buffer::*;
 pub use ring_pool::*;
+pub use smooth_buffer::*;
+

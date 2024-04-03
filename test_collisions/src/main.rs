@@ -141,7 +141,7 @@ async fn main() {
         let sine_vel = tato::Vec2{x: oscillator.sin() * 30.0, y:oscillator.cos() * 60.0};
         world.move_with_collision(ent_sine, sine_vel, CollisionReaction::None);
 
-        // Static colliders
+        // // Static colliders
         world.use_static_collider(ent_rect_1);
         world.use_static_collider(ent_wall_top);
         world.use_static_collider(ent_wall_bottom);
@@ -168,6 +168,7 @@ async fn main() {
         // Debug Overlay
         app.push_overlay(format!("Update: {:.2?}", world.time_update() * 1000.0));
         app.push_overlay(format!("Vel: {:.2?}", vel));
+        app.push_overlay(format!("Pos: {:.2?}", world.get_position(ent_main)));
         if let Some(col) = &collision {
             app.push_overlay(format!("Collision: {:.2?}", col));
         }

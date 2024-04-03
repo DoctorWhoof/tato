@@ -33,7 +33,7 @@ pub fn frame(game:&mut Game) {
 
     game.world.move_with_collision(game.player.id, game.player.vel, CollisionReaction::None);
     if let Some(ent) = game.world.get_entity_mut(game.player.id){
-        ent.pos = ent.pos.clamp_to_rect(bounds);
+        ent.pos = bounds.clamp_vec(ent.pos);
     }
 
     // *********************************************************************************************************************
@@ -102,7 +102,7 @@ pub fn frame(game:&mut Game) {
             if let Some(col) = game.world.move_with_collision(*id, Vec2 { x: 0.0, y: -bullet_speed }, CollisionReaction::None){
                 // Target hit, Destroy bullet
                 game.world.remove_entity(*id);
-                game.world.remove_entity(col.entity_id);
+                game.world.remove_entity(col.colliding_entity);
                 false
             } else {
                 true

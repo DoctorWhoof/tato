@@ -8,6 +8,7 @@ mod bg_buffer;
 mod collision_layer;
 mod enum_id;
 mod find_tag;
+mod float;
 mod frame;
 mod line;
 mod palette;
@@ -24,8 +25,10 @@ mod vec2;
 pub use anim::*;
 pub use bg_buffer::*;
 pub use collision_layer::*;
+
 pub use enum_id::*;
 pub use find_tag::*;
+pub use float::*;
 pub use frame::*;
 pub use line::*;
 pub use palette::*;

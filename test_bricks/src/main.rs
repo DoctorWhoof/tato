@@ -19,7 +19,7 @@ fn window_conf() -> Conf {
         high_dpi: true,
         sample_count: 0,
         window_resizable: true,
-        window_width: (216.0 * 1.79) as i32 * 3,
+        window_width: 288 * 3,
         window_height: 216 * 3,
         ..Default::default()
     }
@@ -32,7 +32,8 @@ struct Game {
     paddle: Paddle,
     puck: Puck,
     bg: EntityID,
-    bricks: EntityID
+    bricks: EntityID,
+    overlay: Vec<String>
 }
 
 
@@ -71,6 +72,10 @@ async fn main() {
         app.push_overlay(format!("Entity count: {}", game.world.entities().len()));
         app.push_overlay(format!("Update time: {:.2}", game.world.time_update() * 1000.0));
         app.push_overlay(format!("Pos: {:?}", game.world.get_position(game.paddle.id)));
+        for line in &game.overlay {
+            app.push_overlay(line.clone());
+        }
+        game.overlay.clear();
 
         // Finish frame
         app.finish_frame(&mut game.world);

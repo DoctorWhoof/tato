@@ -1,6 +1,5 @@
 use super::*;
 use core::ops::{Add, Mul, Sub};
-use core::fmt::Display;
 use num_traits::Num;
 
 /// A generic rectangular area.
@@ -13,7 +12,7 @@ pub struct Rect<T> {
 }
 
 impl<T> Rect<T>
-where T: Num + PartialOrd + Copy + Display,
+where T: Num + PartialOrd + Copy,
 {
     pub fn new(x: T, y: T, w: T, h: T) -> Self {
         Rect { x, y, w, h }
@@ -79,6 +78,13 @@ where T: Num + PartialOrd + Copy + Display,
             w: right - x,
             h: bottom - y,
         })
+    }
+
+    pub fn clamp_vec(self, vec: Vec2<T>) -> Vec2<T> {
+        Vec2 {
+            x: if vec.x < self.x { self.x } else if vec.x > self.right() { self.right() } else { vec.x },
+            y: if vec.y < self.y { self.y } else if vec.y > self.bottom() { self.bottom() } else { vec.y },
+        }
     }
 }
 

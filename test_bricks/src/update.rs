@@ -3,42 +3,67 @@ use macroquad::input::*;
 use tato::CollisionReaction;
 
 pub fn move_player(game: &mut Game) {
-    let speed_x = 20.0;
-    let speed_y = 10.0;
+    // let speed_x = 20.0;
+    // let speed_y = 10.0;
 
-    let max_speed_x = 120.0;
-    let max_speed_y = 120.0;
+    // let max_speed_x = 120.0;
+    // let max_speed_y = 120.0;
+
+    // if is_key_down(KeyCode::Left) {
+    //     game.paddle.vel.x -= speed_x;
+    // } else if is_key_down(KeyCode::Right) {
+    //     game.paddle.vel.x += speed_x;
+    // } else if game.paddle.vel.x > 0.0 {
+    //     game.paddle.vel.x -= speed_x;
+    // } else if game.paddle.vel.x < 0.0 {
+    //     game.paddle.vel.x += speed_x;
+    // }
+
+    // if is_key_down(KeyCode::Up) {
+    //     game.paddle.vel.y -= speed_y;
+    // } else if is_key_down(KeyCode::Down) {
+    //     game.paddle.vel.y += speed_y;
+    // } else if game.paddle.vel.y > 0.0 {
+    //     game.paddle.vel.y -= speed_y;
+    // } else if game.paddle.vel.y < 0.0 {
+    //     game.paddle.vel.y += speed_y;
+    // }
+
+    // game.paddle.vel.x = game.paddle.vel.x.clamp(-max_speed_x, max_speed_x);
+    // game.paddle.vel.y = game.paddle.vel.y.clamp(-max_speed_y, max_speed_y);
+
+    let speed = 120.0;
+    // game.paddle.vel.x = -speed;
+    // game.paddle.vel.y = speed;
+
+    if is_key_down(KeyCode::Left) {
+        game.paddle.vel.x = -speed;
+    } else if is_key_down(KeyCode::Right) {
+        game.paddle.vel.x = speed;
+    } else {
+        game.paddle.vel.x = 0.0;
+    }
+
+    if is_key_down(KeyCode::Up) {
+        game.paddle.vel.y = -speed;
+    } else if is_key_down(KeyCode::Down) {
+        game.paddle.vel.y = speed;
+    } else {
+        game.paddle.vel.y = 0.0;
+    }
 
     let min_x = 0.0;
     let max_x = 256.0;
     let min_y = 0.0;
     let max_y = 186.0;
 
-    if is_key_down(KeyCode::Left) {
-        game.paddle.vel.x -= speed_x;
-    } else if is_key_down(KeyCode::Right) {
-        game.paddle.vel.x += speed_x;
-    } else if game.paddle.vel.x > 0.0 {
-        game.paddle.vel.x -= speed_x;
-    } else if game.paddle.vel.x < 0.0 {
-        game.paddle.vel.x += speed_x;
-    }
-
-    if is_key_down(KeyCode::Up) {
-        game.paddle.vel.y -= speed_y;
-    } else if is_key_down(KeyCode::Down) {
-        game.paddle.vel.y += speed_y;
-    } else if game.paddle.vel.y > 0.0 {
-        game.paddle.vel.y -= speed_y;
-    } else if game.paddle.vel.y < 0.0 {
-        game.paddle.vel.y += speed_y;
-    }
-
-    game.paddle.vel.x = game.paddle.vel.x.clamp(-max_speed_x, max_speed_x);
-    game.paddle.vel.y = game.paddle.vel.y.clamp(-max_speed_y, max_speed_y);
-
     if let Some(col) = game.world.move_with_collision(game.paddle.id, game.paddle.vel, CollisionReaction::Slide) {
-        game.paddle.vel = col.velocity
+        game.paddle.vel = col.velocity;
+        // let hit = game.world.add_entity(10);
+        // game.world.set_shape(hit, Shape::sprite_from_anim(TilesetID::Sprites, 1));
+        // game.world.set_position(hit, col.pos);
+        // game.world.set_render_offset(hit, -3, -3);
+        // println!("{:?}", col);
     }
 
     if let Some(ent) = game.world.get_entity_mut(game.paddle.id) {
@@ -62,33 +87,33 @@ pub fn move_player(game: &mut Game) {
 
 
 pub fn move_puck(game:&mut Game) {
-    let max_speed = 90.0;
-    let safety_speed = 180.0;
-    let deccelerate_rate = 15.0;
-    let elapsed = game.world.time_elapsed();
+    // let max_speed = 90.0;
+    // let safety_speed = 180.0;
+    // let deccelerate_rate = 15.0;
+    // let elapsed = game.world.time_elapsed();
 
-    game.puck.vel = game.puck.vel.clamp_to_length(safety_speed);
-    if game.puck.vel.len() > max_speed {
-        // println!("slow down!: {:?}", game.puck.vel.len());
-        if game.puck.vel.x > 0.0 {
-            game.puck.vel.x -= deccelerate_rate * elapsed;
-        } else {
-            game.puck.vel.x += deccelerate_rate * elapsed;
-        }
-        if game.puck.vel.y > 0.0 {
-            game.puck.vel.y -= deccelerate_rate * elapsed;
-        } else {
-            game.puck.vel.y += deccelerate_rate * elapsed;
-        }
-    }
+    // game.puck.vel = game.puck.vel.clamp_to_length(safety_speed);
+    // if game.puck.vel.len() > max_speed {
+    //     // println!("slow down!: {:?}", game.puck.vel.len());
+    //     if game.puck.vel.x > 0.0 {
+    //         game.puck.vel.x -= deccelerate_rate * elapsed;
+    //     } else {
+    //         game.puck.vel.x += deccelerate_rate * elapsed;
+    //     }
+    //     if game.puck.vel.y > 0.0 {
+    //         game.puck.vel.y -= deccelerate_rate * elapsed;
+    //     } else {
+    //         game.puck.vel.y += deccelerate_rate * elapsed;
+    //     }
+    // }
 
     if let Some(col) = game.world.move_with_collision(game.puck.id, game.puck.vel, CollisionReaction::Bounce(1.0)){
         // Update puck velocity with "bounced" velocity
         game.puck.vel = col.velocity;
 
         // Destroy bricks!
-        if col.entity_id == game.bricks {
-            if let Some(pos) = col.tile_coords {           
+        if col.colliding_entity == game.bricks {
+            if let Some(tile_col) = col.tile {           
                      
                 fn remove_brick(tilemap: &mut Tilemap, col:u16, row:u16) {
                     tilemap.set_tile(col, row, Tile::default());
@@ -105,7 +130,7 @@ pub fn move_puck(game:&mut Game) {
                 if let Some(ent) = game.world.get_entity_mut(game.bricks){
                     if let Shape::Bg { tileset_id, tilemap_id } = ent.shape {
                         let tilemap = game.world.renderer.get_tilemap_mut(tileset_id, tilemap_id);
-                        remove_brick(tilemap, pos.x as u16, pos.y as u16);
+                        remove_brick(tilemap, tile_col.col, tile_col.row);
                     }
                 }
             }

@@ -35,7 +35,7 @@ where T:TilesetEnum, P:PaletteEnum,
 
     // Data Pools
     entities:SlotMap<EntityID, Entity>,
-    colliders: SecondaryMap<EntityID, Collider>,
+    colliders: SecondaryMap<EntityID, Collider<f32>>,
 }
 
 impl<T, P> World<T, P>
@@ -164,7 +164,7 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn add_collider(&mut self, id:EntityID, collider:Collider) {
+    pub fn add_collider(&mut self, id:EntityID, collider:Collider<f32>) {
         self.colliders.insert(id, collider);
     }
 
@@ -177,12 +177,16 @@ where T:TilesetEnum, P:PaletteEnum,
                 collider.mask |= layer;
                 // println!("Enabling collision with layer {:08b}", layer_value);
             } else {
-                println!("World: Warning, can't enable collision to layer 0 ({:?})! Suggestions:", layer);
-                println!("       - Set collider.enabled to 'false' instead.");
-                println!("       - If collision to {:?} is what you want, make sure your collision layers contain a 'None' variant!", layer);
+                #[cfg(feature = "std")]{
+                    println!("World: Warning, can't enable collision to layer 0 ({:?})! Suggestions:", layer);
+                    println!("       - Set collider.enabled to 'false' instead.");
+                    println!("       - If collision to {:?} is what you want, make sure your collision layers contain a 'None' variant!", layer);
+                }
             }
         } else {
-            println!("World: Warning, collider {:?} not found", id);
+            #[cfg(feature = "std")]{
+                println!("World: Warning, collider {:?} not found", id);
+            }
         }
     }
 
@@ -252,21 +256,16 @@ where T:TilesetEnum, P:PaletteEnum,
         // Passed to all collision calculations witn frame delta already applied
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
-        // Modified on every collision
-        let mut col_accumulator:(Option<AxisCollision<f32>>, Option<AxisCollision<f32>>) = (None, None);
-        let mut latest_other = None;
-        let mut latest_other_vel = None;
+        // Run collision code if probe is found
+        if let Some(mut probe) = self.get_probe(entity_id, scaled_velocity) {
 
-        if let Some(probe) = self.get_probe(entity_id, scaled_velocity) {
+            // Modified on every collision
+            let mut col_accumulator:Option<Collision<f32>> = None;
 
             for layer in 0 .. self.collision_layers.len() as u32 {
                 let bitmask = 1 << layer;
                 if probe.mask as u32 & bitmask != 0 {
-                    // println!("masK: {} *  layer:{} (bitmask:{})", probe.mask, layer, bitmask);
-                    // println!("MATCH on layer {} with {} items", layer, self.collision_layers[layer as usize].len());
-                    for other_probe in &self.collision_layers[layer as usize]{
-                        // println!("     Checking probes on layer {}", layer);
-        
+                    for other_probe in &self.collision_layers[layer as usize]{       
                         let maybe_col = match other_probe.kind {
                             ColliderKind::Point | ColliderKind::Rect { .. } => {
                                 probe.collision_response(other_probe, None)
@@ -278,111 +277,103 @@ where T:TilesetEnum, P:PaletteEnum,
                             },
                         };
         
-                        // Accumulate X
-                        if let Some(current_col_x) = maybe_col.0 {
-                            latest_other = Some(other_probe.entity_id);
-                            latest_other_vel = Some(other_probe.velocity);
-                            if let Some(ref mut col) = col_accumulator.0 {
-                                *col += current_col_x;
+                        // Accumulate
+                        if let Some(mut current_col) = maybe_col {
+                            if let Some(ref mut col) = col_accumulator {
+                                // println!("Accumulating collision");
+                                col.velocity += current_col.velocity;
+                                col.normal += current_col.normal;
+                                col.t.x = col.t.x.min(current_col.t.x);
+                                col.t.y = col.t.x.min(current_col.t.y);
+                                // println!("{:?}", col);
                             } else {
-                                col_accumulator.0 = Some(current_col_x)
-                            }
-                        }
-        
-                        // Accumulate Y
-                        if let Some(current_col_y) = maybe_col.1 {
-                            latest_other = Some(other_probe.entity_id);
-                            latest_other_vel = Some(other_probe.velocity);
-                            if let Some(ref mut col) = col_accumulator.1 {
-                                *col += current_col_y;
-                            } else {
-                                col_accumulator.1 = Some(current_col_y)
+                                if let ColliderKind::Tilemap{ tile_width, tile_height, .. } = other_probe.kind {
+                                    // Scale tile to world coordinates
+                                    current_col.pos.x *= tile_width as f32;
+                                    current_col.pos.y *= tile_height as f32;
+                                    // current_col.t.x *= tile_width as f32;
+                                    // current_col.t.y *= tile_height as f32;
+                                }
+                                col_accumulator = Some(current_col);
+                                // println!("{:?}", current_col);
                             }
                         }
                     }
-
                 }
             }
 
+            if let Some(collision) = &col_accumulator {
+                let (delta, vel) = {
+                    match reaction {
+                        CollisionReaction::None => {(
+                            scaled_velocity,
+                            scaled_velocity
+                        )},
+                        CollisionReaction::Bounce(amount) => {(
+                            Vec2{
+                                x: collision.t.x.clamp(-1.0, 1.0) * scaled_velocity.x,
+                                y: collision.t.y.clamp(-1.0, 1.0) * scaled_velocity.y
+                            },
+                            Vec2::reflect(probe.velocity.scale(amount), collision.normal)
+                        )},
+                        CollisionReaction::Slide => {
+                            (
+                                Vec2{
+                                    x: collision.t.x.clamp(-1.0, 1.0) * scaled_velocity.x,
+                                    y: collision.t.y.clamp(-1.0, 1.0) * scaled_velocity.y
+                                },
+                                collision.velocity
+                            )
+                        }
+                    }
+                };
+
+                // Stick to other surface if moving (i.e. on top of platform)
+                let stick_delta = match reaction {
+                    CollisionReaction::None => Vec2::zero(),
+                    CollisionReaction::Bounce(_) |  CollisionReaction::Slide => collision.velocity,
+                };
+
+                // Inherit collision speed?
+                let add_vel = match reaction {
+                    CollisionReaction::None => Vec2::zero(),
+                    CollisionReaction::Bounce(_) | CollisionReaction::Slide => collision.velocity
+                };
+
+                let margin = Vec2{
+                    x: 0.001 * collision.normal.x,
+                    y: 0.001 * collision.normal.y
+                };
+
+                // Apply new position
+                let pos = &mut self.entities[entity_id].pos;
+                *pos += delta + stick_delta + margin;
+
+                // Return collision
+                let unscale = 1.0 / self.time_elapsed;
+
+                // Update probe position for proper debug display (WIP)
+                let collider = self.colliders.get(entity_id).unwrap();
+                probe.pos = *pos + collider.pos;
+                self.add_probe_to_colliders(probe);
+
+                // Only reports the first collision!
+                // TODO: return more than one collision?
+                return Some(Collision{
+                    t: collision.t,
+                    pos: collision.pos,                           
+                    tile: collision.tile,
+                    normal: collision.normal,
+                    velocity: (vel + add_vel).scale(unscale),     // returns "unscaled" velocity, since the caller passed it like that
+                    colliding_entity: collision.colliding_entity,             
+                })
+            } 
+    
             self.add_probe_to_colliders(probe);
         }
-
-        let get_reaction = |acc:&Option<AxisCollision<f32>>, scaled_vel:f32| -> (f32, f32) {
-            if let Some(col) = &acc {
-                match reaction {
-                    CollisionReaction::None => {
-                        (scaled_vel, scaled_vel)
-                    },
-                    CollisionReaction::Bounce(amount) => {
-                        ((col.velocity * col.t) , col.velocity * -amount)
-                    },
-                    CollisionReaction::Slide => {
-                        ((scaled_vel * col.t), 0.0)
-                    },
-                }
-            } else {
-                (scaled_vel, scaled_vel)
-            }
-        };
-        let (delta_x, vel_x) =  get_reaction(&col_accumulator.0, scaled_velocity.x);
-        let (delta_y, vel_y) =  get_reaction(&col_accumulator.1, scaled_velocity.y);
-
-        if col_accumulator.0.is_none() && col_accumulator.1.is_none() {
-            // No collisions, move freely and return nothing
-            let entity = &mut self.entities[entity_id];
-            entity.pos.x += delta_x;
-            entity.pos.y += delta_y;
-            None
-        } else {
-            // Unwrap collision values
-            let col_x = col_accumulator.0.unwrap_or_default();
-            let col_y = col_accumulator.1.unwrap_or_default();
-            let other_id = latest_other.unwrap_or_default();
-            let other_vel = latest_other_vel.unwrap_or_default();
-
-            // Stick to other surface if moving (i.e. on top of platform)
-            let (add_pos_x, add_pos_y) = match reaction {
-                CollisionReaction::None => (0.0, 0.0),
-                CollisionReaction::Bounce(_) |  CollisionReaction::Slide => {
-                    let inherit_x = other_vel.x * col_y.normal.abs();
-                    let inherit_y = other_vel.y * col_x.normal.abs();
-                    ( col_x.margin + inherit_x, col_y.margin + inherit_y )
-                },
-            };
-
-            // Inherit collision speed?
-            let (add_vel_x, add_vel_y) = match reaction {
-                CollisionReaction::None | CollisionReaction::Slide => (0.0, 0.0),
-                CollisionReaction::Bounce(_) => (other_vel.x, other_vel.y)
-            };
-
-            // Apply new position
-            let entity = &mut self.entities[entity_id];
-            entity.pos.x += delta_x + add_pos_x;
-            entity.pos.y += delta_y + add_pos_y;
-
-            // Return collision
-            let unscale = 1.0 / self.time_elapsed;
-
-            let tile_coords =  if let Coords::Tile{col, row} = col_x.pos {
-                Some(Vec2::new(col, row))
-            } else if let Coords::Tile{col, row} = col_y.pos {
-                Some(Vec2::new(col, row))
-            } else {
-                None
-            };
-
-            Some(Collision{
-                tile_coords, 
-                entity_id: other_id, // TODO: return more than one ID? Options?
-                velocity: Vec2::new(
-                    vel_x + add_vel_x,
-                    vel_y + add_vel_y
-                ).scale(unscale),   // "Unscaled"
-                margin: Vec2::new(col_x.margin, col_y.margin),
-                normal: Vec2::new(col_x.normal, col_y.normal),
-            })
-        }
+    
+        self.entities[entity_id].pos += scaled_velocity;
+        None
     }
 
 
