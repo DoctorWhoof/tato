@@ -28,7 +28,8 @@ pub fn new_game() -> Game {
         id: {
             let paddle = world.add_entity(1);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
+            // world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
+            world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-7.0, y:-7.0, w:14.0, h:14.0}));
             // world.add_collider(paddle, Collider::new_point_collider(Layer::Paddle, 0.0, 0.0));
             world.enable_collision_with_layer(paddle, Layer::Bricks);
             world.enable_collision_with_layer(paddle, Layer::Wall);

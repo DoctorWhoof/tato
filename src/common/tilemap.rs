@@ -153,8 +153,134 @@ impl Tilemap {
     pub fn height(&self, tile_height:u8) -> usize { self.rows as usize * tile_height as usize }
 
 
+    /// Collision with ADJACENT TILES ONLY. If delta is more than one (single tile) in any axis result won't be correct.
+    /// Function is long since it handles corner cases (literally corners!), but should still run pretty fast.
+    pub fn collide_adjacent<T>(&self, x0:T, y0:T, x1:T, y1:T, filter:Axis) -> Option<Collision<T>>
+    where T: Float {
+        let y = y0.floor();
+        let end_y = y1.floor();
+
+        let x = x0.floor();
+        let end_x = x1.floor();
+
+        let start_col = x.to_u16()?;
+        let start_row = y.to_u16()?;
+
+        let end_col = end_x.to_u16()?;
+        let end_row = end_y.to_u16()?;
+
+        if start_col == end_col && start_row == end_row{ return None }
+        if start_col >= self.cols { return None }
+        if end_col >= self.cols { return None }
+        if start_row >= self.rows { return None }
+        if end_row >= self.rows { return None }
+
+        let dx = x1 - x0;
+        let dy = y1 - y0;
+        
+        // Special case: Vertical movement only
+        if start_col == end_col && filter != Axis::Horizontal {   
+            let tile = self.get_tile(end_col, end_row);
+            if tile.is_collider(){
+                let dist_y = if dy.is_sign_positive() { y0.ceil() - y0 } else { y - y0 };
+                return Some(Collision{
+                    pos: Vec2 { x: x0, y: y0 + dist_y },
+                    normal: Vec2{ x: T::zero(), y:-dy.signum() },
+                    t: Vec2 { x:T::one(), y:dist_y.abs() / dy.abs()  },
+                    tile: Some(TileCollision{ tile, col:end_col, row:end_row }),
+                    velocity: Vec2::zero(),
+                    colliding_entity: Default::default(),
+                })
+            }
+        // Special case: Horizontal movement only
+        } else if start_row == end_row && filter != Axis::Vertical {
+            let dist_x = if dx.is_sign_positive() { x0.ceil() - x0 } else { x - x0 };
+            let tile = self.get_tile(end_col, end_row);
+            if tile.is_collider(){
+                return Some(Collision{
+                    pos: Vec2 { x: x0 + dist_x, y: y0 },
+                    normal: Vec2{ x: -dx.signum(), y:T::zero() },
+                    t: Vec2 { x:dist_x.abs() / dx.abs(), y:T::one()  },
+                    tile: Some(TileCollision{ tile, col:end_col, row:end_row }),
+                    velocity: Vec2::zero(),
+                    colliding_entity: Default::default(),
+                })
+            }
+        // Non Axis aligned movement
+        } else {                
+
+            // Account for concave corner on X
+            let tile_x = self.get_tile(end_col, start_row);
+            let (dist_x, normal_x) = if tile_x.is_collider() && filter != Axis::Vertical {(
+                if dx.is_sign_positive() { x0.ceil() - x0 } else { x - x0 },
+                -dx.signum()
+            )} else {(
+                T::one() * dx.signum(),
+                T::zero()
+            )};
+
+            // Account for concave corner on Y
+            let tile_y = self.get_tile(start_col, end_row);
+            let (dist_y, normal_y) = if tile_y.is_collider() && filter != Axis::Horizontal {(
+                if dy.is_sign_positive() { y0.ceil() - y0 } else { y - y0 },
+                -dy.signum()
+            )} else {(
+                T::one() * dy.signum(),
+                T::zero()
+            )};
+
+            // Return if either or both axes collided
+            if tile_x.is_collider() || tile_y.is_collider(){
+                let tile = if tile_x.is_collider() { tile_x } else { tile_y };
+                return Some(Collision{
+                    pos: Vec2 { x: x0 + dist_x, y: y0 + dist_y },
+                    normal: Vec2 { x: normal_x, y: normal_y },
+                    t: Vec2 { x:dist_x.abs() / dx.abs(), y:dist_y.abs() / dy.abs()  },
+                    tile: Some( TileCollision{ tile, col:end_col, row:end_row } ),
+                    velocity: Vec2::zero(),
+                    colliding_entity: Default::default(),
+                })
+                
+            // Otherwise check for a convex corner collision at the end tile coordinates (won't "slide")
+            } else {    
+                let tile = self.get_tile(end_col, end_row);
+                if tile.is_collider(){
+                    // To avoid getting stuck in a corner, we return a collision in one axis only
+                    // May still cause hiccups in small horizontal gaps (i.e. 1 tile wide)
+                    if dx.abs() >= dy.abs() { 
+                        if filter != Axis::Vertical {
+                            let dist = if dx.is_sign_positive() { x0.ceil() - x0 } else { x - x0 };
+                            return Some(Collision{
+                                pos: Vec2 { x: x0 + dist, y: y1 },
+                                normal: Vec2{ x: -dx.signum(), y: T::zero() },
+                                t: Vec2 { x: dist.abs() / dx.abs(), y: T::one() },
+                                tile: Some( TileCollision{ tile, col:end_col, row:end_row } ),
+                                velocity: Vec2::zero(),
+                                colliding_entity: Default::default(),
+                            })
+                        }
+                    } else if filter != Axis::Horizontal {
+                        let dist = if dy.is_sign_positive() { y0.ceil() - y0 } else { y - x0 };
+                        return Some(Collision{
+                            pos: Vec2 { x: x1, y: y0 + dist },
+                            normal: Vec2{ x: T::zero() , y:-dy.signum() },
+                            t: Vec2 { x: T::one(), y: dist.abs() / dy.abs() },
+                            tile: Some( TileCollision{ tile, col:end_col, row:end_row } ),
+                            velocity: Vec2::zero(),
+                            colliding_entity: Default::default(),
+                        })
+                    }
+                }
+            }
+
+        }
+
+        None
+    }
+
+
     /// Checks if a tile on the given line coordinates has its collider flag set to true
-    pub(crate) fn raycast<T>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<Collision<T>>
+    pub fn raycast<T>(&self, x0:T, y0:T, x1:T, y1:T) -> Option<Collision<T>>
     where T: Float {
 
         let min = Vec2{

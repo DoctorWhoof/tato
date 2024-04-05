@@ -42,6 +42,11 @@ where T: Float {
     }
 
 
+    pub fn one() -> Self {
+        Self{ x:T::one(), y:T::one() }
+    }
+
+
     pub fn up() -> Self {
         Self{ x:T::zero(), y:-T::one() }
     }

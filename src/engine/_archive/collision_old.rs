@@ -522,3 +522,83 @@ where T:Add<Output = T> + AddAssign + Copy + PartialOrd + Float {
 //     //     normal: new_col.normal,
 //     // })
 // }
+
+
+
+// pub fn horizontal_cast<T>(&self, x0:T, x1:T, y:T) -> Option<Collision<T>>
+// where T: Float {
+//     let mut x = x0.floor();
+//     let end_x = x1.floor();
+//     if x == end_x { return None }
+
+//     let dx = x1 - x0;
+//     let step = dx.signum();
+//     let mut dist = if step > T::zero() { x0.ceil() - x0 } else { x0 - x };
+
+//     // println!("{} -> {}, step:{}, dist:{}", x, end_x, step, dist);
+//     loop {
+//         x += step;
+//         if step > T::zero() && x > end_x { break }
+//         if step < T::zero() && x < end_x { break }
+
+//         let col = x.to_u16()?;
+//         let row = y.to_u16()?;
+        
+//         if col >= self.cols { break }
+
+//         let tile = self.get_tile(col, row);
+//         if tile.is_collider(){
+//             return Some(Collision{
+//                 t: Vec2 { x: dist / dx.abs(), y: T::one() },
+//                 pos: Vec2 { x: x0 + dist, y },
+//                 normal: Vec2 { x: -step, y: T::zero() },
+//                 tile: Some(TileCollision{ tile, row, col }),
+//                 velocity: Vec2::zero(),
+//                 colliding_entity: Default::default(),
+//             })
+//         }
+
+//         dist += step.abs();
+//     }
+//     None
+// }
+
+
+
+// pub fn vertical_cast<T>(&self, y0:T, y1:T, x:T) -> Option<Collision<T>>
+// where T: Float {
+//     let mut y = y0.floor();
+//     let end_y = y1.floor();
+//     if y == end_y { return None }
+
+//     let dy = y1 - y0;
+//     let step = dy.signum();
+//     let mut dist = if step > T::zero() { y0.ceil() - y0 } else { y0 - y };
+
+//     // println!("{} -> {}, step:{}, dist:{}", y, end_y, step, dist);
+//     loop {
+//         y += step;
+//         if step > T::zero() && y > end_y { break }
+//         if step < T::zero() && y < end_y { break }
+
+//         let col = x.to_u16()?;
+//         let row = y.to_u16()?;
+        
+//         if col >= self.cols { break }
+
+//         let tile = self.get_tile(col, row);
+//         if tile.is_collider(){
+//             return Some(Collision{
+//                 t: Vec2 { x: T::one(), y: dist / dy.abs() },
+//                 pos: Vec2 { x, y: y0 + dist },
+//                 normal: Vec2 { x: T::zero(), y: -step },
+//                 tile: Some(TileCollision{ tile, row, col }),
+//                 velocity: Vec2::zero(),
+//                 colliding_entity: Default::default(),
+//             })
+//         }
+
+//         dist += step.abs();
+//     }
+//     None
+// }
