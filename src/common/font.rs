@@ -12,6 +12,14 @@ pub struct Font {
     pub tileset_id: u8
 }
 
+pub struct FontInfo {
+    pub tileset_id:u8,
+    pub font: u8,
+    pub depth:u8,
+    pub align_right: bool,
+}
+
+
 impl Font {
     
     pub fn last(&self) -> u8 { self.start_index + self.len - 1 }

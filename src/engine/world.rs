@@ -71,45 +71,34 @@ where T:TilesetEnum, P:PaletteEnum,
         }
     }
 
+
+    // *************************************** Properties **************************************
+
+
     pub fn time(&self) -> f32 {
         self.time
     }
+
 
     pub fn time_elapsed(&self) -> f32 {
         self.time_elapsed
     }
 
+
     pub fn time_update(&self) -> f32 {
         self.time_update
     }
+
 
     pub fn time_idle(&self) -> f32 {
         self.time_idle
     }
 
-    pub fn center_camera_on(&mut self, id: EntityID) {
-        let Some(ent) = self.get_entity(id) else {
-            return;
-        };
-        let pos = ent.pos;
-        self.cam.x = pos.x - (self.framebuf.width() / 2) as f32;
-        self.cam.y = pos.y - (self.framebuf.height() / 2) as f32;
-    }
 
-    pub fn set_viewport(&mut self, rect: Rect<i32>) {
-        self.framebuf.viewport = rect;
-        self.cam.w = rect.w as f32;
-        self.cam.h = rect.h as f32;
-    }
-
-    pub fn add_entity(&mut self, depth:u8) -> EntityID {
-        self.entities.insert_with_key(|key|{
-            Entity::new(key, depth)
-        })
-    }
+    // *************************************** Management **************************************
 
 
-    pub fn remove_entity(&mut self, id: EntityID) {
+    pub fn entity_remove(&mut self, id: EntityID) {
         if let Some(ent) = self.entities.get(id) {
             // Clean up BgTiles if needed.
             // Tilemap will be left "dirty" by the AnimTile entity if this is not performed
@@ -132,8 +121,10 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn remove_collider(&mut self, id:EntityID) {
-        self.colliders.remove(id);
+    pub fn entity_add(&mut self, depth:u8) -> EntityID {
+        self.entities.insert_with_key(|key|{
+            Entity::new(key, depth)
+        })
     }
 
 
@@ -142,29 +133,161 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    // Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker
-    pub fn get_members(&mut self) -> (&mut SlotMap<EntityID, Entity>, &mut Renderer<T,P>) {
-        (&mut self.entities, &mut self.renderer)
-    }
-
-
-    pub fn get_collision_layers(&self) -> &Vec<Vec<CollisionProbe<f32>>> {
-        &self.collision_layers
-    }
-
-
-    #[inline]
     pub fn get_entity(&self, id: EntityID) -> Option<&Entity> {
         self.entities.get(id)
     }
 
-    #[inline]
+
     pub fn get_entity_mut(&mut self, id: EntityID) -> Option<&mut Entity> {
         self.entities.get_mut(id)
     }
 
 
-    pub fn add_collider(&mut self, id:EntityID, collider:Collider<f32>) {
+    /// Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker in some cases
+    pub fn get_members(&mut self) -> (&mut SlotMap<EntityID, Entity>, &mut Renderer<T,P>) {
+        (&mut self.entities, &mut self.renderer)
+    }
+
+
+    // **************************************** Render ***************************************
+
+
+    pub fn is_visible(&mut self, id:EntityID) -> bool {
+        self.entities[id].visible
+    }
+
+
+    pub fn center_camera_on(&mut self, id: EntityID) {
+        let Some(ent) = self.get_entity(id) else {
+            return;
+        };
+        let pos = ent.pos;
+        self.cam.x = pos.x - (self.framebuf.width() / 2) as f32;
+        self.cam.y = pos.y - (self.framebuf.height() / 2) as f32;
+    }
+
+
+    pub fn set_visible(&mut self, id:EntityID, visible:bool) {
+        self.entities[id].visible = visible;
+    }
+
+
+    pub fn set_viewport(&mut self, rect: Rect<i32>) {
+        self.framebuf.viewport = rect;
+        self.cam.w = rect.w as f32;
+        self.cam.h = rect.h as f32;
+    }
+
+
+    pub fn set_render_offset(&mut self, id: EntityID, x:i8, y:i8) {
+        self.entities[id].render_offset = Vec2 { x, y };
+    }
+
+
+    pub fn set_shape(&mut self, id:EntityID, shape:Shape) {
+        self.entities[id].shape = shape;
+    }
+
+
+    // **************************************** Transform ***************************************
+
+    
+    pub fn get_position(&self, id: EntityID) -> Vec2<f32> {
+        self.entities[id].pos
+    }
+
+
+    pub fn set_position(&mut self, id: EntityID, pos:Vec2<f32>) {
+        self.entities[id].pos = pos;
+    }
+
+
+    pub fn translate(&mut self, id:EntityID, delta:Vec2<f32>) {
+        self.entities[id].pos += delta.scale(self.time_elapsed);
+    }
+
+
+    pub fn get_entity_rect_from_id(&self, id: EntityID) -> Rect<f32> {
+        if let Some(entity) = self.get_entity(id) {
+            self.get_entity_rect(entity)
+        } else {
+            Rect::default()
+        }
+    }
+
+
+    pub fn get_entity_rect(&self, entity: &Entity) -> Rect<f32> {
+        match entity.shape {
+            Shape::None => Default::default(),
+            Shape::Sprite {tileset_id, anim_id, ..} | Shape::BgSprite {tileset_id, anim_id, ..} => {
+                let anim = self.renderer.get_anim(tileset_id, anim_id);
+                let frame = anim.frame(self.time);
+                Rect {
+                    x: entity.pos.x + entity.render_offset.x as f32,
+                    y: entity.pos.y + entity.render_offset.y as f32,
+                    w: (frame.cols as usize * self.specs.tile_width as usize) as f32,
+                    h: (frame.rows as usize * self.specs.tile_height as usize) as f32,
+                }
+            }
+            Shape::Bg {tileset_id,tilemap_id} => {
+                let tilemap = &self.renderer.get_tilemap(tileset_id, tilemap_id);
+                Rect {
+                    x: entity.pos.x + entity.render_offset.x as f32,
+                    y: entity.pos.y + entity.render_offset.y as f32,
+                    w: tilemap.width(self.specs.tile_width) as f32,
+                    h: tilemap.height(self.specs.tile_height) as f32,
+                }
+            }
+        }
+    }
+
+
+    pub fn get_tilemap_and_rect(&self, id: EntityID) -> Option<(&Tilemap, Rect<f32>)> {
+        let tilemap_entity = self.get_entity(id)?;
+        let Shape::Bg {
+            tileset_id,
+            tilemap_id,
+        } = tilemap_entity.shape
+        else {
+            return None;
+        };
+        let tilemap = &self.renderer.get_tilemap(tileset_id, tilemap_id);
+        Some((tilemap, self.get_entity_rect(tilemap_entity)))
+    }
+
+
+    // **************************************** Collisions ***************************************
+
+
+    fn probe_add(&mut self, probe:CollisionProbe<f32>) {
+        if probe.layer > 0 {
+            let layer = probe.layer as usize;
+            self.collision_layers[layer-1].push(probe);
+        }
+    }
+
+
+    fn probe_get(&self, id:EntityID, velocity:Vec2<f32>) -> Option<CollisionProbe<f32>> {
+        let collider = *self.colliders.get(id)?;
+        if !collider.enabled { return None }
+        let pos = self.entities.get(id)?.pos + collider.pos;
+        Some(CollisionProbe{
+            entity_id: id,
+            pos,
+            velocity,
+            kind: collider.kind,
+            layer: collider.layer,
+            mask: collider.mask,
+        })
+    }
+
+
+    pub fn collider_remove(&mut self, id:EntityID) {
+        self.colliders.remove(id);
+    }
+
+
+    pub fn collider_add(&mut self, id:EntityID, collider:Collider<f32>) {
         self.colliders.insert(id, collider);
     }
 
@@ -191,47 +314,9 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn set_shape(&mut self, id:EntityID, shape:Shape) {
-        self.entities[id].shape = shape;
-    }
-
-
-    pub fn is_visible(&mut self, id:EntityID) -> bool {
-        self.entities[id].visible
-    }
-
-
-    pub fn set_visible(&mut self, id:EntityID, visible:bool) {
-        self.entities[id].visible = visible;
-    }
-
-
-    // Internal
-    fn add_probe_to_colliders(&mut self, probe:CollisionProbe<f32>) {
-        if probe.layer > 0 {
-            let layer = probe.layer as usize;
-            self.collision_layers[layer-1].push(probe);
-        }
-    }
-
-
-    fn get_probe(&self, id:EntityID, velocity:Vec2<f32>) -> Option<CollisionProbe<f32>> {
-        let collider = *self.colliders.get(id)?;
-        if !collider.enabled { return None }
-        let pos = self.entities.get(id)?.pos + collider.pos;
-        Some(CollisionProbe{
-            entity_id: id,
-            pos,
-            velocity,
-            kind: collider.kind,
-            layer: collider.layer,
-            mask: collider.mask,
-        })
-    }
-
     pub fn use_static_collider(&mut self, entity_id:EntityID) {
         let entity = &self.entities[entity_id];
-        if let Some(mut probe) =  self.get_probe(entity_id, Vec2::zero()) {
+        if let Some(mut probe) =  self.probe_get(entity_id, Vec2::zero()) {
             if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
                 let rect = self.get_entity_rect(entity);
                 *w = rect.w;
@@ -239,14 +324,8 @@ where T:TilesetEnum, P:PaletteEnum,
                 *tile_width = self.specs.tile_width;
                 *tile_height = self.specs.tile_height;
             }
-            self.add_probe_to_colliders(probe);
+            self.probe_add(probe);
         }
-    }
-
-
-    pub fn translate(&mut self, id:EntityID, delta:Vec2<f32>) {
-        let ent = &mut self.entities[id];
-        ent.pos += delta.scale(self.time_elapsed);
     }
 
 
@@ -257,7 +336,7 @@ where T:TilesetEnum, P:PaletteEnum,
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
         // Run collision code if probe is found
-        if let Some(mut probe) = self.get_probe(entity_id, scaled_velocity) {
+        if let Some(mut probe) = self.probe_get(entity_id, scaled_velocity) {
 
             // Modified on every collision
             let mut col_accumulator:Option<Collision<f32>> = None;
@@ -355,7 +434,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 // Update probe position for proper debug display (WIP)
                 let collider = self.colliders.get(entity_id).unwrap();
                 probe.pos = *pos + collider.pos;
-                self.add_probe_to_colliders(probe);
+                self.probe_add(probe);
 
                 // Only reports the first collision!
                 // TODO: return more than one collision?
@@ -369,7 +448,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 })
             } 
     
-            self.add_probe_to_colliders(probe);
+            self.probe_add(probe);
         }
     
         self.entities[entity_id].pos += scaled_velocity;
@@ -377,66 +456,10 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn get_position(&self, id: EntityID) -> Vec2<f32> {
-        self.entities[id].pos
+    pub fn get_collision_layers(&self) -> &Vec<Vec<CollisionProbe<f32>>> {
+        &self.collision_layers
     }
 
-
-    pub fn set_position(&mut self, id: EntityID, pos:Vec2<f32>) {
-        self.entities[id].pos = pos;
-    }
-
-
-    pub fn set_render_offset(&mut self, id: EntityID, x:i8, y:i8) {
-        self.entities[id].render_offset = Vec2 { x, y };
-    }
-
-
-    pub fn get_entity_rect_from_id(&self, id: EntityID) -> Rect<f32> {
-        if let Some(entity) = self.get_entity(id) {
-            self.get_entity_rect(entity)
-        } else {
-            Rect::default()
-        }
-    }
-
-    pub fn get_entity_rect(&self, entity: &Entity) -> Rect<f32> {
-        match entity.shape {
-            Shape::None => Default::default(),
-            Shape::Sprite {tileset_id, anim_id, ..} | Shape::BgSprite {tileset_id, anim_id, ..} => {
-                let anim = self.renderer.get_anim(tileset_id, anim_id);
-                let frame = anim.frame(self.time);
-                Rect {
-                    x: entity.pos.x + entity.render_offset.x as f32,
-                    y: entity.pos.y + entity.render_offset.y as f32,
-                    w: (frame.cols as usize * self.specs.tile_width as usize) as f32,
-                    h: (frame.rows as usize * self.specs.tile_height as usize) as f32,
-                }
-            }
-            Shape::Bg {tileset_id,tilemap_id} => {
-                let tilemap = &self.renderer.get_tilemap(tileset_id, tilemap_id);
-                Rect {
-                    x: entity.pos.x + entity.render_offset.x as f32,
-                    y: entity.pos.y + entity.render_offset.y as f32,
-                    w: tilemap.width(self.specs.tile_width) as f32,
-                    h: tilemap.height(self.specs.tile_height) as f32,
-                }
-            }
-        }
-    }
-
-    pub fn get_tilemap_and_rect(&self, id: EntityID) -> Option<(&Tilemap, Rect<f32>)> {
-        let tilemap_entity = self.get_entity(id)?;
-        let Shape::Bg {
-            tileset_id,
-            tilemap_id,
-        } = tilemap_entity.shape
-        else {
-            return None;
-        };
-        let tilemap = &self.renderer.get_tilemap(tileset_id, tilemap_id);
-        Some((tilemap, self.get_entity_rect(tilemap_entity)))
-    }
 
     pub fn tile_at(&self, x: f32, y: f32, id: EntityID) -> Option<(Tile, Rect<f32>)> {
         let (tilemap, tilemap_rect) = self.get_tilemap_and_rect(id)?;
@@ -462,6 +485,9 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    // **************************************** Events ***************************************
+
+    /// Sets up current frame's timing and collisions 
     pub fn start_frame(&mut self, time_now: f32) {
         self.time_elapsed_buffer.push(time_now - self.time);
         self.time = time_now;
@@ -486,7 +512,8 @@ where T:TilesetEnum, P:PaletteEnum,
         }
     }
 
-    // Fills the pixel buffer with current entities
+
+    /// Fills the pixel buffer with current entities
     pub fn render_frame(&mut self) {
         // Iterate entities
         let cam_rect = Rect {
@@ -715,6 +742,7 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    /// Wraps up current frame's timing
     pub fn finish_frame(&mut self, time_now: f32) {
         self.time_update_buffer.push(time_now - self.time);
         self.time_update = self.time_update_buffer.average();
@@ -739,6 +767,9 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    // ************************************* Drawing functions ***********************************
+
+
     fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<i32>, probe:&CollisionProbe<f32>, color:Color24){
         match probe.kind {
             ColliderKind::Point =>{
@@ -757,18 +788,9 @@ where T:TilesetEnum, P:PaletteEnum,
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn draw_text(
-        &mut self,
-        text: &str,
-        x: i32,
-        y: i32,
-        tileset_id: impl Into<usize> + Copy,
-        font: impl Into<u8>,
-        align_right: bool,
-        depth:u8
-    ) {
-        let font = &self.renderer.get_font(tileset_id, font.into());
+
+    pub fn draw_text(&mut self, text: &str, x: i32, y: i32, info: &FontInfo) {
+        let font = &self.renderer.get_font(info.tileset_id, info.font as usize);
         for (i, letter) in text.chars().enumerate() {
             let letter = letter as u32;
             let index = if letter > 47 {
@@ -781,7 +803,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 font.last() as u16 // Space
             };
 
-            let offset_x = if align_right {
+            let offset_x = if info.align_right {
                 (self.specs.tile_width as usize * text.len()) as i32
             } else {
                 0
@@ -801,12 +823,13 @@ where T:TilesetEnum, P:PaletteEnum,
                     h: self.specs.tile_height as i32,
                 },
                 abs_tile_id,
-                self.renderer.get_tileset_palette(tileset_id),
+                self.renderer.get_tileset_palette(info.tileset_id),
                 false,
-                depth
+                info.depth
             )
         }
     }
+
 
     fn draw_tile(
         frame_buf: &mut FrameBuf,

@@ -15,13 +15,13 @@ pub fn new_game(specs:Specs) -> Game{
     // Sprites
     let player = Player {
         id: {
-            let id = world.add_entity(2);
+            let id = world.entity_add(2);
             let collider = Collider::new_rect_collider(Layer::Hero, Rect::new(-7.0, -7.0, 14.0, 14.0));
 
             world.set_shape(id, Shape::sprite_from_anim(TilesetID::Player, 0)); //TODO: T.O.C. look up
             world.set_position(id, Vec2::new(128.0, 160.0));
             world.set_render_offset(id, -8, -8);
-            world.add_collider(id, collider);
+            world.collider_add(id, collider);
             id
         },
         health: 10,
@@ -33,12 +33,12 @@ pub fn new_game(specs:Specs) -> Game{
     for row in 0 ..enemies.size().y {
         for col in 0 ..enemies.size().x {
             enemies.set(col, row, {
-                let human = world.add_entity(1);
+                let human = world.entity_add(1);
                 let collider = Collider::new_rect_collider(Layer::Enemies, Rect::new(-7.0, -7.0, 14.0, 14.0));
 
                 world.set_shape(human, Shape::sprite_from_anim(TilesetID::Enemies, 0));
                 world.set_render_offset(human, -8, -8);
-                world.add_collider(human, collider);
+                world.collider_add(human, collider);
                 human
             });
         }
@@ -48,17 +48,17 @@ pub fn new_game(specs:Specs) -> Game{
     let bullets = RingPool::new();
 
     // Background
-    let stars_bg_0 = world.add_entity(0);
+    let stars_bg_0 = world.entity_add(0);
     world.set_shape(stars_bg_0, Shape::Bg{ tileset_id: TilesetID::Bg.into(), tilemap_id: 0 });
 
-    let stars_bg_1 = world.add_entity(0);
+    let stars_bg_1 = world.entity_add(0);
     world.set_shape(stars_bg_1, Shape::Bg{ tileset_id: TilesetID::Bg.into(), tilemap_id: 0 });
     world.set_position(stars_bg_1, Vec2{x:0.0, y:-216.0});
 
-    let stars_fg_0 = world.add_entity(0);
+    let stars_fg_0 = world.entity_add(0);
     world.set_shape(stars_fg_0, Shape::Bg{ tileset_id: TilesetID::Bg.into(), tilemap_id: 1 });
 
-    let stars_fg_1 = world.add_entity(0);
+    let stars_fg_1 = world.entity_add(0);
     world.set_shape(stars_fg_1, Shape::Bg{ tileset_id: TilesetID::Bg.into(), tilemap_id: 1 });
     world.set_position(stars_fg_1, Vec2{x:0.0, y:-216.0});
 

@@ -59,7 +59,7 @@ pub fn move_player(game: &mut Game) {
 
     if let Some(col) = game.world.move_with_collision(game.paddle.id, game.paddle.vel, CollisionReaction::Slide) {
         game.paddle.vel = col.velocity;
-        // let hit = game.world.add_entity(10);
+        // let hit = game.world.entity_add(10);
         // game.world.set_shape(hit, Shape::sprite_from_anim(TilesetID::Sprites, 1));
         // game.world.set_position(hit, col.pos);
         // game.world.set_render_offset(hit, -3, -3);

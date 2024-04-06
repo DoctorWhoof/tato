@@ -64,8 +64,12 @@ async fn main() {
         // Render
         game.world.framebuf.clear(Color24::gray_dark());
         game.world.render_frame();
-        game.world.draw_text("1234", 8, 8, TilesetID::Hud, 0, false, 255);
-        game.world.draw_text("ZONE 1", 248, 8, TilesetID::Hud, 0, true, 255);
+
+        let font_left = FontInfo { tileset_id: TilesetID::Hud.into(), font: 0, depth: 255, align_right: false };
+        let font_right = FontInfo { tileset_id: TilesetID::Hud.into(), font: 0, depth: 255, align_right: true };
+
+        game.world.draw_text("1234", 8, 8, &font_left);
+        game.world.draw_text("ZONE 1", 248, 8, &font_right);
 
         // Overlay
         app.push_overlay(format!("FPS: {:.1}", 1.0 / game.world.time_elapsed()));

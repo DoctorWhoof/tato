@@ -68,11 +68,11 @@ pub fn frame(game:&mut Game) {
     // if is_key_down(KeyCode::Z) && game.cooldown <= 0.0 {
     //     game.cooldown = 0.2;
         let pos = game.world.get_position(game.player.id);
-        let bullet = game.world.add_entity(1);
+        let bullet = game.world.entity_add(1);
 
         // TODO: new_collider(layer, col:impl ToCollider), in order to remove individual collider creation functions
         let collider = Collider::new_rect_collider(Layer::Bullet, Rect::new(-2.0, 0.0, 4.0, 4.0));
-        game.world.add_collider(bullet, collider);
+        game.world.collider_add(bullet, collider);
         game.world.enable_collision_with_layer(bullet, Layer::Enemies);
 
         game.world.set_render_offset(bullet, -3, -2);
@@ -86,7 +86,7 @@ pub fn frame(game:&mut Game) {
 
         // Pushing a new bullet may remove an older one if capacity is reached
         if let Some(removed_bullet) = game.bullets.push(bullet) {
-            game.world.remove_entity(removed_bullet);
+            game.world.entity_remove(removed_bullet);
         }
     }
     // } else {
@@ -101,15 +101,15 @@ pub fn frame(game:&mut Game) {
             // Move bullet
             if let Some(col) = game.world.move_with_collision(*id, Vec2 { x: 0.0, y: -bullet_speed }, CollisionReaction::None){
                 // Target hit, Destroy bullet
-                game.world.remove_entity(*id);
-                game.world.remove_entity(col.colliding_entity);
+                game.world.entity_remove(*id);
+                game.world.entity_remove(col.colliding_entity);
                 false
             } else {
                 true
             }
         } else {
             // Destroy bullet
-            game.world.remove_entity(*id);
+            game.world.entity_remove(*id);
             false
         }
     });

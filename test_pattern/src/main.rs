@@ -32,7 +32,7 @@ async fn main() {
     let start_x = (SPECS.render_width as usize - (columns * SPECS.tile_width as usize)) as f32 / 2.0;
     for row in 0 .. rows {
         for col in 0 .. columns {
-            let tile = world.add_entity(0);
+            let tile = world.entity_add(0);
             world.set_shape(tile, Shape::sprite_from_anim(TilesetID::Bg, 0));
             world.set_position(tile, Vec2{
                 x: col as f32 * SPECS.tile_width as f32 + start_x,

@@ -54,7 +54,7 @@ impl LayerPool {
     }
 
 
-    pub fn add_entity(&mut self, layer_id:LayerID) -> &mut Entity {
+    pub fn entity_add(&mut self, layer_id:LayerID) -> &mut Entity {
         if let Some(layer) = self.layers.get_mut(layer_id) {
             // Key generated when inserting the "layer_id" into self.entities
             // is re-used to insert the actual Entity into the Layer! Phew...
@@ -69,7 +69,7 @@ impl LayerPool {
     }
 
 
-    pub fn remove_entity(&mut self, id:EntityID) {
+    pub fn entity_remove(&mut self, id:EntityID) {
         if let Some(layer_id) = self.entities.get(id) {
             self.layers[*layer_id].data.remove(id);
             self.entities.remove(id);
