@@ -1,4 +1,4 @@
-use core::f32::consts::PI;
+use core::{f32::consts::PI, ops::AddAssign};
 
 pub const DEG_TO_RAD:f32 = PI / 180.0;
 pub const RAD_TO_DEG:f32 = 180.0 / PI;
@@ -26,4 +26,22 @@ pub fn invert_angle(angle: f32) -> f32 {
     } else {
         inverted_angle
     }
+}
+
+
+pub fn average_of_some<T> (values: &[Option<T>]) -> Option<T>
+where T: AddAssign + Copy {
+
+    let mut result:Option<T> = None;
+
+    for value in values.iter() {
+        if let Some(v) = value {
+            if let Some(ref mut result_value) = result {
+                *result_value += *v;
+            } else {
+                result = *value;
+            }
+        }
+    }
+    result
 }

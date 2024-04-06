@@ -10,8 +10,14 @@ pub trait Float:
     core::ops::DivAssign +
     core::fmt::Debug +
     core::fmt::Display + 
-{}
+{
+    fn two() -> Self;
+}
 
-impl Float for f32 {}
+impl Float for f32 {
+    fn two() -> f32 { 2.0 }
+}
 
-impl Float for f64 {}
+impl Float for f64 {
+    fn two() -> f64 { 2.0 }
+}

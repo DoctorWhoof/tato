@@ -169,11 +169,9 @@ impl Tilemap {
         let end_col = end_x.to_u16()?;
         let end_row = end_y.to_u16()?;
 
-        if start_col == end_col && start_row == end_row{ return None }
-        if start_col >= self.cols { return None }
-        if end_col >= self.cols { return None }
-        if start_row >= self.rows { return None }
-        if end_row >= self.rows { return None }
+        if start_col == end_col && start_row == end_row { return None }
+        if start_col >= self.cols || end_col >= self.cols { return None }
+        if start_row >= self.rows || end_row >= self.rows { return None }
 
         let dx = x1 - x0;
         let dy = y1 - y0;

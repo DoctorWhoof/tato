@@ -28,8 +28,8 @@ pub fn new_game() -> Game {
         id: {
             let paddle = world.add_entity(1);
             world.set_shape(paddle, Shape::sprite_from_anim(TilesetID::Sprites, 0));
-            // world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-11.0, y:-7.0, w:22.0, h:14.0}));
-            world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-7.0, y:-7.0, w:14.0, h:14.0}));
+            world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-7.0, y:-7.0, w:15.0, h:15.0}));
+            // world.add_collider(paddle, Collider::new_rect_collider(Layer::Paddle, tato::Rect{x:-3.0, y:-3.0, w:6.0, h:6.0}));
             // world.add_collider(paddle, Collider::new_point_collider(Layer::Paddle, 0.0, 0.0));
             world.enable_collision_with_layer(paddle, Layer::Bricks);
             world.enable_collision_with_layer(paddle, Layer::Wall);
@@ -49,7 +49,7 @@ pub fn new_game() -> Game {
             world.set_shape(puck, Shape::sprite_from_anim(TilesetID::Sprites, 1));
             world.set_position(puck, initial_puck_pos);
             // TODO: Rect to tilemap collision is off, doesn't include the bottom corners?
-            // world.add_collider(puck, Collider::new_rect_collider(Layer::Puck, Rect{x:-3.0, y:-3.0, w:6.0, h:6.0}));
+            // world.add_collider(puck, Collider::new_rect_collider(Layer::Puck, Rect{x:-2.0, y:-2.0, w:5.0, h:5.0}));
             world.add_collider(puck, Collider::new_point_collider(Layer::Puck, 0.0, 0.0));
             world.enable_collision_with_layer(puck, Layer::Bricks);
             world.enable_collision_with_layer(puck, Layer::Wall);

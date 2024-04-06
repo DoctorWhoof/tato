@@ -97,7 +97,7 @@ where T: Float {
         let dy = other.y - self.y;
         let angle = dy.atan2(dx);
         if angle < T::zero() {
-            angle + (T::one() + T::one()) * T::PI()
+            angle + T::two() * T::PI()
         } else {
             angle
         }
@@ -116,17 +116,34 @@ where T: Float {
         }
     }
 
-    
-    pub fn clamp_to_length(self, max_length: T) -> Vec2<T> {
+
+    pub fn clamp_to_length(&mut self, max_length: T) {
         let current_length = self.len();
         if current_length > max_length && current_length > T::epsilon() {
             let normalized = self.normalize();
-            Vec2 {
-                x: normalized.x * max_length,
-                y: normalized.y * max_length,
-            }
-        } else {
-            self
+            self.x = normalized.x * max_length;
+            self.y = normalized.y * max_length;
+        }
+    }
+
+    
+    // pub fn clamp_to_length(self, max_length: T) -> Vec2<T> {
+    //     let current_length = self.len();
+    //     if current_length > max_length && current_length > T::epsilon() {
+    //         let normalized = self.normalize();
+    //         Vec2 {
+    //             x: normalized.x * max_length,
+    //             y: normalized.y * max_length,
+    //         }
+    //     } else {
+    //         self
+    //     }
+    // }
+
+    pub fn average(&self, other:&Self) -> Self {
+        Self {
+            x: (self.x + other.x) / T::two(),
+            y: (self.y + other.y) / T::two(),
         }
     }
 
@@ -145,11 +162,10 @@ where T: Float {
 
 
     pub fn reflect(v:Self, n:Self) -> Self {
-        let two = T::one() + T::one();
         let dot_product = v.x * n.x + v.y * n.y;
         Vec2{
-            x: v.x - two * dot_product * n.x,
-            y: v.y - two * dot_product * n.y
+            x: v.x - T::two() * dot_product * n.x,
+            y: v.y - T::two() * dot_product * n.y
         }    
     }
 

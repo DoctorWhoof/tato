@@ -1,6 +1,5 @@
-use core::ops::Add;
-
-use crate::{CollisionLayer, EntityID, Rect, Tile, Tilemap, Vec2, Float};
+use core::ops::{Add, AddAssign};
+use crate::{CollisionLayer, EntityID, Rect, Tile, Tilemap, Vec2, Float, average_of_some};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
@@ -243,69 +242,93 @@ where T: Float {
                     //     ),
                     // };
 
-                    let x1 = x0 + vel_x;
-                    let y1 = y0 + vel_y;
+                    // let x1 = x0 + vel_x;
+                    // let y1 = y0 + vel_y;
 
                     use Axis::*;
                     match self.kind {
                         ColliderKind::Point => {
-                            return tilemap.collide_adjacent(x0, y0, x1, y1, Both)
+                            return tilemap.collide_adjacent(x0, y0, x0 + vel_x, y0 + vel_y, Both)
                         },
                         ColliderKind::Rect { w, h } | ColliderKind::Tilemap { w, h, .. } => {
-                            // Warning: Rect collisions sample points around the rect. 
-                            // Will fail if the collider is larger than tile dimensions * 2.0
-                            // TODO: Still needs one more sample point, along the horizontal edges
+                            // Warning: Rect collision samples points around the rect. 
+                            // Will fail if the collider is larger than tile dimensions * 2.0!
                             let w = w / tile_width;
                             let h = h / tile_width;
-
-                            let mid_x = w / (T::one() + T::one());
-                            let mid_y = h / (T::one() + T::one());
-
-                            #[allow(clippy::collapsible_else_if)]
-                            let (a,b,c,d) = if vel_x.is_sign_positive() {
+                            
+                            // Get appropriate a,b,c corners depending on velocity
+                            let (a, axis_a, b, axis_b, c, axis_c) = if vel_x.is_sign_positive() {
                                 if vel_y.is_sign_positive(){(
-                                    tilemap.collide_adjacent(x0 + w, y0, x1 + w, y1, Horizontal),                   // TR
-                                    tilemap.collide_adjacent(x0 + w, y1 + mid_y, x1 + w, y0 + mid_y, Horizontal),   // R
-                                    tilemap.collide_adjacent(x0 + w, y0 + h, x1 + w, y1 + h, Both),                 // BR
-                                    tilemap.collide_adjacent(x0, y0 + h, x1, y1 + h, Vertical),                     // BL
+                                    Vec2{ x:x0 + w  , y:y0      }, Horizontal,      // TR
+                                    Vec2{ x:x0 + w  , y:y0 + h  }, Both,            // BR
+                                    Vec2{ x:x0      , y:y0 + h  }, Vertical,        // BL
                                 )} else {(
-                                    tilemap.collide_adjacent(x0, y0, x1, y1, Vertical),                             // TL
-                                    tilemap.collide_adjacent(x0 + w, y0, x1 + w, y1, Both),                         // TR
-                                    tilemap.collide_adjacent(x0 + w, y1 + mid_y, x1 + w, y0 + mid_y, Horizontal),   // R
-                                    tilemap.collide_adjacent(x0 + w, y0 + h, x1 + w, y1 + h, Horizontal),           // BR
+                                    Vec2{ x:x0      , y:y0      }, Vertical,        // TL
+                                    Vec2{ x:x0 + w  , y:y0      }, Both,            // TR
+                                    Vec2{ x:x0 + w  , y:y0 + h  }, Horizontal       // BR
                                 )}
-                            } else {
-                                if vel_y.is_sign_positive(){(
-                                    tilemap.collide_adjacent(x0, y0, x1, y1, Horizontal),                           // TL
-                                    tilemap.collide_adjacent(x0, y0 + mid_y, x1, y0 + mid_y, Horizontal),           // L
-                                    tilemap.collide_adjacent(x0, y0 + h, x1, y1 + h, Both),                         // BL
-                                    tilemap.collide_adjacent(x0 + w, y0 + h, x1 + w, y1 + h, Vertical),             // BR
-                                )} else {(
-                                    tilemap.collide_adjacent(x0 + w, y0, x1 + w, y1, Vertical),                     // TR
-                                    tilemap.collide_adjacent(x0, y0, x1, y1, Both),                                 // TL
-                                    tilemap.collide_adjacent(x0, y0 + mid_y, x1, y0 + mid_y, Horizontal),           // L
-                                    tilemap.collide_adjacent(x0, y0 + h, x1, y1 + h, Horizontal),                   // BL
-                                )}
+                            } else if vel_y.is_sign_positive(){(
+                                Vec2{ x:x0      , y:y0      }, Horizontal,          // TL
+                                Vec2{ x:x0      , y:y0 + h  }, Both,                // BL
+                                Vec2{ x:x0 + w  , y:y0 + h  }, Vertical,            // BR
+                            )} else {(
+                                Vec2{ x:x0 + w  , y:y0      }, Vertical,            // TR
+                                Vec2{ x:x0      , y:y0      }, Both,                // TL
+                                Vec2{ x:x0      , y:y0 + h  }, Horizontal,          // BL
+                            )};
+
+                            let col_a = tilemap.collide_adjacent(a.x, a.y, a.x + vel_x, a.y + vel_y, axis_a);
+                            let col_b = tilemap.collide_adjacent(b.x, b.y, b.x + vel_x, b.y + vel_y, axis_b);
+                            let col_c = tilemap.collide_adjacent(c.x, c.y, c.x + vel_x, c.y + vel_y, axis_c);
+
+                            // Height is more than a tile
+                            if h > T::one() {
+                                let x = if vel_x.is_sign_positive(){ x0 + w } else { x0 };
+                                let y = y0 + (h / T::two());
+                                let vert_col = tilemap.collide_adjacent(x, y, x + vel_x, y, Horizontal);
+                                if vert_col.is_some(){
+                                    return average_of_some(&[col_a, col_b, col_c, vert_col]);
+                                }
                             };
 
-                            if a.is_some() || b.is_some() || c.is_some() || d.is_some() {
-                                let a = a.unwrap_or_default();
-                                let b = b.unwrap_or_default();
-                                let c = c.unwrap_or_default();
-                                let d = d.unwrap_or_default();
-                                return Some(a + b + c + d)
-                            }
+                            // Width is more than a tile
+                            if w > T::one() {
+                                let x = x0 + (w / T::two());
+                                let y = if vel_y.is_sign_positive(){ y0 + w } else { y0 };
+                                let horz_col = tilemap.collide_adjacent(x, y, x, y + vel_y, Vertical);
+                                if horz_col.is_some(){
+                                    return average_of_some(&[col_a, col_b, col_c, horz_col]);
+                                }
+                            };
+
+                            // No edge collisions, return average result from corners
+                            return average_of_some(&[col_a, col_b, col_c]);
                         },
                     }
-
-                    // TODO: Rect to tilemap (only raycast outer points!). Use simpler cast, i.e. middle points can use single axis
-
                 },
             }
         }
 
         None
     }
+
+
+    // fn average_of_some(values: &[Option<Collision<T>>]) -> Option<Collision<T>> {
+
+    //     let mut result = None;
+
+    //     for &value in values {
+    //         if let Some(v) = value {
+    //             if let Some(ref mut result_value) = result {
+    //                 *result_value += v;
+    //             } else {
+    //                 result = value;
+    //             }
+    //         }
+    //     }
+    //     result
+    // }
+
 
 }
 
@@ -344,7 +367,8 @@ where T:Float {
     fn add(self, other: Self) -> Self::Output {
         Self {
             t: Vec2 { x: self.t.x.min(other.t.x), y: self.t.y.min(other.t.y) },
-            pos: self.pos, // only first position is preserved!
+            // pos: Vec2 { x: self.pos.x.max(other.pos.x), y: self.pos.y.max(other.pos.y) },
+            pos: self.pos.average(&other.pos),
             normal: self.normal + other.normal,
             velocity: self.velocity + other.velocity,
             colliding_entity: self.colliding_entity,
@@ -353,41 +377,9 @@ where T:Float {
     }
 }
 
-// // TEST: Early Y return
-// if let Some(col) = col_y {
-//     return Some(Collision{
-//         t: Vec2 {
-//             x: T::one(),
-//             y:if self.velocity.y != T::zero() {
-//                 (col.pos - self.pos.y) / self.velocity.y
-//             } else {
-//                 self.velocity.y
-//             },
-//         },
-//         pos: Vec2 { x:self.pos.x + self.velocity.x, y:col.pos },
-//         normal: Vec2 { x:T::zero(), y:col.normal },
-//         velocity: other.velocity,
-//         colliding_entity: other.entity_id,
-//         tile: None,
-//     })
-// }
-
-// // TEST: Early X return
-// // Assumes AABB collisions are always single axis, but can fail at corners...
-// if let Some(col) = col_x {
-//     return Some(Collision{
-//         t: Vec2 {
-//             x:if self.velocity.x != T::zero() {
-//                 (col.pos - self.pos.x) / self.velocity.x
-//             } else {
-//                 self.velocity.x
-//             },
-//             y: T::one(),
-//         },
-//         pos: Vec2 { x:col.pos, y:self.pos.y + self.velocity.y },
-//         normal: Vec2 { x:col.normal, y:T::zero() },
-//         velocity: other.velocity,
-//         colliding_entity: other.entity_id,
-//         tile: None,
-//     })
-// }
+impl<T> AddAssign for Collision<T>
+where T:Float {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}

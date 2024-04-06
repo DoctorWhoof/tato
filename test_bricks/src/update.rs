@@ -92,7 +92,7 @@ pub fn move_puck(game:&mut Game) {
     // let deccelerate_rate = 15.0;
     // let elapsed = game.world.time_elapsed();
 
-    game.puck.vel = game.puck.vel.clamp_to_length(safety_speed);
+    game.puck.vel.clamp_to_length(safety_speed);
     // if game.puck.vel.len() > max_speed {
     //     // println!("slow down!: {:?}", game.puck.vel.len());
     //     if game.puck.vel.x > 0.0 {
