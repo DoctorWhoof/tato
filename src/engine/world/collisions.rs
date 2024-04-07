@@ -1,6 +1,6 @@
 use crate::*;
 
-const COL_MARGIN:f32 = 0.02;
+const COL_MARGIN:f32 = 0.05;
 
 impl<T,P> World<T,P>
 where T:TilesetEnum, P:PaletteEnum {

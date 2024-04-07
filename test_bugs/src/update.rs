@@ -9,7 +9,6 @@ pub fn frame(game:&mut Game) {
     if is_key_pressed(KeyCode::W) { game.world.debug_pivot = !game.world.debug_pivot }
     if is_key_pressed(KeyCode::C) { game.world.debug_colliders = !game.world.debug_colliders }
 
-
     // Player
     let speed = 120.0;
     let bullet_speed = 240.0;

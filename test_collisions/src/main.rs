@@ -169,21 +169,21 @@ async fn main() {
         app.push_overlay(format!("Pos: {:.2?}", world.get_position(ent_main)));
 
         app.push_overlay("Colliders:".to_string());
-        for col in world.get_colliders(){
-            app.push_overlay(format!("{:.1?}", col));
+        for (i,col) in world.get_colliders().iter().enumerate(){
+            app.push_overlay(format!("{}:{:.1?}", i, col));
         }
 
-        app.push_overlay("Collisions:".to_string());
-        if let Some(col) = &collision {
-            app.push_overlay(format!("Collision: {:.2?}", col));
-        }
+        // app.push_overlay("Collisions:".to_string());
+        // if let Some(col) = &collision {
+        //     app.push_overlay(format!("Collision: {:.2?}", col));
+        // }
 
         app.push_overlay("Layers:".to_string());
         for (i, layer) in world.get_collision_layers().iter().enumerate(){
             if layer.is_empty() { continue; }
             app.push_overlay(format!("  {}", i+1));
-            for probe in layer.values(){
-                app.push_overlay(format!("    {:.1?}", probe));
+            for (i,probe) in layer.values().enumerate(){
+                app.push_overlay(format!("    {}: {:.1?}", i, probe));
             }
         }
 
