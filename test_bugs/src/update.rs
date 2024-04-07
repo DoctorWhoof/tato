@@ -58,8 +58,8 @@ pub fn frame(game:&mut Game) {
                 let x = game.enemies.pos.x + (col as f32 * spacing.x) - center_x;
                 let y = game.enemies.pos.y + (row as f32 * spacing.y) - center_y + y_offset;
                 ent.pos = Vec2::new(x, y);
-                // Colliders are flagged as "passive", which means they'll be updated automatically since
-                // The engine assumes they don't move! (may cause a one frame delay if the entity actually moves)
+                // We need to manually update the collider since we're "teleporting" the entities to new coordinates
+                game.world.collider_update(id, None);
             }
         }
     }
@@ -72,8 +72,8 @@ pub fn frame(game:&mut Game) {
         let bullet = game.world.entity_add(1);
 
         // TODO: new_collider(layer, col:impl ToCollider), in order to remove individual collider creation functions
-        let collider = Collider::new_rect_collider(Layer::Bullet, Rect::new(-2.0, 0.0, 4.0, 4.0));
-        game.world.collider_add(bullet, collider, false);
+        let collider = Collider::from_rect(Layer::Bullet, Rect::new(-2.0, 0.0, 4.0, 4.0));
+        game.world.collider_add(bullet, collider);
         game.world.enable_collision_with_layer(bullet, Layer::Enemies);
 
         game.world.set_render_offset(bullet, -3, -2);

@@ -62,7 +62,7 @@ where T:Float + PartialOrd + Copy {
 pub struct Collider<T>
 where T: Float {
     pub kind: ColliderKind<T>,
-    pub pos: Vec2<T>,
+    pub offset: Vec2<T>,
     pub enabled: bool,
     pub mask: u16,
     pub(crate) layer: u16,  // Set by World, semi-private so that it can't be changed
@@ -85,30 +85,30 @@ where T: Float {
 impl<T> Collider<T>
 where T: Float {
 
-    pub fn new_tilemap_collider(layer:impl CollisionLayer) -> Self {
+    pub fn from_tilemap(layer:impl CollisionLayer) -> Self {
         Self {
             enabled: true,
-            pos: Vec2::zero(),
+            offset: Vec2::zero(),
             kind: ColliderKind::Tilemap { w:T::zero(), h:T::zero(), tile_width:0, tile_height:0 }, // Values will be written by World
             layer: layer.into(),
             mask: 0,
         }
     }
 
-    pub fn new_point_collider(layer:impl CollisionLayer, x:T, y:T) -> Self {
+    pub fn from_point(layer:impl CollisionLayer, x:T, y:T) -> Self {
         Self {
             enabled: true,
-            pos: Vec2 { x, y },
+            offset: Vec2 { x, y },
             kind: ColliderKind::Point,
             layer: layer.into(),
             mask: 0,
         }
     }
 
-    pub fn new_rect_collider(layer:impl CollisionLayer, rect:Rect<T>) -> Self {
+    pub fn from_rect(layer:impl CollisionLayer, rect:Rect<T>) -> Self {
         Self {
             enabled: true,
-            pos: Vec2 { x:rect.x, y:rect.y },
+            offset: Vec2 { x:rect.x, y:rect.y },
             kind: ColliderKind::Rect{ w:rect.w, h:rect.h },
             layer: layer.into(),
             mask: 0,

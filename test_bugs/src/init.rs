@@ -16,12 +16,12 @@ pub fn new_game(specs:Specs) -> Game{
     let player = Player {
         id: {
             let id = world.entity_add(2);
-            let collider = Collider::new_rect_collider(Layer::Hero, Rect::new(-7.0, -7.0, 14.0, 14.0));
-
+            let collider = Collider::from_rect(Layer::Hero, Rect::new(-7.0, -7.0, 14.0, 14.0));
             world.set_shape(id, Shape::sprite_from_anim(TilesetID::Player, 0)); //TODO: T.O.C. look up
+
             world.set_position(id, Vec2::new(128.0, 160.0));
             world.set_render_offset(id, -8, -8);
-            world.collider_add(id, collider, false);
+            world.collider_add(id, collider);
             id
         },
         health: 10,
@@ -35,11 +35,11 @@ pub fn new_game(specs:Specs) -> Game{
         for col in 0 ..enemies.size().x {
             enemies.set(col, row, {
                 let human = world.entity_add(1);
-                let collider = Collider::new_rect_collider(Layer::Enemies, Rect::new(-7.0, -7.0, 14.0, 14.0));
+                let collider = Collider::from_rect(Layer::Enemies, Rect::new(-7.0, -7.0, 14.0, 14.0));
 
                 world.set_shape(human, Shape::sprite_from_anim(TilesetID::Enemies, 0));
                 world.set_render_offset(human, -8, -8);
-                world.collider_add(human, collider, true);
+                world.collider_add(human, collider);
                 human
             });
         }
