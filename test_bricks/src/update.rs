@@ -3,8 +3,8 @@ use macroquad::input::*;
 use tato::CollisionReaction;
 
 pub fn move_player(game: &mut Game) {
-    // let speed_x = 20.0;
-    // let speed_y = 10.0;
+    // let speed_x = 30.0;
+    // let speed_y = 20.0;
 
     // let max_speed_x = 120.0;
     // let max_speed_y = 120.0;
@@ -31,10 +31,8 @@ pub fn move_player(game: &mut Game) {
 
     // game.paddle.vel.x = game.paddle.vel.x.clamp(-max_speed_x, max_speed_x);
     // game.paddle.vel.y = game.paddle.vel.y.clamp(-max_speed_y, max_speed_y);
-
+    
     let speed = 120.0;
-    // game.paddle.vel.x = -speed;
-    // game.paddle.vel.y = speed;
 
     if is_key_down(KeyCode::Left) {
         game.paddle.vel.x = -speed;

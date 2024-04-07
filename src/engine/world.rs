@@ -5,6 +5,8 @@ use slotmap::{SecondaryMap, SlotMap};
 const COLLISION_LAYER_COUNT:usize = 16;
 const COL_MARGIN:f32 = 0.002;
 
+type ColliderMap = SecondaryMap<EntityID, Collider<f32>>;
+
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
 pub struct World<T, P>
@@ -18,6 +20,7 @@ where T:TilesetEnum, P:PaletteEnum,
     pub draw_sprites: bool,
     pub draw_tilemaps: bool,
     pub cam: Rect<f32>,
+
     // Main components
     pub framebuf: FrameBuf,
     pub renderer: Renderer<T, P>,
@@ -33,12 +36,11 @@ where T:TilesetEnum, P:PaletteEnum,
 
     // collision masks only allow 8 layers for now (8 bit mask, each bit determines a layer collision)
     collision_layers:Vec<Vec<CollisionProbe<f32>>>,
-    // static_colliders:Vec<EntityID>,
+    active_colliders: ColliderMap,
+    passive_colliders: ColliderMap,
 
     // Data Pools
     entities:SlotMap<EntityID, Entity>,
-    colliders: SecondaryMap<EntityID, Collider<f32>>,
-    static_colliders: SecondaryMap<EntityID, Collider<f32>>,
 }
 
 impl<T, P> World<T, P>
@@ -68,8 +70,8 @@ where T:TilesetEnum, P:PaletteEnum,
 
             entities: Default::default(),
 
-            colliders: Default::default(),
-            static_colliders: Default::default(),
+            active_colliders: Default::default(),
+            passive_colliders: Default::default(),
             collision_layers: vec![vec![]; COLLISION_LAYER_COUNT],
             specs,
         }
@@ -120,7 +122,7 @@ where T:TilesetEnum, P:PaletteEnum,
                 }
             }
             self.entities.remove(id);
-            self.colliders.remove(id);
+            self.active_colliders.remove(id);
         }
     }
 
@@ -148,9 +150,27 @@ where T:TilesetEnum, P:PaletteEnum,
 
 
     /// Allows "breaking" the mutable refs per field, makes it a little easier to please the borrow checker in some cases
-    pub fn get_members(&mut self) -> (&mut SlotMap<EntityID, Entity>, &mut Renderer<T,P>) {
-        (&mut self.entities, &mut self.renderer)
-    }
+    pub fn get_members(&mut self) -> (
+        &mut SlotMap<EntityID, Entity>,
+        &mut Renderer<T,P>)
+    {(
+        &mut self.entities,
+        &mut self.renderer
+    )}
+
+
+    // fn get_collision_members(&self) -> (
+    //     &SlotMap<EntityID, Entity>,
+    //     &ColliderMap,
+    //     &ColliderMap,
+    //     &Vec<Vec<CollisionProbe<f32>>>,
+    // )
+    // {(
+    //     &self.entities,
+    //     &self.active_colliders,
+    //     &self.passive_colliders,
+    //     &self.collision_layers,
+    // )}
 
 
     // **************************************** Render ***************************************
@@ -263,53 +283,89 @@ where T:TilesetEnum, P:PaletteEnum,
     // **************************************** Collisions ***************************************
 
 
-    fn probe_add(&mut self, probe:CollisionProbe<f32>) {
+    fn probe_process(&self, probe:&mut CollisionProbe<f32>) {
+        if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
+            let rect = self.get_entity_rect_from_id(probe.entity_id);
+            *w = rect.w;
+            *h = rect.h;
+            *tile_width = self.specs.tile_width;
+            *tile_height = self.specs.tile_height;
+        }
+    }
+
+
+    fn probe_add(&mut self, mut probe:CollisionProbe<f32>) {
         if probe.layer > 0 {
             let layer = probe.layer as usize;
+            self.probe_process(&mut probe);
             self.collision_layers[layer-1].push(probe);
         }
     }
 
 
-    fn probe_get(&self, id:EntityID, velocity:Vec2<f32>, static_collider:bool) -> Option<CollisionProbe<f32>> {
-        let collider = if static_collider {
-            *self.static_colliders.get(id)?
-        } else {
-            *self.colliders.get(id)?
-        };
-
+    fn probe_get_from_collider(collider:&Collider<f32>, pos: Vec2<f32>, id:EntityID, velocity:Option<Vec2<f32>>) -> Option<CollisionProbe<f32>>  {
         if !collider.enabled { return None }
-        let pos = self.entities.get(id)?.pos + collider.pos;
         Some(CollisionProbe{
             entity_id: id,
-            pos,
-            velocity,
+            pos: pos + collider.pos,
+            velocity: velocity.unwrap_or_default(),
             kind: collider.kind,
             layer: collider.layer,
             mask: collider.mask,
         })
     }
 
-
+    
+    /// Removes the collider
     pub fn collider_remove(&mut self, id:EntityID) {
-        self.static_colliders.remove(id);
-        self.colliders.remove(id);
+        self.passive_colliders.remove(id);
+        self.active_colliders.remove(id);
     }
 
 
-    pub fn collider_add(&mut self, id:EntityID, collider:Collider<f32>, static_collider:bool) {
+    /// Adds a collider to the entity. Active colliders are intended to be moved using "move_with_collision", while
+    /// passive colliders are mostly used for static elements, but can be used if the entity is being moved manually
+    /// and is only collided against.
+    pub fn collider_add(&mut self, id:EntityID, collider:Collider<f32>, passive_collider:bool) {
         self.collider_remove(id);
-        if static_collider {
-            self.static_colliders.insert(id, collider);
+        if passive_collider {
+            self.passive_colliders.insert(id, collider);
         } else {
-            self.colliders.insert(id, collider);
+            self.active_colliders.insert(id, collider);
         }
 
     }
 
 
+    /// Call if you have manually updated an entity position without using "move_with_collision"
+    /// If you set the collider to passive, it will be automatically updated and this is not necessary,
+    /// But it may introduce a one frame delay. Calling collider_update ensures an active collider is updated
+    /// on the same frame it is moved.
+    pub fn collider_update(&mut self, id:EntityID, velocity:Option<Vec2<f32>>) -> Option<()> {
+        let collider = self.active_colliders.get(id)?;
+        let pos = self.get_position(id);
+        if let Some(mut probe) = Self::probe_get_from_collider(collider, pos, id, velocity){
+            if probe.layer > 0 {
+                let layer = probe.layer as usize;
+    
+                if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
+                    let rect = self.get_entity_rect_from_id(id);
+                    *w = rect.w;
+                    *h = rect.h;
+                    *tile_width = self.specs.tile_width;
+                    *tile_height = self.specs.tile_height;
+                }
+    
+                self.collision_layers[layer-1].push(probe);
+            }
+        }
+        Some(())
+    }
+
+
+    /// Modifies the collision mask of an entity.
     pub fn enable_collision_with_layer(&mut self, id:EntityID, layer:impl CollisionLayer) {
-        if let Some(collider) = self.colliders.get_mut(id){
+        if let Some(collider) = self.active_colliders.get_mut(id){
             let layer_value:u16 = layer.into();
             if layer_value > 0 {
                 let layer = 2u16.pow(layer_value as u32 - 1);
@@ -329,7 +385,8 @@ where T:TilesetEnum, P:PaletteEnum,
         }
     }
 
-
+    /// Performs the transform with the appropriate collision reaction, taking into account the velocity and the current frame's delta-time.
+    /// Returns the collision data if any occurred.
     pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {
         if !self.entities.contains_key(entity_id) { return None }
         
@@ -337,7 +394,9 @@ where T:TilesetEnum, P:PaletteEnum,
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
         // Run collision code if probe is found
-        if let Some(mut probe) = self.probe_get(entity_id, scaled_velocity, false) {
+        let collider = self.active_colliders.get(entity_id)?;
+        let pos = self.entities[entity_id].pos;
+        if let Some(mut probe) = Self::probe_get_from_collider(collider, pos, entity_id, Some(scaled_velocity)) {
 
             // Modified on every collision
             let mut col_accumulator:Option<Collision<f32>> = None;
@@ -357,15 +416,13 @@ where T:TilesetEnum, P:PaletteEnum,
                             },
                         };
         
-                        // Accumulate
+                        // Accumulate collisions, if more than one occurred
                         if let Some(mut current_col) = maybe_col {
-
                             if let ColliderKind::Tilemap{ tile_width, tile_height, .. } = other_probe.kind {
                                 // Scale tile to world coordinates
                                 current_col.pos.x *= tile_width as f32;
                                 current_col.pos.y *= tile_height as f32;
                             }
-
                             if let Some(ref mut col) = col_accumulator {
                                 *col += current_col;
                             } else {
@@ -376,7 +433,10 @@ where T:TilesetEnum, P:PaletteEnum,
                 }
             }
 
+            // Process accumulated collisions, if any
             if let Some(collision) = &col_accumulator {
+                // println!("Collision");
+                // Reaction
                 let (delta, vel) = {
                     match reaction {
                         CollisionReaction::None => {(
@@ -414,25 +474,24 @@ where T:TilesetEnum, P:PaletteEnum,
                     CollisionReaction::Bounce(_) | CollisionReaction::Slide => collision.velocity
                 };
 
+                // Apply new position
+                let pos = &mut self.entities[entity_id].pos;
                 let margin = Vec2{
                     x: COL_MARGIN * collision.normal.x,
                     y: COL_MARGIN * collision.normal.y
                 };
-
-                // Apply new position
-                let pos = &mut self.entities[entity_id].pos;
                 *pos += delta + stick_delta + margin;
 
                 // Return collision
                 let unscale = 1.0 / self.time_elapsed;
 
                 // Update probe position for proper debug display (WIP)
-                let collider = self.colliders.get(entity_id).unwrap();
+                let collider = self.active_colliders.get(entity_id).unwrap();
                 probe.pos = *pos + collider.pos;
                 self.probe_add(probe);
 
-                // Only reports the first collision!
-                // TODO: return more than one collision?
+                // TODO: return more than one collision? Only the first one is reported,
+                // although "t", "pos" and "normal" take into account multiple collisions
                 return Some(Collision{
                     t: collision.t,
                     pos: collision.pos,                           
@@ -451,15 +510,14 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    /// If the entity has a Bg Shape, returns the tile at the specified world coordinates, if any.
     pub fn tile_at(&self, x: f32, y: f32, id: EntityID) -> Option<(Tile, Rect<f32>)> {
         let (tilemap, tilemap_rect) = self.get_tilemap_and_rect(id)?;
-        if !tilemap_rect.contains(x, y) {
-            return None;
-        };
+        if !tilemap_rect.contains(x, y) { return None };
 
-        let col = u16::try_from((x - tilemap_rect.x) as usize / self.specs.tile_width as usize)
+        let col = (u16::try_from((x - tilemap_rect.x) as usize / self.specs.tile_width as usize))
             .unwrap();
-        let row = u16::try_from((y - tilemap_rect.y) as usize / self.specs.tile_height as usize)
+        let row = (u16::try_from((y - tilemap_rect.y) as usize / self.specs.tile_height as usize))
             .unwrap();
 
         let w = self.specs.tile_width as f32;
@@ -480,17 +538,18 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn get_dynamic_colliders(&self) -> &SecondaryMap<EntityID, Collider<f32>> {
-        &self.colliders
+    pub fn get_dynamic_colliders(&self) -> &ColliderMap {
+        &self.active_colliders
     }
 
 
-    pub fn get_static_colliders(&self) -> &SecondaryMap<EntityID, Collider<f32>> {
-        &self.static_colliders
+    pub fn get_passive_collider(&self) -> &ColliderMap {
+        &self.passive_colliders
     }
 
     
     // **************************************** Events ***************************************
+
 
     /// Sets up current frame's timing and collisions 
     pub fn start_frame(&mut self, time_now: f32) {
@@ -502,23 +561,17 @@ where T:TilesetEnum, P:PaletteEnum,
         for layer in self.collision_layers.iter_mut() {
             layer.clear()
         }
-
-        for entity_id in self.static_colliders.keys() {
-            if let Some(mut probe) =  self.probe_get(entity_id, Vec2::zero(), true) {
+        
+        for (id, collider) in &self.passive_colliders {
+            let pos = if let Some(ent) = self.entities.get(id) { ent.pos } else { continue };
+            if let Some(mut probe) = Self::probe_get_from_collider(collider, pos, id, None) {
                 if probe.layer > 0 {
+                    self.probe_process(&mut probe);
                     let layer = probe.layer as usize;
-    
-                    if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
-                        let rect = self.get_entity_rect_from_id(entity_id);
-                        *w = rect.w;
-                        *h = rect.h;
-                        *tile_width = self.specs.tile_width;
-                        *tile_height = self.specs.tile_height;
-                    }
-
                     self.collision_layers[layer-1].push(probe);
                 }
             }
+
         }
     }
 

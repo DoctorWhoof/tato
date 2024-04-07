@@ -32,7 +32,7 @@ pub fn invert_angle(angle: f32) -> f32 {
 pub fn optional_sum<T> (values: &[Option<T>]) -> Option<T>
 where T: AddAssign + Copy {
 
-    let mut result:Option<T> = None;
+    let mut result = None;
 
     for value in values.iter() {
         if let Some(v) = value {

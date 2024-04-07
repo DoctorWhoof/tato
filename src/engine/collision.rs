@@ -1,5 +1,4 @@
 use core::ops::{Add, AddAssign};
-use std::println;
 use crate::{CollisionLayer, EntityID, Rect, Tile, Tilemap, Vec2, Float, optional_sum};
 
 #[derive(Clone, Copy, Debug, PartialEq)]

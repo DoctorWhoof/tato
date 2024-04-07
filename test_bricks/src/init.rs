@@ -51,7 +51,7 @@ pub fn new_game() -> Game {
             world.set_position(puck, initial_puck_pos);
             // TODO: Rect to tilemap collision is off, doesn't include the bottom corners?
             // world.collider_add(puck, Collider::new_rect_collider(Layer::Puck, Rect{x:-2.0, y:-2.0, w:5.0, h:5.0}));
-            world.collider_add(puck, Collider::new_point_collider(Layer::Puck, 0.0, 0.0), false);
+            world.collider_add(puck, Collider::new_point_collider(Layer::Puck, 0.0, 1.0), false);
             world.enable_collision_with_layer(puck, Layer::Bricks);
             world.enable_collision_with_layer(puck, Layer::Wall);
             world.enable_collision_with_layer(puck, Layer::Paddle);

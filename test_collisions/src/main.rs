@@ -60,10 +60,11 @@ async fn main() {
     let ent_rect_1 = world.entity_add(0);
     world.set_position(ent_rect_1, tato::Vec2::new(160.0, 120.0));
     world.collider_add(ent_rect_1, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:32.0}), true);
-
+    
     let ent_sine_x = world.entity_add(0);
     world.set_position(ent_sine_x, tato::Vec2::new(100.0, 60.0));
     world.collider_add(ent_sine_x, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), false);
+    world.enable_collision_with_layer(ent_sine_x, Layer::Shapes);
 
     let ent_sine_y = world.entity_add(0);
     world.set_position(ent_sine_y, tato::Vec2::new(40.0, 120.0));
@@ -129,24 +130,26 @@ async fn main() {
             vel.x = 0.0
         }
 
-        // Moving colliders
+        // Moving passive colliders
         let oscillator = world.time() * 2.0;
-        
-        let sine_vel_x = tato::Vec2{x: oscillator.sin() * 60.0, y:0.0};
-        world.move_with_collision(ent_sine_x, sine_vel_x, CollisionReaction::None);
 
         let sine_vel_y = tato::Vec2{x: 0.0, y:oscillator.sin() * 60.0};
-        world.move_with_collision(ent_sine_y, sine_vel_y, CollisionReaction::None);
+        world.move_with_collision(ent_sine_y, sine_vel_y, CollisionReaction::Slide);
 
         let sine_vel = tato::Vec2{x: oscillator.sin() * 30.0, y:oscillator.cos() * 60.0};
-        world.move_with_collision(ent_sine, sine_vel, CollisionReaction::None);
-
+        world.move_with_collision(ent_sine, sine_vel, CollisionReaction::Slide);
+        
         // Main Probe
-        let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);  //TODO: not &mut, simply set vel to col.vel?
+        let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);
         if let Some(col) = &collision {
             vel = col.velocity
         }
 
+        // Moveable colliders
+        let sine_vel_x = tato::Vec2{x: oscillator.sin() * 60.0, y:0.0};
+        world.move_with_collision(ent_sine_x, sine_vel_x, CollisionReaction::Slide);
+
+        // Render
         world.framebuf.clear(tato::Color24::gray_dark());
         world.render_frame();
         if let Some(col) = &collision {
@@ -163,8 +166,8 @@ async fn main() {
         app.push_overlay(format!("Vel: {:.2?}", vel));
         app.push_overlay(format!("Pos: {:.2?}", world.get_position(ent_main)));
 
-        app.push_overlay("Static colliders:".to_string());
-        for col in world.get_static_colliders(){
+        app.push_overlay("Static active_colliders:".to_string());
+        for col in world.get_passive_collider(){
             app.push_overlay(format!("{:.1?}", col));
         }
 

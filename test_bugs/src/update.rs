@@ -58,6 +58,8 @@ pub fn frame(game:&mut Game) {
                 let x = game.enemies.pos.x + (col as f32 * spacing.x) - center_x;
                 let y = game.enemies.pos.y + (row as f32 * spacing.y) - center_y + y_offset;
                 ent.pos = Vec2::new(x, y);
+                // Colliders are flagged as "passive", which means they'll be updated automatically since
+                // The engine assumes they don't move! (may cause a one frame delay if the entity actually moves)
             }
         }
     }
@@ -102,6 +104,7 @@ pub fn frame(game:&mut Game) {
                 // Target hit, Destroy bullet
                 game.world.entity_remove(*id);
                 game.world.entity_remove(col.colliding_entity);
+                // TODO: Remove entry from enemies, based on coordinates?
                 false
             } else {
                 true

@@ -12,7 +12,7 @@ pub fn new_game(specs:Specs) -> Game{
     world.renderer.load_tileset(&atlas, TilesetID::Enemies);
 
 
-    // Sprites
+    // Player
     let player = Player {
         id: {
             let id = world.entity_add(2);
@@ -29,6 +29,7 @@ pub fn new_game(specs:Specs) -> Game{
         vel: Vec2::zero(),
     };
 
+    // Enemies
     let mut enemies = Grid::new(128.0, 48.0, 7, 3);
     for row in 0 ..enemies.size().y {
         for col in 0 ..enemies.size().x {
@@ -38,7 +39,7 @@ pub fn new_game(specs:Specs) -> Game{
 
                 world.set_shape(human, Shape::sprite_from_anim(TilesetID::Enemies, 0));
                 world.set_render_offset(human, -8, -8);
-                world.collider_add(human, collider, false);
+                world.collider_add(human, collider, true);
                 human
             });
         }
