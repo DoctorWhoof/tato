@@ -21,7 +21,7 @@ pub fn new_game(specs:Specs) -> Game{
             world.set_shape(id, Shape::sprite_from_anim(TilesetID::Player, 0)); //TODO: T.O.C. look up
             world.set_position(id, Vec2::new(128.0, 160.0));
             world.set_render_offset(id, -8, -8);
-            world.collider_add(id, collider);
+            world.collider_add(id, collider, false);
             id
         },
         health: 10,
@@ -38,7 +38,7 @@ pub fn new_game(specs:Specs) -> Game{
 
                 world.set_shape(human, Shape::sprite_from_anim(TilesetID::Enemies, 0));
                 world.set_render_offset(human, -8, -8);
-                world.collider_add(human, collider);
+                world.collider_add(human, collider, false);
                 human
             });
         }

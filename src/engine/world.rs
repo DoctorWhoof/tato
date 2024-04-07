@@ -3,6 +3,7 @@ use alloc::{vec, vec::Vec};
 use slotmap::{SecondaryMap, SlotMap};
 
 const COLLISION_LAYER_COUNT:usize = 16;
+const COL_MARGIN:f32 = 0.002;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
 /// tile Renderer and associated data like Tilemaps and Animations.
@@ -32,10 +33,12 @@ where T:TilesetEnum, P:PaletteEnum,
 
     // collision masks only allow 8 layers for now (8 bit mask, each bit determines a layer collision)
     collision_layers:Vec<Vec<CollisionProbe<f32>>>,
+    // static_colliders:Vec<EntityID>,
 
     // Data Pools
     entities:SlotMap<EntityID, Entity>,
     colliders: SecondaryMap<EntityID, Collider<f32>>,
+    static_colliders: SecondaryMap<EntityID, Collider<f32>>,
 }
 
 impl<T, P> World<T, P>
@@ -66,6 +69,7 @@ where T:TilesetEnum, P:PaletteEnum,
             entities: Default::default(),
 
             colliders: Default::default(),
+            static_colliders: Default::default(),
             collision_layers: vec![vec![]; COLLISION_LAYER_COUNT],
             specs,
         }
@@ -267,8 +271,13 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    fn probe_get(&self, id:EntityID, velocity:Vec2<f32>) -> Option<CollisionProbe<f32>> {
-        let collider = *self.colliders.get(id)?;
+    fn probe_get(&self, id:EntityID, velocity:Vec2<f32>, static_collider:bool) -> Option<CollisionProbe<f32>> {
+        let collider = if static_collider {
+            *self.static_colliders.get(id)?
+        } else {
+            *self.colliders.get(id)?
+        };
+
         if !collider.enabled { return None }
         let pos = self.entities.get(id)?.pos + collider.pos;
         Some(CollisionProbe{
@@ -283,12 +292,19 @@ where T:TilesetEnum, P:PaletteEnum,
 
 
     pub fn collider_remove(&mut self, id:EntityID) {
+        self.static_colliders.remove(id);
         self.colliders.remove(id);
     }
 
 
-    pub fn collider_add(&mut self, id:EntityID, collider:Collider<f32>) {
-        self.colliders.insert(id, collider);
+    pub fn collider_add(&mut self, id:EntityID, collider:Collider<f32>, static_collider:bool) {
+        self.collider_remove(id);
+        if static_collider {
+            self.static_colliders.insert(id, collider);
+        } else {
+            self.colliders.insert(id, collider);
+        }
+
     }
 
 
@@ -314,21 +330,6 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn use_static_collider(&mut self, entity_id:EntityID) {
-        let entity = &self.entities[entity_id];
-        if let Some(mut probe) =  self.probe_get(entity_id, Vec2::zero()) {
-            if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
-                let rect = self.get_entity_rect(entity);
-                *w = rect.w;
-                *h = rect.h;
-                *tile_width = self.specs.tile_width;
-                *tile_height = self.specs.tile_height;
-            }
-            self.probe_add(probe);
-        }
-    }
-
-
     pub fn move_with_collision( &mut self, entity_id: EntityID, velocity:Vec2<f32>, reaction:CollisionReaction) -> Option<Collision<f32>> {
         if !self.entities.contains_key(entity_id) { return None }
         
@@ -336,7 +337,7 @@ where T:TilesetEnum, P:PaletteEnum,
         let scaled_velocity = velocity.scale(self.time_elapsed);
 
         // Run collision code if probe is found
-        if let Some(mut probe) = self.probe_get(entity_id, scaled_velocity) {
+        if let Some(mut probe) = self.probe_get(entity_id, scaled_velocity, false) {
 
             // Modified on every collision
             let mut col_accumulator:Option<Collision<f32>> = None;
@@ -358,23 +359,17 @@ where T:TilesetEnum, P:PaletteEnum,
         
                         // Accumulate
                         if let Some(mut current_col) = maybe_col {
+
+                            if let ColliderKind::Tilemap{ tile_width, tile_height, .. } = other_probe.kind {
+                                // Scale tile to world coordinates
+                                current_col.pos.x *= tile_width as f32;
+                                current_col.pos.y *= tile_height as f32;
+                            }
+
                             if let Some(ref mut col) = col_accumulator {
-                                // println!("Accumulating collision");
-                                col.velocity += current_col.velocity;
-                                col.normal += current_col.normal;
-                                col.t.x = col.t.x.min(current_col.t.x);
-                                col.t.y = col.t.x.min(current_col.t.y);
-                                // println!("{:?}", col);
+                                *col += current_col;
                             } else {
-                                if let ColliderKind::Tilemap{ tile_width, tile_height, .. } = other_probe.kind {
-                                    // Scale tile to world coordinates
-                                    current_col.pos.x *= tile_width as f32;
-                                    current_col.pos.y *= tile_height as f32;
-                                    // current_col.t.x *= tile_width as f32;
-                                    // current_col.t.y *= tile_height as f32;
-                                }
                                 col_accumulator = Some(current_col);
-                                // println!("{:?}", current_col);
                             }
                         }
                     }
@@ -420,8 +415,8 @@ where T:TilesetEnum, P:PaletteEnum,
                 };
 
                 let margin = Vec2{
-                    x: 0.001 * collision.normal.x,
-                    y: 0.001 * collision.normal.y
+                    x: COL_MARGIN * collision.normal.x,
+                    y: COL_MARGIN * collision.normal.y
                 };
 
                 // Apply new position
@@ -456,11 +451,6 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
-    pub fn get_collision_layers(&self) -> &Vec<Vec<CollisionProbe<f32>>> {
-        &self.collision_layers
-    }
-
-
     pub fn tile_at(&self, x: f32, y: f32, id: EntityID) -> Option<(Tile, Rect<f32>)> {
         let (tilemap, tilemap_rect) = self.get_tilemap_and_rect(id)?;
         if !tilemap_rect.contains(x, y) {
@@ -485,6 +475,21 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    pub fn get_collision_layers(&self) -> &Vec<Vec<CollisionProbe<f32>>> {
+        &self.collision_layers
+    }
+
+
+    pub fn get_dynamic_colliders(&self) -> &SecondaryMap<EntityID, Collider<f32>> {
+        &self.colliders
+    }
+
+
+    pub fn get_static_colliders(&self) -> &SecondaryMap<EntityID, Collider<f32>> {
+        &self.static_colliders
+    }
+
+    
     // **************************************** Events ***************************************
 
     /// Sets up current frame's timing and collisions 
@@ -494,21 +499,26 @@ where T:TilesetEnum, P:PaletteEnum,
 
         self.time_elapsed = quantize(self.time_elapsed_buffer.average(), 1.0 / 360.0);
 
-        // Reset collisions
-        // self.collision_probes_head = 0;
-        // for probe in self.collisions_probes.iter_mut() {
-        //     *probe = None
-        // }
-
-        // for layer in 0 .. self.collision_layers.len() {
-        //     let head = &mut self.collision_layer_heads[layer];
-        //     for used_slot in 0 .. *head {
-        //         self.collision_layers[layer][used_slot] = None;
-        //     }
-        //     *head = 0;
-        // }
         for layer in self.collision_layers.iter_mut() {
             layer.clear()
+        }
+
+        for entity_id in self.static_colliders.keys() {
+            if let Some(mut probe) =  self.probe_get(entity_id, Vec2::zero(), true) {
+                if probe.layer > 0 {
+                    let layer = probe.layer as usize;
+    
+                    if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
+                        let rect = self.get_entity_rect_from_id(entity_id);
+                        *w = rect.w;
+                        *h = rect.h;
+                        *tile_width = self.specs.tile_width;
+                        *tile_height = self.specs.tile_height;
+                    }
+
+                    self.collision_layers[layer-1].push(probe);
+                }
+            }
         }
     }
 

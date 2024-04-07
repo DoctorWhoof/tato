@@ -55,39 +55,39 @@ async fn main() {
     collider_rect.mask = Layer::Shapes.into();
 
     world.set_position(ent_main, initial_position);
-    world.collider_add(ent_main, collider_rect);
+    world.collider_add(ent_main, collider_rect, false);
 
     let ent_rect_1 = world.entity_add(0);
     world.set_position(ent_rect_1, tato::Vec2::new(160.0, 120.0));
-    world.collider_add(ent_rect_1, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:32.0}));
+    world.collider_add(ent_rect_1, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:32.0}), true);
 
     let ent_sine_x = world.entity_add(0);
     world.set_position(ent_sine_x, tato::Vec2::new(100.0, 60.0));
-    world.collider_add(ent_sine_x, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.collider_add(ent_sine_x, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), false);
 
     let ent_sine_y = world.entity_add(0);
     world.set_position(ent_sine_y, tato::Vec2::new(40.0, 120.0));
-    world.collider_add(ent_sine_y, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.collider_add(ent_sine_y, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), false);
 
     let ent_sine = world.entity_add(0);
     world.set_position(ent_sine, tato::Vec2::new(80.0, 120.0));
-    world.collider_add(ent_sine, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}));
+    world.collider_add(ent_sine, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:32.0, h:16.0}), false);
 
     let ent_wall_top = world.entity_add(0);
     world.set_position(ent_wall_top, tato::Vec2::new(0.0, 0.0));
-    world.collider_add(ent_wall_top, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+    world.collider_add(ent_wall_top, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}), true);
 
     let ent_wall_bottom = world.entity_add(0);
     world.set_position(ent_wall_bottom, tato::Vec2::new(0.0, 224.0));
-    world.collider_add(ent_wall_bottom, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}));
+    world.collider_add(ent_wall_bottom, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:320.0, h:16.0}), true);
 
     let ent_wall_left = world.entity_add(0);
     world.set_position(ent_wall_left, tato::Vec2::new(0.0, 16.0));
-    world.collider_add(ent_wall_left, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+    world.collider_add(ent_wall_left, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}), true);
 
     let ent_wall_right = world.entity_add(0);
     world.set_position(ent_wall_right, tato::Vec2::new(304.0, 16.0));
-    world.collider_add(ent_wall_right, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}));
+    world.collider_add(ent_wall_right, Collider::new_rect_collider(Layer::Shapes, tato::Rect{x:0.0, y:0.0, w:16.0, h:208.0}), true);
 
     let speed = 120.0;
     let mut vel = tato::Vec2::zero();
@@ -108,9 +108,9 @@ async fn main() {
                 
         // Update
         if is_key_pressed(KeyCode::Key1){
-            world.collider_add(ent_main, collider_point);
+            world.collider_add(ent_main, collider_point, false);
         } else if is_key_pressed(KeyCode::Key2){
-            world.collider_add(ent_main, collider_rect);
+            world.collider_add(ent_main, collider_rect, false);
         }
 
         if is_key_down(KeyCode::Up) {
@@ -141,13 +141,6 @@ async fn main() {
         let sine_vel = tato::Vec2{x: oscillator.sin() * 30.0, y:oscillator.cos() * 60.0};
         world.move_with_collision(ent_sine, sine_vel, CollisionReaction::None);
 
-        // // Static colliders
-        world.use_static_collider(ent_rect_1);
-        world.use_static_collider(ent_wall_top);
-        world.use_static_collider(ent_wall_bottom);
-        world.use_static_collider(ent_wall_left);
-        world.use_static_collider(ent_wall_right);
-
         // Main Probe
         let collision = world.move_with_collision(ent_main, vel, CollisionReaction::Slide);  //TODO: not &mut, simply set vel to col.vel?
         if let Some(col) = &collision {
@@ -169,6 +162,18 @@ async fn main() {
         app.push_overlay(format!("Update: {:.2?}", world.time_update() * 1000.0));
         app.push_overlay(format!("Vel: {:.2?}", vel));
         app.push_overlay(format!("Pos: {:.2?}", world.get_position(ent_main)));
+
+        app.push_overlay("Static colliders:".to_string());
+        for col in world.get_static_colliders(){
+            app.push_overlay(format!("{:.1?}", col));
+        }
+
+        app.push_overlay("Dynamic Colliders:".to_string());
+        for col in world.get_dynamic_colliders(){
+            app.push_overlay(format!("{:.1?}", col));
+        }
+
+        app.push_overlay("Collisions:".to_string());
         if let Some(col) = &collision {
             app.push_overlay(format!("Collision: {:.2?}", col));
         }

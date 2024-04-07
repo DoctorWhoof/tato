@@ -58,7 +58,6 @@ pub fn frame(game:&mut Game) {
                 let x = game.enemies.pos.x + (col as f32 * spacing.x) - center_x;
                 let y = game.enemies.pos.y + (row as f32 * spacing.y) - center_y + y_offset;
                 ent.pos = Vec2::new(x, y);
-                game.world.use_static_collider(id);
             }
         }
     }
@@ -72,7 +71,7 @@ pub fn frame(game:&mut Game) {
 
         // TODO: new_collider(layer, col:impl ToCollider), in order to remove individual collider creation functions
         let collider = Collider::new_rect_collider(Layer::Bullet, Rect::new(-2.0, 0.0, 4.0, 4.0));
-        game.world.collider_add(bullet, collider);
+        game.world.collider_add(bullet, collider, false);
         game.world.enable_collision_with_layer(bullet, Layer::Enemies);
 
         game.world.set_render_offset(bullet, -3, -2);

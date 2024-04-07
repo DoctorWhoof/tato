@@ -31,7 +31,6 @@ struct Game {
     atlas:Atlas<TilesetID, PaletteID>,
     paddle: Paddle,
     puck: Puck,
-    bg: EntityID,
     bricks: EntityID,
     overlay: Vec<String>
 }
@@ -57,7 +56,6 @@ async fn main() {
             game.world.set_position(game.puck.id, game.puck.initial_pos);
         }
 
-        update::process_bg(&mut game);
         update::move_player(&mut game);
         update::move_puck(&mut game);
 

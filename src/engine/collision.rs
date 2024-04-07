@@ -1,5 +1,6 @@
 use core::ops::{Add, AddAssign};
-use crate::{CollisionLayer, EntityID, Rect, Tile, Tilemap, Vec2, Float, average_of_some};
+use std::println;
+use crate::{CollisionLayer, EntityID, Rect, Tile, Tilemap, Vec2, Float, optional_sum};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
@@ -225,31 +226,21 @@ where T: Float {
                     let tilemap_rect = Rect::from(other);
                     
                     // "vel_result" has self in reverse, must be negated.
-                    // In practice we could just use self.velocity, since the tilemap will never be moving... or will it?
+                    // We could just use self.velocity, since the tilemap will never be moving... or will it?
                     let vel_x = -vel_result.x / tile_width;
                     let vel_y = -vel_result.y / tile_height;
     
-                    // Point to Tilemap
+                    // Top left coords
                     let x0 = (self.pos.x - tilemap_rect.x) / tile_width;
                     let y0 = (self.pos.y - tilemap_rect.y) / tile_height;
-                    
-                    // // For now at least, rects will be sampled at multiple points...
-                    // let (cols, rows) = match self.kind {
-                    //     ColliderKind::Point | ColliderKind::Tilemap{ .. } => (1,1),
-                    //     ColliderKind::Rect { w, h } => (
-                    //         ((w / tile_width).ceil() + T::one()).to_u8()?,
-                    //         ((h / tile_height).ceil() + T::one()).to_u8()?
-                    //     ),
-                    // };
-
-                    // let x1 = x0 + vel_x;
-                    // let y1 = y0 + vel_y;
 
                     use Axis::*;
                     match self.kind {
+                        // Point to Tilemap
                         ColliderKind::Point => {
                             return tilemap.collide_adjacent(x0, y0, x0 + vel_x, y0 + vel_y, Both)
                         },
+                        // Rect to tilemap
                         ColliderKind::Rect { w, h } | ColliderKind::Tilemap { w, h, .. } => {
                             // Warning: Rect collision samples points around the rect. 
                             // Will fail if the collider is larger than tile dimensions * 2.0!
@@ -283,26 +274,36 @@ where T: Float {
 
                             // Height is more than a tile
                             if h > T::one() {
-                                let x = if vel_x.is_sign_positive(){ x0 + w } else { x0 };
-                                let y = y0 + (h / T::two());
-                                let vert_col = tilemap.collide_adjacent(x, y, x + vel_x, y, Horizontal);
-                                if vert_col.is_some(){
-                                    return average_of_some(&[col_a, col_b, col_c, vert_col]);
-                                }
+                                let step_delta = h / h.ceil();
+                                let mut step = step_delta;
+                                while step < h {
+                                    let x = if vel_x.is_sign_positive(){ x0 + w } else { x0 };
+                                    let y = y0 + step;
+                                    let vert_col = tilemap.collide_adjacent(x, y, x + vel_x, y, Horizontal);
+                                    if vert_col.is_some(){
+                                        return optional_sum(&[col_a, col_b, col_c, vert_col]);
+                                    }
+                                    step += step_delta;
+                                } 
                             };
 
                             // Width is more than a tile
                             if w > T::one() {
-                                let x = x0 + (w / T::two());
-                                let y = if vel_y.is_sign_positive(){ y0 + w } else { y0 };
-                                let horz_col = tilemap.collide_adjacent(x, y, x, y + vel_y, Vertical);
-                                if horz_col.is_some(){
-                                    return average_of_some(&[col_a, col_b, col_c, horz_col]);
-                                }
+                                let step_delta = w / w.ceil();
+                                let mut step = step_delta;
+                                while step < w {
+                                    let x = x0 + step;
+                                    let y = if vel_y.is_sign_positive(){ y0 + h } else { y0 };
+                                    let horz_col = tilemap.collide_adjacent(x, y, x, y + vel_y, Vertical);
+                                    if horz_col.is_some(){
+                                        return optional_sum(&[col_a, col_b, col_c, horz_col]);
+                                    }
+                                    step += step_delta;
+                                } 
                             };
 
-                            // No edge collisions, return average result from corners
-                            return average_of_some(&[col_a, col_b, col_c]);
+                            // No edge collisions, return average result from (a,b,c) corners
+                            return optional_sum(&[col_a, col_b, col_c]);
                         },
                     }
                 },
@@ -311,24 +312,6 @@ where T: Float {
 
         None
     }
-
-
-    // fn average_of_some(values: &[Option<Collision<T>>]) -> Option<Collision<T>> {
-
-    //     let mut result = None;
-
-    //     for &value in values {
-    //         if let Some(v) = value {
-    //             if let Some(ref mut result_value) = result {
-    //                 *result_value += v;
-    //             } else {
-    //                 result = value;
-    //             }
-    //         }
-    //     }
-    //     result
-    // }
-
 
 }
 
@@ -346,28 +329,16 @@ where T: Float {
 }
 
 
-impl<T> Default for Collision<T>
-where T:Float {
-    fn default() -> Self {
-        Self {
-            t: Vec2::one(),
-            pos: Vec2::zero(),
-            normal:Vec2::zero(),
-            velocity: Vec2::zero(),
-            colliding_entity: Default::default(),
-            tile: Default::default()
-        }
-    }
-}
-
 impl<T> Add for Collision<T>
 where T:Float {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
         Self {
-            t: Vec2 { x: self.t.x.min(other.t.x), y: self.t.y.min(other.t.y) },
-            // pos: Vec2 { x: self.pos.x.max(other.pos.x), y: self.pos.y.max(other.pos.y) },
+            t: Vec2 {
+                x: self.t.x.min(other.t.x),
+                y: self.t.y.min(other.t.y)
+            },
             pos: self.pos.average(&other.pos),
             normal: self.normal + other.normal,
             velocity: self.velocity + other.velocity,

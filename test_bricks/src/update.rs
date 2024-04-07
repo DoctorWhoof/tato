@@ -145,9 +145,3 @@ pub fn move_puck(game:&mut Game) {
         }
     }
 }
-
-
-pub fn process_bg(game:&mut Game) {
-    game.world.use_static_collider(game.bg);
-    game.world.use_static_collider(game.bricks);
-}

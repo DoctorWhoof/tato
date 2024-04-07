@@ -29,7 +29,7 @@ pub fn invert_angle(angle: f32) -> f32 {
 }
 
 
-pub fn average_of_some<T> (values: &[Option<T>]) -> Option<T>
+pub fn optional_sum<T> (values: &[Option<T>]) -> Option<T>
 where T: AddAssign + Copy {
 
     let mut result:Option<T> = None;
