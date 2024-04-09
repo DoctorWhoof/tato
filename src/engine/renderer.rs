@@ -14,7 +14,7 @@ where T:TilesetEnum, P:PaletteEnum,
     anims:                  Vec<Anim>,
     tilemaps:               Vec<Tilemap>,
     pixels:                 Vec<u8>,
-    rect_coords:                 Vec<Vec2<u16>>,
+    rect_coords:            Vec<Vec2<u16>>,
     tileset_marker:         PhantomData<T>,
     palette_marker:         PhantomData<P>,
     specs: Specs,
@@ -63,6 +63,23 @@ where T:TilesetEnum, P:PaletteEnum,
 
 
     pub fn tile_height(&self) -> u8 { self.specs.tile_height }
+
+
+    // Does not reset pixels (seems unncessary?)
+    pub fn reset(&mut self) {
+        self.palettes.iter_mut().for_each(|p|{
+            *p = None;
+        });
+        self.partitions.iter_mut().for_each(|p|{
+            *p = None;
+        });
+        self.fonts.clear();
+        self.partition_top = None;
+        self.anims.clear();
+        self.tilemaps.clear();
+        // pixels:                 Vec<u8>,
+        // rect_coords:            Vec<Vec2<u16>>,
+    }
 
     // TODO: Incorporate into "load_tileset"?
     pub fn load_palettes_from_atlas(&mut self, atlas:&Atlas<T,P>) {

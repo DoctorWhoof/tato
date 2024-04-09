@@ -12,11 +12,11 @@ std = []
 
 [workspace]
 members = [
-    "test_collisions",
-    "test_bugs",
-    "test_bricks",
-    "test_pattern",
-    "tato_mquad",
+    "demo_bugs",
+    "demo_collisions",
+    "demo_pattern",
+    "demo_ponck",
+    "tato_mquad"
 ]
 
 [profile.release]

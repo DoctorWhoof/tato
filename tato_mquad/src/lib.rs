@@ -7,6 +7,7 @@ use tato::{PaletteEnum, TilesetEnum, World};
 pub struct App<T, P>
 where T:TilesetEnum, P:PaletteEnum
 {
+    pub display_overlay:bool,
     pub integer_scaling:bool,
     pub overlay_position: Vec2,
     pub overlay_line_spacing: f32,
@@ -29,6 +30,7 @@ where T:TilesetEnum, P:PaletteEnum {
         render_texture.set_filter(FilterMode::Nearest);
 
         Self {
+            display_overlay: true,
             integer_scaling: true,
             overlay_position: Vec2::new(10.0, 20.0),
             overlay_line_spacing: 16.0,
@@ -94,11 +96,16 @@ where T:TilesetEnum, P:PaletteEnum {
         );
 
         // Draw Overlay
-        for (i,item) in self.overlay.iter().enumerate() {
-            let y = (i as f32 * self.overlay_line_spacing) + self.overlay_position.y ;
-            draw_text( item, self.overlay_position.x, y, self.overlay_line_spacing, WHITE);
+        if self.display_overlay {
+            (0 .. self.overlay.len()).rev().for_each(|i|{
+                let y = (i as f32 * self.overlay_line_spacing) + self.overlay_position.y;
+                if let Some(line) = self.overlay.pop(){
+                    draw_text( &line, self.overlay_position.x, y, self.overlay_line_spacing, WHITE);
+                };
+            });
+        } else {
+            self.overlay.clear();
         }
-        self.overlay.clear();
 
         // Finish (calculate timings)
         world.finish_frame(self.time.elapsed().as_secs_f32());

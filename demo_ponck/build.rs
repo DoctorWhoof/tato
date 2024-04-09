@@ -1,21 +1,21 @@
-#[path ="src/specs.rs"]#[allow(unused)] mod specs;
+#[path ="src/specs.rs"] mod specs;
 use specs::*;
 use tato_pipe::*;
 
 
 fn main() {
-    println!("cargo:warning=Running Build Script!");
     let mut atlas = AtlasBuilder::<TilesetID, PaletteID, GroupID>::new(SPECS);
+    println!("cargo:warning=Running Build Script!");
     
-    atlas.init_tileset( TilesetID::Hud, PaletteID::Main );
+    atlas.init_tileset( TilesetID::Hud, PaletteID::Msx );
     atlas.init_font("assets/font.png", TilesetID::Hud, GroupID::None);
 
-    atlas.init_tileset( TilesetID::Sprites, PaletteID::Main );
+    atlas.init_tileset( TilesetID::Sprites, PaletteID::Msx );
     atlas.init_anim("assets/sprite_paddle.png", 10, 3, 2, TilesetID::Sprites, GroupID::None);
     atlas.init_anim("assets/sprite_puck.png", 10, 1, 1, TilesetID::Sprites, GroupID::None);
     
     
-    atlas.init_tileset( TilesetID::Bricks, PaletteID::Main );
+    atlas.init_tileset( TilesetID::Bricks, PaletteID::Msx );
     atlas.init_group("assets/groups/brick_empty.png", TilesetID::Bricks, GroupID::None, false);
 
     atlas.init_group("assets/groups/brick_silver.png", TilesetID::Bricks, GroupID::BrickSilver, true);
@@ -31,7 +31,7 @@ fn main() {
     atlas.init_tilemap("assets/level_00.png", TilesetID::Bricks, GroupID::None); // tilemap 0
     
 
-    atlas.init_tileset( TilesetID::Bg, PaletteID::Main );
+    atlas.init_tileset( TilesetID::Bg, PaletteID::Msx );
     atlas.init_group("assets/groups/floor_grille.png", TilesetID::Bg, GroupID::FloorGrille, false);
     atlas.init_group("assets/groups/floor_green.png", TilesetID::Bg, GroupID::FloorGreen, false);
     atlas.init_group("assets/groups/floor_metal.png", TilesetID::Bg, GroupID::FloorMetal, false);
@@ -40,6 +40,9 @@ fn main() {
     atlas.init_group("assets/groups/wall_green.png", TilesetID::Bg, GroupID::WallGreen, true);
 
     atlas.init_tilemap("assets/bg.png", TilesetID::Bg, GroupID::None); // tilemap 0
+
+    atlas.init_tileset( TilesetID::Title, PaletteID::Msx );
+    atlas.init_tilemap("assets/title.png", TilesetID::Title, GroupID::None); // tilemap 0
     
     atlas.save("assets/converted/atlas");
 }

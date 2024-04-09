@@ -89,6 +89,11 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    pub fn fps(&self) -> f32 {
+        1.0 / self.time_elapsed
+    }
+
+
     pub fn time_elapsed(&self) -> f32 {
         self.time_elapsed
     }
@@ -105,6 +110,16 @@ where T:TilesetEnum, P:PaletteEnum,
 
 
     // ************************************ Scene Management ***********************************
+
+
+    pub fn reset(&mut self) {
+        self.renderer.reset();
+        self.entities.clear();
+        self.colliders.clear();
+        self.collision_layers.iter_mut().for_each(|layer|{
+            layer.clear();
+        })
+    }
 
 
     pub fn entity_remove(&mut self, id: EntityID) {

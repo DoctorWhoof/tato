@@ -2,7 +2,7 @@ use crate::*;
 use macroquad::input::*;
 use tato::CollisionReaction;
 
-pub fn move_player(game: &mut Game) {
+pub fn move_player(game: &mut Game, world:&mut World) {
     // let speed_x = 30.0;
     // let speed_y = 20.0;
 
@@ -55,16 +55,17 @@ pub fn move_player(game: &mut Game) {
     let min_y = 0.0;
     let max_y = 186.0;
 
-    if let Some(col) = game.world.move_with_collision(game.paddle.id, game.paddle.vel, CollisionReaction::Slide) {
+    if let Some(col) = world.move_with_collision(game.paddle.id, game.paddle.vel, CollisionReaction::Slide) {
         game.paddle.vel = col.velocity;
-        // let hit = game.world.entity_add(10);
-        // game.world.set_shape(hit, Shape::sprite_from_anim(TilesetID::Sprites, 1));
-        // game.world.set_position(hit, col.pos);
-        // game.world.set_render_offset(hit, -3, -3);
+        game.overlay.push( format!("{:.1?}", col) );
+        // let hit = world.entity_add(10);
+        // world.set_shape(hit, Shape::sprite_from_anim(TilesetID::Sprites, 1));
+        // world.set_position(hit, col.pos);
+        // world.set_render_offset(hit, -3, -3);
         // println!("{:?}", col);
     }
 
-    if let Some(ent) = game.world.get_entity_mut(game.paddle.id) {
+    if let Some(ent) = world.get_entity_mut(game.paddle.id) {
         if ent.pos.x > max_x {
             game.paddle.vel.x = 0.0;
             ent.pos.x = max_x;
@@ -84,13 +85,14 @@ pub fn move_player(game: &mut Game) {
 }
 
 
-pub fn move_puck(game:&mut Game) {
-    // let max_speed = 90.0;
-    let safety_speed = 180.0;
-    // let deccelerate_rate = 15.0;
-    // let elapsed = game.world.time_elapsed();
+pub fn move_puck(game:&mut Game, world:&mut World) {
+    let max_speed = 120.0;
+    game.puck.vel.clamp_to_length(max_speed);
 
-    game.puck.vel.clamp_to_length(safety_speed);
+    // let safety_speed = 180.0;
+    // let deccelerate_rate = 15.0;
+    // let elapsed = world.time_elapsed();
+    // game.puck.vel.clamp_to_length(safety_speed);
     // if game.puck.vel.len() > max_speed {
     //     // println!("slow down!: {:?}", game.puck.vel.len());
     //     if game.puck.vel.x > 0.0 {
@@ -105,30 +107,33 @@ pub fn move_puck(game:&mut Game) {
     //     }
     // }
 
-    if let Some(col) = game.world.move_with_collision(game.puck.id, game.puck.vel, CollisionReaction::Bounce(1.0)){
+    
+
+    if let Some(col) = world.move_with_collision(game.puck.id, game.puck.vel, CollisionReaction::Bounce(1.0)){
         // Update puck velocity with "bounced" velocity
         game.puck.vel = col.velocity;
 
         // Destroy bricks!
         if col.colliding_entity == game.bricks {
-            if let Some(tile_col) = col.tile {           
-                     
-                fn remove_brick(tilemap: &mut Tilemap, col:u16, row:u16) {
-                    tilemap.set_tile(col, row, Tile::default());
-                    tilemap.set_tile(col, row+1, Tile::default());
-                    if col % 2 == 0 {
-                        tilemap.set_tile(col-1, row, Tile::default());
-                        tilemap.set_tile(col-1, row+1, Tile::default());
-                    } else {
-                        tilemap.set_tile(col+1, row, Tile::default());
-                        tilemap.set_tile(col+1, row+1, Tile::default());
-                    }
-                }
 
-                if let Some(ent) = game.world.get_entity_mut(game.bricks){
+            fn remove_brick(tilemap: &mut Tilemap, col:u16, row:u16) {
+                tilemap.set_tile(col, row, Tile::default());
+                tilemap.set_tile(col, row+1, Tile::default());
+                if col % 2 == 0 {
+                    tilemap.set_tile(col-1, row, Tile::default());
+                    tilemap.set_tile(col-1, row+1, Tile::default());
+                } else {
+                    tilemap.set_tile(col+1, row, Tile::default());
+                    tilemap.set_tile(col+1, row+1, Tile::default());
+                }
+            }
+
+            if let Some(tile_col) = col.tile {           
+                if let Some(ent) = world.get_entity_mut(game.bricks){
                     if let Shape::Bg { tileset_id, tilemap_id } = ent.shape {
-                        let tilemap = game.world.renderer.get_tilemap_mut(tileset_id, tilemap_id);
+                        let tilemap = world.renderer.get_tilemap_mut(tileset_id, tilemap_id);
                         remove_brick(tilemap, tile_col.col, tile_col.row);
+                        // println!("removed {}, {}", tile_col.col, tile_col.row);
                     }
                 }
             }
@@ -136,7 +141,7 @@ pub fn move_puck(game:&mut Game) {
     }
 
     // Out of bounds reset
-    if let Some(ent) = game.world.get_entity_mut(game.puck.id) {
+    if let Some(ent) = world.get_entity_mut(game.puck.id) {
         if ent.pos.x < 0.0 || ent.pos.x > 256.0 || ent.pos.y < 0.0 || ent.pos.y > 190.0 {
             game.puck.vel = Vec2::default();
             ent.pos = game.puck.initial_pos;

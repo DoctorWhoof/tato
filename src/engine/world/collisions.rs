@@ -48,6 +48,7 @@ where T:TilesetEnum, P:PaletteEnum {
                             if let Some(ref mut col) = col_accumulator {
                                 *col += current_col;
                             } else {
+                                current_col.colliding_entity = other_probe.entity_id; // Only first one
                                 col_accumulator = Some(current_col);
                             }
                         }
@@ -250,7 +251,6 @@ where T:TilesetEnum, P:PaletteEnum {
         if probe.layer > 0 {
             let layer = probe.layer as usize;
             self.probe_process(&mut probe);
-            // self.collision_layers[layer-1].push(probe);
             self.collision_layers[layer-1].insert(probe.entity_id, probe);
         }
     }

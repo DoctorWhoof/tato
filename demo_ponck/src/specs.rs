@@ -26,12 +26,13 @@ tato::tileset_enum!{
         Sprites,
         Bricks,
         Bg,
+        Title
     }
 }
 
 tato::palette_enum!{
     PaletteID {
-        Main
+        Msx,
     }
 }
 

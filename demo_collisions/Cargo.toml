@@ -1,5 +1,5 @@
 [package]
-name = "test_collisions"
+name = "demo_collisions"
 version = "0.1.0"
 edition = "2021"
 

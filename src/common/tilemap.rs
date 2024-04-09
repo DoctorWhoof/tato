@@ -175,6 +175,15 @@ impl Tilemap {
 
         let dx = x1 - x0;
         let dy = y1 - y0;
+
+        // let colliding_tile = || -> TileCollision {
+        //     let col = end_col;
+        //     let row = end_row;
+        //     TileCollision {
+        //         tile: self.get_tile(end_col, end_row),
+        //         col, row
+        //     }
+        // };
         
         // Special case: Vertical movement only
         if start_col == end_col && filter != Axis::Horizontal {   
@@ -206,7 +215,6 @@ impl Tilemap {
             }
         // Non Axis aligned movement
         } else {                
-
             // Account for concave corner on X
             let tile_x = self.get_tile(end_col, start_row);
             let (dist_x, normal_x) = if tile_x.is_collider() && filter != Axis::Vertical {(
@@ -228,15 +236,19 @@ impl Tilemap {
             )};
 
             // Return if either or both axes collided
-            if tile_x.is_collider() || tile_y.is_collider(){
-                let tile = if tile_x.is_collider() { tile_x } else { tile_y };
+            if tile_x.is_collider() || tile_y.is_collider() {
+                let (tile, col, row) = if tile_x.is_collider() {(
+                    tile_x, end_col, start_row
+                )} else {(
+                    tile_y, start_col, end_row
+                )};
                 return Some(Collision{
-                    pos: Vec2 { x: x0 + dist_x, y: y0 + dist_y },
                     normal: Vec2 { x: normal_x, y: normal_y },
+                    pos: Vec2 { x: x0 + dist_x, y: y0 + dist_y },
                     t: Vec2 { x:dist_x.abs() / dx.abs(), y:dist_y.abs() / dy.abs()  },
-                    tile: Some( TileCollision{ tile, col:end_col, row:end_row } ),
-                    velocity: Vec2::zero(),
+                    tile: Some( TileCollision{ tile, col, row } ),
                     colliding_entity: Default::default(),
+                    velocity: Vec2::zero(),
                 })
                 
             // Otherwise check for a convex corner collision at the end tile coordinates (won't "slide")
@@ -244,8 +256,8 @@ impl Tilemap {
                 let tile = self.get_tile(end_col, end_row);
                 if tile.is_collider(){
                     // To avoid getting stuck in a corner, we return a collision in one axis only
-                    // May still cause hiccups in small horizontal gaps (i.e. 1 tile wide)
-                    if dx.abs() >= dy.abs() { 
+                    // May still cause hiccups in vertical gaps smaller than collider.
+                    if dx.abs() < dy.abs() { 
                         if filter != Axis::Vertical {
                             let dist = if dx.is_sign_positive() { x0.ceil() - x0 } else { x - x0 };
                             return Some(Collision{

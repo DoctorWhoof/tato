@@ -339,7 +339,10 @@ where T:Float {
                 y: self.t.y.min(other.t.y)
             },
             pos: self.pos.average(&other.pos),
-            normal: self.normal + other.normal,
+            normal: Vec2 {
+                x:(self.normal.x + other.normal.x).clamp(-T::one(), T::one()),
+                y:(self.normal.y + other.normal.y).clamp(-T::one(), T::one())
+            },
             velocity: self.velocity + other.velocity,
             colliding_entity: self.colliding_entity,
             tile: self.tile,
