@@ -220,8 +220,8 @@ where T:TilesetEnum, P:PaletteEnum {
             w,
             h,
         };
-
-        Some((tilemap.get_tile(col, row), tile_rect))
+        let tile = tilemap.get_tile(col, row)?;
+        Some((tile, tile_rect))
     }
 
 

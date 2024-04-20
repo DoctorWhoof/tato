@@ -1,24 +1,25 @@
 use crate::*;
 
-pub fn title(atlas:&Atlas, world:&mut World<>) -> State {
+pub fn title(atlas:&Atlas, world:&mut World<>) -> Scene {
     
     world.renderer.load_tileset(atlas, TilesetID::Title);
     world.renderer.load_tileset(atlas, TilesetID::Hud);
 
     // BG
-    let bg = world.entity_add(0);
+    let bg = world.entity_add(100);
     world.set_shape(bg, Shape::Bg { tileset_id: TilesetID::Title.into(), tilemap_id: 0});
     
-    State::Title(
-        Title {
-            bg
-        }
-    )
+    Scene::Title
+    // Scene::Title(
+    //     Title {
+    //         bg
+    //     }
+    // )
 }
 
-pub fn game(atlas:&Atlas, world:&mut World<>) -> State {
+pub fn game(atlas:&Atlas, world:&mut World<>) -> Scene {
     // spud init
-    world.renderer.load_palettes_from_atlas(atlas);
+    // world.renderer.load_palettes_from_atlas(atlas);
     world.renderer.load_tileset(atlas, TilesetID::Hud);
     world.renderer.load_tileset(atlas, TilesetID::Bricks);
     world.renderer.load_tileset(atlas, TilesetID::Bg);
@@ -73,12 +74,15 @@ pub fn game(atlas:&Atlas, world:&mut World<>) -> State {
     };
 
     // Return
-    State::Game(
-        Game {
+    Scene::Gameplay(
+        Some(Game {
             paddle,
             puck,
             bricks,
+            score: 0,
+            zone: 0,
+            zone_count: 2,
             overlay: vec![]
-        }
+        })
     )
 }

@@ -67,9 +67,9 @@ where T:TilesetEnum, P:PaletteEnum,
 
     // Does not reset pixels (seems unncessary?)
     pub fn reset(&mut self) {
-        self.palettes.iter_mut().for_each(|p|{
-            *p = None;
-        });
+        // self.palettes.iter_mut().for_each(|p|{
+        //     *p = None;
+        // });
         self.partitions.iter_mut().for_each(|p|{
             *p = None;
         });
@@ -81,12 +81,12 @@ where T:TilesetEnum, P:PaletteEnum,
         // rect_coords:            Vec<Vec2<u16>>,
     }
 
-    // TODO: Incorporate into "load_tileset"?
-    pub fn load_palettes_from_atlas(&mut self, atlas:&Atlas<T,P>) {
-        for (i, palette) in self.palettes.iter_mut().enumerate() {
-            *palette = Some(atlas.palettes[i].clone());
-        };
-    }
+    // // TODO: Incorporate into "load_tileset"?
+    // pub fn load_palettes_from_atlas(&mut self, atlas:&Atlas<T,P>) {
+    //     for (i, palette) in self.palettes.iter_mut().enumerate() {
+    //         *palette = Some(atlas.palettes[i].clone());
+    //     };
+    // }
 
 
     pub fn pop_tileset(&mut self) {

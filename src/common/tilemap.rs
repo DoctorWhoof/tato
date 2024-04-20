@@ -126,24 +126,27 @@ impl Tilemap {
     }
 
 
-    fn get_index(&self, col:u16, row:u16) -> usize {
+    fn get_index(&self, col:u16, row:u16) -> Option<usize> {
         #[cfg(debug_assertions)]
         if col >= self.cols || row >= self.rows {
-            panic!("Invalid tilemap coordinates {}, {}", col, row)
+            // panic!("Invalid tilemap coordinates {}, {}", col, row)
+            return None
         }
-        (row as usize * self.cols as usize) + col as usize
+        Some((row as usize * self.cols as usize) + col as usize)
     }
 
 
     #[allow(unused)]
     pub fn set_tile(&mut self, col:u16, row:u16, value:Tile) {
-        self.tiles[ self.get_index(col, row) ] = value;
+        if let Some(index) = self.get_index(col, row) {
+            self.tiles[index] = value;
+        }
     }
 
 
-    pub fn get_tile(&self, col:u16, row:u16) -> Tile {
-        let index = self.get_index(col, row);
-        self.tiles[index]
+    pub fn get_tile(&self, col:u16, row:u16) -> Option<Tile> {
+        let index = self.get_index(col, row)?;
+        Some(self.tiles[index])
     }
 
 
@@ -187,7 +190,7 @@ impl Tilemap {
         
         // Special case: Vertical movement only
         if start_col == end_col && filter != Axis::Horizontal {   
-            let tile = self.get_tile(end_col, end_row);
+            let tile = self.get_tile(end_col, end_row)?;
             if tile.is_collider(){
                 let dist_y = if dy.is_sign_positive() { y0.ceil() - y0 } else { y - y0 };
                 return Some(Collision{
@@ -202,7 +205,7 @@ impl Tilemap {
         // Special case: Horizontal movement only
         } else if start_row == end_row && filter != Axis::Vertical {
             let dist_x = if dx.is_sign_positive() { x0.ceil() - x0 } else { x - x0 };
-            let tile = self.get_tile(end_col, end_row);
+            let tile = self.get_tile(end_col, end_row)?;
             if tile.is_collider(){
                 return Some(Collision{
                     pos: Vec2 { x: x0 + dist_x, y: y0 },
@@ -216,7 +219,7 @@ impl Tilemap {
         // Non Axis aligned movement
         } else {                
             // Account for concave corner on X
-            let tile_x = self.get_tile(end_col, start_row);
+            let tile_x = self.get_tile(end_col, start_row)?;
             let (dist_x, normal_x) = if tile_x.is_collider() && filter != Axis::Vertical {(
                 if dx.is_sign_positive() { x0.ceil() - x0 } else { x - x0 },
                 -dx.signum()
@@ -226,7 +229,7 @@ impl Tilemap {
             )};
 
             // Account for concave corner on Y
-            let tile_y = self.get_tile(start_col, end_row);
+            let tile_y = self.get_tile(start_col, end_row)?;
             let (dist_y, normal_y) = if tile_y.is_collider() && filter != Axis::Horizontal {(
                 if dy.is_sign_positive() { y0.ceil() - y0 } else { y - y0 },
                 -dy.signum()
@@ -253,7 +256,7 @@ impl Tilemap {
                 
             // Otherwise check for a convex corner collision at the end tile coordinates (won't "slide")
             } else {    
-                let tile = self.get_tile(end_col, end_row);
+                let tile = self.get_tile(end_col, end_row)?;
                 if tile.is_collider(){
                     // To avoid getting stuck in a corner, we return a collision in one axis only
                     // May still cause hiccups in vertical gaps smaller than collider.
@@ -379,7 +382,7 @@ impl Tilemap {
 
             if dist > line_length {  break }
             if coords.x > -1 && coords.x < self.cols as i32 && coords.y > -1 && coords.y < self.rows as i32 {
-                let tile = self.get_tile(coords.x as u16, coords.y as u16);
+                let tile = self.get_tile(coords.x as u16, coords.y as u16)?;
                 if tile.is_collider() {
                     // Calculate the precise intersection point
                     let edge_x = T::from(if dir.x < T::zero() { coords.x + 1 } else { coords.x })?;

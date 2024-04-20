@@ -133,6 +133,7 @@ pub fn move_puck(game:&mut Game, world:&mut World) {
                     if let Shape::Bg { tileset_id, tilemap_id } = ent.shape {
                         let tilemap = world.renderer.get_tilemap_mut(tileset_id, tilemap_id);
                         remove_brick(tilemap, tile_col.col, tile_col.row);
+                        game.score += 10;
                         // println!("removed {}, {}", tile_col.col, tile_col.row);
                     }
                 }

@@ -6,7 +6,7 @@ use crate::{Game, Layer, TilesetID};
 pub fn frame(game:&mut Game) {
     // Debug Input
     if is_key_pressed(KeyCode::A) { game.world.debug_atlas = !game.world.debug_atlas }
-    if is_key_pressed(KeyCode::W) { game.world.debug_pivot = !game.world.debug_pivot }
+    if is_key_pressed(KeyCode::W) { game.world.debug_wireframe = !game.world.debug_wireframe }
     if is_key_pressed(KeyCode::C) { game.world.debug_colliders = !game.world.debug_colliders }
 
     // Player

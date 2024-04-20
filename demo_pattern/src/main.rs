@@ -51,7 +51,7 @@ async fn main() {
         // Update game and render entities 
         if mquad::is_key_down(mquad::KeyCode::LeftSuper) && mquad::is_key_pressed(mquad::KeyCode::Q) { break; }
         if mquad::is_key_pressed(mquad::KeyCode::A) { world.debug_atlas = !world.debug_atlas }
-        if mquad::is_key_pressed(mquad::KeyCode::W) { world.debug_pivot = !world.debug_pivot }
+        if mquad::is_key_pressed(mquad::KeyCode::W) { world.debug_wireframe = !world.debug_wireframe }
 
         // Update
         for (i, tile) in grid.iter().enumerate() {

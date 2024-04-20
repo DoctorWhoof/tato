@@ -45,7 +45,7 @@ where T:TilesetEnum, P:PaletteEnum,
         };
 
         // Palette Count
-        let palette_count =  cursor.advance() as usize;
+        let palette_count = cursor.advance() as usize;
 
         // Tileset Count
         let tileset_count = cursor.advance() as usize;

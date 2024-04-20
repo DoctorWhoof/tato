@@ -45,7 +45,7 @@ async fn main() {
     // Spud init
     let mut world = World::<TilesetID, PaletteID>::new(specs);
     world.debug_colliders = true;   
-    world.debug_pivot = true;   
+    world.debug_wireframe = true;   
 
     let ent_main = world.entity_add(0);
     let initial_position = tato::Vec2{x:160.0, y:100.0};

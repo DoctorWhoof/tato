@@ -22,27 +22,21 @@ fn window_conf() -> Conf {
     }
 }
 
-enum State {
-    None,
-    Title(Title),
-    Game(Game)
-}
-
-enum NewState {
+enum Scene {
     None,
     Title,
-    Game
+    Gameplay(Option<Game>) // The Game struct is optional since it can be not-initialized
 }
 
-struct Title {
-    bg: EntityID
-}
 
 struct Game {
     // world:World<TilesetID, PaletteID>,
     paddle: Paddle,
     puck: Puck,
     bricks: EntityID,
+    score: u32,
+    zone: u8,
+    zone_count: u8,
     overlay: Vec<String>
 }
 
@@ -51,25 +45,26 @@ pub type World = tato::World<TilesetID, PaletteID>;
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    let mut world = World::new(SPECS);
     let atlas = Atlas::load(SPECS, include_bytes!("../assets/converted/atlas"));
     let font_left = FontInfo { tileset_id: TilesetID::Hud.into(), font: 0, depth: 200, align_right: false };
     let font_right = FontInfo { tileset_id: TilesetID::Hud.into(), font: 0, depth: 200, align_right: true };
 
-    let mut new_state = NewState::Title;
-    let mut state = State::None;
-    let mut world = World::new(SPECS);
+    let mut new_state = Scene::Title;
+    let mut state = Scene::None;
+    // world.renderer.load_palettes_from_atlas(&atlas);
 
     // Mquad App init and loop
     let mut app = App::new(&world);
     loop {
         // Init state if new_state changed.
         match new_state {
-            NewState::None => {},
-            NewState::Title => {
+            Scene::None => {},
+            Scene::Title => {
                 world.reset();
                 state = init::title(&atlas, &mut world);
             },
-            NewState::Game => {
+            Scene::Gameplay(_) => {
                 world.reset();
                 state = init::game(&atlas, &mut world);
             },
@@ -77,7 +72,7 @@ async fn main() {
 
         // new_state is always set to None on every frame after processing it.
         // The update code below can set it to something else as needed.
-        new_state = NewState::None;
+        new_state = Scene::None;
 
         // Frame start
         app.start_frame(&mut world);
@@ -85,30 +80,29 @@ async fn main() {
         // Update for all states
         if is_key_down(KeyCode::LeftSuper) && is_key_pressed(KeyCode::Q) { break; }
         if is_key_pressed(KeyCode::A) { world.debug_atlas = !world.debug_atlas }
-        if is_key_pressed(KeyCode::D) { world.debug_pivot = !world.debug_pivot }
+        if is_key_pressed(KeyCode::D) { world.debug_wireframe = !world.debug_wireframe }
         if is_key_pressed(KeyCode::C) { world.debug_colliders = !world.debug_colliders }
         if is_key_pressed(KeyCode::O) { app.display_overlay = ! app.display_overlay }
 
-        // State specific update
+        // Scene specific update
         match state {
-            State::None => {}
-            State::Title(_) => {
+            Scene::Title => {
                 world.framebuf.clear(Color24::black());
                 world.draw_text("PRESS START", 80, 160, &font_left);
                 if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::Z) {
-                    new_state = NewState::Game;
+                    new_state = Scene::Gameplay(None);
                 }
             },
-            State::Game(ref mut game) => {
+            Scene::Gameplay(Some(ref mut game)) => {
                 world.framebuf.clear(Color24::gray_dark());
                 if is_key_pressed(KeyCode::Escape) {
-                    new_state = NewState::Title;
+                    new_state = Scene::Title;
                 }
 
                 update::move_player(game, &mut world);
                 update::move_puck(game, &mut world);
 
-                world.draw_text("1234", 8, 8, &font_left);
+                world.draw_text(&format!("{}", game.score), 8, 8, &font_left);
                 world.draw_text("ZONE 1", 248, 8, &font_right);
 
                 app.push_overlay(format!("Pos: {:?}", world.get_position(game.paddle.id)));
@@ -119,7 +113,8 @@ async fn main() {
                     }
                 });
         
-            }
+            },
+            _ => {}
         }
         
         // Render

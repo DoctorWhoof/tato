@@ -103,6 +103,7 @@ where T:TilesetEnum, P:PaletteEnum {
                     // Draw tiles
                     let anim = self.renderer.get_anim(tileset_id, anim_id);
                     let frame = anim.frame(self.time);
+
                     let Some(palette) = &self.renderer.palettes[anim.palette as usize] else { return };
 
                     let mut draw_tile = |col: u8, row: u8| {
@@ -139,7 +140,7 @@ where T:TilesetEnum, P:PaletteEnum {
                     }
                 }
 
-                Shape::Bg { tileset_id, tilemap_id} => {
+                Shape::Bg { tileset_id, tilemap_id } => {
                     if !self.draw_tilemaps {
                         continue;
                     }
@@ -150,7 +151,8 @@ where T:TilesetEnum, P:PaletteEnum {
                     let Some(vis_rect) = world_rect.intersect(cam_rect) else {
                         continue;
                     };
-                    let Some(palette) = &self.renderer.palettes[tilemap.palette as usize] else { return };
+
+                    let Some(palette) = &self.renderer.palettes[tilemap.palette as usize] else { continue };
 
                     // At least a part of tilemap is visible. Render visible tiles within it.
                     let left_col = (vis_rect.x - world_rect.x) / tile_width;
@@ -168,7 +170,7 @@ where T:TilesetEnum, P:PaletteEnum {
                     // Acquire and render tiles
                     for row in top_col..bottom_col {
                         for col in left_col..right_col {
-                            let tile = tilemap.get_tile(col as u16, row as u16);
+                            let Some(tile) = tilemap.get_tile(col as u16, row as u16) else { continue };
                             let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset as usize);
 
                             let tile_rect = Rect::<i32>::from(self.renderer.get_rect(tile.index as usize));
@@ -184,7 +186,7 @@ where T:TilesetEnum, P:PaletteEnum {
                                 w: tile_rect.w,
                                 h: tile_rect.h,
                             };
-                            Self::draw_tile(
+                            Self::draw_tile (
                                 &mut self.framebuf,
                                 &self.renderer,
                                 world_tile_rect,
@@ -200,7 +202,7 @@ where T:TilesetEnum, P:PaletteEnum {
 
             // Draw pivot point
             #[cfg(debug_assertions)]
-            if self.debug_pivot {
+            if self.debug_wireframe {
                 let rect = self.get_entity_rect(entity).to_i32();
                 if let Some(vis_rect) = rect.intersect(cam_rect) {
                     self.framebuf
