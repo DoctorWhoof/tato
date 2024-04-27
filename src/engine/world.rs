@@ -112,6 +112,7 @@ where T:TilesetEnum, P:PaletteEnum,
     // ************************************ Scene Management ***********************************
 
 
+    /// Wipes out entities, colliders and tilesets!
     pub fn reset(&mut self) {
         self.renderer.reset();
         self.entities.clear();

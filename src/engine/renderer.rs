@@ -3,26 +3,25 @@ use core::marker::PhantomData;
 use crate::*;
 use alloc::{vec, vec::Vec};
 
-// Max number of assets that can be loaded simultaneously.
-// Pixel capacity is determined by atlas size and tile size.
-const FONT_CAPACITY:usize = 8;
-const ANIM_CAPACITY:usize = 32;
-const TILEMAP_CAPACITY:usize = 8;
+// const FONT_CAPACITY:usize = 4;
+// const ANIM_CAPACITY:usize = 32;
+// const TILEMAP_CAPACITY:usize = 8;
 
 /// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
 pub struct Renderer<T, P>
 where T:TilesetEnum, P:PaletteEnum {
-    pub(crate) palettes:    Vec<Option<Palette>>,
-    rect_coords:            Vec<Vec2<u16>>,
-    specs:                  Specs,
-    tileset_marker:         PhantomData<T>,
-    palette_marker:         PhantomData<P>,
+    pub(crate) palettes:            Vec<Option<Palette>>,
+    rect_coords:                    Vec<Vec2<u16>>,
+    specs:                          Specs,
 
     pub(crate) tile_indices:        BlockPool<u16>,
-    tile_pixels:                         BlockPool<u8>,
+    tile_pixels:                    BlockPool<u8>,
     fonts:                          BlockPool<Font>,
     anims:                          BlockPool<Anim>,
     tilemaps:                       BlockPool<Tilemap>,
+
+    tileset_marker:                 PhantomData<T>,
+    palette_marker:                 PhantomData<P>,
 }
 
 
@@ -57,9 +56,9 @@ where T:TilesetEnum, P:PaletteEnum {
 
             tile_pixels: BlockPool::new(specs.atlas_width as usize * specs.atlas_height as usize, tileset_count, 0),
             tile_indices: BlockPool::new(tile_count as usize, tileset_count, 0),
-            fonts: BlockPool::new(FONT_CAPACITY, tileset_count, Font::non_init()),
-            anims: BlockPool::new(ANIM_CAPACITY, tileset_count, Anim::non_init()),
-            tilemaps: BlockPool::new(TILEMAP_CAPACITY, tileset_count, Tilemap::non_init()),
+            fonts: BlockPool::new(specs.max_loaded_fonts.into(), tileset_count, Font::non_init()),
+            anims: BlockPool::new(specs.max_loaded_anims.into(), tileset_count, Anim::non_init()),
+            tilemaps: BlockPool::new(specs.max_loaded_tilemaps.into(), tileset_count, Tilemap::non_init()),
         }
     }
 
@@ -106,11 +105,25 @@ where T:TilesetEnum, P:PaletteEnum {
         // println!("loading tileset: {}", id);
         // println!("\npixels: {}", self.tile_pixels.data.len());
         
-        self.tile_pixels.init_block(id, tileset.pixels.len(), 0)?;
-        self.tile_indices.init_block(id, tileset.tile_count.into(), 0)?;
-        self.fonts.init_block(id, tileset.fonts().len(), Font::non_init())?;
-        self.anims.init_block(id, tileset.anims().len(), Anim::non_init())?;
-        self.tilemaps.init_block(id, tileset.tilemaps().len(), Tilemap::non_init())?;
+        if let Err(msg) = self.tile_pixels.init_block(id, tileset.pixels.len(), 0){
+            panic!("Renderer: Error loading tileset pixels: '{msg}'");
+        };
+
+        if let Err(msg) = self.tile_indices.init_block(id, tileset.tile_count.into(), 0){
+            panic!("Renderer: Error loading tileset pixels: '{msg}'");
+        }
+        
+        if let Err(msg) = self.fonts.init_block(id, tileset.fonts().len(), Font::non_init()){
+            panic!("Renderer: Error loading tileset fonts: '{msg}'");
+        }
+        
+        if let Err(msg) = self.anims.init_block(id, tileset.anims().len(), Anim::non_init()){
+            panic!("Renderer: Error loading tileset anims: '{msg}'");
+        }
+        
+        if let Err(msg) = self.tilemaps.init_block(id, tileset.tilemaps().len(), Tilemap::non_init()){
+            panic!("Renderer: Error loading tileset tilemaps: '{msg}'");
+        }
 
         let block_start = if let Some(block) = self.tile_indices.get_block(tileset_id.into()){
             block.start

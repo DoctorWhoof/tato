@@ -8,6 +8,9 @@ pub const SPECS:Specs = Specs {
     tile_width: 8,
     tile_height: 8,
     colors_per_palette: 16,
+    max_loaded_anims: 4,
+    max_loaded_fonts: 1,
+    max_loaded_tilemaps: 1,
 };
 
 collision_layer_enum!{

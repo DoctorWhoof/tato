@@ -2,8 +2,8 @@ use crate::*;
 
 pub fn title(atlas:&Atlas, world:&mut World<>) -> Scene {
     
-    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Title) { println!("{}", msg) }
     if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Hud) { println!("{}", msg) }
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Title) { println!("{}", msg) }
 
     // BG
     let bg = world.entity_add(100);

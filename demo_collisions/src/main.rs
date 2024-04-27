@@ -36,6 +36,9 @@ async fn main() {
         tile_width: 8,
         tile_height: 8,
         colors_per_palette: 16,
+        max_loaded_anims: 0,
+        max_loaded_fonts: 0,
+        max_loaded_tilemaps: 0,
     };
 
     // Can't init World without tileset and palette ids, so let's make some basic ones

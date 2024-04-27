@@ -30,7 +30,6 @@ where T: Clone {
     pub fn new(item_capacity:usize, block_capacity:u8, default_item:T) -> Self {
         BlockPool {
             data: (0..item_capacity).map(|_| default_item.clone() ).collect(),
-            // data: vec![],
             blocks: (0..block_capacity).map(|_| None ).collect(),
             item_head: 0,
             item_capacity,
