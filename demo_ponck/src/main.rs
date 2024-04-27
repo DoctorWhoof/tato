@@ -106,11 +106,11 @@ async fn main() {
 
                 app.push_overlay(format!("Pos: {:?}", world.get_position(game.paddle.id)));
                 // Additional  game overlay
-                (0 .. game.overlay.len()).rev().for_each(|_|{
+                for _ in (0 .. game.overlay.len()).rev(){
                     if let Some(line) = game.overlay.pop(){
                         app.push_overlay(line);
                     }
-                });
+                };
         
             },
             _ => {}

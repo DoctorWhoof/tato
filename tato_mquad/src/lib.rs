@@ -99,11 +99,13 @@ where T:TilesetEnum, P:PaletteEnum {
         if self.display_overlay {
             (0 .. self.overlay.len()).rev().for_each(|i|{
                 let y = (i as f32 * self.overlay_line_spacing) + self.overlay_position.y;
+                // Removes each line as it draws them
                 if let Some(line) = self.overlay.pop(){
                     draw_text( &line, self.overlay_position.x, y, self.overlay_line_spacing, WHITE);
                 };
             });
         } else {
+            // Ensures overlay is kept empty on every frame if it's not being displayed
             self.overlay.clear();
         }
 
