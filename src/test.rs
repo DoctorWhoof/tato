@@ -68,7 +68,6 @@ fn sweep_point_in_rect() {
 
     // let result = broad_rect.contains(point.x + point_vel.x, point.y + point_vel.y);
     // println!("Collision result: {} for {:.1?} & {:.1?}", result, point + point_vel, rect + rect_vel);
-
 }
 
 
@@ -116,7 +115,64 @@ fn ring_pool() {
         assert_eq!(pool.len(), len + n as usize);
     }
 
+}
 
 
+
+#[test]
+fn asset_manager() {
+
+    let mut mng = BlockPool::<i32>::new(25, 5, 0);
+
+    assert!(mng.init_block(2, 5, 0).is_ok());
+    assert!(mng.init_block(1, 10, 0).is_ok());
+    assert!(mng.init_block(0, 10, 0).is_ok());
+
+    // Test exceeding total item capacity 
+    assert!(mng.init_block(3, 55, 0).is_err());
+
+    assert!(mng.get_block(0).is_some());
+    assert!(mng.get_block(1).is_some());
+    assert!(mng.get_block(2).is_some());
+    assert!(mng.get_block(3).is_none());
+    assert!(mng.get_block(4).is_none());
+
+    for i in 0 .. 10 {
+        assert!(mng.add_item_to_block(0, i).is_ok());
+        assert!(mng.add_item_to_block(1, i+10).is_ok());
+    }
+
+    for i in 0 .. 5 {
+        assert!(mng.add_item_to_block(2, i+100).is_ok());
+    }
+
+    // Test exceeding block capacity
+    assert!(mng.add_item_to_block(0, 55).is_err());
+    assert!(mng.add_item_to_block(1, 55).is_err());
+    assert!(mng.add_item_to_block(2, 55).is_err());
+
+    // Remove block
+    assert!(mng.remove_block(1).is_ok());
+
+    // Add new block now that we have free space
+    assert!(mng.init_block(3, 10, 0).is_ok());
+    for i in 0 .. 10 {
+        assert!(mng.add_item_to_block(3, i+1000).is_ok());
+    }
+
+    // println!("Blocks:");
+    // for i in 0 .. 5 {
+    //     if let Some(block) = mng.get_block(i) {
+    //         println!("{:?}", block);
+    //     }
+    // }
+
+    // println!("Items:");
+    // for item in mng.get_data() {
+    //     println!("    {item}")
+    // }
+    for i in 5 .. 15 {
+        assert!(mng.get_data()[i] == (i-5) as i32)
+    }
 
 }

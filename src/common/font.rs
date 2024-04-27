@@ -21,6 +21,12 @@ pub struct FontInfo {
 
 
 impl Font {
+
+    // For internal use only. Helps populate containers with "default" values even when a default font makes no sense.
+    pub(crate) fn non_init() -> Self {
+        Self { id: 0, start_index: 0, len: 0, tileset_id: 0 }
+    }
+
     
     pub fn last(&self) -> u8 { self.start_index + self.len - 1 }
 
@@ -42,5 +48,6 @@ impl Font {
             tileset_id: cursor.advance(),
         }
     }
+    
 
 }

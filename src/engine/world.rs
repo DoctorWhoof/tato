@@ -9,7 +9,7 @@ pub(crate) type ProbeMap = Vec<SecondaryMap<EntityID, CollisionProbe<f32>>>;
 
 mod collisions;
 mod frame_events;
-mod render;
+mod rendering;
 mod transform;
 
 /// A World contains all necessary data to render and detect collisions on entities, including the
@@ -176,16 +176,5 @@ where T:TilesetEnum, P:PaletteEnum,
         &mut self.renderer
     )}
 
-
-    // fn get_collision_members(&self) -> (
-    //     &SlotMap<EntityID, Entity>,
-    //     &ColliderMap,
-    //     &Vec<Vec<CollisionProbe<f32>>>,
-    // )
-    // {(
-    //     &self.entities,
-    //     &self.colliders,
-    //     &self.collision_layers,
-    // )}
 
 }

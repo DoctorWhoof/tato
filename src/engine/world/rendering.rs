@@ -86,9 +86,9 @@ where T:TilesetEnum, P:PaletteEnum {
                 0
             };
 
-            let abs_tile_id = self
-                .renderer
-                .get_tile(u8::try_from(index).unwrap(), font.tileset_id as usize);
+            let abs_tile_id = self.renderer.get_tile(
+                u8::try_from(index).unwrap(), font.tileset_id
+            );
 
             Self::draw_tile(
                 &mut self.framebuf,

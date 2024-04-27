@@ -3,42 +3,50 @@ use core::marker::PhantomData;
 use crate::*;
 use alloc::{vec, vec::Vec};
 
+// Max number of assets that can be loaded simultaneously.
+// Pixel capacity is determined by atlas size and tile size.
+const FONT_CAPACITY:usize = 8;
+const ANIM_CAPACITY:usize = 32;
+const TILEMAP_CAPACITY:usize = 8;
+
 /// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
 pub struct Renderer<T, P>
-where T:TilesetEnum, P:PaletteEnum,
-{
-    pub(crate) partitions:  Vec<Option<Partition>>,
+where T:TilesetEnum, P:PaletteEnum {
     pub(crate) palettes:    Vec<Option<Palette>>,
-    partition_top:          Option<u8>,
-    fonts:                  Vec<Font>,
-    anims:                  Vec<Anim>,
-    tilemaps:               Vec<Tilemap>,
-    pixels:                 Vec<u8>,
     rect_coords:            Vec<Vec2<u16>>,
+    specs:                  Specs,
     tileset_marker:         PhantomData<T>,
     palette_marker:         PhantomData<P>,
-    specs: Specs,
+
+    pub(crate) tile_indices:        BlockPool<u16>,
+    tile_pixels:                         BlockPool<u8>,
+    fonts:                          BlockPool<Font>,
+    anims:                          BlockPool<Anim>,
+    tilemaps:                       BlockPool<Tilemap>,
 }
 
 
 impl<T, P> Renderer<T, P>
-where T:TilesetEnum, P:PaletteEnum,
-{
+where T:TilesetEnum, P:PaletteEnum {
     pub(crate) fn new(specs:Specs) -> Self {
 
+        let tile_count = (specs.atlas_width as usize * specs.atlas_height as usize) / (specs.tile_width as usize * specs.tile_height as usize);
+        let tile_count = u16::try_from(tile_count)
+            .expect("Renderer Error: Tile count can't be higher than 65535");
+
         #[cfg(feature = "std")]{
-            let tile_count = (specs.atlas_width as usize * specs.atlas_height as usize) / (specs.tile_width as usize * specs.tile_height as usize);
             println!("Renderer: Creating new Renderer with {} tiles.", tile_count);
         }
 
+        let tileset_count = u8::try_from(T::count())
+            .expect("Renderer Error: Tileset enum count can't be higher than 255");
+
         Renderer {
-            pixels: vec![0; specs.atlas_width as usize * specs.atlas_height as usize],
-            palettes: vec![None; P::count()],
-            partitions: vec![None; T::count()],
-            partition_top: None,
-            fonts: vec![],
-            anims: vec![],
-            tilemaps: vec![],
+            palettes: vec![None; T::count()],
+            specs,
+            tileset_marker: Default::default(),
+            palette_marker: Default::default(),
+
             // Generates all tile rects
             rect_coords: (0 .. 256).map( |i| {
                 let tile_x = i * specs.tile_width as usize;
@@ -46,9 +54,12 @@ where T:TilesetEnum, P:PaletteEnum,
                 let y = u16::try_from((tile_x / specs.atlas_height as usize) * specs.tile_height as usize).unwrap();
                 Vec2{ x, y }
             }).collect(),
-            specs,
-            tileset_marker: Default::default(),
-            palette_marker: Default::default()
+
+            tile_pixels: BlockPool::new(specs.atlas_width as usize * specs.atlas_height as usize, tileset_count, 0),
+            tile_indices: BlockPool::new(tile_count as usize, tileset_count, 0),
+            fonts: BlockPool::new(FONT_CAPACITY, tileset_count, Font::non_init()),
+            anims: BlockPool::new(ANIM_CAPACITY, tileset_count, Anim::non_init()),
+            tilemaps: BlockPool::new(TILEMAP_CAPACITY, tileset_count, Tilemap::non_init()),
         }
     }
 
@@ -65,203 +76,133 @@ where T:TilesetEnum, P:PaletteEnum,
     pub fn tile_height(&self) -> u8 { self.specs.tile_height }
 
 
-    // Does not reset pixels (seems unncessary?)
+    // Does not reset pixels (seems unnecessary?)
     pub fn reset(&mut self) {
-        // self.palettes.iter_mut().for_each(|p|{
-        //     *p = None;
-        // });
-        self.partitions.iter_mut().for_each(|p|{
-            *p = None;
-        });
+        self.tile_pixels.clear();
+        self.tile_indices.clear();
         self.fonts.clear();
-        self.partition_top = None;
         self.anims.clear();
         self.tilemaps.clear();
-        // pixels:                 Vec<u8>,
-        // rect_coords:            Vec<Vec2<u16>>,
-    }
-
-    // // TODO: Incorporate into "load_tileset"?
-    // pub fn load_palettes_from_atlas(&mut self, atlas:&Atlas<T,P>) {
-    //     for (i, palette) in self.palettes.iter_mut().enumerate() {
-    //         *palette = Some(atlas.palettes[i].clone());
-    //     };
-    // }
-
-
-    pub fn pop_tileset(&mut self) {
-        // self.partitions.pop();
-        if let Some(ref mut top_index) = self.partition_top {
-            let Some(partition) = &self.partitions[*top_index as usize] else { unreachable!() };
-            let previous = partition.previous;
-
-            self.partitions[*top_index as usize] = None;
-
-            if let Some(previous) = previous {
-                *top_index = previous;
-            } else {
-                self.partition_top = None;
-            }
-        }
     }
 
 
-    pub fn load_tileset(&mut self, atlas:&Atlas<T,P>, tileset_id:impl TilesetEnum) {
+    pub fn remove_tileset(&mut self, index:impl Into<u8>) -> Result<(), &'static str> {
+        let index:u8 = index.into();
+        self.tile_pixels.remove_block(index)?;
+        self.tile_indices.remove_block(index)?;
+        self.fonts.remove_block(index)?;
+        self.anims.remove_block(index)?;
+        self.tilemaps.remove_block(index)?;
+        Ok(())
+    }
+
+
+    // TODO: return result
+    pub fn load_tileset(&mut self, atlas:&Atlas<T,P>, tileset_id:impl TilesetEnum) -> Result<(), &'static str> {
         let id:u8 = tileset_id.into();
         let tileset = &atlas.tilesets[id as usize];
         let palette = &atlas.palettes[tileset.debug_palette as usize];
 
-        // Create new partition for tileset
-        let partition = if let Some(top_index) = self.partition_top {
-            let Some(top) = &self.partitions[top_index as usize] else { unreachable!() };
-             Partition {
-                previous: Some(top_index),
-                tiles_start_index: top.tiles_start_index + top.tiles_len as u16,
-                fonts_start_index: top.fonts_start_index + top.fonts_len,
-                anims_start_index: top.anims_start_index + top.anims_len,
-                tilemaps_start_index: top.tilemaps_start_index +  top.tilemaps_len,
-                tiles_len: tileset.tile_count(),
-                fonts_len: tileset.font_count(),
-                anims_len: tileset.anim_count(),
-                tilemaps_len: tileset.tilemap_count(),
-                debug_palette: tileset.debug_palette,
-            }
+        // println!("loading tileset: {}", id);
+        // println!("\npixels: {}", self.tile_pixels.data.len());
+        
+        self.tile_pixels.init_block(id, tileset.pixels.len(), 0)?;
+        self.tile_indices.init_block(id, tileset.tile_count.into(), 0)?;
+        self.fonts.init_block(id, tileset.fonts().len(), Font::non_init())?;
+        self.anims.init_block(id, tileset.anims().len(), Anim::non_init())?;
+        self.tilemaps.init_block(id, tileset.tilemaps().len(), Tilemap::non_init())?;
+
+        let block_start = if let Some(block) = self.tile_indices.get_block(tileset_id.into()){
+            block.start
         } else {
-            Partition {
-                previous: None,
-                tiles_start_index: 0,
-                fonts_start_index: 0,
-                anims_start_index: 0,
-                tilemaps_start_index: 0,
-                tiles_len: tileset.tile_count(),
-                fonts_len: tileset.font_count(),
-                anims_len: tileset.anim_count(),
-                tilemaps_len: tileset.tilemap_count(),
-                debug_palette: tileset.debug_palette,
-            }
+            panic!("Renderer: Error, block {} not initialized", id)
         };
 
         // Copying pixels has to be tile-formatted, otherwise tile rows that end halfway through don't copy correctly
         // TODO: I use this conversion in more than one place (here and in renderer debug view), so convert it to a function?
+        // println!("tileset pixels: {}", tileset.pixels.len());
+
         let dest_columns = self.specs.atlas_width as usize / self.specs.tile_width as usize;
-        for t in 0 .. partition.tiles_len as usize {
-            let dest_col = (t + partition.tiles_start_index as usize) % dest_columns;
-            let dest_row = (t + partition.tiles_start_index as usize) / dest_columns;
+        let tile_size = self.specs.tile_width as usize * self.specs.tile_height as usize;
+        // println!("Tiles...");
+        for t in 0 .. tileset.tile_count as usize {
+            // println!("{t}");
+            let _ = self.tile_indices.add_item_to_block(tileset_id.into(), (t + block_start) as u16);
+            let dest_col = (t + block_start) % dest_columns;
+            let dest_row = (t + block_start) / dest_columns;
             let dest_x = dest_col * self.specs.tile_width as usize;
             let dest_y = dest_row * self.specs.tile_height as usize;
-            let mut source_px = t * (self.specs.tile_width as usize * self.specs.tile_height as usize);
+            let mut source_px = t * tile_size;
             for y in 0 .. self.specs.tile_height as usize {
                 for x in 0 .. self.specs.tile_width as usize {
                     let dest_index = ((dest_y + y) * self.specs.atlas_width as usize) + dest_x + x;
-                    let source_pixel =  tileset.pixels[source_px];
-                    self.pixels[dest_index] = source_pixel;
+                    let source_pixel = tileset.pixels[source_px];
+                    self.tile_pixels.data[dest_index] = source_pixel;
                     source_px += 1;
                 }
             }
         }
+        // println!();
 
+        self.palettes[id as usize] = Some( palette.clone() );
+
+        // TODO: returns results
         for i in 0 .. tileset.fonts().len() {
-            self.fonts.push(tileset.fonts()[i].clone())
+            self.fonts.add_item_to_block(tileset_id.into(), tileset.fonts()[i].clone())?
         }
 
         for i in 0 .. tileset.anims().len() {
-            self.anims.push(tileset.anims()[i].clone())
+            self.anims.add_item_to_block(tileset_id.into(), tileset.anims()[i].clone())?
         }
 
         for i in 0 .. tileset.tilemaps().len() {
-            self.tilemaps.push(tileset.tilemaps()[i].clone())
+            self.tilemaps.add_item_to_block(tileset_id.into(), tileset.tilemaps()[i].clone())?
         }
 
-        // println!("Partition added: {:?}", partition);
-        self.partition_top = Some(id);
-        self.partitions[id as usize] = Some( partition );
-        self.palettes[palette.id() as usize] = Some( palette.clone() );
+        Ok(())
     }
 
 
-    fn get_partition(&self, tileset_id:impl Into<usize>) -> &Partition {
-        let id:usize = tileset_id.into();
-        let Some(partition) = &self.partitions[id] else {
-            panic!("Renderer error: Tileset id not initialized: {}", id)
-        };
-        partition
+    // TODO: Get rid of all these getters, access members directly
+
+    pub fn get_tilemap(&self, tileset_id:impl Into<u8>, tilemap_id:impl Into<usize>) -> &Tilemap {
+        self.tilemaps.get(tileset_id.into(), tilemap_id.into()).unwrap()
     }
 
 
-    pub fn get_tileset_palette(&self, tileset_id:impl Into<usize>) -> &Palette {
-        let partition = self.get_partition(tileset_id);
-        let palette_id = partition.debug_palette as usize;
-        let Some(palette) = &self.palettes[palette_id] else {
-            panic!("Renderer error: Palette id not initialized: {}", palette_id)
-        };
-        palette
+    pub fn get_tilemap_mut(&mut self, tileset_id:impl Into<u8>, tilemap_id:impl Into<usize>) -> &mut Tilemap {
+        self.tilemaps.get_mut(tileset_id.into(), tilemap_id.into()).unwrap()
     }
 
 
-    pub fn get_tilemap(&self, tileset_id:impl Into<usize>, tilemap_id:impl Into<usize>) -> &Tilemap {
-        let partition = self.get_partition(tileset_id);
-        // Calculate index from partition
-        let map_id:usize = tilemap_id.into();
-        let index = (partition.tilemaps_start_index as usize) + map_id;
-        // Return if valid
-        if let Some(tilemap) = &self.tilemaps.get(index){
-            tilemap
-        } else {
-            panic!("Renderer error: invalid tilemap ({})", map_id)
-        }
+    pub fn get_font(&self, tileset_id:impl Into<u8>, font_id:impl Into<usize>) -> &Font {
+        self.fonts.get(tileset_id.into(), font_id.into()).unwrap()
     }
 
 
-    pub fn get_tilemap_mut(&mut self, tileset_id:impl Into<usize>, tilemap_id:impl Into<usize>) -> &mut Tilemap {
-        let partition = self.get_partition(tileset_id);
-        // Calculate index from partition
-        let map_id:usize = tilemap_id.into();
-        let index = (partition.tilemaps_start_index as usize) + map_id;
-        // Return if valid
-        if let Some(tilemap) = self.tilemaps.get_mut(index){
-            tilemap
-        } else {
-            panic!("Renderer error: invalid tilemap ({})", map_id)
-        }
+    pub fn get_font_mut(&mut self, tileset_id:impl Into<u8>, font_id:impl Into<usize>) -> &mut Font {
+        self.fonts.get_mut(tileset_id.into(), font_id.into()).unwrap()
     }
 
 
-    pub fn get_font(&self, tileset_id:impl Into<usize>, font_id:impl Into<usize>) -> &Font {
-        let partition = self.get_partition(tileset_id);
-        // Calculate index from partition
-        let font_id:usize = font_id.into();
-        let index = (partition.fonts_start_index as usize) + font_id;
-        // Return if valid
-        if let Some(font) = &self.fonts.get(index){
-            font
-        } else {
-            panic!("Renderer error: invalid Font ({})", font_id)
-        }
+    pub fn get_anim(&self, tileset_id:impl Into<u8>, anim_id:impl Into<usize>) -> &Anim {
+        self.anims.get(tileset_id.into(), anim_id.into()).unwrap()
     }
 
 
-    pub fn get_anim(&self, tileset_id:impl Into<usize>, anim_id:impl Into<usize>) -> &Anim {
-        let partition = self.get_partition(tileset_id);
-        // Calculate index from partition
-        let anim_id:usize = anim_id.into();
-        let index = (partition.anims_start_index as usize) + anim_id;
-        // Return if valid
-        if let Some(anim) = &self.anims.get(index){
-            anim
-        } else {
-            panic!("Renderer error: invalid Anim ({})", anim_id)
-        }
+    pub fn get_anim_mut(&mut self, tileset_id:impl Into<u8>, anim_id:impl Into<usize>) -> &mut Anim {
+        self.anims.get_mut(tileset_id.into(), anim_id.into()).unwrap()
     }
 
 
-    pub fn get_tile(&self, index:u8, tileset_id:usize) -> TileID {
-        let partition = self.get_partition(tileset_id);
-        TileID(partition.tiles_start_index + index as u16)
+    pub fn get_tile(&self, index:impl Into<usize>, tileset_id:impl Into<u8>) -> TileID {
+        let tile = self.tile_indices.get(tileset_id.into(), index.into()).unwrap();
+        TileID(*tile)
     }
 
 
-    pub fn get_rect(&self, index:usize) -> Rect<u16> {
-        let coord = self.rect_coords[index];
+    pub fn get_rect(&self, index:impl Into<usize>) -> Rect<u16> {
+        let coord = self.rect_coords[index.into()];
         Rect {
             x: coord.x,
             y: coord.y,
@@ -271,9 +212,18 @@ where T:TilesetEnum, P:PaletteEnum,
     }
 
 
+    pub fn get_tileset_palette(&self, tileset_id:impl Into<usize>) -> &Palette {
+        let tileset_id = tileset_id.into();
+        let Some(palette) = &self.palettes[tileset_id] else {
+            panic!("Renderer error: Palette id not initialized: {}", tileset_id)
+        };
+        palette
+    }
+
+
     pub fn get_pixel(&self, x:usize, y:usize) -> u8 {
         let index = (y * self.specs.atlas_width as usize) + x;
-        self.pixels[index]
+        self.tile_pixels.data[index]
     }
 
 }

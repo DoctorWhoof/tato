@@ -24,7 +24,10 @@ async fn main() {
     // Init 
     let atlas = Atlas::<TilesetID, PaletteID>::load(SPECS, include_bytes!("../assets/converted/atlas"));
     let mut world = World::<TilesetID, PaletteID>::new(SPECS);
-    world.renderer.load_tileset(&atlas, TilesetID::Bg);
+    
+    if let Err(msg) = world.renderer.load_tileset(&atlas, TilesetID::Bg) {
+        println!("{}", msg);
+    }
 
     let mut grid = vec![];
     let columns = 30;

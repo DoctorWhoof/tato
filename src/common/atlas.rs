@@ -79,6 +79,7 @@ where T:TilesetEnum, P:PaletteEnum,
             // TODO: Check actual amount of actually available pixels
             let atlas_width = u16::from_ne_bytes([cursor.advance(), cursor.advance()]);
             let pixel_count = u16::from_ne_bytes([cursor.advance(), cursor.advance()]) as usize;
+            assert!(atlas_width == specs.atlas_width,  "Atlas error: Atlas width does not match specs!");
             assert!(pixel_count < (specs.atlas_width as usize * specs.atlas_height as usize),  "Atlas error: Tileset pixels count will overflow!");
 
             let tile_count = cursor.advance();

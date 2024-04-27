@@ -236,7 +236,7 @@ where T:TilesetEnum, P:PaletteEnum {
 
 
 
-    pub(crate) fn probe_process(&self, probe:&mut CollisionProbe<f32>) {
+    fn probe_process(&self, probe:&mut CollisionProbe<f32>) {
         if let ColliderKind::Tilemap {ref mut w, ref mut h, ref mut tile_width, ref mut tile_height } = probe.kind {
             let rect = self.get_entity_rect_from_id(probe.entity_id);
             *w = rect.w;
@@ -247,7 +247,7 @@ where T:TilesetEnum, P:PaletteEnum {
     }
 
 
-    pub(crate) fn probe_add(&mut self, mut probe:CollisionProbe<f32>) {
+    fn probe_add(&mut self, mut probe:CollisionProbe<f32>) {
         if probe.layer > 0 {
             let layer = probe.layer as usize;
             self.probe_process(&mut probe);
@@ -256,7 +256,7 @@ where T:TilesetEnum, P:PaletteEnum {
     }
 
 
-    pub(crate) fn probe_get_from_collider(collider:&Collider<f32>, pos: Vec2<f32>, id:EntityID, velocity:Option<Vec2<f32>>) -> Option<CollisionProbe<f32>>  {
+    fn probe_get_from_collider(collider:&Collider<f32>, pos: Vec2<f32>, id:EntityID, velocity:Option<Vec2<f32>>) -> Option<CollisionProbe<f32>>  {
         if !collider.enabled { return None }
         Some(CollisionProbe{
             entity_id: id,

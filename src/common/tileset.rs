@@ -5,10 +5,10 @@ use super::*;
 pub struct Tileset {
     pub(crate) pixels: Vec<u8>,
     pub(crate) debug_palette: u8,
+    pub(crate) tile_count:u8,
     fonts: Vec<Font>,
     anims: Vec<Anim>,
     tilemaps: Vec<Tilemap>,
-    tile_count:u8,
 }
 
 
@@ -36,11 +36,11 @@ impl Tileset {
 
     pub fn tilemaps(&self) -> &Vec<Tilemap> { &self.tilemaps }
 
-    pub fn anim_count(&self) -> u8 { self.anims.len() as u8 }
+    // pub fn anim_count(&self) -> u8 { self.anims.len() as u8 }
 
-    pub fn font_count(&self) -> u8 { self.fonts.len() as u8 }
+    // pub fn font_count(&self) -> u8 { self.fonts.len() as u8 }
 
-    pub fn tilemap_count(&self) -> u8 { self.tilemaps.len() as u8 }
+    // pub fn tilemap_count(&self) -> u8 { self.tilemaps.len() as u8 }
 
     pub fn push_anim(&mut self, anim:Anim) {
         if self.anims.len() < u8::MAX as usize {

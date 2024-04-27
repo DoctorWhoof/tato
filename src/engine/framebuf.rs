@@ -51,13 +51,11 @@ impl FrameBuf {
     }
 
 
-    #[inline]
     pub fn draw_pixel(&mut self, x:usize, y:usize, color:Color24, depth:u8){
         draw_pixel(&mut self.pixels, self.specs.render_width, x, y, color, depth)
     }
 
 
-    #[inline] #[allow(unused)]
     pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color24, depth:u8) {
         // TODO: Take viewport into account
         if x0 < 0 || x1 > self.specs.render_width as i32 { return }
@@ -106,8 +104,6 @@ impl FrameBuf {
 }
 
 
-
-#[inline]
 pub(crate) fn draw_pixel(pixels: &mut [Pixel], buffer_width:u16, x:usize, y:usize, color:Color24, depth:u8){
     let index = (y * buffer_width as usize) + x;
     if index > pixels.len() { return }
@@ -116,6 +112,7 @@ pub(crate) fn draw_pixel(pixels: &mut [Pixel], buffer_width:u16, x:usize, y:usiz
     pixel.color = color;
     pixel.depth = depth;
 }
+
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_line(pixels: &mut [Pixel], buffer_width:u16, x0:i32, y0:i32, x1:i32, y1:i32, color:Color24, depth:u8) {

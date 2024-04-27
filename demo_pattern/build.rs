@@ -9,7 +9,6 @@ fn main() {
     atlas.init_tileset( TilesetID::Bg, PaletteID::Bg );
     atlas.init_anim("assets/tile_A.png", 20, 1, 1, TilesetID::Bg, GroupID::None);   // 0
     atlas.init_anim("assets/tile_B.png", 20, 2, 2, TilesetID::Bg, GroupID::None);   // 1
-    // atlas.init_anim("assets/tile_C.png", 20, 2, 2, TilesetID::Bg, GroupID::None);   // 2
     
     atlas.save("assets/converted/atlas");
 }

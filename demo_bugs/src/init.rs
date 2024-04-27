@@ -7,9 +7,18 @@ pub fn new_game(specs:Specs) -> Game{
     let mut world = World::<TilesetID, PaletteID>::new(specs);
     let atlas = Atlas::load( specs, include_bytes!("../assets/converted/atlas") );
     // world.renderer.load_palettes_from_atlas(&atlas);  // TODO: get rid of this step... I always forget it!
-    world.renderer.load_tileset(&atlas, TilesetID::Bg);
-    world.renderer.load_tileset(&atlas, TilesetID::Player);
-    world.renderer.load_tileset(&atlas, TilesetID::Enemies);
+
+    if let Err(msg) = world.renderer.load_tileset(&atlas, TilesetID::Bg) {
+        println!("{}", msg);
+    }
+    
+    if let Err(msg) = world.renderer.load_tileset(&atlas, TilesetID::Player){
+        println!("{}", msg);
+    }
+
+    if let Err(msg) = world.renderer.load_tileset(&atlas, TilesetID::Enemies){
+        println!("{}", msg);
+    }
 
 
     // Player

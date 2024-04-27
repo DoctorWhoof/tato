@@ -2,8 +2,8 @@ use crate::*;
 
 pub fn title(atlas:&Atlas, world:&mut World<>) -> Scene {
     
-    world.renderer.load_tileset(atlas, TilesetID::Title);
-    world.renderer.load_tileset(atlas, TilesetID::Hud);
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Title) { println!("{}", msg) }
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Hud) { println!("{}", msg) }
 
     // BG
     let bg = world.entity_add(100);
@@ -19,11 +19,10 @@ pub fn title(atlas:&Atlas, world:&mut World<>) -> Scene {
 
 pub fn game(atlas:&Atlas, world:&mut World<>) -> Scene {
     // spud init
-    // world.renderer.load_palettes_from_atlas(atlas);
-    world.renderer.load_tileset(atlas, TilesetID::Hud);
-    world.renderer.load_tileset(atlas, TilesetID::Bricks);
-    world.renderer.load_tileset(atlas, TilesetID::Bg);
-    world.renderer.load_tileset(atlas, TilesetID::Sprites);
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Hud) { println!("{}", msg) }
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Bricks) { println!("{}", msg) }
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Bg) { println!("{}", msg) }
+    if let Err(msg) = world.renderer.load_tileset(atlas, TilesetID::Sprites) { println!("{}", msg) }
 
     // BG
     let bg = world.entity_add(1);

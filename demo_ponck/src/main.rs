@@ -11,7 +11,7 @@ pub use crate::{gameplay::*, specs::*};
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: "Paddlenoid".into(),
+        window_title: "Ponck".into(),
         fullscreen: false,
         high_dpi: true,
         sample_count: 0,
@@ -50,9 +50,8 @@ async fn main() {
     let font_left = FontInfo { tileset_id: TilesetID::Hud.into(), font: 0, depth: 200, align_right: false };
     let font_right = FontInfo { tileset_id: TilesetID::Hud.into(), font: 0, depth: 200, align_right: true };
 
-    let mut new_state = Scene::Title;
+    let mut new_state = Scene::Gameplay(None);
     let mut state = Scene::None;
-    // world.renderer.load_palettes_from_atlas(&atlas);
 
     // Mquad App init and loop
     let mut app = App::new(&world);
@@ -87,7 +86,7 @@ async fn main() {
         // Scene specific update
         match state {
             Scene::Title => {
-                world.framebuf.clear(Color24::black());
+                world.framebuf.clear(Color24::gray());
                 world.draw_text("PRESS START", 80, 160, &font_left);
                 if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::Z) {
                     new_state = Scene::Gameplay(None);

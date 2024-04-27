@@ -18,6 +18,11 @@ pub struct  Anim {
 
 impl Anim {
 
+    pub(crate) fn non_init() -> Self {
+        Self { id: 0, group: 0, fps: 0, len: 0, tileset: 0, palette: 0, frames:Default::default() }
+    }
+
+
     pub fn id(&self) -> u8 { self.id }
 
 

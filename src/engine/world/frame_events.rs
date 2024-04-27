@@ -110,7 +110,7 @@ where T:TilesetEnum, P:PaletteEnum {
                         let flipped_col = if flip_h { frame.cols - 1 - col } else { col };
                         let subtile = (row * frame.cols) + flipped_col;
                         let tile = frame.get_tile(subtile);
-                        let abs_tile_id = self.renderer.get_tile(tile.index, anim.tileset as usize);
+                        let abs_tile_id = self.renderer.get_tile(tile.index, anim.tileset);
 
                         let quad_rect = Rect {
                             x: pos.x + (col as i32 * tile_width)  + entity.render_offset.x as i32,
@@ -171,9 +171,9 @@ where T:TilesetEnum, P:PaletteEnum {
                     for row in top_col..bottom_col {
                         for col in left_col..right_col {
                             let Some(tile) = tilemap.get_tile(col as u16, row as u16) else { continue };
-                            let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset as usize);
+                            let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset);
 
-                            let tile_rect = Rect::<i32>::from(self.renderer.get_rect(tile.index as usize));
+                            let tile_rect = Rect::<i32>::from(self.renderer.get_rect(tile.index));
                             let world_tile_rect = Rect {
                                 x: pos.x
                                     + (col * tile_width)
@@ -235,26 +235,45 @@ where T:TilesetEnum, P:PaletteEnum {
         // Debug Renderer
         #[cfg(debug_assertions)]
         if self.debug_atlas {
-            for partition in &self.renderer.partitions {
-                let Some(partition) = partition else { continue };
-                for tile_index in partition.tiles_start_index
-                    ..partition.tiles_start_index + partition.tiles_len as u16
-                {
-                    let rect = self.renderer.get_rect(tile_index as usize);
-                    let Some(palette) = &self.renderer.palettes[partition.debug_palette as usize] else { return };
-                    self.framebuf
-                        .draw_filled_rect(rect.into(), Color24::green_light());
-                    Self::draw_tile(
-                        &mut self.framebuf,
-                        &self.renderer,
-                        rect.into(),
-                        TileID(tile_index),
-                        palette,
-                        false,
-                        255
-                    );
+            for (tileset_id, block) in self.renderer.tile_indices.blocks.iter().enumerate() {
+                if let Some(block) = block {
+                    for index in block.start .. block.start + block.length {
+                        let rect = self.renderer.get_rect(index);
+                        let Some(palette) = &self.renderer.palettes[tileset_id] else { return };
+                        self.framebuf
+                            .draw_filled_rect(rect.into(), Color24::green_light());
+                        Self::draw_tile(
+                            &mut self.framebuf,
+                            &self.renderer,
+                            rect.into(),
+                            TileID(index as u16),
+                            palette,
+                            false,
+                            255
+                        );
+                    }   
                 }
             }
+            // for partition in &self.renderer.partitions {
+            //     let Some(partition) = partition else { continue };
+            //     for tile_index in partition.tiles_start_index
+            //         ..partition.tiles_start_index + partition.tiles_len as u16
+            //     {
+            //         let rect = self.renderer.get_rect(tile_index as usize);
+            //         let Some(palette) = &self.renderer.palettes[partition.debug_palette as usize] else { return };
+            //         self.framebuf
+            //             .draw_filled_rect(rect.into(), Color24::green_light());
+            //         Self::draw_tile(
+            //             &mut self.framebuf,
+            //             &self.renderer,
+            //             rect.into(),
+            //             TileID(tile_index),
+            //             palette,
+            //             false,
+            //             255
+            //         );
+            //     }
+            // }
         }
 
         // Draw collider Wireframe

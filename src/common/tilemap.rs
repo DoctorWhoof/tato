@@ -34,6 +34,15 @@ impl Clone for Tilemap {
 
 impl Tilemap {
 
+
+    pub(crate) fn non_init() -> Self {
+        Self {
+            id: 0, tileset: 0, cols: 0, rows: 0, palette: 0, bg_buffers: Default::default(),
+            tiles: core::array::from_fn(|_| Tile::default())
+        }
+    }
+
+
     pub fn id(&self) -> u8 { self.id }
 
 
