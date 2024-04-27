@@ -79,8 +79,8 @@ pub fn game(atlas:&Atlas, world:&mut World<>) -> Scene {
             puck,
             bricks,
             score: 0,
-            zone: 0,
-            zone_count: 2,
+            _zone: 0,
+            _zone_count: 2,
             overlay: vec![]
         })
     )

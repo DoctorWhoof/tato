@@ -35,8 +35,8 @@ struct Game {
     puck: Puck,
     bricks: EntityID,
     score: u32,
-    zone: u8,
-    zone_count: u8,
+    _zone: u8,
+    _zone_count: u8,
     overlay: Vec<String>
 }
 
