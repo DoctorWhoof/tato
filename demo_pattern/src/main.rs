@@ -36,12 +36,19 @@ async fn main() {
     for row in 0 .. rows {
         for col in 0 .. columns {
             let tile = world.entity_add(0);
-            world.set_shape(tile, Shape::sprite_from_anim(TilesetID::Bg, 0));
+            world.set_shape(tile, Shape::sprite_from_anim(TilesetID::Bg, 2));
             world.set_position(tile, Vec2{
                 x: col as f32 * SPECS.tile_width as f32 + start_x,
                 y: row as f32 * SPECS.tile_height as f32
             });
             grid.push(tile);
+
+            if let Some(ent) = world.get_entity_mut(tile){
+                if let Shape::Sprite { ref mut flip_h, ref mut flip_v, .. } = ent.shape {
+                    if row % 2 == 1 { *flip_v = true }
+                    if col % 2 == 1 { *flip_h = true }
+                }
+            };
         }
     }
 

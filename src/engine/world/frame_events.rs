@@ -98,7 +98,7 @@ where T:TilesetEnum, P:PaletteEnum {
                     // }
                 }
 
-                Shape::Sprite {tileset_id, anim_id, flip_h, .. } => {
+                Shape::Sprite {tileset_id, anim_id, flip_h, flip_v } => {
                     if !self.draw_sprites { continue }
                     // Draw tiles
                     let anim = self.renderer.get_anim(tileset_id, anim_id);
@@ -129,6 +129,7 @@ where T:TilesetEnum, P:PaletteEnum {
                             abs_tile_id,
                             palette,
                             flip_h ^ tile.flipped_h(), //resulting flip is a XOR
+                            flip_v ^ tile.flipped_v(),
                             entity.depth
                         );
                     };
@@ -193,6 +194,7 @@ where T:TilesetEnum, P:PaletteEnum {
                                 tile_id,
                                 palette,
                                 tile.flipped_h(),
+                                tile.flipped_v(),
                                 entity.depth
                             );
                         }
@@ -261,6 +263,7 @@ where T:TilesetEnum, P:PaletteEnum {
                             rect.into(),
                             TileID(index as u16),
                             palette,
+                            false,
                             false,
                             255
                         );
