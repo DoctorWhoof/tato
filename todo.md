@@ -1,7 +1,7 @@
 #### To Do:
 
     [ ] Test projects:
-        [ ] Collisions
+        [x] Collisions
         [.] Breakout-like
         [.] Galaga-like
         [ ] Maze game
@@ -29,7 +29,7 @@
     [ ] Safety checks:
         - Ensure everything works (no crash) even if world.atlas is not loaded
 
-    [ ] Generic Partition<T> and PartitionTable structs to allow pushing and popping assets
+    [x] Generic Partition<T> and PartitionTable structs to allow pushing and popping assets
         - Already protyped in Renderer.partition, needs to be split up into individual partitions?
 
     [ ] Rendering

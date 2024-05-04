@@ -173,7 +173,7 @@ where T:TilesetEnum, P:PaletteEnum {
                             let Some(tile) = tilemap.get_tile(col as u16, row as u16) else { continue };
                             let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset);
 
-                            let tile_rect = Rect::<i32>::from(self.renderer.get_rect(tile.index));
+                            let tile_rect = Rect::<i32>::from(self.renderer.get_tile_rect(tile.index));
                             let world_tile_rect = Rect {
                                 x: pos.x
                                     + (col * tile_width)
@@ -235,13 +235,26 @@ where T:TilesetEnum, P:PaletteEnum {
         // Debug Renderer
         #[cfg(debug_assertions)]
         if self.debug_atlas {
+            // let width = self.framebuf.width();
+            // for (tileset_id, block) in self.renderer.tile_pixels.blocks.iter().enumerate() {
+            //     if let Some(block) = block {
+            //         for index in block.start .. block.start + block.length {
+            //             let Some(palette) = &self.renderer.palettes[tileset_id] else { return };
+            //             let source_pix = self.renderer.tile_pixels.data[index];
+            //             let color = palette.colors[source_pix as usize];
+            //             let x = index % self.renderer.width() as usize;
+            //             let y = index / self.renderer.width() as usize;
+            //             draw_pixel(&mut self.framebuf.pixels, width, x, y, color, 255);
+            //         }   
+            //     }
+            // }
             for (tileset_id, block) in self.renderer.tile_indices.blocks.iter().enumerate() {
                 if let Some(block) = block {
                     for index in block.start .. block.start + block.length {
-                        let rect = self.renderer.get_rect(index);
+                        let rect = self.renderer.get_tile_rect(index);
                         let Some(palette) = &self.renderer.palettes[tileset_id] else { return };
                         self.framebuf
-                            .draw_filled_rect(rect.into(), Color24::green_light());
+                            .draw_filled_rect(rect.into(), Color32::green_light());
                         Self::draw_tile(
                             &mut self.framebuf,
                             &self.renderer,
@@ -254,26 +267,6 @@ where T:TilesetEnum, P:PaletteEnum {
                     }   
                 }
             }
-            // for partition in &self.renderer.partitions {
-            //     let Some(partition) = partition else { continue };
-            //     for tile_index in partition.tiles_start_index
-            //         ..partition.tiles_start_index + partition.tiles_len as u16
-            //     {
-            //         let rect = self.renderer.get_rect(tile_index as usize);
-            //         let Some(palette) = &self.renderer.palettes[partition.debug_palette as usize] else { return };
-            //         self.framebuf
-            //             .draw_filled_rect(rect.into(), Color24::green_light());
-            //         Self::draw_tile(
-            //             &mut self.framebuf,
-            //             &self.renderer,
-            //             rect.into(),
-            //             TileID(tile_index),
-            //             palette,
-            //             false,
-            //             255
-            //         );
-            //     }
-            // }
         }
 
         // Draw collider Wireframe

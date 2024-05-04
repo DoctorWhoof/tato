@@ -51,12 +51,12 @@ impl FrameBuf {
     }
 
 
-    pub fn draw_pixel(&mut self, x:usize, y:usize, color:Color24, depth:u8){
+    pub fn draw_pixel(&mut self, x:usize, y:usize, color:Color32, depth:u8){
         draw_pixel(&mut self.pixels, self.specs.render_width, x, y, color, depth)
     }
 
 
-    pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color24, depth:u8) {
+    pub fn draw_line(&mut self, x0:i32, y0:i32, x1:i32, y1:i32, color:Color32, depth:u8) {
         // TODO: Take viewport into account
         if x0 < 0 || x1 > self.specs.render_width as i32 { return }
         if y0 < 0 || y1 > self.specs.render_height as i32 { return }
@@ -64,7 +64,7 @@ impl FrameBuf {
     }
 
 
-    pub fn draw_rect(&mut self, rect:Rect<i32>, color:Color24){
+    pub fn draw_rect(&mut self, rect:Rect<i32>, color:Color32){
         // TODO: Take viewport into account
         let left = rect.x;
         let top = rect.y;
@@ -85,7 +85,7 @@ impl FrameBuf {
     }
 
 
-    pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:Color24){
+    pub fn draw_filled_rect(&mut self, rect:Rect<i32>, color:Color32){
         // TODO: Take viewport into account
         let rect = {
             let x = i32::clamp(rect.x, 0, self.specs.render_width as i32 -1);
@@ -104,18 +104,21 @@ impl FrameBuf {
 }
 
 
-pub(crate) fn draw_pixel(pixels: &mut [Pixel], buffer_width:u16, x:usize, y:usize, color:Color24, depth:u8){
+pub(crate) fn draw_pixel(pixels: &mut [Pixel], buffer_width:u16, x:usize, y:usize, color:Color32, depth:u8){
+    if color.a == 0 { return }
     let index = (y * buffer_width as usize) + x;
-    if index > pixels.len() { return }
+    // if index >= pixels.len() { return }
     let pixel = &mut pixels[index];
     if pixel.depth > depth { return }
-    pixel.color = color;
+    pixel.color.r = color.r;
+    pixel.color.g = color.g;
+    pixel.color.b = color.b;
     pixel.depth = depth;
 }
 
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn draw_line(pixels: &mut [Pixel], buffer_width:u16, x0:i32, y0:i32, x1:i32, y1:i32, color:Color24, depth:u8) {
+pub(crate) fn draw_line(pixels: &mut [Pixel], buffer_width:u16, x0:i32, y0:i32, x1:i32, y1:i32, color:Color32, depth:u8) {
 
     let buffer_height = pixels.len() / buffer_width as usize;
 

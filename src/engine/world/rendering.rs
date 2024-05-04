@@ -47,7 +47,7 @@ where T:TilesetEnum, P:PaletteEnum {
     // ************************************* Drawing functions ***********************************
 
 
-    pub(crate) fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<i32>, probe:&CollisionProbe<f32>, color:Color24){
+    pub(crate) fn draw_collider(framebuf:&mut FrameBuf, cam_rect:&Rect<i32>, probe:&CollisionProbe<f32>, color:Color32){
         match probe.kind {
             ColliderKind::Point =>{
                 let pos = probe.pos.to_i32();
@@ -117,51 +117,34 @@ where T:TilesetEnum, P:PaletteEnum {
         flip_h: bool,
         depth:u8
     ) {
-        let Some(visible_rect) = world_rect.intersect(frame_buf.viewport) else {
-            // println!("Out of frame");
-            return;
-        };
-        let tile_rect = renderer.get_rect(tile.get());
+        let Some(visible_rect) = world_rect.intersect(frame_buf.viewport) else { return };
         let width = frame_buf.width();
-
+        let tile_width = renderer.tile_width() as usize;
+        let tile_len = tile_width * renderer.tile_height() as usize;
+        let source_index = tile.get() * tile_len;
+        
         for y in visible_rect.y .. visible_rect.bottom() {
-            let source_y = y - world_rect.y;
-            #[cfg(debug_assertions)]{
-                if source_y < 0 { panic!("Whoops, coordinate can't be negative!") }
-            }
-            let source_y = source_y as usize + tile_rect.y as usize;
-
             for x in visible_rect.x .. visible_rect.right() {
-                let source_x = if flip_h {
-                    let local_x = renderer.tile_width() as usize - (x - world_rect.x) as usize - 1;
-                    local_x + tile_rect.x as usize
+
+                if x < 0 { continue }
+                if y < 0 { continue }
+
+                let local_x = if flip_h {
+                    tile_width - (x - world_rect.x) as usize - 1
                 } else {
-                    let local_x = (x - world_rect.x) as usize;
-                    local_x + tile_rect.x as usize
+                    (x - world_rect.x) as usize
                 };
+                
+                let local_y = (y - world_rect.y) as usize; 
+                
+                // // Get source color
+                let local_pixel = local_x + (local_y * tile_width);
+                let source_color = renderer.tile_pixels.data[source_index + local_pixel] as usize;
+                let Some(color) = palette.colors.get(source_color) else { continue };
 
-                let color = renderer.get_pixel(source_x, source_y);
-
-                let Some(color) = palette.colors.get(color as usize) else { continue };
-
-                if color.a < 255 { continue }
-
-                draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, Color24::from(color), depth);
+                draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, *color, depth);
             }
         }
     }
-
-
-    // pub(crate) fn draw_world_pixel(&mut self, x:f32, y:f32, color:u8) {
-    //     let screen_x = x - cam_rect.x;
-    //     let screen_y = y - cam_rect.y;
-    //     if screen_x < 0.0 || (screen_x > (RENDER_WIDTH - 1) as f32) { return }
-    //     if screen_y < 0.0 || (screen_y > (RENDER_HEIGHT - 1) as f32) { return }
-    //     self.framebuf.draw_pixel(
-    //         screen_x as usize,
-    //         screen_y as usize,
-    //         color
-    //     )
-    // }
 
 }

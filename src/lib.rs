@@ -24,9 +24,9 @@ pub const ANIM_TILES_PER_FRAME:usize = 12;  // TODO: Move to specs
 pub const TILEMAP_HEADER_LEN:usize = 15;
 pub const TILEMAP_LEN:usize = 48 * 48;
 
-pub const COLOR_TRANSPARENCY:Color24 = Color24{r:0, g:255, b:0};
-pub const COLOR_ENTITY_RECT:Color24 = Color24{r:0, g:255, b:255};
-pub const COLOR_COLLIDER:Color24 = Color24{r:255, g:128, b:128};
-pub const COLOR_COLLISION_PROBE:Color24 = Color24{r:255, g:128, b:0};
+pub const COLOR_TRANSPARENCY:Color32 = Color32{r:0, g:255, b:0, a:255};
+pub const COLOR_ENTITY_RECT:Color32 = Color32{r:0, g:255, b:255, a:255};
+pub const COLOR_COLLIDER:Color32 = Color32{r:255, g:128, b:128, a:255};
+pub const COLOR_COLLISION_PROBE:Color32 = Color32{r:255, g:128, b:0, a:255};
 
 

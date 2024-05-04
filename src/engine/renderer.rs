@@ -3,19 +3,16 @@ use core::marker::PhantomData;
 use crate::*;
 use alloc::{vec, vec::Vec};
 
-// const FONT_CAPACITY:usize = 4;
-// const ANIM_CAPACITY:usize = 32;
-// const TILEMAP_CAPACITY:usize = 8;
-
-/// Loads and stores fixed size tiles organized into tilesets that can be added and removed individually.
+/// Loads and stores pixel tiles organized into tilesets that can be added and removed individually.
+/// Also contains the assets associated with each tileset (fonts, anims and tilemaps).
 pub struct Renderer<T, P>
 where T:TilesetEnum, P:PaletteEnum {
     pub(crate) palettes:            Vec<Option<Palette>>,
-    rect_coords:                    Vec<Vec2<u16>>,
+    pub(crate) rect_coords:         Vec<Vec2<u16>>,
     specs:                          Specs,
 
     pub(crate) tile_indices:        BlockPool<u16>,
-    tile_pixels:                    BlockPool<u8>,
+    pub(crate) tile_pixels:         BlockPool<u8>,
     fonts:                          BlockPool<Font>,
     anims:                          BlockPool<Anim>,
     tilemaps:                       BlockPool<Tilemap>,
@@ -27,11 +24,13 @@ where T:TilesetEnum, P:PaletteEnum {
 
 impl<T, P> Renderer<T, P>
 where T:TilesetEnum, P:PaletteEnum {
+    
     pub(crate) fn new(specs:Specs) -> Self {
 
         let tile_count = (specs.atlas_width as usize * specs.atlas_height as usize) / (specs.tile_width as usize * specs.tile_height as usize);
-        let tile_count = u16::try_from(tile_count)
-            .expect("Renderer Error: Tile count can't be higher than 65535");
+        if u16::try_from(tile_count).is_err(){
+            panic!("Renderer Error: Tile count can't be higher than 65535");
+        }
 
         #[cfg(feature = "std")]{
             println!("Renderer: Creating new Renderer with {} tiles.", tile_count);
@@ -47,7 +46,7 @@ where T:TilesetEnum, P:PaletteEnum {
             palette_marker: Default::default(),
 
             // Generates all tile rects
-            rect_coords: (0 .. 256).map( |i| {
+            rect_coords: (0 .. tile_count).map( |i| {
                 let tile_x = i * specs.tile_width as usize;
                 let x = u16::try_from(tile_x % specs.atlas_width as usize).unwrap();
                 let y = u16::try_from((tile_x / specs.atlas_height as usize) * specs.tile_height as usize).unwrap();
@@ -55,7 +54,7 @@ where T:TilesetEnum, P:PaletteEnum {
             }).collect(),
 
             tile_pixels: BlockPool::new(specs.atlas_width as usize * specs.atlas_height as usize, tileset_count, 0),
-            tile_indices: BlockPool::new(tile_count as usize, tileset_count, 0),
+            tile_indices: BlockPool::new(tile_count, tileset_count, 0),
             fonts: BlockPool::new(specs.max_loaded_fonts.into(), tileset_count, Font::non_init()),
             anims: BlockPool::new(specs.max_loaded_anims.into(), tileset_count, Anim::non_init()),
             tilemaps: BlockPool::new(specs.max_loaded_tilemaps.into(), tileset_count, Tilemap::non_init()),
@@ -63,10 +62,10 @@ where T:TilesetEnum, P:PaletteEnum {
     }
 
 
-    pub fn width(&self) -> u16 { self.specs.render_width }
+    pub fn width(&self) -> u16 { self.specs.atlas_width }
 
 
-    pub fn height(&self) -> u16 { self.specs.render_height }
+    pub fn height(&self) -> u16 { self.specs.atlas_height }
 
 
     pub fn tile_width(&self) -> u8 { self.specs.tile_width }
@@ -75,7 +74,6 @@ where T:TilesetEnum, P:PaletteEnum {
     pub fn tile_height(&self) -> u8 { self.specs.tile_height }
 
 
-    // Does not reset pixels (seems unnecessary?)
     pub fn reset(&mut self) {
         self.tile_pixels.clear();
         self.tile_indices.clear();
@@ -96,7 +94,6 @@ where T:TilesetEnum, P:PaletteEnum {
     }
 
 
-    // TODO: return result
     pub fn load_tileset(&mut self, atlas:&Atlas<T,P>, tileset_id:impl TilesetEnum) -> Result<(), &'static str> {
         let id:u8 = tileset_id.into();
         let tileset = &atlas.tilesets[id as usize];
@@ -131,43 +128,30 @@ where T:TilesetEnum, P:PaletteEnum {
             panic!("Renderer: Error, block {} not initialized", id)
         };
 
-        // Copying pixels has to be tile-formatted, otherwise tile rows that end halfway through don't copy correctly
-        // TODO: I use this conversion in more than one place (here and in renderer debug view), so convert it to a function?
-        // println!("tileset pixels: {}", tileset.pixels.len());
-
-        let dest_columns = self.specs.atlas_width as usize / self.specs.tile_width as usize;
-        let tile_size = self.specs.tile_width as usize * self.specs.tile_height as usize;
-        // println!("Tiles...");
-        for t in 0 .. tileset.tile_count as usize {
-            // println!("{t}");
-            let _ = self.tile_indices.add_item_to_block(tileset_id.into(), (t + block_start) as u16);
-            let dest_col = (t + block_start) % dest_columns;
-            let dest_row = (t + block_start) / dest_columns;
-            let dest_x = dest_col * self.specs.tile_width as usize;
-            let dest_y = dest_row * self.specs.tile_height as usize;
-            let mut source_px = t * tile_size;
-            for y in 0 .. self.specs.tile_height as usize {
-                for x in 0 .. self.specs.tile_width as usize {
-                    let dest_index = ((dest_y + y) * self.specs.atlas_width as usize) + dest_x + x;
-                    let source_pixel = tileset.pixels[source_px];
-                    self.tile_pixels.data[dest_index] = source_pixel;
-                    source_px += 1;
-                }
+        // Pixels
+        let tile_len = self.specs.tile_width as usize * self.specs.tile_height as usize;
+        for tile_idx in 0 .. tileset.tile_count as usize {
+            self.tile_indices.add_item_to_block(tileset_id.into(), (tile_idx + block_start) as u16)?;
+            for px in 0 .. tile_len {
+                let start_idx = tile_idx * tile_len;
+                let source_pixel = tileset.pixels[px + start_idx];
+                self.tile_pixels.add_item_to_block(tileset_id.into(), source_pixel)?;
             }
         }
-        // println!();
 
         self.palettes[id as usize] = Some( palette.clone() );
 
-        // TODO: returns results
+        // Fonts
         for i in 0 .. tileset.fonts().len() {
             self.fonts.add_item_to_block(tileset_id.into(), tileset.fonts()[i].clone())?
         }
 
+        // Anims
         for i in 0 .. tileset.anims().len() {
             self.anims.add_item_to_block(tileset_id.into(), tileset.anims()[i].clone())?
         }
 
+        // Tilemaps
         for i in 0 .. tileset.tilemaps().len() {
             self.tilemaps.add_item_to_block(tileset_id.into(), tileset.tilemaps()[i].clone())?
         }
@@ -214,7 +198,7 @@ where T:TilesetEnum, P:PaletteEnum {
     }
 
 
-    pub fn get_rect(&self, index:impl Into<usize>) -> Rect<u16> {
+    pub fn get_tile_rect(&self, index:impl Into<usize>) -> Rect<u16> {
         let coord = self.rect_coords[index.into()];
         Rect {
             x: coord.x,
@@ -234,9 +218,9 @@ where T:TilesetEnum, P:PaletteEnum {
     }
 
 
-    pub fn get_pixel(&self, x:usize, y:usize) -> u8 {
-        let index = (y * self.specs.atlas_width as usize) + x;
-        self.tile_pixels.data[index]
-    }
+    // pub fn get_pixel(&self, x:usize, y:usize) -> u8 {
+    //     let index = (y * self.specs.atlas_width as usize) + x;
+    //     self.tile_pixels.data[index]
+    // }
 
 }
