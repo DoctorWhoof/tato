@@ -138,7 +138,6 @@ impl Tilemap {
     fn get_index(&self, col:u16, row:u16) -> Option<usize> {
         #[cfg(debug_assertions)]
         if col >= self.cols || row >= self.rows {
-            // panic!("Invalid tilemap coordinates {}, {}", col, row)
             return None
         }
         Some((row as usize * self.cols as usize) + col as usize)

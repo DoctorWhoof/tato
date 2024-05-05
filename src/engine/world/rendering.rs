@@ -93,17 +93,19 @@ where T:TilesetEnum, P:PaletteEnum {
             Self::draw_tile(
                 &mut self.framebuf,
                 &self.renderer,
+                self.renderer.get_tileset_palette(info.tileset_id),
                 Rect {
                     x: x + (i * self.specs.tile_width as usize) as i32 - offset_x,
                     y,
                     w: self.specs.tile_width as i32,
                     h: self.specs.tile_height as i32,
                 },
-                abs_tile_id,
-                self.renderer.get_tileset_palette(info.tileset_id),
-                false,
-                false,
-                info.depth
+                TileInfo {
+                    tile: abs_tile_id,
+                    flip_h: false,
+                    flip_v: false,
+                    depth: info.depth,
+                },
             )
         }
     }
@@ -112,43 +114,42 @@ where T:TilesetEnum, P:PaletteEnum {
     pub(crate) fn draw_tile(
         frame_buf: &mut FrameBuf,
         renderer: &Renderer<T,P>,
-        world_rect: Rect<i32>,
-        tile: TileID,
         palette: &Palette,
-        flip_h: bool,
-        flip_v: bool,
-        depth:u8
+        world_rect: Rect<i32>,
+        tile_info: TileInfo,
     ) {
         let Some(visible_rect) = world_rect.intersect(frame_buf.viewport) else { return };
         let width = frame_buf.width();
         let tile_width = renderer.tile_width() as usize;
         let tile_height = renderer.tile_height() as usize;
         let tile_len = tile_width * renderer.tile_height() as usize;
-        let source_index = tile.get() * tile_len;
+        let source_index = tile_info.tile.get() * tile_len;
         
         for y in visible_rect.y .. visible_rect.bottom() {
             for x in visible_rect.x .. visible_rect.right() {
 
                 if x < 0 || y < 0 { continue }
 
-                let local_x = if flip_h {
+                // Get x coordinate within a tile 
+                let local_x = if tile_info.flip_h {
                     tile_width - (x - world_rect.x) as usize - 1
                 } else {
                     (x - world_rect.x) as usize
                 };
                 
-                let local_y = if flip_v {
+                // Get y coordinate within a tile
+                let local_y = if tile_info.flip_v {
                     tile_height - (y - world_rect.y) as usize - 1
                 } else {
                     (y - world_rect.y) as usize
                 };
                 
                 // // Get source color
-                let local_pixel = local_x + (local_y * tile_width);
-                let source_color = renderer.tile_pixels.data[source_index + local_pixel] as usize;
+                let tile_pixel_index = local_x + (local_y * tile_width);
+                let source_color = renderer.tile_pixels.data[source_index + tile_pixel_index] as usize;
                 let Some(color) = palette.colors.get(source_color) else { continue };
 
-                draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, *color, depth);
+                draw_pixel(&mut frame_buf.pixels, width, x as usize, y as usize, *color, tile_info.depth);
             }
         }
     }

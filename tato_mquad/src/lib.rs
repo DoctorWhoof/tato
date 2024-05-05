@@ -11,6 +11,7 @@ where T:TilesetEnum, P:PaletteEnum
     pub integer_scaling:bool,
     pub overlay_position: Vec2,
     pub overlay_line_spacing: f32,
+    
     overlay: Vec<String>,
     render_image: Image,
     render_texture: Texture2D,

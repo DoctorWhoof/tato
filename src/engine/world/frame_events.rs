@@ -1,5 +1,6 @@
-use crate::*;
+use num_traits::ToPrimitive;
 
+use crate::*;
 
 impl<T,P> World<T,P>
 where T:TilesetEnum, P:PaletteEnum {
@@ -44,11 +45,13 @@ where T:TilesetEnum, P:PaletteEnum {
     pub fn render_frame(&mut self) {
         // Iterate entities
         let cam_rect = Rect {
-            x: self.cam.x.floor() as i32 + self.framebuf.viewport.x,
-            y: self.cam.y.floor() as i32 + self.framebuf.viewport.y,
-            w: self.framebuf.viewport.w,
-            h: self.framebuf.viewport.h,
+            x: self.cam.x.floor() as i32,
+            y: self.cam.y.floor() as i32,
+            // If I take the viewport size into account here it actually doesn't render tilemaps correctly!
+            w: self.specs.render_width as i32,
+            h: self.specs.render_height as i32
         };
+        
         let tile_width = self.specs.tile_width as i32;
         let tile_height = self.specs.tile_height as i32;
 
@@ -121,16 +124,17 @@ where T:TilesetEnum, P:PaletteEnum {
 
                         let screen_rect = quad_rect - cam_rect.pos();
 
-                        // self.framebuf.draw_filled_rect(screen_rect, Color24::yellow());
                         Self::draw_tile(
                             &mut self.framebuf,
                             &self.renderer,
-                            screen_rect,
-                            abs_tile_id,
                             palette,
-                            flip_h ^ tile.flipped_h(), //resulting flip is a XOR
-                            flip_v ^ tile.flipped_v(),
-                            entity.depth
+                            screen_rect,
+                            TileInfo {
+                                tile: abs_tile_id,
+                                flip_h: flip_h ^ tile.flipped_h(), //resulting flip is a XOR
+                                flip_v: flip_v ^ tile.flipped_v(),
+                                depth: entity.depth
+                            },
                         );
                     };
 
@@ -145,57 +149,56 @@ where T:TilesetEnum, P:PaletteEnum {
                     if !self.draw_tilemaps {
                         continue;
                     }
-                    // let tileset = &self.renderer.tilesets[tileset as usize];
                     let world_rect = self.get_entity_rect(entity).to_i32();
                     let tilemap = self.renderer.get_tilemap(tileset_id, tilemap_id);
 
-                    let Some(vis_rect) = world_rect.intersect(cam_rect) else {
-                        continue;
-                    };
+                    let Some(vis_rect) = world_rect.intersect(cam_rect) else { continue };
 
                     let Some(palette) = &self.renderer.palettes[tilemap.palette as usize] else { continue };
 
                     // At least a part of tilemap is visible. Render visible tiles within it.
-                    let left_col = (vis_rect.x - world_rect.x) / tile_width;
-                    let mut right_col =
-                        ((vis_rect.right() - world_rect.x) / tile_width) + 1; // +1 prevents cutting off tile too early
+                    // +1 prevents cutting off tiles too early at the edges.
+                    let Some(left_col) = ((vis_rect.x - world_rect.x) / tile_width).to_u16()
+                        else { continue };
+                    let Some(right_col) = (((vis_rect.right() - world_rect.x) / tile_width) + 1).to_u16()
+                        else { continue };
 
-                    let top_col = (vis_rect.y - world_rect.y) / tile_height;
-                    let mut bottom_col =
-                        ((vis_rect.bottom() - world_rect.y) / tile_width) + 1; // +1 prevents cutting off tile too early
-
-                    // However, those +1's up there will cause invalid coordinates when we reach the end of the tilemap, so...
-                    if right_col > tilemap.cols as i32 { right_col -= 1 };
-                    if bottom_col > tilemap.rows as i32 { bottom_col -= 1 };
+                    let Some(top_col) = ((vis_rect.y - world_rect.y) / tile_height).to_u16()
+                        else { continue };
+                    let Some(bottom_col) = (((vis_rect.bottom() - world_rect.y) / tile_width) + 1).to_u16()
+                        else { continue }; 
 
                     // Acquire and render tiles
-                    for row in top_col..bottom_col {
-                        for col in left_col..right_col {
+                    for row in top_col .. bottom_col {
+                        for col in left_col .. right_col {
                             let Some(tile) = tilemap.get_tile(col as u16, row as u16) else { continue };
                             let tile_id = self.renderer.get_tile(tile.index, tilemap.tileset);
-
                             let tile_rect = Rect::<i32>::from(self.renderer.get_tile_rect(tile.index));
+                            
                             let world_tile_rect = Rect {
                                 x: pos.x
-                                    + (col * tile_width)
+                                    + (col as i32 * tile_width)
                                     + entity.render_offset.x as i32
                                     - cam_rect.x,
                                 y: pos.y
-                                    + (row * tile_height)
+                                    + (row as i32 * tile_height)
                                     + entity.render_offset.y as i32
                                     - cam_rect.y,
                                 w: tile_rect.w,
                                 h: tile_rect.h,
                             };
+
                             Self::draw_tile (
                                 &mut self.framebuf,
                                 &self.renderer,
-                                world_tile_rect,
-                                tile_id,
                                 palette,
-                                tile.flipped_h(),
-                                tile.flipped_v(),
-                                entity.depth
+                                world_tile_rect,
+                                TileInfo {
+                                    tile: tile_id,
+                                    flip_h: tile.flipped_h(),
+                                    flip_v: tile.flipped_v(),
+                                    depth: entity.depth
+                                },
                             );
                         }
                     }
@@ -260,12 +263,14 @@ where T:TilesetEnum, P:PaletteEnum {
                         Self::draw_tile(
                             &mut self.framebuf,
                             &self.renderer,
-                            rect.into(),
-                            TileID(index as u16),
                             palette,
-                            false,
-                            false,
-                            255
+                            rect.into(),
+                            TileInfo {
+                                tile: TileID(index as u16),
+                                flip_h: false,
+                                flip_v: false,
+                                depth: 255
+                            },
                         );
                     }   
                 }
