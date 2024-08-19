@@ -12,21 +12,21 @@ pub trait Float:
     core::fmt::Display + 
 {
     fn two() -> Self;
-    fn clamp(self, min:Self, max:Self) -> Self;
+    // fn clamp(self, min:Self, max:Self) -> Self;
 }
 
 impl Float for f32 {
     fn two() -> f32 { 2.0 }
     
-    fn clamp(self, min:Self, max:Self) -> Self {
-        if self > max { max } else if self < min { min  } else { self }
-    }
+    // fn clamp(self, min:Self, max:Self) -> Self {
+    //     if self > max { max } else if self < min { min  } else { self }
+    // }
 }
 
 impl Float for f64 {
     fn two() -> f64 { 2.0 }
     
-    fn clamp(self, min:Self, max:Self) -> Self {
-        if self > max { max } else if self < min { min  } else { self }
-    }
+    // fn clamp(self, min:Self, max:Self) -> Self {
+    //     if self > max { max } else if self < min { min  } else { self }
+    // }
 }

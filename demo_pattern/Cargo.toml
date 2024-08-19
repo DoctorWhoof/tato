@@ -12,5 +12,4 @@ macroquad = "0.4.4"
 
 [build-dependencies]
 tato = { path = "../" }
-# tato_pipe = "0.1.2"
 tato_pipe = { path = "../../tato_pipe" }
