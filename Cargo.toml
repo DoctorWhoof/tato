@@ -1,6 +1,6 @@
 [package]
 name = "padstate"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Tiny structs that hold a game controller's state"
 license = "MIT"

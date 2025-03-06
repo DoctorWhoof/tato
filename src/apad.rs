@@ -54,13 +54,13 @@ impl APad {
     /// The X state of the left stick in the -1.0 to 1.0 range
     #[inline(always)]
     pub fn left_stick_x(&self) -> f32 {
-        self.left_stick_x as f32 / i16::MAX as f32
+        (self.left_stick_x as f32 / i16::MAX as f32).clamp(-1.0, 1.0)
     }
 
     /// The Y state of the left stick in the -1.0 to 1.0 range
     #[inline(always)]
     pub fn left_stick_y(&self) -> f32 {
-        self.left_stick_y as f32 / i16::MAX as f32
+        (self.left_stick_y as f32 / i16::MAX as f32).clamp(-1.0, 1.0)
     }
 
     /// Sets the bit for a particular button.
