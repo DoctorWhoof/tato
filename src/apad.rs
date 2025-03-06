@@ -48,7 +48,7 @@ impl APad {
     /// A single u16 where each bit represents a button pressed or not.
     #[inline(always)]
     pub fn buttons(&self) -> u16 {
-        self.buttons.buttons()
+        self.buttons.state
     }
 
     /// The X state of the left stick in the -1.0 to 1.0 range

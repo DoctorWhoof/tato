@@ -3,8 +3,8 @@ use crate::Button;
 /// A simple virtual Game controller with only digital buttons.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct DPad{
-    state:u16,
-    previous:u16
+    pub state:u16,
+    pub previous:u16
 }
 
 impl DPad {
@@ -42,12 +42,6 @@ impl DPad {
     #[inline(always)]
     pub fn is_just_released(&self, button: Button) -> bool {
         !self.is_down(button) && (self.previous & button as u16 != 0)
-    }
-
-    /// A single u16 where each bit represents a button pressed or not.
-    #[inline(always)]
-    pub fn buttons(&self) -> u16 {
-        self.state
     }
 
     /// Sets the bit for a particular button.
