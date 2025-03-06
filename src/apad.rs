@@ -3,9 +3,9 @@ use crate::{Button, DPad};
 /// A simple virtual Game controller with digital buttons and a few analogue axis.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct APad {
-    left_stick_x: i16,
-    left_stick_y: i16,
-    buttons: DPad,
+    pub left_stick_x: i16,
+    pub left_stick_y: i16,
+    pub buttons: DPad,
 }
 
 impl APad {
@@ -79,17 +79,5 @@ impl APad {
     #[inline(always)]
     pub fn set_left_stick_y(&mut self, y: f32) {
         self.left_stick_y = (y.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-    }
-
-    /// Sets the left stick x value directly as i16.
-    #[inline(always)]
-    pub fn set_left_stick_raw_x(&mut self, x: i16) {
-        self.left_stick_x = x;
-    }
-
-    /// Sets the left stick y value directly as i16.
-    #[inline(always)]
-    pub fn set_left_stick_raw_y(&mut self, y: i16) {
-        self.left_stick_y = y;
     }
 }
