@@ -1,0 +1,10 @@
+[package]
+name = "layframe"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = ["example_sdl"]
+
+[dependencies]
+normal_float = { path = "../normal_float" }

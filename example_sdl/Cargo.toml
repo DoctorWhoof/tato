@@ -1,0 +1,9 @@
+[package]
+name = "example_sdl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# mini_sdl = "0.3.8"
+mini_sdl = { path = "../../mini_sdl"}
+layframe =  { path = "../" }
