@@ -47,33 +47,34 @@ fn main() -> Result<(), String> {
         draw_rect(&root.rect, (64, 64, 64), "");
 
         // Left panel
-        root.add_left(500, |pane| {
+        let scale = 1.0;
+        root.add_left(500, scale, |pane| {
             draw_rect(&pane.rect, (76, 88, 64), "left pane");
             // Buttons
             for _n in 0..25 {
-                pane.add_top(40, |child| {
+                pane.add_top(40, scale, |child| {
                     draw_rect(&child.rect, (88, 96, 76), "button");
                 });
             }
         });
 
         // Right Panel
-        root.add_right(500, |pane| {
+        root.add_right(500, scale, |pane| {
             draw_rect(&pane.rect, (88, 76, 64), "right pane");
         });
 
         // Middle Panel
-        root.fill_left(0.5, |pane| {
+        root.fill_left(0.5, scale, |pane| {
             draw_rect(&pane.rect, (120, 130, 60), "middle pane left");
         });
 
         // Middle Panel
-        root.fill_top(0.5,|pane| {
+        root.fill_top(0.5, scale, |pane| {
             draw_rect(&pane.rect, (120, 130, 60), "middle pane top");
         });
 
         // Middle Panel
-        root.fill_top(1.0,|pane| {
+        root.fill_top(1.0, scale, |pane| {
             draw_rect(&pane.rect, (120, 130, 60), "middle pane bottom");
         });
 
