@@ -6,20 +6,23 @@
 // TODO: Distinction between margin and gap
 // TODO: Vec2
 
+mod num;
+pub use num::*;
+
 /// Represents a rectangle with position and dimensions.
 ///
 /// A rectangle is defined by its top-left corner coordinates (x, y)
 /// and its width and height.
 #[derive(Debug, Clone, Copy)]
-pub struct Rect {
+pub struct Rect<T> {
     /// X-coordinate of the top-left corner
-    pub x: u16,
+    pub x: T,
     /// Y-coordinate of the top-left corner
-    pub y: u16,
+    pub y: T,
     /// Width of the rectangle
-    pub w: u16,
+    pub w: T,
     /// Height of the rectangle
-    pub h: u16,
+    pub h: T,
 }
 
 /// A layout frame that manages rectangular areas with margins and scaling.
@@ -27,15 +30,15 @@ pub struct Rect {
 /// A frame consists of an outer rectangle, an inner cursor rectangle (available space),
 /// and properties that control how child frames are created and positioned.
 #[derive(Debug, Clone)]
-pub struct Frame {
+pub struct Frame<T> {
     /// The outer rectangle defining the frame boundaries
-    pub rect: Rect,
+    pub rect: Rect<T>,
     /// Inner rectangle representing available space
-    cursor: Rect,
+    cursor: Rect<T>,
     /// Scaling factor for dimensions
     scale: f32,
     /// Margin size between frames
-    margin: u16,
+    margin: T,
 }
 
 /// Represents the side of a frame where a child frame can be added.
@@ -51,12 +54,15 @@ enum Side {
     Bottom,
 }
 
-impl Frame {
+impl<T> Frame<T>
+where
+    T: Num,
+{
     /// Creates a new frame with the specified outer rectangle.
     /// Initializes with default values for scale (1.0) and margin (5 pixels).
-    pub fn new(rect: Rect) -> Self {
+    pub fn new(rect: Rect<T>) -> Self {
         let scale = 1.0;
-        let margin = 5;
+        let margin = T::four();
         let cursor = rect_shrink(rect, margin);
         Self {
             rect,
@@ -67,7 +73,7 @@ impl Frame {
     }
 
     /// Sets a new margin value and recalculates the cursor rectangle.
-    pub fn set_margin(&mut self, margin: u16) {
+    pub fn set_margin(&mut self, margin: T) {
         //remove old margin
         self.cursor = rect_expand(self.cursor, self.margin);
         // apply new margin
@@ -76,7 +82,7 @@ impl Frame {
     }
 
     /// Returns the current margin value.
-    pub fn margin(&self) -> u16 {
+    pub fn margin(&self) -> T {
         self.margin
     }
 
@@ -91,10 +97,9 @@ impl Frame {
         self.scale
     }
 
-
-    fn add(&mut self, side: Side, len: u16, scale: f32, mut func: impl FnMut(&mut Frame)) {
-        let scaled_len = (len as f32 * scale) as u16;
-        let margin = (self.margin as f32 * self.scale) as u16;
+    fn add(&mut self, side: Side, len: T, scale: f32, mut func: impl FnMut(&mut Frame<T>)) {
+        let scaled_len = T::from_f32(len.to_f32() * scale);
+        let margin = T::from_f32(self.margin.to_f32() * self.scale);
 
         // Calculate the child rectangle based on the side
         let child_rect = match side {
@@ -174,7 +179,7 @@ impl Frame {
     /// * `len` - Width of the new frame (before scaling)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn add_left(&mut self, len: u16, func: impl FnMut(&mut Frame)) {
+    pub fn add_left(&mut self, len: T, func: impl FnMut(&mut Frame<T>)) {
         self.add(Side::Left, len, self.scale, func)
     }
 
@@ -183,7 +188,7 @@ impl Frame {
     /// * `len` - Width of the new frame (before scaling)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn add_right(&mut self, len: u16, func: impl FnMut(&mut Frame)) {
+    pub fn add_right(&mut self, len: T, func: impl FnMut(&mut Frame<T>)) {
         self.add(Side::Right, len, self.scale, func)
     }
 
@@ -192,7 +197,7 @@ impl Frame {
     /// * `len` - Height of the new frame (before scaling)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn add_top(&mut self, len: u16, func: impl FnMut(&mut Frame)) {
+    pub fn add_top(&mut self, len: T, func: impl FnMut(&mut Frame<T>)) {
         self.add(Side::Top, len, self.scale, func)
     }
 
@@ -201,7 +206,7 @@ impl Frame {
     /// * `len` - Height of the new frame (before scaling)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn add_bottom(&mut self, len: u16, func: impl FnMut(&mut Frame)) {
+    pub fn add_bottom(&mut self, len: T, func: impl FnMut(&mut Frame<T>)) {
         self.add(Side::Bottom, len, self.scale, func)
     }
 
@@ -211,15 +216,15 @@ impl Frame {
     /// * `side` - Which side to add the child frame to
     /// * `ratio` - Proportion of available space (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame)) {
+    fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
         let is_horizontal = matches!(side, Side::Left | Side::Right);
         let len = if is_horizontal {
-            self.cursor.w as f32 * ratio.clamp(0.0, 1.0)
+            self.cursor.w.to_f32() * ratio.clamp(0.0, 1.0)
         } else {
-            self.cursor.h as f32 * ratio.clamp(0.0, 1.0)
+            self.cursor.h.to_f32() * ratio.clamp(0.0, 1.0)
         };
 
-        self.add(side, len as u16, 1.0, func);
+        self.add(side, T::from_f32(len), 1.0, func);
     }
 
     /// Creates a frame on the left taking a proportion of available width.
@@ -228,7 +233,7 @@ impl Frame {
     /// * `ratio` - Proportion of available width (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn fill_left(&mut self, ratio: f32, func: impl FnMut(&mut Frame)) {
+    pub fn fill_left(&mut self, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
         self.fill(Side::Left, ratio, func);
     }
 
@@ -237,7 +242,7 @@ impl Frame {
     /// * `ratio` - Proportion of available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn fill_top(&mut self, ratio: f32, func: impl FnMut(&mut Frame)) {
+    pub fn fill_top(&mut self, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
         self.fill(Side::Top, ratio, func);
     }
 
@@ -246,7 +251,7 @@ impl Frame {
     /// * `ratio` - Proportion of available width (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn fill_right(&mut self, ratio: f32, func: impl FnMut(&mut Frame)) {
+    pub fn fill_right(&mut self, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
         self.fill(Side::Right, ratio, func);
     }
 
@@ -255,29 +260,35 @@ impl Frame {
     /// * `ratio` - Proportion of available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn fill_bottom(&mut self, ratio: f32, func: impl FnMut(&mut Frame)) {
+    pub fn fill_bottom(&mut self, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
         self.fill(Side::Bottom, ratio, func);
     }
 }
 
 /// Shrinks a rectangle by applying a margin on all sides.
 #[inline(always)]
-fn rect_shrink(rect: Rect, margin: u16) -> Rect {
+fn rect_shrink<T>(rect: Rect<T>, margin: T) -> Rect<T>
+where
+    T: Num,
+{
     Rect {
         x: rect.x + margin,
         y: rect.y + margin,
-        w: rect.w.saturating_sub(margin * 2),
-        h: rect.h.saturating_sub(margin * 2),
+        w: rect.w.saturating_sub(margin * T::two()),
+        h: rect.h.saturating_sub(margin * T::two()),
     }
 }
 
 /// Expands a rectangle by removing a margin from all sides.
 #[inline(always)]
-fn rect_expand(rect: Rect, margin: u16) -> Rect {
+fn rect_expand<T>(rect: Rect<T>, margin: T) -> Rect<T>
+where
+    T: Num,
+{
     Rect {
         x: rect.x - margin,
         y: rect.y - margin,
-        w: rect.w.saturating_add(margin * 2),
-        h: rect.h.saturating_add(margin * 2),
+        w: rect.w.saturating_add(margin * T::two()),
+        h: rect.h.saturating_add(margin * T::two()),
     }
 }
