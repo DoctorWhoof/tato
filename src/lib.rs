@@ -2,6 +2,9 @@
 
 // TODO: Determine how much rects are overlapping if Layout is too small, and shrink each one accordingly
 // OR return result with difference
+//
+// TODO: Distinction between margin and gap
+// TODO: Vec2
 
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
@@ -14,9 +17,9 @@ pub struct Rect {
 #[derive(Debug, Clone)]
 pub struct Frame {
     pub rect: Rect,
-    pub cursor: Rect,
-    pub margin: u16,
-    pub scale: f32,
+    cursor: Rect,
+    scale: f32,
+    margin: u16,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -28,9 +31,9 @@ enum Side {
 }
 
 impl Frame {
-    pub fn new(rect: Rect, margin: u16) -> Self {
+    pub fn new(rect: Rect) -> Self {
         let scale = 1.0;
-        let margin = (margin as f32 * scale) as u16;
+        let margin = 5;
         let cursor = rect_shrink(rect, margin);
         Self {
             rect,
@@ -38,6 +41,28 @@ impl Frame {
             margin,
             scale,
         }
+    }
+
+    pub fn set_margin(&mut self, margin: u16) {
+        //remove old margin
+        self.cursor = rect_expand(self.cursor, self.margin);
+        // apply new margin
+        self.margin = margin;
+        self.cursor = rect_shrink(self.rect, self.margin);
+    }
+
+    pub fn margin(&self) -> u16 {
+        self.margin
+    }
+
+    //Doesn't do much, but keeps the API consistent with set_margin
+    pub fn set_scale(&mut self, scale: f32) {
+        self.scale = scale;
+        // self.set_margin(self.margin);
+    }
+
+    pub fn scale(&self) -> f32 {
+        self.scale
     }
 
     // "scale" is required since "fill" methods always pass a scale of 1.0,
@@ -179,5 +204,15 @@ fn rect_shrink(rect: Rect, margin: u16) -> Rect {
         y: rect.y + margin,
         w: rect.w.saturating_sub(margin * 2),
         h: rect.h.saturating_sub(margin * 2),
+    }
+}
+
+#[inline(always)]
+fn rect_expand(rect: Rect, margin: u16) -> Rect {
+    Rect {
+        x: rect.x - margin,
+        y: rect.y - margin,
+        w: rect.w.saturating_add(margin * 2),
+        h: rect.h.saturating_add(margin * 2),
     }
 }

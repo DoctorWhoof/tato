@@ -12,13 +12,13 @@ async fn main() {
 
         // Input
         if is_key_pressed(KeyCode::Equal) {
-            scale += 0.2;
+            scale += 0.1;
         } else if is_key_pressed(KeyCode::Minus) {
-            scale -= 0.2;
+            scale -= 0.1;
         } else if is_key_pressed(KeyCode::Key0) {
             scale = 1.0;
         }
-        scale = scale.clamp(0.2, 2.0);
+        scale = scale.clamp(0.1, 2.0);
 
         // Drawing helper function
         let draw_rect = |rect: &layframe::Rect, color: [u8; 4], text: &'static str| {
@@ -39,17 +39,16 @@ async fn main() {
 
         // Init Layout. "Saturating sub" clamps the result to 0, preventing overflow
         // (and a panic) if dimensions are too small.
-        let margin = 4;
         let mut root = Frame::new(
             layframe::Rect {
                 x: 10,
                 y: 10,
                 w: width.saturating_sub(20),
                 h: height.saturating_sub(20),
-            },
-            margin,
+            }
         );
-        root.scale = scale;
+        root.set_margin(4);
+        root.set_scale(scale);
 
         // Process Layout;
         draw_rect(&root.rect, [64, 64, 64, 255], "");
@@ -112,7 +111,7 @@ async fn main() {
 fn add_fancy_panel(frame: &mut Frame, mut func: impl FnMut(&mut Frame)) {
     let text_size = 16.0;
     let text_params = TextParams {
-        font_size: (text_size * frame.scale) as u16,
+        font_size: (text_size * frame.scale()) as u16,
         ..Default::default()
     };
     let rect = Rect::new(
@@ -121,8 +120,8 @@ fn add_fancy_panel(frame: &mut Frame, mut func: impl FnMut(&mut Frame)) {
         frame.rect.w as f32,
         frame.rect.h as f32,
     );
-    let text_offset = Vec2::new(4.0, 12.0) * frame.scale;
-    let bar = 16.0 * frame.scale;
+    let text_offset = Vec2::new(4.0, 12.0) * frame.scale();
+    let bar = 16.0 * frame.scale();
     let text_width = text_size * 0.5 * "Fancy Custom Panel".chars().count() as f32;
     if text_width < rect.w {
         draw_rectangle(
