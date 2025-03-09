@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["example_sdl"]
+members = ["example_sdl", "example_mquad"]
 
-[dependencies]
-normal_float = { path = "../normal_float" }
+# [dependencies]
+# normal_float = { path = "../normal_float" }

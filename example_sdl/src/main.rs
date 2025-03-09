@@ -1,8 +1,4 @@
-use layframe::{Direction, Layout};
-use mini_sdl::sdl2::rect::Rect;
-
-// TODO: "Fill" mini_sdl draw mode (target is resized to window size whenever a window change event occurs)
-// TODO: Proceed with Layout methods (double ended cursor, figure out rect sizes)
+use layframe::Frame;
 
 fn main() -> Result<(), String> {
     let mut app = mini_sdl::App::new(
@@ -14,43 +10,74 @@ fn main() -> Result<(), String> {
         44100,
     )?;
 
-    use Direction::*;
+    let mut font = app.font_load("example_sdl/src/classic-display.ttf", 16)?;
 
     while !app.quit_requested {
         // Init frame
         app.frame_start()?;
-        app.canvas.set_draw_color((64, 64, 64, 255));
+        app.canvas.set_draw_color((32, 32, 32, 255));
         app.canvas.clear();
         app.canvas.set_draw_color((0, 0, 0, 255));
+        let (width, height) = (app.window_width() as u16, app.window_height() as u16);
 
-        // Skip if window is too small (prevents subtraction overflow)
-        if app.window_width() > 50 && app.window_height() > 50 {
-            // Process Layout
-            let lay = Layout::<&'static str>::new()
-                .width((app.window_width() as u16 * 2) - 50)
-                .height((app.window_height() as u16 * 2) - 50)
-                .horizontal()
-                .push_left(50, "left panel A")
-                .push_left(50, "left panel B");
-            // .push_end(50, "right panel");
-            // let lay = Layout {
-            //     width: ,
-            //     height: ,
-            //     scale: 1.0,
-            //     root: Frame {
-            //         children: Some(vec![
-            //             Frame::from_start(50, Horizontal),
-            //             Frame::from_end(50, Horizontal),
-            //         ]),
-            //         ..Default::default()
-            //     },
-            // };
-            // lay.update();
-
-            // Draw
-            let rect = Rect::new(25, 25, lay.width as u32, lay.height as u32);
+        // Drawing helper function
+        let mut draw_rect = |rect: &layframe::Rect, color: (u8, u8, u8), text: &'static str| {
+            let rect = mini_sdl::sdl2::rect::Rect::new(
+                rect.x as i32,
+                rect.y as i32,
+                rect.w as u32,
+                rect.h as u32,
+            );
+            app.canvas.set_draw_color(color);
+            app.canvas.fill_rect(rect).ok();
+            app.canvas.set_draw_color((0, 0, 0, 255));
             app.canvas.draw_rect(rect).ok();
-        }
+            // TODO: font shouldn't be mutable... move this function to App instead
+            font.draw(text, rect.x + 4, rect.y + 4, 2.0, &mut app.canvas)
+                .ok();
+        };
+
+        // Init Layout. "Saturating sub" clamps the result to 0, preventing overflow
+        // (and a panic) if dimensions are too small.
+        let w = (width * 2).saturating_sub(50);
+        let h = (height * 2).saturating_sub(50);
+        let mut root = Frame::root(25, 25, w, h);
+
+        // Process Layout;
+        draw_rect(&root.rect, (64, 64, 64), "");
+
+        // Left panel
+        root.add_left(500, |pane| {
+            draw_rect(&pane.rect, (76, 88, 64), "left pane");
+            // Buttons
+            for _n in 0..25 {
+                pane.add_top(40, |child| {
+                    draw_rect(&child.rect, (88, 96, 76), "button");
+                });
+            }
+        });
+
+        // Right Panel
+        root.add_right(500, |pane| {
+            draw_rect(&pane.rect, (88, 76, 64), "right pane");
+        });
+
+        // Middle Panel
+        root.fill_left(0.5, |pane| {
+            draw_rect(&pane.rect, (120, 130, 60), "middle pane left");
+        });
+
+        // Middle Panel
+        root.fill_top(0.5,|pane| {
+            draw_rect(&pane.rect, (120, 130, 60), "middle pane top");
+        });
+
+        // Middle Panel
+        root.fill_top(1.0,|pane| {
+            draw_rect(&pane.rect, (120, 130, 60), "middle pane bottom");
+        });
+
+        // Present frame
         app.frame_finish()?;
     }
     Ok(())
