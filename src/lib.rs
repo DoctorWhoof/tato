@@ -3,11 +3,31 @@
 // TODO: Determine how much rects are overlapping if Layout is too small, and shrink each one accordingly
 // OR return result with difference
 //
-// TODO: Distinction between margin and gap
-// TODO: Vec2
+// TODO: Distinction between margin and gap?
 
 mod num;
 pub use num::*;
+
+/// A layout frame that manages rectangular areas with margins and scaling.
+/// A frame consists of an outer rectangle, an inner cursor rectangle (available space),
+/// and properties that control how child frames are created and positioned.
+#[derive(Debug, Clone)]
+pub struct Frame<T> {
+    /// The outer rectangle defining the frame boundaries
+    rect: Rect<T>,
+    /// Inner rectangle representing available space
+    cursor: Rect<T>,
+    /// Scaling factor for dimensions
+    scale: f32,
+    /// Margin size between frames
+    margin: T,
+    /// Gap between each child frame
+    gap: T,
+    /// Controls whether the children rects are culled right before or right after the limit.
+    /// Set to "false" if you're going to clip the rect's graphics only when you draw them, "true"
+    /// if you don't want to clip anything (rect will simply disappear when touches the parent's edge )
+    pub aggressive_culling: bool,
+}
 
 /// Represents a rectangle with position and dimensions.
 ///
@@ -23,21 +43,6 @@ pub struct Rect<T> {
     pub w: T,
     /// Height of the rectangle
     pub h: T,
-}
-
-/// A layout frame that manages rectangular areas with margins and scaling.
-/// A frame consists of an outer rectangle, an inner cursor rectangle (available space),
-/// and properties that control how child frames are created and positioned.
-#[derive(Debug, Clone)]
-pub struct Frame<T> {
-    /// The outer rectangle defining the frame boundaries
-    rect: Rect<T>,
-    /// Inner rectangle representing available space
-    cursor: Rect<T>,
-    /// Scaling factor for dimensions
-    scale: f32,
-    /// Margin size between frames
-    margin: T,
 }
 
 /// Represents the side of a frame where a child frame can be added.
@@ -67,7 +72,9 @@ where
             rect,
             cursor,
             margin,
+            gap: margin,
             scale,
+            aggressive_culling: true,
         }
     }
 
@@ -97,6 +104,16 @@ where
         self.margin
     }
 
+    /// Sets a new margin value and recalculates the cursor rectangle.
+    pub fn set_gap(&mut self, gap: T) {
+        self.gap = gap
+    }
+
+    /// Returns the current margin value.
+    pub fn gap(&self) -> T {
+        self.gap
+    }
+
     /// Sets a new scale factor for the frame.
     pub fn set_scale(&mut self, scale: f32) {
         self.scale = scale;
@@ -110,28 +127,43 @@ where
 
     fn add_scope(&mut self, side: Side, len: T, scale: f32, mut func: impl FnMut(&mut Frame<T>)) {
         let scaled_len = T::from_f32(len.to_f32() * scale);
-        let margin = T::from_f32(self.margin.to_f32() * self.scale);
+        let margin = T::from_f32(self.gap.to_f32() * self.scale);
+        let gap = T::from_f32(self.gap.to_f32() * self.scale);
+
+        if self.cursor.h < self.margin || self.cursor.w < self.margin {
+            return;
+        }
 
         // Calculate the child rectangle based on the side
         let child_rect = match side {
-            Side::Left => Rect {
-                x: self.cursor.x,
-                y: self.cursor.y,
-                w: scaled_len,
-                h: self.cursor.h,
-            },
+            Side::Left => {
+                if self.cursor.x > self.rect.x + self.rect.w {
+                    return;
+                }
+                Rect {
+                    x: self.cursor.x,
+                    y: self.cursor.y,
+                    w: scaled_len,
+                    h: self.cursor.h,
+                }
+            }
             Side::Right => Rect {
                 x: (self.cursor.x + self.cursor.w).saturating_sub(scaled_len),
                 y: self.cursor.y,
                 w: scaled_len,
                 h: self.cursor.h,
             },
-            Side::Top => Rect {
-                x: self.cursor.x,
-                y: self.cursor.y,
-                w: self.cursor.w,
-                h: scaled_len,
-            },
+            Side::Top => {
+                if self.cursor.y > self.rect.y + self.rect.h {
+                    return;
+                }
+                Rect {
+                    x: self.cursor.x,
+                    y: self.cursor.y,
+                    w: self.cursor.w,
+                    h: scaled_len,
+                }
+            }
             Side::Bottom => Rect {
                 x: self.cursor.x,
                 y: (self.cursor.y + self.cursor.h).saturating_sub(scaled_len),
@@ -149,30 +181,33 @@ where
         } else {
             child_rect.h
         };
-        let parent_dimension = if is_horizontal {
-            self.cursor.w
-        } else {
-            self.cursor.h
-        };
-        if dimension > parent_dimension || dimension < margin {
-            return;
+
+        if self.aggressive_culling {
+            let parent_dimension = if is_horizontal {
+                self.cursor.w
+            } else {
+                self.cursor.h
+            };
+            if dimension > parent_dimension {
+                return;
+            }
         }
 
         // Update parent cursor
         match side {
             Side::Left => {
-                self.cursor.x += scaled_len + margin;
-                self.cursor.w = self.cursor.w.saturating_sub(scaled_len + margin);
+                self.cursor.x += scaled_len + gap;
+                self.cursor.w = self.cursor.w.saturating_sub(scaled_len + gap);
             }
             Side::Right => {
-                self.cursor.w = self.cursor.w.saturating_sub(scaled_len + margin);
+                self.cursor.w = self.cursor.w.saturating_sub(scaled_len + gap);
             }
             Side::Top => {
-                self.cursor.y += scaled_len + margin;
-                self.cursor.h = self.cursor.h.saturating_sub(scaled_len + margin);
+                self.cursor.y += scaled_len + gap;
+                self.cursor.h = self.cursor.h.saturating_sub(scaled_len + gap);
             }
             Side::Bottom => {
-                self.cursor.h = self.cursor.h.saturating_sub(scaled_len + margin);
+                self.cursor.h = self.cursor.h.saturating_sub(scaled_len + gap);
             }
         }
 
@@ -181,7 +216,9 @@ where
             rect: child_rect,
             cursor: child_cursor,
             margin: self.margin,
+            gap: self.gap,
             scale: self.scale,
+            aggressive_culling: self.aggressive_culling,
         })
     }
 
@@ -195,7 +232,6 @@ where
     }
 
     /// Creates a frame on the specified side taking a proportion of available space.
-    /// This is an internal method used by the public fill_* methods.
     /// # Parameters
     /// * `side` - Which side to add the child frame to
     /// * `ratio` - Proportion of available space (0.0 to 1.0)

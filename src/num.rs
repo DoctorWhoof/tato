@@ -16,6 +16,7 @@ pub trait Num:
     + Div<Output = Self>
 {
     fn zero() -> Self;
+    fn one() -> Self;
     fn two() -> Self;
     fn four() -> Self;
     fn max() -> Self;
@@ -39,6 +40,11 @@ macro_rules! impl_int_num {
             #[inline(always)]
             fn zero() -> Self {
                 0
+            }
+
+            #[inline(always)]
+            fn one() -> Self {
+                1
             }
 
             #[inline(always)]
@@ -110,6 +116,11 @@ macro_rules! impl_float_num {
             #[inline(always)]
             fn zero() -> Self {
                 0.0
+            }
+
+            #[inline(always)]
+            fn one() -> Self {
+                1.0
             }
 
             #[inline(always)]
