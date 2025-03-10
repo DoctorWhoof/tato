@@ -1,9 +1,10 @@
 #![no_std]
 
-// TODO: Determine how much rects are overlapping if Layout is too small, and shrink each one accordingly
+// TODO: Use in a real world project, adjust with any necessary improvements to support it.
+
+// TODO: (?) Determine how much rects are overlapping if Layout is too small, and shrink each one accordingly
 // OR return result with difference
-//
-// TODO: Distinction between margin and gap?
+
 
 mod num;
 pub use num::*;

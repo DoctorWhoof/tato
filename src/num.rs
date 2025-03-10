@@ -1,6 +1,8 @@
+//! Number traits to allow generic code to use any number type.
+
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-/// A Number type, includes signed and unsigned but can't be negated. Use [SignedNum] for that.
+/// A Number trait, includes signed and unsigned but can't be negated. Use [SignedNum] for that.
 pub trait Num:
     Default
     + PartialEq
@@ -29,7 +31,7 @@ pub trait Num:
     fn to_f32(self) -> f32;
 }
 
-/// A signed Number type.
+/// A signed Number trait.
 pub trait SignedNum: Num + Neg<Output = Self> {}
 
 /// Implements Num for integer types
