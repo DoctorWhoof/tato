@@ -1,4 +1,5 @@
 #![no_std]
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/readme.md"))]
 
 // TODO: Use in a real world project, adjust with any necessary improvements to support it.
 
@@ -26,11 +27,12 @@ pub struct Frame<T> {
     gap: T,
     /// Controls whether the children rects are culled right before or right after the limit.
     /// Set to "false" if you're going to clip the rect's graphics only when you draw them, "true"
-    /// if you don't want to clip anything (rect will simply disappear when touches the parent's edge )
+    /// if you don't want to clip anything (rect will simply disappear when it touches the parent's edge)
     pub aggressive_culling: bool,
 }
 
-/// Represents a rectangle with position and dimensions.
+/// Represents a generic rectangle with position and dimensions that
+/// implement [Num] trait, i.e. u16, f32, etc.
 ///
 /// A rectangle is defined by its top-left corner coordinates (x, y)
 /// and its width and height.
@@ -105,12 +107,12 @@ where
         self.margin
     }
 
-    /// Sets a new margin value and recalculates the cursor rectangle.
+    /// Sets a new gap value.
     pub fn set_gap(&mut self, gap: T) {
         self.gap = gap
     }
 
-    /// Returns the current margin value.
+    /// Returns the current gap value.
     pub fn gap(&self) -> T {
         self.gap
     }
@@ -223,9 +225,10 @@ where
         })
     }
 
-    /// Adds a new frame on the left side with specified width.
+    /// Adds a new frame on the specified side with specified length.
     /// # Parameters
-    /// * `len` - Width of the new frame (before scaling)
+    /// * `side` - Which side to add the child frame to
+    /// * `len` - Length of the new frame (before scaling)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
     pub fn add(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {

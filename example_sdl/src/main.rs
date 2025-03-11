@@ -6,8 +6,8 @@ fn main() -> Result<(), String> {
         400,
         400,
         mini_sdl::Timing::Vsync,
-        mini_sdl::Scaling::Fill,
-        44100,
+        mini_sdl::Scaling::Integer,
+        None,
     )?;
 
     let mut font = app.font_load("example_sdl/src/classic-display.ttf", 16)?;
@@ -21,7 +21,7 @@ fn main() -> Result<(), String> {
         let (width, height) = (app.window_width() as u16, app.window_height() as u16);
 
         // Drawing helper function
-        let mut draw_rect = |rect: &layframe::Rect, color: (u8, u8, u8), text: &'static str| {
+        let mut draw_rect = |rect: &layframe::Rect<u16>, color: (u8, u8, u8), text: &'static str| {
             let rect = mini_sdl::sdl2::rect::Rect::new(
                 rect.x as i32,
                 rect.y as i32,
@@ -41,41 +41,42 @@ fn main() -> Result<(), String> {
         // (and a panic) if dimensions are too small.
         let w = (width * 2).saturating_sub(50);
         let h = (height * 2).saturating_sub(50);
-        let mut root = Frame::root(25, 25, w, h);
+        let mut root = Frame::new(layframe::Rect { x: 25, y: 25, w, h });
 
         // Process Layout;
-        draw_rect(&root.rect, (64, 64, 64), "");
+        draw_rect(&root.rect(), (64, 64, 64), "");
+        use layframe::Side::*;
 
         // Left panel
-        let scale = 1.0;
-        root.add_left(500, scale, |pane| {
-            draw_rect(&pane.rect, (76, 88, 64), "left pane");
+        root.set_scale(1.0);
+        root.add(Left, 500, |pane| {
+            draw_rect(&pane.rect(), (76, 88, 64), "left pane");
             // Buttons
             for _n in 0..25 {
-                pane.add_top(40, scale, |child| {
-                    draw_rect(&child.rect, (88, 96, 76), "button");
+                pane.add(Top, 40, |child| {
+                    draw_rect(&child.rect(), (88, 96, 76), "button");
                 });
             }
         });
 
         // Right Panel
-        root.add_right(500, scale, |pane| {
-            draw_rect(&pane.rect, (88, 76, 64), "right pane");
+        root.add(Right, 500, |pane| {
+            draw_rect(&pane.rect(), (88, 76, 64), "right pane");
         });
 
         // Middle Panel
-        root.fill_left(0.5, scale, |pane| {
-            draw_rect(&pane.rect, (120, 130, 60), "middle pane left");
+        root.fill(Left, 0.5, |pane| {
+            draw_rect(&pane.rect(), (120, 130, 60), "middle pane left");
         });
 
         // Middle Panel
-        root.fill_top(0.5, scale, |pane| {
-            draw_rect(&pane.rect, (120, 130, 60), "middle pane top");
+        root.fill(Top, 0.5,|pane| {
+            draw_rect(&pane.rect(), (120, 130, 60), "middle pane top");
         });
 
         // Middle Panel
-        root.fill_top(1.0, scale, |pane| {
-            draw_rect(&pane.rect, (120, 130, 60), "middle pane bottom");
+        root.fill(Top, 1.0,|pane| {
+            draw_rect(&pane.rect(), (120, 130, 60), "middle pane bottom");
         });
 
         // Present frame
