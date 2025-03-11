@@ -2,10 +2,6 @@
 name = "example_sdl"
 version = "0.2.0"
 edition = "2024"
-description = "Minimalist and allocation free GUI Layout"
-license = "MIT"
-repository = "https://github.com/DoctorWhoof/layframe"
-documentation = "https://docs.rs/layframe/latest/layframe/"
 
 [dependencies]
 mini_sdl = {version = "0.3.8", features = ["ttf"]}

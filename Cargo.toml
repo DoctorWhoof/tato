@@ -2,6 +2,10 @@
 name = "layframe"
 version = "0.1.0"
 edition = "2024"
+description = "Minimalist and allocation free GUI Layout"
+license = "MIT"
+repository = "https://github.com/DoctorWhoof/layframe"
+documentation = "https://docs.rs/layframe/latest/layframe/"
 
 [workspace]
 members = ["example_mquad", "example_sdl"]
