@@ -29,9 +29,9 @@ fn main() {
     });
 
     // Add a header at the top
-    root.add(Top, 60, |header| {
+    root.add(Top, 100, |header| {
         // Add a logo to the left of the header
-        header.add(Top, 100, |logo| {
+        header.add(Left, 200, |logo| {
             // You can acquire this rectangle using logo.rect(),
             // and draw it with your favorite graphics crate.
         });
@@ -40,7 +40,7 @@ fn main() {
         header.add(Right, 200, |nav| {
             // Navigation content
             for _ in 0..10 {
-                nav.add(Top, 40, |_button| {
+                nav.add(Top, 40, |button| {
                     // This "button" is a smaller rect within nav, stacked from the top
                 })
             }
@@ -48,12 +48,12 @@ fn main() {
     });
 
     // Add a dynamic sidebar using 20% of the remaining space (ratio = 0.2)
-    root.fill(Left, 0.2, |_sidebar| {
+    root.fill(Left, 0.2, |sidebar| {
         // Sidebar content
     });
 
     // Main content area (use remaining space with ratio = 1.0)
-    root.fill(Left, 1.0, |_content| {
+    root.fill(Left, 1.0, |content| {
         // Main content
     });
 }
