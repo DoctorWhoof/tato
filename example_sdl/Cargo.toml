@@ -4,6 +4,5 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
-# mini_sdl = "0.3.8"
-mini_sdl = { path = "../../mini_sdl", features = ["ttf"]}
+mini_sdl = {version = "0.3.8", features = ["ttf"]}
 layframe =  { path = "../" }
