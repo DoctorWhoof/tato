@@ -23,10 +23,10 @@ pub trait Num:
     fn one() -> Self;
     fn two() -> Self;
     fn four() -> Self;
-    // fn max() -> Self;
+    // fn max_value() -> Self;
     // fn from_usize(value: usize) -> Self;
-    // fn get_max(a: Self, b: Self) -> Self;
-    // fn get_min(a: Self, b: Self) -> Self;
+    // fn get_max(self, b: Self) -> Self;
+    fn get_min(self, b: Self) -> Self;
     fn saturating_sub(self, rhs: Self) -> Self;
     fn saturating_add(self, rhs: Self) -> Self;
     fn from_f32(value: f32) -> Self;
@@ -64,7 +64,7 @@ mod macros {
                 }
 
                 // #[inline(always)]
-                // fn max() -> Self {
+                // fn max_value() -> Self {
                 //     Self::MAX
                 // }
 
@@ -74,14 +74,14 @@ mod macros {
                 // }
 
                 // #[inline(always)]
-                // fn get_max(a: Self, b: Self) -> Self {
-                //     a.max(b)
+                // fn get_max(self, b: Self) -> Self {
+                //     self.max(b)
                 // }
 
-                // #[inline(always)]
-                // fn get_min(a: Self, b: Self) -> Self {
-                //     a.min(b)
-                // }
+                #[inline(always)]
+                fn get_min(self, b: Self) -> Self {
+                    self.min(b)
+                }
 
                 #[inline(always)]
                 fn saturating_sub(self, rhs: Self) -> Self {
@@ -138,7 +138,7 @@ mod macros {
                 }
 
                 // #[inline(always)]
-                // fn max() -> Self {
+                // fn max_value() -> Self {
                 //     Self::INFINITY
                 // }
 
@@ -148,14 +148,14 @@ mod macros {
                 // }
 
                 // #[inline(always)]
-                // fn get_max(a: Self, b: Self) -> Self {
-                //     a.max(b)
+                // fn get_max(self, b: Self) -> Self {
+                //     self.max(b)
                 // }
 
-                // #[inline(always)]
-                // fn get_min(a: Self, b: Self) -> Self {
-                //     a.min(b)
-                // }
+                #[inline(always)]
+                fn get_min(self, b: Self) -> Self {
+                    self.min(b)
+                }
 
                 #[inline(always)]
                 fn saturating_sub(self, rhs: Self) -> Self {

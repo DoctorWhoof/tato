@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use matte::{Frame, Num, Side::*};
+use matte::{Culling, Frame, Num, Side::*};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -52,21 +52,25 @@ async fn main() {
             // Shorter so I can watch the culling behavior at the bottom
             h: (height - 20.0).clamp(0.0, 8192.0) * 0.95,
         });
-        root.set_margin(4.0);
+        // root.set_margin(4.0);
         root.set_scale(scale);
+        root.culling = Culling::Relaxed;
 
         // Process Layout;
         draw_text_ex("Use '+', '-' and '0' keys to change UI scale", 10.0, 16.0, fixed_text);
         draw_rect(&root.rect(), [60, 60, 60, 255], "".to_string());
+
+
         // Left pane
         root.push(Left, 200.0, |pane| {
             draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane".to_string());
-            pane.set_margin(16.0);
-            pane.set_gap(0.0);
+            pane.set_margin(8.0);
+            pane.set_gap(1.0);
             // Buttons
-            for _n in 0..25 {
+            for n in 0..25 {
                 pane.push(Top, 20.0, |button| {
-                    draw_rect(&button.rect(), [100, 100, 100, 255], "button".to_string());
+                    let text = format!("button {}", n);
+                    draw_rect(&button.rect(), [100, 100, 100, 255], text);
                     button.set_margin(2.0);
                     button.push(Right, 18.0, |icon| {
                         draw_rect(&icon.rect(), [110, 110, 110, 255], "".to_string());

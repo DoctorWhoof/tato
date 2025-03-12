@@ -1,11 +1,8 @@
 #![no_std]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/readme.md"))]
 
-// TODO: Use in a real world project, adjust with any necessary improvements to support it.
-
-// TODO: (?) Determine how much rects are overlapping if Layout is too small, and shrink each one accordingly
-// OR return result with difference
-
+// TODO: implement a "place" function that can place a child frame anywhere, and then apply culling strategy.
+// Modifiy existing functions so that "place" is called at the end, probably at the end of "add_scope"?
 
 mod num;
 pub use num::*;
@@ -25,10 +22,8 @@ pub struct Frame<T> {
     margin: T,
     /// Gap between each child frame
     gap: T,
-    /// Controls whether the children rects are culled right before or right after the limit.
-    /// Set to "false" if you're going to clip the rect's graphics only when you draw them, "true"
-    /// if you don't want to clip anything (rect will simply disappear when it touches the parent's edge)
-    pub aggressive_culling: bool,
+    /// Controls how children rects are culled when they exceed available space
+    pub culling: Culling,
 }
 
 /// Represents a generic rectangle with position and dimensions that
@@ -61,6 +56,17 @@ pub enum Side {
     Bottom,
 }
 
+/// Clipping strategy
+#[derive(Debug, Clone, Copy)]
+pub enum Culling {
+    /// Allows child frame even if it goes over the available space.
+    Relaxed,
+    /// Removes child frames that touch the margin.
+    Aggressive,
+    /// Clamps child frame's edges to available space.
+    Clamp
+}
+
 impl<T> Frame<T>
 where
     T: Num,
@@ -77,7 +83,7 @@ where
             margin,
             gap: margin,
             scale,
-            aggressive_culling: true,
+            culling: Culling::Aggressive,
         }
     }
 
@@ -135,7 +141,20 @@ where
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
     pub fn push(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
-        self.add_scope(side, len, self.scale, func)
+        let is_horizontal = matches!(side, Side::Left | Side::Right);
+
+        // Default width and height based on the side
+        let (w, h) = if is_horizontal {
+            (len, self.cursor.h)
+        } else {
+            (self.cursor.w, len)
+        };
+
+        // Default offset is zero
+        let offset_x = T::zero();
+        let offset_y = T::zero();
+
+        self.add_scope(side, w, h, offset_x, offset_y, self.scale, func);
     }
 
     /// Creates a frame on the specified side taking a proportion of available space.
@@ -145,17 +164,68 @@ where
     /// * `func` - Closure to execute with the new child frame
     pub fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
         let is_horizontal = matches!(side, Side::Left | Side::Right);
-        let len = if is_horizontal {
-            self.cursor.w.to_f32() * ratio.clamp(0.0, 1.0)
+
+        let (w, h) = if is_horizontal {
+            let len = self.cursor.w.to_f32() * ratio.clamp(0.0, 1.0);
+            (T::from_f32(len), self.cursor.h)
         } else {
-            self.cursor.h.to_f32() * ratio.clamp(0.0, 1.0)
+            let len = self.cursor.h.to_f32() * ratio.clamp(0.0, 1.0);
+            (self.cursor.w, T::from_f32(len))
         };
 
-        self.add_scope(side, T::from_f32(len), 1.0, func);
+        // Default offset is zero
+        let offset_x = T::zero();
+        let offset_y = T::zero();
+
+        self.add_scope(side, w, h, offset_x, offset_y, 1.0, func);
     }
 
-    fn add_scope(&mut self, side: Side, len: T, scale: f32, mut func: impl FnMut(&mut Frame<T>)) {
-        let scaled_len = T::from_f32(len.to_f32() * scale);
+    /// Creates a centered frame with specific dimensions on the specified side.
+    /// # Parameters
+    /// * `side` - Determines how to shrink the cursor. Even though the result will be
+    /// centered no matter what, the remaining space will be dictated by the side used.
+    /// * `w` - Width of the new frame (before scaling)
+    /// * `h` - Height of the new frame (before scaling)
+    /// * `func` - Closure to execute with the new child frame
+    pub fn center(&mut self, side:Side, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+        // Calculate the centering offsets
+        let offset_x = (self.cursor.w - w) / T::two();
+        let offset_y = (self.cursor.h - h) / T::two();
+
+        // Ensure offsets are non-negative
+        let offset_x = if offset_x < T::zero() { T::zero() } else { offset_x };
+        let offset_y = if offset_y < T::zero() { T::zero() } else { offset_y };
+
+        self.add_scope(side, w, h, offset_x, offset_y, self.scale, func);
+    }
+
+    #[inline(always)]
+    /// Allows specifying x and y offsets, as well as width and height for the pushed frame.
+    pub fn push_rect(
+        &mut self,
+        side: Side,
+        x: T,
+        y: T,
+        w: T,
+        h: T,
+        func: impl FnMut(&mut Frame<T>),
+    ) {
+        // Ensures "self.scale"" is used. "fill" always adds with scale = 1.0 instead.
+        self.add_scope(side, w, h, x, y, self.scale, func);
+    }
+
+    fn add_scope(
+        &mut self,
+        side: Side,
+        w: T,
+        h: T,
+        extra_x: T,
+        extra_y: T,
+        scale: f32,
+        mut func: impl FnMut(&mut Frame<T>),
+    ) {
+        let scaled_w = T::from_f32(w.to_f32() * scale);
+        let scaled_h = T::from_f32(h.to_f32() * scale);
         let margin = T::from_f32(self.gap.to_f32() * self.scale);
         let gap = T::from_f32(self.gap.to_f32() * self.scale);
 
@@ -164,60 +234,91 @@ where
         }
 
         // Calculate the child rectangle based on the side
-        let child_rect = match side {
+        let mut child_rect = match side {
             Side::Left => {
                 if self.cursor.x > self.rect.x + self.rect.w {
                     return;
                 }
                 Rect {
-                    x: self.cursor.x,
-                    y: self.cursor.y,
-                    w: scaled_len,
-                    h: self.cursor.h,
+                    x: self.cursor.x + extra_x,
+                    y: self.cursor.y + extra_y,
+                    w: scaled_w,
+                    h: scaled_h,
                 }
             }
             Side::Right => Rect {
-                x: (self.cursor.x + self.cursor.w).saturating_sub(scaled_len),
-                y: self.cursor.y,
-                w: scaled_len,
-                h: self.cursor.h,
+                x: (self.cursor.x + self.cursor.w).saturating_sub(scaled_w) - extra_x,
+                y: self.cursor.y + extra_y,
+                w: scaled_w,
+                h: scaled_h,
             },
             Side::Top => {
                 if self.cursor.y > self.rect.y + self.rect.h {
                     return;
                 }
                 Rect {
-                    x: self.cursor.x,
-                    y: self.cursor.y,
-                    w: self.cursor.w,
-                    h: scaled_len,
+                    x: self.cursor.x + extra_x,
+                    y: self.cursor.y + extra_y,
+                    w: scaled_w,
+                    h: scaled_h,
                 }
             }
             Side::Bottom => Rect {
-                x: self.cursor.x,
-                y: (self.cursor.y + self.cursor.h).saturating_sub(scaled_len),
-                w: self.cursor.w,
-                h: scaled_len,
+                x: self.cursor.x + extra_x,
+                y: (self.cursor.y + self.cursor.h).saturating_sub(scaled_h) - extra_y,
+                w: scaled_w,
+                h: scaled_h,
             },
         };
 
+        // Apply clamping if culling strategy is Clamp
+        if matches!(self.culling, Culling::Clamp) {
+            // Clamp to ensure the rect stays within cursor boundaries
+            // Clamp x position
+            if child_rect.x < self.cursor.x {
+                let diff = self.cursor.x - child_rect.x;
+                child_rect.x = self.cursor.x;
+                child_rect.w = child_rect.w.saturating_sub(diff);
+            }
+
+            // Clamp y position
+            if child_rect.y < self.cursor.y {
+                let diff = self.cursor.y - child_rect.y;
+                child_rect.y = self.cursor.y;
+                child_rect.h = child_rect.h.saturating_sub(diff);
+            }
+
+            // Clamp width
+            if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
+                child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
+            }
+
+            // Clamp height
+            if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
+                child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+            }
+        }
+
+        if child_rect.w < T::one() || child_rect.h < T::one() {
+            return
+        }
+
         let child_cursor = rect_shrink(child_rect, margin);
 
-        // Check if the child fits
-        let is_horizontal = matches!(side, Side::Left | Side::Right);
-        let dimension = if is_horizontal {
-            child_rect.w
-        } else {
-            child_rect.h
-        };
-
-        if self.aggressive_culling {
-            let parent_dimension = if is_horizontal {
+        // Check if the child fits within available space based on culling strategy
+        if matches!(self.culling, Culling::Aggressive) {
+            let is_horizontal = matches!(side, Side::Left | Side::Right);
+            let dimension = if is_horizontal {
+                child_rect.w
+            } else {
+                child_rect.h
+            };
+            let available = if is_horizontal {
                 self.cursor.w
             } else {
                 self.cursor.h
             };
-            if dimension > parent_dimension {
+            if dimension > available {
                 return;
             }
         }
@@ -225,18 +326,22 @@ where
         // Update parent cursor
         match side {
             Side::Left => {
-                self.cursor.x += scaled_len + gap;
-                self.cursor.w = self.cursor.w.saturating_sub(scaled_len + gap);
+                // Add extra_x to the cursor movement
+                self.cursor.x += scaled_w + gap + extra_x;
+                self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
             }
             Side::Right => {
-                self.cursor.w = self.cursor.w.saturating_sub(scaled_len + gap);
+                // Subtract extra_x in width reduction
+                self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
             }
             Side::Top => {
-                self.cursor.y += scaled_len + gap;
-                self.cursor.h = self.cursor.h.saturating_sub(scaled_len + gap);
+                // Add extra_y to the cursor movement
+                self.cursor.y += scaled_h + gap + extra_y;
+                self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
             }
             Side::Bottom => {
-                self.cursor.h = self.cursor.h.saturating_sub(scaled_len + gap);
+                // Subtract extra_y in height reduction
+                self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
             }
         }
 
@@ -247,7 +352,7 @@ where
             margin: self.margin,
             gap: self.gap,
             scale: self.scale,
-            aggressive_culling: self.aggressive_culling,
+            culling: self.culling,
         })
     }
 }

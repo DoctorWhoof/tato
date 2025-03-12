@@ -1,4 +1,4 @@
-use matte::{Frame, Side::*};
+use matte::{Culling, Frame, Side::*};
 use macroquad::prelude::*;
 
 #[macroquad::main("Frame Layout")]
@@ -54,12 +54,23 @@ async fn main() {
 
         // Middle Top
         root.fill(Top, 0.5, |pane| {
-            draw_rect(&pane.rect(), 2.0);
+            pane.culling = Culling::Clamp;
+            draw_rect(&pane.rect(), 4.0);
+            // Centered. Notice how 'side' here affects which side the available space
+            // will be, in this caseit will be on top (the frame was added "from the bottom")
+            pane.center(Bottom, 100.0, 100.0, |centered|{
+                draw_rect(&centered.rect(), 2.0);
+            });
+            // Allows specifying extra offsets, width and height.
+            pane.push_rect(Left, 20.0, 20.0, 20.0, 20.0, |inner|{
+                draw_rect(&inner.rect(), 2.0);
+            });
         });
 
         // Middle Bottom
         root.fill(Bottom, 1.0, |pane| {
             draw_rect(&pane.rect(), 2.0);
+
         });
 
         // Present frame
