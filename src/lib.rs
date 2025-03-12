@@ -64,7 +64,7 @@ pub enum Culling {
     /// Removes child frames that touch the margin.
     Aggressive,
     /// Clamps child frame's edges to available space.
-    Clamp
+    Clamp,
 }
 
 impl<T> Frame<T>
@@ -137,7 +137,7 @@ where
     /// Adds a new frame on the specified side with specified length.
     /// # Parameters
     /// * `side` - Which side to add the child frame to
-    /// * `len` - Length of the new frame (before scaling)
+    /// * `len` - Length of the new frame
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
     pub fn push(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
@@ -145,16 +145,16 @@ where
 
         // Default width and height based on the side
         let (w, h) = if is_horizontal {
-            (len, self.cursor.h)
+            (len, self.cursor.h / T::from_f32(self.scale))
         } else {
-            (self.cursor.w, len)
+            (self.cursor.w / T::from_f32(self.scale), len)
         };
 
         // Default offset is zero
         let offset_x = T::zero();
         let offset_y = T::zero();
 
-        self.add_scope(side, w, h, offset_x, offset_y, self.scale, func);
+        self.add_scope(side, w, h, offset_x, offset_y, self.scale, true, func);
     }
 
     /// Creates a frame on the specified side taking a proportion of available space.
@@ -177,43 +177,48 @@ where
         let offset_x = T::zero();
         let offset_y = T::zero();
 
-        self.add_scope(side, w, h, offset_x, offset_y, 1.0, func);
+        self.add_scope(side, w, h, offset_x, offset_y, 1.0, true, func);
     }
 
-    /// Creates a centered frame with specific dimensions on the specified side.
+    /// Creates a centered frame with specific dimensions. Does not modify the cursor!
     /// # Parameters
-    /// * `side` - Determines how to shrink the cursor. Even though the result will be
-    /// centered no matter what, the remaining space will be dictated by the side used.
-    /// * `w` - Width of the new frame (before scaling)
-    /// * `h` - Height of the new frame (before scaling)
+    /// * `w` - Width of the new frame
+    /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
-    pub fn center(&mut self, side:Side, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+    pub fn center(&mut self, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
         // Calculate the centering offsets
         let offset_x = (self.cursor.w - w) / T::two();
         let offset_y = (self.cursor.h - h) / T::two();
 
         // Ensure offsets are non-negative
-        let offset_x = if offset_x < T::zero() { T::zero() } else { offset_x };
-        let offset_y = if offset_y < T::zero() { T::zero() } else { offset_y };
+        let x = if offset_x < T::zero() {
+            T::zero()
+        } else {
+            offset_x
+        };
+        let y = if offset_y < T::zero() {
+            T::zero()
+        } else {
+            offset_y
+        };
 
-        self.add_scope(side, w, h, offset_x, offset_y, self.scale, func);
+        self.add_scope(Side::Left, w, h, x, y, self.scale, false, func);
     }
 
-    #[inline(always)]
-    /// Allows specifying x and y offsets, as well as width and height for the pushed frame.
-    pub fn push_rect(
-        &mut self,
-        side: Side,
-        x: T,
-        y: T,
-        w: T,
-        h: T,
-        func: impl FnMut(&mut Frame<T>),
-    ) {
+    /// Allows arbitrary placement of the new frame in relation to the current frame.
+    /// Does not modify the cursor!
+    /// # Parameters
+    /// * `x` - X position of the new frame in relation to this frame.
+    /// * `y` - Y position of the new frame in relation to this frame.
+    /// * `w` - Width of the new frame
+    /// * `h` - Height of the new frame
+    /// * `func` - Closure to execute with the new child frame
+    pub fn place(&mut self, side: Side, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
         // Ensures "self.scale"" is used. "fill" always adds with scale = 1.0 instead.
-        self.add_scope(side, w, h, x, y, self.scale, func);
+        self.add_scope(side, w, h, x, y, self.scale, false, func);
     }
 
+    /// Internal jack-of-all-trades function called by the mode specialized public functions
     fn add_scope(
         &mut self,
         side: Side,
@@ -222,16 +227,13 @@ where
         extra_x: T,
         extra_y: T,
         scale: f32,
+        update_cursor: bool,
         mut func: impl FnMut(&mut Frame<T>),
     ) {
         let scaled_w = T::from_f32(w.to_f32() * scale);
         let scaled_h = T::from_f32(h.to_f32() * scale);
         let margin = T::from_f32(self.gap.to_f32() * self.scale);
         let gap = T::from_f32(self.gap.to_f32() * self.scale);
-
-        if self.cursor.h < self.margin || self.cursor.w < self.margin {
-            return;
-        }
 
         // Calculate the child rectangle based on the side
         let mut child_rect = match side {
@@ -271,84 +273,76 @@ where
             },
         };
 
-        // Apply clamping if culling strategy is Clamp
-        if matches!(self.culling, Culling::Clamp) {
-            // Clamp to ensure the rect stays within cursor boundaries
-            // Clamp x position
-            if child_rect.x < self.cursor.x {
-                let diff = self.cursor.x - child_rect.x;
-                child_rect.x = self.cursor.x;
-                child_rect.w = child_rect.w.saturating_sub(diff);
+        match self.culling {
+            Culling::Relaxed => {}
+            Culling::Aggressive => {
+                if child_rect.w.round_down() > self.cursor.w.round_up() {
+                    return;
+                }
+                if child_rect.h.round_down() > self.cursor.h.round_up() {
+                    return;
+                }
             }
+            Culling::Clamp => {
+                // Clamp to ensure the rect stays within cursor boundaries
+                // Clamp x position
+                if child_rect.x < self.cursor.x {
+                    let diff = self.cursor.x - child_rect.x;
+                    child_rect.x = self.cursor.x;
+                    child_rect.w = child_rect.w.saturating_sub(diff);
+                }
 
-            // Clamp y position
-            if child_rect.y < self.cursor.y {
-                let diff = self.cursor.y - child_rect.y;
-                child_rect.y = self.cursor.y;
-                child_rect.h = child_rect.h.saturating_sub(diff);
-            }
+                // Clamp y position
+                if child_rect.y < self.cursor.y {
+                    let diff = self.cursor.y - child_rect.y;
+                    child_rect.y = self.cursor.y;
+                    child_rect.h = child_rect.h.saturating_sub(diff);
+                }
 
-            // Clamp width
-            if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
-                child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
-            }
+                // Clamp width
+                if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
+                    child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
+                }
 
-            // Clamp height
-            if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
-                child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+                // Clamp height
+                if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
+                    child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+                }
             }
         }
 
         if child_rect.w < T::one() || child_rect.h < T::one() {
-            return
-        }
-
-        let child_cursor = rect_shrink(child_rect, margin);
-
-        // Check if the child fits within available space based on culling strategy
-        if matches!(self.culling, Culling::Aggressive) {
-            let is_horizontal = matches!(side, Side::Left | Side::Right);
-            let dimension = if is_horizontal {
-                child_rect.w
-            } else {
-                child_rect.h
-            };
-            let available = if is_horizontal {
-                self.cursor.w
-            } else {
-                self.cursor.h
-            };
-            if dimension > available {
-                return;
-            }
+            return;
         }
 
         // Update parent cursor
-        match side {
-            Side::Left => {
-                // Add extra_x to the cursor movement
-                self.cursor.x += scaled_w + gap + extra_x;
-                self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
-            }
-            Side::Right => {
-                // Subtract extra_x in width reduction
-                self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
-            }
-            Side::Top => {
-                // Add extra_y to the cursor movement
-                self.cursor.y += scaled_h + gap + extra_y;
-                self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
-            }
-            Side::Bottom => {
-                // Subtract extra_y in height reduction
-                self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
+        if update_cursor {
+            match side {
+                Side::Left => {
+                    // Add extra_x to the cursor movement
+                    self.cursor.x += scaled_w + gap + extra_x;
+                    self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
+                }
+                Side::Right => {
+                    // Subtract extra_x in width reduction
+                    self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
+                }
+                Side::Top => {
+                    // Add extra_y to the cursor movement
+                    self.cursor.y += scaled_h + gap + extra_y;
+                    self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
+                }
+                Side::Bottom => {
+                    // Subtract extra_y in height reduction
+                    self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
+                }
             }
         }
 
         // Call the function with the new frame
         func(&mut Frame {
+            cursor: rect_shrink(child_rect, margin),
             rect: child_rect,
-            cursor: child_cursor,
             margin: self.margin,
             gap: self.gap,
             scale: self.scale,

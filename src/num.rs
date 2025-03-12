@@ -32,6 +32,8 @@ pub trait Num:
     fn saturating_add(self, rhs: Self) -> Self;
     fn from_f32(value: f32) -> Self;
     fn to_f32(self) -> f32;
+    fn round_up(self) -> Self;
+    fn round_down(self) -> Self;
 }
 
 // /// A signed Number trait.
@@ -102,6 +104,15 @@ mod macros {
                 #[inline(always)]
                 fn to_f32(self) -> f32 {
                     self as f32
+                }
+
+                #[inline(always)]
+                fn round_up(self) -> Self {
+                    self
+                }
+
+                fn round_down(self) -> Self {
+                    self
                 }
             }
         };
@@ -176,6 +187,16 @@ mod macros {
                 #[inline(always)]
                 fn to_f32(self) -> f32 {
                     self as f32
+                }
+
+                #[inline(always)]
+                fn round_down(self) -> Self {
+                    (self as i64) as Self
+                }
+
+                #[inline(always)]
+                fn round_up(self) -> Self {
+                    (self as i64 + 1) as Self
                 }
             }
         };

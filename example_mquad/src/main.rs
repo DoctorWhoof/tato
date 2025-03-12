@@ -54,7 +54,6 @@ async fn main() {
         });
         // root.set_margin(4.0);
         root.set_scale(scale);
-        root.culling = Culling::Relaxed;
 
         // Process Layout;
         draw_text_ex("Use '+', '-' and '0' keys to change UI scale", 10.0, 16.0, fixed_text);
@@ -63,9 +62,11 @@ async fn main() {
 
         // Left pane
         root.push(Left, 200.0, |pane| {
-            draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane".to_string());
+            draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane (relaxed culling)".to_string());
             pane.set_margin(8.0);
             pane.set_gap(1.0);
+            // pane.culling = Culling::Relaxed;
+            pane.push(Top, 20.0, |top| {});
             // Buttons
             for n in 0..25 {
                 pane.push(Top, 20.0, |button| {
