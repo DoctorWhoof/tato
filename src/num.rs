@@ -1,7 +1,8 @@
 //! Number traits to allow generic code to use any number type.
 //! Does not cover all cases, only what this crate needs!
 
-use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+// use core::ops::Neg;
 
 /// A Number trait.
 /// Automatically implemented for primitive number types (i32, f32, etc).
