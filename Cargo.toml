@@ -8,7 +8,7 @@ repository = "https://github.com/DoctorWhoof/layframe"
 documentation = "https://docs.rs/layframe/latest/layframe/"
 
 [workspace]
-members = ["example_mquad", "example_sdl"]
+members = ["example_basic", "example_mquad", "example_sdl"]
 
 # [dependencies]
 # normal_float = { path = "../normal_float" }
