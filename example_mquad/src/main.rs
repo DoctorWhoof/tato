@@ -1,4 +1,4 @@
-use layframe::{Frame, Num, Side::*};
+use matte::{Frame, Num, Side::*};
 use macroquad::prelude::*;
 
 #[macroquad::main("Frame Layout")]
@@ -21,7 +21,7 @@ async fn main() {
         scale = scale.clamp(0.2, 2.0);
 
         // Drawing helper function
-        let draw_rect = |rect: &layframe::Rect<f32>, color: [u8; 4], text: String| {
+        let draw_rect = |rect: &matte::Rect<f32>, color: [u8; 4], text: String| {
             let text_params = TextParams {
                 font_size: (16.0 * scale) as u16,
                 ..Default::default()
@@ -40,7 +40,7 @@ async fn main() {
 
         // Init Layout. Prevents negative values.
         // You can optionally clamp it to  a minimum UI size.
-        let mut root = Frame::new(layframe::Rect {
+        let mut root = Frame::new(matte::Rect {
             x: 10.0,
             y: 10.0,
             w: (width - 20.0).clamp(0.0, 8192.0),

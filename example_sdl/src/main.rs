@@ -1,4 +1,4 @@
-use layframe::Frame;
+use matte::Frame;
 
 fn main() -> Result<(), String> {
     let mut app = mini_sdl::App::new(
@@ -21,7 +21,7 @@ fn main() -> Result<(), String> {
         let (width, height) = (app.window_width() as u16, app.window_height() as u16);
 
         // Drawing helper function
-        let mut draw_rect = |rect: &layframe::Rect<u16>, color: (u8, u8, u8), text: &'static str| {
+        let mut draw_rect = |rect: &matte::Rect<u16>, color: (u8, u8, u8), text: &'static str| {
             let rect = mini_sdl::sdl2::rect::Rect::new(
                 rect.x as i32,
                 rect.y as i32,
@@ -41,11 +41,11 @@ fn main() -> Result<(), String> {
         // (and a panic) if dimensions are too small.
         let w = (width * 2).saturating_sub(50);
         let h = (height * 2).saturating_sub(50);
-        let mut root = Frame::new(layframe::Rect { x: 25, y: 25, w, h });
+        let mut root = Frame::new(matte::Rect { x: 25, y: 25, w, h });
 
         // Process Layout;
         draw_rect(&root.rect(), (64, 64, 64), "");
-        use layframe::Side::*;
+        use matte::Side::*;
 
         // Left panel
         root.set_scale(1.0);

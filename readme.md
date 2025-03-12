@@ -1,8 +1,8 @@
-# Layframe
+# Matte
 
 An **_immediate mode_**, minimalist, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments.
 
-While easy to use, Layframe's approach is very limited and can't create complex layouts! There's simply the function [Frame::add()], to add fixed size elements, and [Frame::fill()] for proportional elements. Both can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
+While easy to use, Matte's approach is very limited and can't create complex layouts! There's simply the function [Frame::add()], to add fixed size elements, and [Frame::fill()] for proportional elements. Both can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
 
 (More features will be added in the future.)
 
@@ -17,7 +17,7 @@ Two examples are provided: a more complex one using Macroquad for rendering, and
 ## Usage Example
 
 ```rust
-use layframe::{Frame, Rect, Side::*};
+use matte::{Frame, Rect, Side::*};
 
 fn main() {
     // Create a root frame

@@ -1,11 +1,11 @@
 [package]
-name = "layframe"
-version = "0.1.3"
+name = "matte"
+version = "0.1.4"
 edition = "2024"
 description = "Minimalist and allocation free GUI Layout"
 license = "MIT"
-repository = "https://github.com/DoctorWhoof/layframe"
-documentation = "https://docs.rs/layframe/latest/layframe/"
+repository = "https://github.com/DoctorWhoof/matte"
+documentation = "https://docs.rs/matte/latest/matte/"
 
 [workspace]
 members = ["example_basic", "example_mquad", "example_sdl"]

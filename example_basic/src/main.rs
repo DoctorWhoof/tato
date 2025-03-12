@@ -1,4 +1,4 @@
-use layframe::{Frame, Side::*};
+use matte::{Frame, Side::*};
 use macroquad::prelude::*;
 
 #[macroquad::main("Frame Layout")]
@@ -9,15 +9,15 @@ async fn main() {
         let (width, height) = (screen_width(), screen_height());
 
         // Drawing helper function. Converts Rect types between
-        // layframe and macroquad, then draws it.
-        let draw_rect = |rect: &layframe::Rect<f32>, thickness: f32| {
+        // matte and macroquad, then draws it.
+        let draw_rect = |rect: &matte::Rect<f32>, thickness: f32| {
             let rect = macroquad::math::Rect::new(rect.x, rect.y, rect.w, rect.h);
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, thickness, BLACK);
         };
 
         // Init Layout. Prevents negative values.
         // You can optionally clamp it to  a minimum UI size.
-        let mut root = Frame::new(layframe::Rect {
+        let mut root = Frame::new(matte::Rect {
             x: 10.0,
             y: 10.0,
             w: (width - 20.0).clamp(0.0, 8192.0),
