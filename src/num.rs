@@ -3,7 +3,7 @@
 
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-/// A Number trait, includes signed and unsigned but can't be negated (Use [SignedNum] for that).
+/// A Number trait.
 /// Automatically implemented for primitive number types (i32, f32, etc).
 pub trait Num:
     Default
@@ -33,12 +33,12 @@ pub trait Num:
     fn to_f32(self) -> f32;
 }
 
-/// A signed Number trait.
-pub trait SignedNum: Num + Neg<Output = Self> {}
+// /// A signed Number trait.
+// pub trait SignedNum: Num + Neg<Output = Self> {}
 
 // Private module for implementation details
 mod macros {
-    use super::{Num, SignedNum};
+    use super::Num;
     /// Implements Num for integer types
     macro_rules! impl_int_num {
         ($t:ty) => {
@@ -106,12 +106,12 @@ mod macros {
         };
     }
 
-    /// Takes in the type and the necessary exponential function for that type.
-    macro_rules! impl_signed_num {
-        ($t:ty) => {
-            impl SignedNum for $t {}
-        };
-    }
+    // /// Takes in the type and the necessary exponential function for that type.
+    // macro_rules! impl_signed_num {
+    //     ($t:ty) => {
+    //         impl SignedNum for $t {}
+    //     };
+    // }
 
     /// Implements Num for float types
     macro_rules! impl_float_num {
@@ -194,11 +194,11 @@ mod macros {
     impl_float_num!(f32);
     impl_float_num!(f64);
 
-    impl_signed_num!(i8);
-    impl_signed_num!(i16);
-    impl_signed_num!(i32);
-    impl_signed_num!(i64);
-    impl_signed_num!(isize);
-    impl_signed_num!(f32);
-    impl_signed_num!(f64);
+    // impl_signed_num!(i8);
+    // impl_signed_num!(i16);
+    // impl_signed_num!(i32);
+    // impl_signed_num!(i64);
+    // impl_signed_num!(isize);
+    // impl_signed_num!(f32);
+    // impl_signed_num!(f64);
 }
