@@ -49,18 +49,18 @@ fn main() -> Result<(), String> {
 
         // Left panel
         root.set_scale(1.0);
-        root.add(Left, 500, |pane| {
+        root.push(Left, 500, |pane| {
             draw_rect(&pane.rect(), (76, 88, 64), "left pane");
             // Buttons
             for _n in 0..25 {
-                pane.add(Top, 40, |child| {
+                pane.push(Top, 40, |child| {
                     draw_rect(&child.rect(), (88, 96, 76), "button");
                 });
             }
         });
 
         // Right Panel
-        root.add(Right, 500, |pane| {
+        root.push(Right, 500, |pane| {
             draw_rect(&pane.rect(), (88, 76, 64), "right pane");
         });
 

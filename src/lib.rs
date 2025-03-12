@@ -87,7 +87,7 @@ where
         self.rect
     }
 
-    /// The available space to add more child frames.
+    /// The available space to push more child frames.
     /// Shrinks every time a child frame is added.
     pub fn cursor(&self) -> Rect<T> {
         self.cursor
@@ -126,6 +126,32 @@ where
     /// Returns the current scale factor.
     pub fn scale(&self) -> f32 {
         self.scale
+    }
+
+    /// Adds a new frame on the specified side with specified length.
+    /// # Parameters
+    /// * `side` - Which side to add the child frame to
+    /// * `len` - Length of the new frame (before scaling)
+    /// * `func` - Closure to execute with the new child frame
+    #[inline(always)]
+    pub fn push(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
+        self.add_scope(side, len, self.scale, func)
+    }
+
+    /// Creates a frame on the specified side taking a proportion of available space.
+    /// # Parameters
+    /// * `side` - Which side to add the child frame to
+    /// * `ratio` - Proportion of available space (0.0 to 1.0)
+    /// * `func` - Closure to execute with the new child frame
+    pub fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
+        let is_horizontal = matches!(side, Side::Left | Side::Right);
+        let len = if is_horizontal {
+            self.cursor.w.to_f32() * ratio.clamp(0.0, 1.0)
+        } else {
+            self.cursor.h.to_f32() * ratio.clamp(0.0, 1.0)
+        };
+
+        self.add_scope(side, T::from_f32(len), 1.0, func);
     }
 
     fn add_scope(&mut self, side: Side, len: T, scale: f32, mut func: impl FnMut(&mut Frame<T>)) {
@@ -223,32 +249,6 @@ where
             scale: self.scale,
             aggressive_culling: self.aggressive_culling,
         })
-    }
-
-    /// Adds a new frame on the specified side with specified length.
-    /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `len` - Length of the new frame (before scaling)
-    /// * `func` - Closure to execute with the new child frame
-    #[inline(always)]
-    pub fn add(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
-        self.add_scope(side, len, self.scale, func)
-    }
-
-    /// Creates a frame on the specified side taking a proportion of available space.
-    /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `ratio` - Proportion of available space (0.0 to 1.0)
-    /// * `func` - Closure to execute with the new child frame
-    pub fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Side::Left | Side::Right);
-        let len = if is_horizontal {
-            self.cursor.w.to_f32() * ratio.clamp(0.0, 1.0)
-        } else {
-            self.cursor.h.to_f32() * ratio.clamp(0.0, 1.0)
-        };
-
-        self.add_scope(side, T::from_f32(len), 1.0, func);
     }
 }
 

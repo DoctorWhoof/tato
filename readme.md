@@ -1,8 +1,8 @@
-# Matte
+# Matte.rs
 
 A minimalist **_immediate mode_**, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments. **Matte does not perform any rendering**, it simply lays out nested rectangles (Frames) with margins and gaps between children.
 
-While easy to use, Matte's approach is very limited and can't create complex layouts! There's simply the function [Frame::add()], to add fixed size elements, and [Frame::fill()] for proportional elements. Both can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
+While easy to use, Matte's approach is very limited and can't create complex layouts! There's simply the function [Frame::push()], to push fixed size elements, and [Frame::fill()] for proportional elements. Both can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
 
 (More features will be added in the future.)
 
@@ -32,18 +32,18 @@ fn main() {
     });
 
     // Add a header at the top
-    root.add(Top, 100, |header| {
+    root.push(Top, 100, |header| {
         // Add a logo to the left of the header
-        header.add(Left, 200, |logo| {
+        header.push(Left, 200, |logo| {
             // You can acquire this rectangle using logo.rect(),
             // and draw it with your favorite graphics crate.
         });
 
         // Add navigation buttons to the right
-        header.add(Right, 200, |nav| {
+        header.push(Right, 200, |nav| {
             // Navigation content
             for _ in 0..10 {
-                nav.add(Top, 40, |button| {
+                nav.push(Top, 40, |button| {
                     // This "button" is a smaller rect within nav, stacked from the top
                 })
             }

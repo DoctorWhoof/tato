@@ -59,16 +59,16 @@ async fn main() {
         draw_text_ex("Use '+', '-' and '0' keys to change UI scale", 10.0, 16.0, fixed_text);
         draw_rect(&root.rect(), [60, 60, 60, 255], "".to_string());
         // Left pane
-        root.add(Left, 200.0, |pane| {
+        root.push(Left, 200.0, |pane| {
             draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane".to_string());
             pane.set_margin(16.0);
             pane.set_gap(0.0);
             // Buttons
             for _n in 0..25 {
-                pane.add(Top, 20.0, |button| {
+                pane.push(Top, 20.0, |button| {
                     draw_rect(&button.rect(), [100, 100, 100, 255], "button".to_string());
                     button.set_margin(2.0);
-                    button.add(Right, 18.0, |icon| {
+                    button.push(Right, 18.0, |icon| {
                         draw_rect(&icon.rect(), [110, 110, 110, 255], "".to_string());
                     });
                 });
@@ -76,11 +76,11 @@ async fn main() {
         });
 
         // Right Pane
-        root.add(Right, 200.0, |pane| {
+        root.push(Right, 200.0, |pane| {
             draw_rect(&pane.rect(), [88, 88, 88, 255], "right pane".to_string());
             // pane.set_gap(10.0);
             let top_space = 16.0;
-            pane.add(Top, top_space, |_space| {});
+            pane.push(Top, top_space, |_space| {});
             let count = 20;
             let gap_sum = (pane.margin() * 2.0) + (pane.gap() * count as f32) + top_space;
             // Available space / count, but I subtract 1.0 to make it more stable
@@ -88,7 +88,7 @@ async fn main() {
             let button_size = (pane.rect().h - gap_sum - 1.0) / count as f32;
 
             for n in 0..count {
-                pane.add(Top, button_size, |button| {
+                pane.push(Top, button_size, |button| {
                     let text = format!("resizable button {}", n + 1);
                     draw_rect(&button.rect(), [120, 120, 120, 255], text);
                 });
@@ -104,7 +104,7 @@ async fn main() {
         root.fill(Top, 0.5, |pane| {
             draw_rect(&pane.rect(), [130, 130, 130, 255], "middle top".to_string());
             let top_space = 16.0;
-            pane.add(Top, top_space, |_space| {});
+            pane.push(Top, top_space, |_space| {});
             // Spiral rects!
             let ratio = 0.3;
             for _ in 0..3 {
@@ -129,11 +129,11 @@ async fn main() {
         // Middle Bottom
         root.fill(Bottom, 1.0, |pane| {
             add_fancy_panel(pane, |area| {
-                area.add(Bottom, 20.0, |button| {
+                area.push(Bottom, 20.0, |button| {
                     draw_rect(&button.rect(), [56, 56, 56, 255], "info bar".to_string());
                 });
                 for _ in 0..25 {
-                    area.add(Top, 40.0, |button| {
+                    area.push(Top, 40.0, |button| {
                         draw_rect(&button.rect(), [32, 32, 32, 255], "test".to_string());
                     });
                 }
@@ -186,6 +186,6 @@ where
             text_params,
         );
     }
-    frame.add(Top, T::from_f32(bar), |_| {});
+    frame.push(Top, T::from_f32(bar), |_| {});
     frame.fill(Top, 1.0, |content| func(content));
 }

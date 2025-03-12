@@ -31,19 +31,19 @@ async fn main() {
         draw_rect(&root.rect(), 3.0);
 
         // Left pane
-        root.add(Left, 200.0, |pane| {
+        root.push(Left, 200.0, |pane| {
             draw_rect(&pane.rect(), 2.0);
             pane.set_gap(8.0);
             // Buttons
             for _n in 0..25 {
-                pane.add(Top, 20.0, |button| {
+                pane.push(Top, 20.0, |button| {
                     draw_rect(&button.rect(), 2.0);
                 });
             }
         });
 
         // Right Pane
-        root.add(Right, 200.0, |pane| {
+        root.push(Right, 200.0, |pane| {
             draw_rect(&pane.rect(), 2.0);
         });
 
