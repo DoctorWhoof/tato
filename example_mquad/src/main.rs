@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use matte::{Culling, Frame, Num, Side::*};
+use matte::{Frame, Num, Side::*};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -65,8 +65,7 @@ async fn main() {
             draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane (relaxed culling)".to_string());
             pane.set_margin(8.0);
             pane.set_gap(1.0);
-            // pane.culling = Culling::Relaxed;
-            pane.push(Top, 20.0, |top| {});
+            pane.push(Top, 20.0, |_space| {});
             // Buttons
             for n in 0..25 {
                 pane.push(Top, 20.0, |button| {
@@ -83,7 +82,6 @@ async fn main() {
         // Right Pane
         root.push(Right, 200.0, |pane| {
             draw_rect(&pane.rect(), [88, 88, 88, 255], "right pane".to_string());
-            // pane.set_gap(10.0);
             let top_space = 16.0;
             pane.push(Top, top_space, |_space| {});
             let count = 20;
