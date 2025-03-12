@@ -9,11 +9,11 @@ async fn main() {
         let (width, height) = (screen_width(), screen_height());
 
         // Drawing helper function. Converts Rect types between
-        // matte and macroquad, then draws it.
-        let draw_rect = |rect: &matte::Rect<f32>, thickness: f32| {
+        // matte's and macroquad's, then draws it.
+        fn draw_rect(rect: &matte::Rect<f32>, thickness: f32) {
             let rect = macroquad::math::Rect::new(rect.x, rect.y, rect.w, rect.h);
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, thickness, BLACK);
-        };
+        }
 
         // Init Layout. Prevents negative values.
         // You can optionally clamp it to  a minimum UI size.

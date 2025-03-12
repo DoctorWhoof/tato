@@ -1,5 +1,5 @@
-use matte::{Frame, Num, Side::*};
 use macroquad::prelude::*;
+use matte::{Frame, Num, Side::*};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -19,10 +19,15 @@ async fn main() {
             scale = 1.0;
         }
         scale = scale.clamp(0.2, 2.0);
+        let fixed_text = TextParams {
+            font_size: 16,
+            ..Default::default()
+        };
 
-        // Drawing helper function
+        // Drawing helper function. Defined as a closure so that it can use the current
+        // "scale" without passing it as an argument
         let draw_rect = |rect: &matte::Rect<f32>, color: [u8; 4], text: String| {
-            let text_params = TextParams {
+            let rect_text = TextParams {
                 font_size: (16.0 * scale) as u16,
                 ..Default::default()
             };
@@ -35,14 +40,14 @@ async fn main() {
             let t = Vec2::new(4.0, 12.0) * scale;
             draw_rectangle(rect.x, rect.y, rect.w, rect.h, color.into());
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.0, [0, 0, 0, 128].into());
-            draw_text_ex(text.as_str(), rect.x + t.x, rect.y + t.y, text_params);
+            draw_text_ex(text.as_str(), rect.x + t.x, rect.y + t.y, rect_text);
         };
 
         // Init Layout. Prevents negative values.
         // You can optionally clamp it to  a minimum UI size.
         let mut root = Frame::new(matte::Rect {
             x: 10.0,
-            y: 10.0,
+            y: 30.0,
             w: (width - 20.0).clamp(0.0, 8192.0),
             // Shorter so I can watch the culling behavior at the bottom
             h: (height - 20.0).clamp(0.0, 8192.0) * 0.95,
@@ -51,19 +56,20 @@ async fn main() {
         root.set_scale(scale);
 
         // Process Layout;
-        draw_rect(&root.rect(), [64, 64, 64, 255], "".to_string());
+        draw_text_ex("Use '+', '-' and '0' keys to change UI scale", 10.0, 16.0, fixed_text);
+        draw_rect(&root.rect(), [60, 60, 60, 255], "".to_string());
         // Left pane
         root.add(Left, 200.0, |pane| {
-            draw_rect(&pane.rect(), [76, 88, 64, 255], "inner pane".to_string());
+            draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane".to_string());
             pane.set_margin(16.0);
             pane.set_gap(0.0);
             // Buttons
             for _n in 0..25 {
                 pane.add(Top, 20.0, |button| {
-                    draw_rect(&button.rect(), [100, 120, 90, 255], "button".to_string());
+                    draw_rect(&button.rect(), [100, 100, 100, 255], "button".to_string());
                     button.set_margin(2.0);
                     button.add(Right, 18.0, |icon| {
-                        draw_rect(&icon.rect(), [110, 130, 90, 255], "".to_string());
+                        draw_rect(&icon.rect(), [110, 110, 110, 255], "".to_string());
                     });
                 });
             }
@@ -71,7 +77,7 @@ async fn main() {
 
         // Right Pane
         root.add(Right, 200.0, |pane| {
-            draw_rect(&pane.rect(), [88, 76, 64, 255], "right pane".to_string());
+            draw_rect(&pane.rect(), [88, 88, 88, 255], "right pane".to_string());
             // pane.set_gap(10.0);
             let top_space = 16.0;
             pane.add(Top, top_space, |_space| {});
@@ -84,39 +90,39 @@ async fn main() {
             for n in 0..count {
                 pane.add(Top, button_size, |button| {
                     let text = format!("resizable button {}", n + 1);
-                    draw_rect(&button.rect(), [120, 100, 90, 255], text);
+                    draw_rect(&button.rect(), [120, 120, 120, 255], text);
                 });
             }
         });
 
         // Middle Left
         root.fill(Left, 0.25, |pane| {
-            draw_rect(&pane.rect(), [120, 130, 60, 255], "middle left".to_string());
+            draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left".to_string());
         });
 
         // Middle Top
         root.fill(Top, 0.5, |pane| {
-            draw_rect(&pane.rect(), [120, 130, 60, 255], "middle top".to_string());
+            draw_rect(&pane.rect(), [130, 130, 130, 255], "middle top".to_string());
             let top_space = 16.0;
             pane.add(Top, top_space, |_space| {});
             // Spiral rects!
             let ratio = 0.3;
             for _ in 0..3 {
                 pane.fill(Top, ratio, |pane| {
-                    draw_rect(&pane.rect(), [140, 160, 80, 255], "t".to_string());
+                    draw_rect(&pane.rect(), [160, 160, 160, 255], "t".to_string());
                 });
                 pane.fill(Right, ratio, |pane| {
-                    draw_rect(&pane.rect(), [140, 160, 80, 255], "r".to_string());
+                    draw_rect(&pane.rect(), [160, 160, 160, 255], "r".to_string());
                 });
                 pane.fill(Bottom, ratio, |pane| {
-                    draw_rect(&pane.rect(), [140, 160, 80, 255], "b".to_string());
+                    draw_rect(&pane.rect(), [160, 160, 160, 255], "b".to_string());
                 });
                 pane.fill(Left, ratio, |pane| {
-                    draw_rect(&pane.rect(), [140, 160, 80, 255], "l".to_string());
+                    draw_rect(&pane.rect(), [160, 160, 160, 255], "l".to_string());
                 });
             }
             pane.fill(Left, 1.0, |pane| {
-                draw_rect(&pane.rect(), [180, 160, 80, 255], "end".to_string());
+                draw_rect(&pane.rect(), [220, 220, 220, 255], "end".to_string());
             });
         });
 

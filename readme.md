@@ -1,6 +1,6 @@
 # Matte
 
-An **_immediate mode_**, minimalist, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments.
+A minimalist **_immediate mode_**, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments. **Matte does not perform any rendering**, it simply lays out nested rectangles (Frames) with margins and gaps between children.
 
 While easy to use, Matte's approach is very limited and can't create complex layouts! There's simply the function [Frame::add()], to add fixed size elements, and [Frame::fill()] for proportional elements. Both can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
 
@@ -12,7 +12,10 @@ It also does not know in advance the size of the children, so you may need to do
 
 ![LayframeScreenshot](screenshots/screenshot.png)
 
-Two examples are provided: a more complex one using Macroquad for rendering, and a very simple one using MiniSdl (which in turn uses SDL2).
+Three examples are provided:
+- *example_basic*, A very simple example using Macroquad for rect rendering.
+- *example_mquad*, a more complex layout using Macroquad with text and adjustable zoom.
+- *example_sdl*, which uses SDL2 (via the mini_sdl crate).
 
 ## Usage Example
 
