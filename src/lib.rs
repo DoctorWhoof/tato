@@ -229,7 +229,16 @@ where
             T::from_f32(offset_y)
         };
 
-        self.add_scope(Side::Left, T::from_f32(w), T::from_f32(h), x, y, self.scale, false, func);
+        self.add_scope(
+            Side::Left,
+            T::from_f32(w),
+            T::from_f32(h),
+            x,
+            y,
+            self.scale,
+            false,
+            func,
+        );
     }
 
     /// Allows arbitrary placement of the new frame in relation to the current frame.
@@ -303,10 +312,12 @@ where
         match self.culling {
             Culling::Relaxed => {}
             Culling::Aggressive => {
-                if child_rect.w.round_down() > self.cursor.w.round_up() {
+                if (child_rect.x + child_rect.w).round_down()
+                    > (self.cursor.x + self.cursor.w).round_up()
+                {
                     return;
                 }
-                if child_rect.h.round_down() > self.cursor.h.round_up() {
+                if (child_rect.y + child_rect.h).round_down() > (self.cursor.y + self.cursor.h).round_up() {
                     return;
                 }
             }

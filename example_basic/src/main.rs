@@ -25,6 +25,7 @@ async fn main() {
         });
         root.set_margin(8.0);
         root.set_scale(1.0);
+        // root.culling = matte::Culling::Relaxed;
 
         // ----------------- Process Layout & Draw -----------------
 
@@ -32,7 +33,7 @@ async fn main() {
 
         // Left pane
         root.push(Left, 200.0, |pane| {
-            draw_rect(&pane.rect(), 2.0);
+            draw_rect(&pane.rect(), 3.0);
             pane.set_gap(8.0);
             // Buttons
             for _n in 0..25 {
@@ -61,7 +62,7 @@ async fn main() {
                 draw_rect(&centered.rect(), 2.0);
             });
             // Allows specifying extra offsets, width and height.
-            pane.place(Left, 20.0, 20.0, 20.0, 20.0, |inner|{
+            pane.place(Left, 10.0, 10.0, 100.0, 20.0, |inner|{
                 draw_rect(&inner.rect(), 2.0);
             });
         });
