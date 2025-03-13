@@ -1,9 +1,6 @@
 #![no_std]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/readme.md"))]
 
-// TODO: implement a "place" function that can place a child frame anywhere, and then apply culling strategy.
-// Modifiy existing functions so that "place" is called at the end, probably at the end of "add_scope"?
-
 mod num;
 pub use num::*;
 
@@ -101,9 +98,9 @@ where
 
     /// Sets a new margin value and recalculates the cursor rectangle.
     pub fn set_margin(&mut self, margin: T) {
-        //remove old margin
+        // Remove old margin
         self.cursor = rect_expand(self.cursor, self.margin);
-        // apply new margin
+        // Apply new margin
         self.margin = margin;
         self.cursor = rect_shrink(self.rect, self.margin);
     }
@@ -205,8 +202,38 @@ where
         self.add_scope(Side::Left, w, h, x, y, self.scale, false, func);
     }
 
+    /// Creates a centered frame that takes a proportion of the available space.
+    /// Does not modify the available space!
+    /// # Parameters
+    /// * `x_ratio` - Proportion of available width (0.0 to 1.0)
+    /// * `y_ratio` - Proportion of available height (0.0 to 1.0)
+    /// * `func` - Closure to execute with the new child frame
+    pub fn center_fill(&mut self, x_ratio: T, y_ratio: T, func: impl FnMut(&mut Frame<T>)) {
+        // Calculate width and height based on ratios
+        let w = self.cursor.w.to_f32() * x_ratio.to_f32().clamp(0.0, 1.0);
+        let h = self.cursor.h.to_f32() * y_ratio.to_f32().clamp(0.0, 1.0);
+
+        // Calculate the centering offsets - should be half of the remaining space, not half the width
+        let offset_x = (self.cursor.w.to_f32() - w) / 2.0;
+        let offset_y = (self.cursor.h.to_f32() - h) / 2.0;
+
+        // Ensure offsets are non-negative
+        let x = if offset_x < 0.0 {
+            T::zero()
+        } else {
+            T::from_f32(offset_x)
+        };
+        let y = if offset_y < 0.0 {
+            T::zero()
+        } else {
+            T::from_f32(offset_y)
+        };
+
+        self.add_scope(Side::Left, T::from_f32(w), T::from_f32(h), x, y, self.scale, false, func);
+    }
+
     /// Allows arbitrary placement of the new frame in relation to the current frame.
-    /// Does not modify the cursor!
+    /// Does not modify the available space!
     /// # Parameters
     /// * `x` - X position of the new frame in relation to this frame.
     /// * `y` - Y position of the new frame in relation to this frame.
@@ -214,7 +241,7 @@ where
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     pub fn place(&mut self, side: Side, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Ensures "self.scale"" is used. "fill" always adds with scale = 1.0 instead.
+        // Ensures "self.scale" is used. "fill" always adds with scale = 1.0 instead.
         self.add_scope(side, w, h, x, y, self.scale, false, func);
     }
 
