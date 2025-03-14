@@ -2,9 +2,14 @@
 
 A minimalist **_immediate mode_**, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments. **Matte does not perform any rendering**, it simply lays out nested rectangles (Frames) with margins and gaps between children.
 
-While easy to use, Matte's approach is very limited and can't create complex layouts! There's simply the function [Frame::push()], to push fixed size elements, and [Frame::fill()] for proportional elements. Both can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
+While easy to use, Matte's approach is very limited and can't create complex layouts! There are several key functions to work with:
+- [Frame::push()] to push fixed size elements
+- [Frame::push_size()] to add elements with specific dimensions (with automatic scaling)
+- [Frame::fill()] for proportional elements
+- [Frame::center()] and [Frame::center_fill()] for centered elements
+- [Frame::place()] for arbitrary positioning with automatic scaling
 
-(More features will be added in the future.)
+All these functions can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
 
 It does not have any knowledge of fancy things like *rendering* and *input*. Instead, it provides you with closures that are aware of their parent Frame's rectangle and available space, and you do the rendering and input yourself.
 
@@ -20,7 +25,7 @@ Three examples are provided:
 ## Usage Example
 
 ```rust
-use matte::{Frame, Rect, Side::*};
+use matte::{Frame, Rect, Side::*, Fitting};
 
 fn main() {
     // Create a root frame
@@ -30,6 +35,9 @@ fn main() {
         w: 800,
         h: 600,
     });
+
+    // Optionally set fitting mode to automatically scale elements
+    root.fitting = Fitting::Scale;
 
     // Add a header at the top
     root.push(Top, 100, |header| {
@@ -55,9 +63,17 @@ fn main() {
         // Sidebar content
     });
 
+    // Add a centered element with specific dimensions (will scale if needed)
+    root.center(300, 200, |centered_element| {
+        // Centered content that will scale to fit if necessary
+    });
+
     // Main content area (use remaining space with ratio = 1.0)
     root.fill(Left, 1.0, |content| {
-        // Main content
+        // Place an element at specific coordinates with automatic scaling
+        content.place(Left, 50, 50, 400, 300, |placed_element| {
+            // Element content that scales to fit available space
+        });
     });
 }
 ```
@@ -70,6 +86,14 @@ fn main() {
 - **Flexible Positioning**: Add child frames to any side (left, right, top, bottom)
 - **Margin & Gap Control**: Fine-tune spacing between elements
 - **Proportional Layouts**: Allocate space by ratio with the `fill()` method
+- **Adaptive Scaling**: Automatically scale elements to fit available space with aspect ratio preservation
+- **Smart Fitting**: Multiple strategies for handling elements that exceed available space:
+  - `Relaxed`: Allows overflow
+  - `Aggressive`: Removes elements that exceed boundaries
+  - `Clamp`: Resizes elements to fit available space
+  - `Scale`: Scales elements to fit while preserving aspect ratio
+- **Centered Elements**: Position elements in the center with `center()` and `center_fill()`
+- **Precise Placement**: Position elements at exact coordinates with `place()`
 - **Scaling Support**: Adjust all elements with a scale factor
 - **Generic Numeric Support**: Works with various numeric types (u16, f32, etc.)
 

@@ -1,4 +1,4 @@
-use matte::{Frame, Side::*};
+use matte::{Fitting, Frame, Side::*};
 use macroquad::prelude::*;
 
 #[macroquad::main("Frame Layout")]
@@ -29,6 +29,7 @@ async fn main() {
         root.set_scale(1.0);
 
         // Root rect
+        root.fitting = Fitting::Scale;
         draw_rect(&root.rect(), 4.0);
 
         // Left pane

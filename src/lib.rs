@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/readme.md"))]
 
 mod num;
@@ -20,7 +20,7 @@ pub struct Frame<T> {
     /// Gap between each child frame
     gap: T,
     /// Controls how children rects are culled when they exceed available space
-    pub culling: Culling,
+    pub fitting: Fitting,
 }
 
 /// Represents a generic rectangle with position and dimensions that
@@ -55,13 +55,15 @@ pub enum Side {
 
 /// Clipping strategy
 #[derive(Debug, Clone, Copy)]
-pub enum Culling {
+pub enum Fitting {
     /// Allows child frame even if it goes over the available space.
     Relaxed,
     /// Removes child frames that touch the margin.
     Aggressive,
     /// Clamps child frame's edges to available space.
     Clamp,
+    /// Scales the child frame to fit available space while preserving aspect ratio.
+    Scale,
 }
 
 impl<T> Frame<T>
@@ -80,7 +82,7 @@ where
             margin,
             gap: margin,
             scale,
-            culling: Culling::Aggressive,
+            fitting: Fitting::Aggressive,
         }
     }
 
@@ -131,42 +133,9 @@ where
         self.scale
     }
 
-    /// Adds a new frame on the specified side with specified length.
-    /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `len` - Length of the new frame
-    /// * `func` - Closure to execute with the new child frame
-    #[inline(always)]
-    pub fn push(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Side::Left | Side::Right);
-
-        // Default width and height based on the side
-        let (w, h) = if is_horizontal {
-            (len, self.cursor.h / T::from_f32(self.scale))
-        } else {
-            (self.cursor.w / T::from_f32(self.scale), len)
-        };
-
-        // Default offset is zero
-        let offset_x = T::zero();
-        let offset_y = T::zero();
-
-        self.add_scope(side, w, h, offset_x, offset_y, self.scale, true, func);
-    }
-
-    /// Attempts to push a rect with size (w,h), if there isn't enough available space, the rect
-    /// is scaled down preserving the aspect ratio.
-    /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `len` - Length of the new frame
-    /// * `func` - Closure to execute with the new child frame
-    #[inline(always)]
-    pub fn push_size(&mut self, side: Side, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Default offset is zero
-        let offset_x = T::zero();
-        let offset_y = T::zero();
-
-        // Calculate the required width and height when scaled
+    /// Calculate the scale needed to fit a rectangle of given dimensions
+    /// into the available space, preserving aspect ratio.
+    fn calculate_fit_scale(&self, w: T, h: T) -> f32 {
         let original_w = w.to_f32();
         let original_h = h.to_f32();
         let cursor_w = self.cursor.w.to_f32();
@@ -185,28 +154,86 @@ where
             1.0
         };
         let fit_scale = fit_w_scale.min(fit_h_scale).clamp(0.0, 1.0);
-        // println!("fit scale:{}", fit_scale);
 
         // If self.scale is > 1.0, we need to ensure we still scale down if needed
-        let actual_scale = if self.scale > 1.0 {
+        if self.scale > 1.0 {
             // Use the smaller of: requested scale or the maximum scale that fits
             self.scale.min(fit_scale * self.scale)
         } else {
             // For self.scale <= 1.0, use the smaller of: requested scale or fit_scale
             self.scale * fit_scale
+        }
+    }
+
+    /// Adds a new frame on the specified side with specified length.
+    /// # Parameters
+    /// * `side` - Which side to add the child frame to
+    /// * `len` - Length of the new frame
+    /// * `func` - Closure to execute with the new child frame
+    #[inline(always)]
+    pub fn push(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
+        let is_horizontal = matches!(side, Side::Left | Side::Right);
+
+        // Default width and height based on the side
+        let (mut w, h) = if is_horizontal {
+            (len, self.cursor.h / T::from_f32(self.scale))
+        } else {
+            (self.cursor.w / T::from_f32(self.scale), len)
         };
 
-        // Apply the adjusted scale to the dimensions
-        let w = T::from_f32(original_w * actual_scale);
-        let h = T::from_f32(original_h * actual_scale);
-        // println!(
-        //     "original: {:.1}, fitted: {:.1}, cursor: {:.1}",
-        //     original_w,
-        //     w.to_f32(),
-        //     cursor_w
-        // );
+        // If fitting is set to Scale, apply scaling logic
+        if matches!(self.fitting, Fitting::Scale) {
+            let actual_scale = self.calculate_fit_scale(w, h);
+            w = T::from_f32(w.to_f32() * actual_scale / self.scale);
+            // h = T::from_f32(h.to_f32() * actual_scale / self.scale);
+        }
 
-        self.add_scope(side, w, h, offset_x, offset_y, 1.0, true, func);
+        // Default offset is zero
+        let offset_x = T::zero();
+        let offset_y = T::zero();
+
+        self.add_scope(
+            side,
+            w,
+            h,
+            offset_x,
+            offset_y,
+            self.scale,
+            true,
+            Fitting::Aggressive,
+            func,
+        );
+    }
+
+    /// Attempts to push a rect with size (w,h), if there isn't enough available space, the rect
+    /// is scaled down preserving the aspect ratio.
+    /// # Parameters
+    /// * `side` - Which side to add the child frame to
+    /// * `w` - Width of the new frame
+    /// * `h` - Height of the new frame
+    /// * `func` - Closure to execute with the new child frame
+    #[inline(always)]
+    pub fn push_size(&mut self, side: Side, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+        // Default offset is zero
+        let offset_x = T::zero();
+        let offset_y = T::zero();
+
+        // Calculate actual scale and apply it to dimensions
+        let actual_scale = self.calculate_fit_scale(w, h);
+        let w = T::from_f32(w.to_f32() * actual_scale);
+        let h = T::from_f32(h.to_f32() * actual_scale);
+
+        self.add_scope(
+            side,
+            w,
+            h,
+            offset_x,
+            offset_y,
+            1.0,
+            true,
+            Fitting::Scale,
+            func,
+        );
     }
 
     /// Creates a frame on the specified side taking a proportion of available space.
@@ -229,18 +256,34 @@ where
         let offset_x = T::zero();
         let offset_y = T::zero();
 
-        self.add_scope(side, w, h, offset_x, offset_y, 1.0, true, func);
+        self.add_scope(
+            side,
+            w,
+            h,
+            offset_x,
+            offset_y,
+            1.0,
+            true,
+            Fitting::Aggressive,
+            func,
+        );
     }
 
     /// Creates a centered frame with specific dimensions. Does not modify the cursor!
+    /// Scales the frame if necessary to fit available space while preserving aspect ratio.
     /// # Parameters
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     pub fn center(&mut self, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+        // Calculate actual scale and apply it to dimensions
+        let actual_scale = self.calculate_fit_scale(w, h);
+        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
+        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
+
         // Calculate the centering offsets
-        let offset_x = (self.cursor.w - w) / T::two();
-        let offset_y = (self.cursor.h - h) / T::two();
+        let offset_x = (self.cursor.w - scaled_w) / T::two();
+        let offset_y = (self.cursor.h - scaled_h) / T::two();
 
         // Ensure offsets are non-negative
         let x = if offset_x < T::zero() {
@@ -254,7 +297,17 @@ where
             offset_y
         };
 
-        self.add_scope(Side::Left, w, h, x, y, self.scale, false, func);
+        self.add_scope(
+            Side::Left,
+            scaled_w,
+            scaled_h,
+            x,
+            y,
+            1.0,
+            false,
+            Fitting::Scale,
+            func,
+        );
     }
 
     /// Creates a centered frame that takes a proportion of the available space.
@@ -292,12 +345,13 @@ where
             y,
             self.scale,
             false,
+            Fitting::Scale,
             func,
         );
     }
 
     /// Allows arbitrary placement of the new frame in relation to the current frame.
-    /// Does not modify the available space!
+    /// Does not modify the available space! Scales the frame if necessary to fit.
     /// # Parameters
     /// * `x` - X position of the new frame in relation to this frame.
     /// * `y` - Y position of the new frame in relation to this frame.
@@ -305,8 +359,23 @@ where
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     pub fn place(&mut self, side: Side, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Ensures "self.scale" is used. "fill" always adds with scale = 1.0 instead.
-        self.add_scope(side, w, h, x, y, self.scale, false, func);
+        // Calculate actual scale and apply it to dimensions
+        let actual_scale = self.calculate_fit_scale(w, h);
+        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
+        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
+
+        // Ensures "1.0" is used as scale since we've already applied scaling to dimensions
+        self.add_scope(
+            side,
+            scaled_w,
+            scaled_h,
+            x,
+            y,
+            1.0,
+            false,
+            Fitting::Scale,
+            func,
+        );
     }
 
     /// Internal jack-of-all-trades function called by the mode specialized public functions
@@ -319,6 +388,7 @@ where
         extra_y: T,
         scale: f32,
         update_cursor: bool,
+        fitting: Fitting,
         mut func: impl FnMut(&mut Frame<T>),
     ) {
         let scaled_w = T::from_f32(w.to_f32() * scale);
@@ -364,9 +434,9 @@ where
             },
         };
 
-        match self.culling {
-            Culling::Relaxed => {}
-            Culling::Aggressive => {
+        match self.fitting {
+            Fitting::Relaxed => {}
+            Fitting::Aggressive => {
                 if (child_rect.x + child_rect.w).round_down()
                     > (self.cursor.x + self.cursor.w).round_up()
                 {
@@ -378,30 +448,34 @@ where
                     return;
                 }
             }
-            Culling::Clamp => {
-                // Clamp to ensure the rect stays within cursor boundaries
-                // Clamp x position
-                if child_rect.x < self.cursor.x {
-                    let diff = self.cursor.x - child_rect.x;
-                    child_rect.x = self.cursor.x;
-                    child_rect.w = child_rect.w.saturating_sub(diff);
-                }
+            Fitting::Clamp | Fitting::Scale => {
+                // For Clamp, we adjust the rectangle
+                // For Scale, we've already handled scaling in the caller methods
+                if matches!(self.fitting, Fitting::Clamp) {
+                    // Clamp to ensure the rect stays within cursor boundaries
+                    // Clamp x position
+                    if child_rect.x < self.cursor.x {
+                        let diff = self.cursor.x - child_rect.x;
+                        child_rect.x = self.cursor.x;
+                        child_rect.w = child_rect.w.saturating_sub(diff);
+                    }
 
-                // Clamp y position
-                if child_rect.y < self.cursor.y {
-                    let diff = self.cursor.y - child_rect.y;
-                    child_rect.y = self.cursor.y;
-                    child_rect.h = child_rect.h.saturating_sub(diff);
-                }
+                    // Clamp y position
+                    if child_rect.y < self.cursor.y {
+                        let diff = self.cursor.y - child_rect.y;
+                        child_rect.y = self.cursor.y;
+                        child_rect.h = child_rect.h.saturating_sub(diff);
+                    }
 
-                // Clamp width
-                if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
-                    child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
-                }
+                    // Clamp width
+                    if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
+                        child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
+                    }
 
-                // Clamp height
-                if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
-                    child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+                    // Clamp height
+                    if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
+                        child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+                    }
                 }
             }
         }
@@ -441,7 +515,7 @@ where
             margin: self.margin,
             gap: self.gap,
             scale: self.scale,
-            culling: self.culling,
+            fitting,
         })
     }
 }

@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use matte::{Frame, Num, Side::*};
+use matte::{Fitting, Frame, Num, Side::*};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -49,7 +49,7 @@ async fn main() {
             x: 10.0,
             y: 30.0,
             w: (width - 20.0).clamp(0.0, 8192.0),
-            // Shorter so I can watch the culling behavior at the bottom
+            // Shorter so I can watch the fitting behavior at the bottom
             h: (height - 20.0).clamp(0.0, 8192.0) * 0.95,
         });
         // root.set_margin(4.0);
@@ -62,14 +62,20 @@ async fn main() {
 
         // Left pane
         root.push(Left, 200.0, |pane| {
-            draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane (relaxed culling)".to_string());
+            draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane (scaled fitting)".to_string());
             pane.set_margin(8.0);
             pane.set_gap(1.0);
             pane.push(Top, 20.0, |_space| {});
+            pane.fitting = Fitting::Scale;
             // Buttons
-            for n in 0..25 {
-                pane.push(Top, 20.0, |button| {
-                    let text = format!("button {}", n);
+            for n in 0..20 {
+                pane.push_size(Top, pane.cursor().w, 30.0, |button| {
+                    button.fitting = Fitting::Scale;
+                    let text = if button.rect().h > 16.0 {
+                        format!("button {}", n)
+                    } else {
+                        "".to_string()
+                    };
                     draw_rect(&button.rect(), [100, 100, 100, 255], text);
                     button.set_margin(2.0);
                     button.push(Right, 18.0, |icon| {
@@ -135,6 +141,7 @@ async fn main() {
 
         // Middle Bottom
         root.fill(Bottom, 1.0, |pane| {
+            pane.fitting = Fitting::Scale;
             add_fancy_panel(pane, |area| {
                 area.push(Bottom, 20.0, |button| {
                     draw_rect(&button.rect(), [56, 56, 56, 255], "info bar".to_string());
@@ -156,16 +163,17 @@ fn add_fancy_panel<T>(frame: &mut Frame<T>, mut func: impl FnMut(&mut Frame<T>))
 where
     T: Num,
 {
+    frame.fitting = Fitting::Scale;
     let text_size = 16.0;
     let text_params = TextParams {
         font_size: (text_size * frame.scale()) as u16,
         ..Default::default()
     };
     let rect = Rect::new(
-        frame.rect().x.to_f32(),
-        frame.rect().y.to_f32(),
-        frame.rect().w.to_f32(),
-        frame.rect().h.to_f32(),
+        frame.cursor().x.to_f32(),
+        frame.cursor().y.to_f32(),
+        frame.cursor().w.to_f32(),
+        frame.cursor().h.to_f32(),
     );
     let text_offset = Vec2::new(4.0, 12.0) * frame.scale();
     let bar = 16.0 * frame.scale();
