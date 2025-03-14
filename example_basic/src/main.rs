@@ -23,13 +23,13 @@ async fn main() {
             w: (width - 20.0).clamp(0.0, 8192.0),
             h: (height - 20.0).clamp(0.0, 8192.0),
         });
-        root.set_margin(8.0);
-        root.set_scale(1.0);
-        // root.culling = matte::Culling::Relaxed;
 
         // ----------------- Process Layout & Draw -----------------
+        root.set_margin(8.0);
+        root.set_scale(1.0);
 
-        draw_rect(&root.rect(), 3.0);
+        // Root rect
+        draw_rect(&root.rect(), 4.0);
 
         // Left pane
         root.push(Left, 200.0, |pane| {
@@ -70,7 +70,10 @@ async fn main() {
         // Middle Bottom
         root.fill(Bottom, 1.0, |pane| {
             draw_rect(&pane.rect(), 2.0);
-
+            // Sized rect, will scale down preserving aspect
+            pane.push_size(Bottom, 100.0, 50.0, |sized|{
+                draw_rect(&sized.rect(), 2.0);
+            });
         });
 
         // Present frame

@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/readme.md"))]
 
 mod num;
@@ -152,6 +152,61 @@ where
         let offset_y = T::zero();
 
         self.add_scope(side, w, h, offset_x, offset_y, self.scale, true, func);
+    }
+
+    /// Attempts to push a rect with size (w,h), if there isn't enough available space, the rect
+    /// is scaled down preserving the aspect ratio.
+    /// # Parameters
+    /// * `side` - Which side to add the child frame to
+    /// * `len` - Length of the new frame
+    /// * `func` - Closure to execute with the new child frame
+    #[inline(always)]
+    pub fn push_size(&mut self, side: Side, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+        // Default offset is zero
+        let offset_x = T::zero();
+        let offset_y = T::zero();
+
+        // Calculate the required width and height when scaled
+        let original_w = w.to_f32();
+        let original_h = h.to_f32();
+        let cursor_w = self.cursor.w.to_f32();
+        let cursor_h = self.cursor.h.to_f32();
+
+        // Calculate actual scale to use, ensuring it won't exceed available space
+        // First determine what scale we need to fit the content
+        let fit_w_scale = if original_w > 0.0 {
+            cursor_w / (original_w * self.scale)
+        } else {
+            1.0
+        };
+        let fit_h_scale = if original_h > 0.0 {
+            cursor_h / (original_h * self.scale)
+        } else {
+            1.0
+        };
+        let fit_scale = fit_w_scale.min(fit_h_scale).clamp(0.0, 1.0);
+        // println!("fit scale:{}", fit_scale);
+
+        // If self.scale is > 1.0, we need to ensure we still scale down if needed
+        let actual_scale = if self.scale > 1.0 {
+            // Use the smaller of: requested scale or the maximum scale that fits
+            self.scale.min(fit_scale * self.scale)
+        } else {
+            // For self.scale <= 1.0, use the smaller of: requested scale or fit_scale
+            self.scale * fit_scale
+        };
+
+        // Apply the adjusted scale to the dimensions
+        let w = T::from_f32(original_w * actual_scale);
+        let h = T::from_f32(original_h * actual_scale);
+        // println!(
+        //     "original: {:.1}, fitted: {:.1}, cursor: {:.1}",
+        //     original_w,
+        //     w.to_f32(),
+        //     cursor_w
+        // );
+
+        self.add_scope(side, w, h, offset_x, offset_y, 1.0, true, func);
     }
 
     /// Creates a frame on the specified side taking a proportion of available space.
@@ -317,7 +372,9 @@ where
                 {
                     return;
                 }
-                if (child_rect.y + child_rect.h).round_down() > (self.cursor.y + self.cursor.h).round_up() {
+                if (child_rect.y + child_rect.h).round_down()
+                    > (self.cursor.y + self.cursor.h).round_up()
+                {
                     return;
                 }
             }

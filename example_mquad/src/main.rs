@@ -101,6 +101,10 @@ async fn main() {
         // Middle Left
         root.fill(Left, 0.25, |pane| {
             draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left".to_string());
+            // Sized rect, will scale down preserving aspect
+            pane.push_size(Bottom, 100.0, 50.0, |sized|{
+                draw_rect(&sized.rect(), [120, 120, 120, 255], "sized".to_string());
+            });
         });
 
         // Middle Top
