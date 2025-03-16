@@ -69,7 +69,7 @@ async fn main() {
             pane.fitting = Fitting::Scale;
             // Buttons
             for n in 0..20 {
-                pane.push_size(Top, pane.cursor().w, 30.0, |button| {
+                pane.push_size(Top, Left, pane.cursor().w, 30.0, |button| {
                     button.fitting = Fitting::Scale;
                     let text = if button.rect().h > 16.0 {
                         format!("button {}", n)
@@ -108,7 +108,7 @@ async fn main() {
         root.fill(Left, 0.25, |pane| {
             draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left".to_string());
             // Sized rect, will scale down preserving aspect
-            pane.push_size(Bottom, 100.0, 50.0, |sized|{
+            pane.push_size(Bottom, Right, 100.0, 50.0, |sized|{
                 draw_rect(&sized.rect(), [120, 120, 120, 255], "sized".to_string());
             });
         });

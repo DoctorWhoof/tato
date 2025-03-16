@@ -72,7 +72,7 @@ async fn main() {
         root.fill(Bottom, 0.5, |pane| {
             draw_rect(&pane.rect(), 2.0);
             // Sized rect, will scale down preserving aspect
-            pane.push_size(Bottom, 100.0, 50.0, |sized|{
+            pane.push_size(Bottom, Right, 80.0, 50.0, |sized|{
                 draw_rect(&sized.rect(), 2.0);
             });
         });

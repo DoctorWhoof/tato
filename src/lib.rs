@@ -135,21 +135,24 @@ where
 
     /// Calculate the scale needed to fit a rectangle of given dimensions
     /// into the available space, preserving aspect ratio.
-    fn calculate_fit_scale(&self, w: T, h: T) -> f32 {
+    /// Takes into account the offsets where the rectangle will be placed.
+    fn calculate_fit_scale(&self, w: T, h: T, offset_x: T, offset_y: T) -> f32 {
         let original_w = w.to_f32();
         let original_h = h.to_f32();
-        let cursor_w = self.cursor.w.to_f32();
-        let cursor_h = self.cursor.h.to_f32();
+
+        // Calculate available space considering offsets
+        let available_w = self.cursor.w.to_f32() - offset_x.to_f32();
+        let available_h = self.cursor.h.to_f32() - offset_y.to_f32();
 
         // Calculate actual scale to use, ensuring it won't exceed available space
         // First determine what scale we need to fit the content
         let fit_w_scale = if original_w > 0.0 {
-            cursor_w / (original_w * self.scale)
+            available_w / (original_w * self.scale)
         } else {
             1.0
         };
         let fit_h_scale = if original_h > 0.0 {
-            cursor_h / (original_h * self.scale)
+            available_h / (original_h * self.scale)
         } else {
             1.0
         };
@@ -181,16 +184,16 @@ where
             (self.cursor.w / T::from_f32(self.scale), len)
         };
 
-        // If fitting is set to Scale, apply scaling logic
-        if matches!(self.fitting, Fitting::Scale) {
-            let actual_scale = self.calculate_fit_scale(w, h);
-            w = T::from_f32(w.to_f32() * actual_scale / self.scale);
-            // h = T::from_f32(h.to_f32() * actual_scale / self.scale);
-        }
-
         // Default offset is zero
         let offset_x = T::zero();
         let offset_y = T::zero();
+
+        // If fitting is set to Scale, apply scaling logic
+        if matches!(self.fitting, Fitting::Scale) {
+            let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
+            w = T::from_f32(w.to_f32() * actual_scale / self.scale);
+            // h = T::from_f32(h.to_f32() * actual_scale / self.scale);
+        }
 
         self.add_scope(
             side,
@@ -211,22 +214,46 @@ where
     /// * `side` - Which side to add the child frame to
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
+    /// * `align` - Which side to align the child frame to (determines internal offsets)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn push_size(&mut self, side: Side, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Default offset is zero
-        let offset_x = T::zero();
-        let offset_y = T::zero();
+    pub fn push_size(
+        &mut self,
+        side: Side,
+        align: Side,
+        w: T,
+        h: T,
+        func: impl FnMut(&mut Frame<T>),
+    ) {
+        // Calculate offsets based on alignment
+        let (offset_x, offset_y) = match side {
+            Side::Left | Side::Right => match align {
+                Side::Left | Side::Right => {
+                    let space = self.cursor.h.saturating_sub(h) / T::two();
+                    (T::zero(), space)
+                }
+                Side::Top => (T::zero(), T::zero()),
+                Side::Bottom => (T::zero(), self.cursor.h.saturating_sub(h)),
+            },
+            Side::Top | Side::Bottom => match align {
+                Side::Top | Side::Bottom => {
+                    let space = self.cursor.w.saturating_sub(w) / T::two();
+                    (space, T::zero())
+                }
+                Side::Left => (T::zero(), T::zero()),
+                Side::Right => (self.cursor.w.saturating_sub(w), T::zero()),
+            },
+        };
 
-        // Calculate actual scale and apply it to dimensions
-        let actual_scale = self.calculate_fit_scale(w, h);
-        let w = T::from_f32(w.to_f32() * actual_scale);
-        let h = T::from_f32(h.to_f32() * actual_scale);
+        // Calculate actual scale and apply it to dimensions, taking offsets into account
+        let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
+        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
+        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
 
         self.add_scope(
             side,
-            w,
-            h,
+            scaled_w,
+            scaled_h,
             offset_x,
             offset_y,
             1.0,
@@ -243,14 +270,9 @@ where
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     pub fn center(&mut self, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Calculate actual scale and apply it to dimensions
-        let actual_scale = self.calculate_fit_scale(w, h);
-        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
-        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
-
         // Calculate the centering offsets
-        let offset_x = (self.cursor.w - scaled_w) / T::two();
-        let offset_y = (self.cursor.h - scaled_h) / T::two();
+        let offset_x = (self.cursor.w - w) / T::two();
+        let offset_y = (self.cursor.h - h) / T::two();
 
         // Ensure offsets are non-negative
         let x = if offset_x < T::zero() {
@@ -263,6 +285,11 @@ where
         } else {
             offset_y
         };
+
+        // Calculate actual scale and apply it to dimensions, taking offsets into account
+        let actual_scale = self.calculate_fit_scale(w, h, x, y);
+        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
+        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
 
         self.add_scope(
             Side::Left,
@@ -376,8 +403,8 @@ where
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     pub fn place(&mut self, side: Side, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Calculate actual scale and apply it to dimensions
-        let actual_scale = self.calculate_fit_scale(w, h);
+        // Calculate actual scale and apply it to dimensions, taking offsets into account
+        let actual_scale = self.calculate_fit_scale(w, h, x, y);
         let scaled_w = T::from_f32(w.to_f32() * actual_scale);
         let scaled_h = T::from_f32(h.to_f32() * actual_scale);
 
