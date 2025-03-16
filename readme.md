@@ -5,12 +5,12 @@
 
 A minimalist **_immediate mode_**, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments. **Matte does not perform any rendering**, it simply lays out nested rectangles (Frames) with margins and gaps between children.
 
-While easy to use, Matte's approach is very limited and can't create complex layouts! There are several key functions to work with:
-- [Frame::push()] to push fixed size elements
+While easy to use, Matte's approach is very limited and can't create complex layouts! There are a few key functions to work with:
+- [Frame::push_edge()] inserts a new frame by pushing any edge inwards by a certain amount
 - [Frame::push_size()] to add elements with specific dimensions (with automatic scaling)
-- [Frame::fill()] for proportional elements
-- [Frame::center()] and [Frame::center_fill()] for centered elements
-- [Frame::place()] for arbitrary positioning with automatic scaling
+- [Frame::fill_edge()] like push_edge, but with a ratio of the parent rect for the length
+- [Frame::fill_size()] like push_size, but uses a ratio of the parent rect for w and h
+- [Frame::place()] for arbitrary positioning
 
 All these functions can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
 
@@ -28,7 +28,7 @@ Three examples are provided:
 ## Usage Example
 
 ```rust
-use matte::{Frame, Rect, Edge::*, Fitting};
+use matte::{Frame, Rect, Fitting, Edge::*, Align::*};
 
 fn main() {
     // Create a root frame
@@ -43,18 +43,18 @@ fn main() {
     root.fitting = Fitting::Scale;
 
     // Add a header at the top
-    root.push(Top, 100, |header| {
+    root.push_edge(Top, 100, |header| {
         // Add a logo to the left of the header
-        header.push(Left, 200, |logo| {
+        header.push_edge(Left, 200, |logo| {
             // You can acquire this rectangle using logo.rect(),
             // and draw it with your favorite graphics crate.
         });
 
         // Add navigation buttons to the right
-        header.push(Right, 200, |nav| {
+        header.push_edge(Right, 200, |nav| {
             // Navigation content
             for _ in 0..10 {
-                nav.push(Top, 40, |button| {
+                nav.push_edge(Top, 40, |button| {
                     // This "button" is a smaller rect within nav, stacked from the top
                 })
             }
@@ -62,19 +62,19 @@ fn main() {
     });
 
     // Add a dynamic sidebar using 20% of the remaining space (ratio = 0.2)
-    root.fill(Left, 0.2, |sidebar| {
+    root.fill_edge(Left, 0.2, |sidebar| {
         // Sidebar content
     });
 
     // Add a centered element with specific dimensions (will scale if needed)
-    root.center(300, 200, |centered_element| {
+    root.push_size(Center, 300, 200, |centered_element| {
         // Centered content that will scale to fit if necessary
     });
 
     // Main content area (use remaining space with ratio = 1.0)
-    root.fill(Left, 1.0, |content| {
+    root.fill_edge(Left, 1.0, |content| {
         // Place an element at specific coordinates with automatic scaling
-        content.place(Left, 50, 50, 400, 300, |placed_element| {
+        content.place(LeftTop, 50, 50, 400, 300, |placed_element| {
             // Element content that scales to fit available space
         });
     });

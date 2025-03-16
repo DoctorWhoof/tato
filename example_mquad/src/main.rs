@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use matte::{Fitting, Frame, Num, Edge::*};
+use matte::{Fitting, Frame, Num, Edge::*, Align::*};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -61,15 +61,15 @@ async fn main() {
 
 
         // Left pane
-        root.push(Left, 200.0, |pane| {
+        root.push_edge(Left, 200.0, |pane| {
             draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane (scaled fitting)".to_string());
             pane.set_margin(8.0);
             pane.set_gap(1.0);
-            pane.push(Top, 20.0, |_space| {});
+            pane.push_edge(Top, 20.0, |_space| {});
             pane.fitting = Fitting::Scale;
             // Buttons
             for n in 0..20 {
-                pane.push_size(Top, Left, pane.cursor().w, 30.0, |button| {
+                pane.push_size(TopLeft, pane.cursor().w, 30.0, |button| {
                     button.fitting = Fitting::Scale;
                     let text = if button.rect().h > 16.0 {
                         format!("button {}", n)
@@ -78,7 +78,7 @@ async fn main() {
                     };
                     draw_rect(&button.rect(), [100, 100, 100, 255], text);
                     button.set_margin(2.0);
-                    button.push(Right, 18.0, |icon| {
+                    button.push_edge(Right, 18.0, |icon| {
                         draw_rect(&icon.rect(), [110, 110, 110, 255], "".to_string());
                     });
                 });
@@ -86,10 +86,10 @@ async fn main() {
         });
 
         // Right Pane
-        root.push(Right, 200.0, |pane| {
+        root.push_edge(Right, 200.0, |pane| {
             draw_rect(&pane.rect(), [88, 88, 88, 255], "right pane".to_string());
             let top_space = 16.0;
-            pane.push(Top, top_space, |_space| {});
+            pane.push_edge(Top, top_space, |_space| {});
             let count = 20;
             let gap_sum = (pane.margin() * 2.0) + (pane.gap() * count as f32) + top_space;
             // Available space / count, but I subtract 1.0 to make it more stable
@@ -97,7 +97,7 @@ async fn main() {
             let button_size = (pane.rect().h - gap_sum - 1.0) / count as f32;
 
             for n in 0..count {
-                pane.push(Top, button_size, |button| {
+                pane.push_edge(Top, button_size, |button| {
                     let text = format!("resizable button {}", n + 1);
                     draw_rect(&button.rect(), [120, 120, 120, 255], text);
                 });
@@ -105,53 +105,53 @@ async fn main() {
         });
 
         // Middle Left
-        root.fill(Left, 0.25, |pane| {
+        root.fill_edge(Left, 0.25, |pane| {
             draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left".to_string());
             // Sized rect, will scale down preserving aspect
-            pane.push_size(Bottom, Right, 100.0, 50.0, |sized|{
+            pane.push_size(BottomLeft, 100.0, 50.0, |sized|{
                 draw_rect(&sized.rect(), [120, 120, 120, 255], "sized".to_string());
             });
         });
 
         // Middle Top
-        root.fill(Top, 0.5, |pane| {
+        root.fill_edge(Top, 0.5, |pane| {
             draw_rect(&pane.rect(), [130, 130, 130, 255], "middle top".to_string());
             let top_space = 16.0;
-            pane.push(Top, top_space, |_space| {});
+            pane.push_edge(Top, top_space, |_space| {});
             // Spiral rects!
             let mut ratio = 0.3;
             for _ in 0..3 {
-                pane.fill(Top, ratio, |pane| {
+                pane.fill_edge(Left, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "t".to_string());
                     ratio *= 0.8;
                 });
-                pane.fill(Right, ratio, |pane| {
+                pane.fill_edge(Top, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "r".to_string());
                     ratio *= 0.8;
                 });
-                pane.fill(Bottom, ratio, |pane| {
+                pane.fill_edge(Right, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "b".to_string());
                     ratio *= 0.8;
                 });
-                pane.fill(Left, ratio, |pane| {
+                pane.fill_edge(Bottom, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "l".to_string());
                     ratio *= 0.8;
                 });
             }
-            pane.fill(Left, 1.0, |pane| {
+            pane.fill_size(LeftTop, 1.0, 1.0,  |pane| {
                 draw_rect(&pane.rect(), [220, 220, 220, 255], "end".to_string());
             });
         });
 
         // Middle Bottom
-        root.fill(Bottom, 1.0, |pane| {
+        root.fill_edge(Bottom, 1.0, |pane| {
             pane.fitting = Fitting::Scale;
             add_fancy_panel(pane, |area| {
-                area.push(Bottom, 20.0, |button| {
+                area.push_edge(Bottom, 20.0, |button| {
                     draw_rect(&button.rect(), [56, 56, 56, 255], "info bar".to_string());
                 });
                 for _ in 0..25 {
-                    area.push(Top, 40.0, |button| {
+                    area.push_edge(Top, 40.0, |button| {
                         draw_rect(&button.rect(), [32, 32, 32, 255], "test".to_string());
                     });
                 }
@@ -205,6 +205,6 @@ where
             text_params,
         );
     }
-    frame.push(Top, T::from_f32(bar), |_| {});
-    frame.fill(Top, 1.0, |content| func(content));
+    frame.push_edge(Top, T::from_f32(bar), |_| {});
+    frame.fill_edge(Top, 1.0, |content| func(content));
 }

@@ -55,15 +55,15 @@ pub enum Edge {
 }
 
 /// Represents the alignment of a child frame that is sized (width, height).
-/// Notice that LeftTop is *not* the same as TopLeft! LeftTop means "push from the left,
-/// align to Top" and TopLeft means "push from Top, align to Left". The result may look the same,
+/// Notice that LeftTop is *not* the same as TopLeft! LeftTop means "push_edge from the left,
+/// align to Top" and TopLeft means "push_edge from Top, align to Left". The result may look the same,
 /// but the availble space will shrink from the left in the former, from the top in the latter.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Align {
     #[default]
     LeftTop,
     LeftCenter,
-    LeftRight,
+    LeftBottom,
     RightTop,
     RightCenter,
     RightBottom,
@@ -73,8 +73,8 @@ pub enum Align {
     BottomLeft,
     BottomCenter,
     BottomRight,
-    /// Only option that Does not shrink the available space (the "cursor" rect).
-    Center
+    /// Only option that does not shrink the available space (the "cursor" rect).
+    Center,
 }
 
 /// Clipping strategy
@@ -116,7 +116,7 @@ where
         self.rect
     }
 
-    /// The available space to push more child frames.
+    /// The available space to push_edge more child frames.
     /// Shrinks every time a child frame is added.
     pub fn cursor(&self) -> Rect<T> {
         self.cursor
@@ -157,6 +157,64 @@ where
         self.scale
     }
 
+    /// Determine the edge associated with an alignment
+    fn alignment_to_edge(align: Align) -> Edge {
+        match align {
+            Align::LeftTop | Align::LeftCenter | Align::LeftBottom => Edge::Left,
+            Align::RightTop | Align::RightCenter | Align::RightBottom => Edge::Right,
+            Align::TopLeft | Align::TopCenter | Align::TopRight => Edge::Top,
+            Align::BottomLeft | Align::BottomCenter | Align::BottomRight => Edge::Bottom,
+            Align::Center => Edge::Left, // Center uses left as base for positioning
+        }
+    }
+
+    fn edge_to_alignment(edge:Edge) -> Align {
+        match edge {
+            Edge::Left => Align::LeftTop,
+            Edge::Right => Align::RightTop,
+            Edge::Top => Align::TopLeft,
+            Edge::Bottom => Align::BottomLeft,
+        }
+    }
+
+    /// Calculate offsets based on alignment for positioned frames
+    fn calculate_align_offsets(&self, align: Align, w: T, h: T) -> (T, T, bool) {
+        let update_cursor = !matches!(align, Align::Center);
+        let (offset_x, offset_y) = match align {
+            // Left side alignments
+            Align::LeftTop => (T::zero(), T::zero()),
+            Align::LeftCenter => (T::zero(), (self.cursor.h - h) / T::two()),
+            Align::LeftBottom => (T::zero(), self.cursor.h.saturating_sub(h)),
+
+            // Right side alignments
+            Align::RightTop => (T::zero(), T::zero()),
+            Align::RightCenter => (T::zero(), (self.cursor.h - h) / T::two()),
+            Align::RightBottom => (T::zero(), self.cursor.h.saturating_sub(h)),
+
+            // Top side alignments
+            Align::TopLeft => (T::zero(), T::zero()),
+            Align::TopCenter => ((self.cursor.w - w) / T::two(), T::zero()),
+            Align::TopRight => (self.cursor.w.saturating_sub(w), T::zero()),
+
+            // Bottom side alignments
+            Align::BottomLeft => (T::zero(), T::zero()),
+            Align::BottomCenter => ((self.cursor.w - w) / T::two(), T::zero()),
+            Align::BottomRight => (self.cursor.w.saturating_sub(w), T::zero()),
+
+            // Center alignment
+            Align::Center => (
+                (self.cursor.w - w) / T::two(),
+                (self.cursor.h - h) / T::two(),
+            ),
+        };
+
+        // Ensure offsets are non-negative
+        let x = offset_x.get_max(T::zero());
+        let y = offset_y.get_max(T::zero());
+
+        (x, y, update_cursor)
+    }
+
     /// Calculate the scale needed to fit a rectangle of given dimensions
     /// into the available space, preserving aspect ratio.
     /// Takes into account the offsets where the rectangle will be placed.
@@ -183,91 +241,30 @@ where
         let fit_scale = fit_w_scale.min(fit_h_scale).clamp(0.0, 1.0);
 
         // If self.scale is > 1.0, we need to ensure we still scale down if needed
-        if self.scale > 1.0 {
-            // Use the smaller of: requested scale or the maximum scale that fits
-            self.scale.min(fit_scale * self.scale)
-        } else {
+        // if self.scale > 1.0 {
+        //     // Use the smaller of: requested scale or the maximum scale that fits
+        //     self.scale.min(fit_scale * self.scale)
+        // } else {
             // For self.scale <= 1.0, use the smaller of: requested scale or fit_scale
-            self.scale * fit_scale
+            // self.scale * fit_scale
+        // }
+        match self.fitting {
+            Fitting::Relaxed | Fitting::Aggressive | Fitting::Clamp => 1.0,
+            Fitting::Scale => self.scale * fit_scale,
         }
     }
 
-    /// Adds a new frame on the specified side with specified length.
-    /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `len` - Length of the new frame
-    /// * `func` - Closure to execute with the new child frame
-    #[inline(always)]
-    pub fn push(&mut self, side: Edge, len: T, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Edge::Left | Edge::Right);
-
-        // Default width and height based on the side
-        let (mut w, h) = if is_horizontal {
-            (len, self.cursor.h / T::from_f32(self.scale))
-        } else {
-            (self.cursor.w / T::from_f32(self.scale), len)
-        };
-
-        // Default offset is zero
-        let offset_x = T::zero();
-        let offset_y = T::zero();
-
-        // If fitting is set to Scale, apply scaling logic
-        if matches!(self.fitting, Fitting::Scale) {
-            let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
-            w = T::from_f32(w.to_f32() * actual_scale / self.scale);
-            // h = T::from_f32(h.to_f32() * actual_scale / self.scale);
-        }
-
-        self.add_scope(
-            side,
-            w,
-            h,
-            offset_x,
-            offset_y,
-            self.scale,
-            true,
-            Fitting::Aggressive,
-            func,
-        );
-    }
-
-    /// Attempts to push a rect with size (w,h), if there isn't enough available space, the rect
+    /// Attempts to push_edge a rect with size (w,h), if there isn't enough available space, the rect
     /// is scaled down preserving the aspect ratio.
     /// # Parameters
-    /// * `side` - Which side to add the child frame to
+    /// * `align` - Alignment that determines positioning and cursor updating
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
-    /// * `align` - Which side to align the child frame to (determines internal offsets)
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn push_size(
-        &mut self,
-        side: Edge,
-        align: Edge,
-        w: T,
-        h: T,
-        func: impl FnMut(&mut Frame<T>),
-    ) {
-        // Calculate offsets based on alignment
-        let (offset_x, offset_y) = match side {
-            Edge::Left | Edge::Right => match align {
-                Edge::Left | Edge::Right => {
-                    let space = self.cursor.h.saturating_sub(h) / T::two();
-                    (T::zero(), space)
-                }
-                Edge::Top => (T::zero(), T::zero()),
-                Edge::Bottom => (T::zero(), self.cursor.h.saturating_sub(h)),
-            },
-            Edge::Top | Edge::Bottom => match align {
-                Edge::Top | Edge::Bottom => {
-                    let space = self.cursor.w.saturating_sub(w) / T::two();
-                    (space, T::zero())
-                }
-                Edge::Left => (T::zero(), T::zero()),
-                Edge::Right => (self.cursor.w.saturating_sub(w), T::zero()),
-            },
-        };
+    pub fn push_size(&mut self, align: Align, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+        let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
+        let side = Self::alignment_to_edge(align);
 
         // Calculate actual scale and apply it to dimensions, taking offsets into account
         let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
@@ -281,82 +278,56 @@ where
             offset_x,
             offset_y,
             1.0,
-            true,
-            Fitting::Scale,
+            update_cursor,
+            self.fitting,
             func,
         );
     }
 
-    /// Creates a centered frame with specific dimensions. Does not modify the cursor!
-    /// Scales the frame if necessary to fit available space while preserving aspect ratio.
+    /// Adds a new frame on the specified side with specified length.
     /// # Parameters
-    /// * `w` - Width of the new frame
-    /// * `h` - Height of the new frame
+    /// * `side` - Which side to add the child frame to
+    /// * `len` - Length of the new frame
     /// * `func` - Closure to execute with the new child frame
-    pub fn center(&mut self, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
-        // Calculate the centering offsets
-        let offset_x = (self.cursor.w - w) / T::two();
-        let offset_y = (self.cursor.h - h) / T::two();
-
-        // Ensure offsets are non-negative
-        let x = if offset_x < T::zero() {
-            T::zero()
+    #[inline(always)]
+    pub fn push_edge(&mut self, edge: Edge, len: T, func: impl FnMut(&mut Frame<T>)) {
+        // Default width and height based on the side
+        let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
+        let (w, h) = if is_horizontal {
+            (len, self.cursor.h / T::from_f32(self.scale))
         } else {
-            offset_x
-        };
-        let y = if offset_y < T::zero() {
-            T::zero()
-        } else {
-            offset_y
+            (self.cursor.w / T::from_f32(self.scale), len)
         };
 
-        // Calculate actual scale and apply it to dimensions, taking offsets into account
-        let actual_scale = self.calculate_fit_scale(w, h, x, y);
-        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
-        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
-
-        self.add_scope(
-            Edge::Left,
-            scaled_w,
-            scaled_h,
-            x,
-            y,
-            1.0,
-            false,
-            Fitting::Scale,
-            func,
-        );
+        let align = Self::edge_to_alignment(edge);
+        self.push_size(align, w, h, func);
     }
 
     /// Creates a frame on the specified side taking a proportion of the original available space,
     /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
     /// into 4 smaller frames just fill it four times using ratio = 0.25.
     /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `ratio` - Proportion of original available space (0.0 to 1.0)
+    /// * `align` - Alignment that determines positioning and cursor updating
+    /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
+    /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn fill(&mut self, side: Edge, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Edge::Left | Edge::Right);
+    pub fn fill_size(&mut self, align: Align, ratio_x: f32, ratio_y:f32, func: impl FnMut(&mut Frame<T>)) {
+        let side = Self::alignment_to_edge(align);
+        let update_cursor = !matches!(align, Align::Center);
+        // let is_horizontal = matches!(side, Edge::Left | Edge::Right);
 
         // Calculate available width and height after respecting margins
         let available_width = self.rect.w.saturating_sub(self.margin * T::two());
         let available_height = self.rect.h.saturating_sub(self.margin * T::two());
 
-        // Calculate dimensions based on original available space, not current cursor
-        let (w, h) = if is_horizontal {
-            let max_len = self.cursor.w.to_f32();
-            let len = (available_width.to_f32() * ratio.clamp(0.0, 1.0)).clamp(0.0, max_len);
 
-            (T::from_f32(len), self.cursor.h)
-        } else {
-            let max_len = self.cursor.h.to_f32();
-            let len = (available_height.to_f32() * ratio.clamp(0.0, 1.0)).clamp(0.0, max_len);
-            (self.cursor.w, T::from_f32(len))
-        };
+        let max_w = self.cursor.w.to_f32();
+        let max_h = self.cursor.h.to_f32();
 
-        // Default offset is zero
-        let offset_x = T::zero();
-        let offset_y = T::zero();
+        let w = T::from_f32((available_width.to_f32() * ratio_x.clamp(0.0, 1.0)).clamp(0.0, max_w));
+        let h = T::from_f32((available_height.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
+
+        let (offset_x, offset_y, _) = self.calculate_align_offsets(align, w, h);
 
         self.add_scope(
             side,
@@ -365,68 +336,45 @@ where
             offset_x,
             offset_y,
             1.0,
-            true,
-            Fitting::Aggressive,
+            update_cursor,
+            self.fitting,
             func,
         );
     }
 
-    /// Creates a centered frame that takes a proportion of the original available space.
-    /// Does not modify the available space!
+    /// Creates a frame on the specified side taking a proportion of the original available space,
+    /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
+    /// into 4 smaller frames just fill it four times using ratio = 0.25.
     /// # Parameters
-    /// * `x_ratio` - Proportion of original available width (0.0 to 1.0)
-    /// * `y_ratio` - Proportion of original available height (0.0 to 1.0)
+    /// * `align` - Alignment that determines positioning and cursor updating
+    /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
+    /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn center_fill(&mut self, x_ratio: T, y_ratio: T, func: impl FnMut(&mut Frame<T>)) {
-        // Calculate available width and height after respecting margins
-        let available_width = self.rect.w.saturating_sub(self.margin * T::two());
-        let available_height = self.rect.h.saturating_sub(self.margin * T::two());
-
-        // Calculate width and height based on ratios of original available space, not current cursor
-        let max_w = self.cursor.w.to_f32();
-        let w = (available_width.to_f32() * x_ratio.to_f32().clamp(0.0, 1.0)).clamp(0.0, max_w);
-
-        let max_h = self.cursor.w.to_f32();
-        let h = (available_height.to_f32() * y_ratio.to_f32().clamp(0.0, 1.0)).clamp(0.0, max_h);
-
-        // Calculate the centering offsets - should be half of the remaining space, not half the width
-        let offset_x = (self.cursor.w.to_f32() - w) / 2.0;
-        let offset_y = (self.cursor.h.to_f32() - h) / 2.0;
-
-        // Ensure offsets are non-negative
-        let x = if offset_x < 0.0 {
-            T::zero()
+    pub fn fill_edge(&mut self, edge: Edge, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
+        let align = Self::edge_to_alignment(edge);
+        let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
+        let (ratio_x, ratio_y) = if is_horizontal {
+            (ratio, self.cursor.h.to_f32() / self.scale)
         } else {
-            T::from_f32(offset_x)
+            (self.cursor.w.to_f32() / self.scale, ratio)
         };
-        let y = if offset_y < 0.0 {
-            T::zero()
-        } else {
-            T::from_f32(offset_y)
-        };
-
-        self.add_scope(
-            Edge::Left,
-            T::from_f32(w),
-            T::from_f32(h),
-            x,
-            y,
-            self.scale,
-            false,
-            Fitting::Scale,
-            func,
-        );
+        self.fill_size(align, ratio_x, ratio_y, func);
     }
 
     /// Allows arbitrary placement of the new frame in relation to the current frame.
-    /// Does not modify the available space! Scales the frame if necessary to fit.
+    /// Does not modify the available space by default, unless Align is not Center.
+    /// Scales the frame if necessary to fit.
     /// # Parameters
+    /// * `align` - Alignment that determines cursor updating
     /// * `x` - X position of the new frame in relation to this frame.
     /// * `y` - Y position of the new frame in relation to this frame.
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
-    pub fn place(&mut self, side: Edge, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+    pub fn place(&mut self, align: Align, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+        let side = Self::alignment_to_edge(align);
+        let update_cursor = !matches!(align, Align::Center);
+
         // Calculate actual scale and apply it to dimensions, taking offsets into account
         let actual_scale = self.calculate_fit_scale(w, h, x, y);
         let scaled_w = T::from_f32(w.to_f32() * actual_scale);
@@ -440,8 +388,8 @@ where
             x,
             y,
             1.0,
-            false,
-            Fitting::Scale,
+            update_cursor,
+            self.fitting,
             func,
         );
     }

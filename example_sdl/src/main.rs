@@ -1,4 +1,4 @@
-use matte::Frame;
+use matte::{Frame, Align::*, Edge::*};
 
 fn main() -> Result<(), String> {
     let mut app = mini_sdl::App::new(
@@ -45,37 +45,36 @@ fn main() -> Result<(), String> {
 
         // Process Layout;
         draw_rect(&root.rect(), (64, 64, 64), "");
-        use matte::Edge::*;
 
         // Left panel
         root.set_scale(1.0);
-        root.push(Left, 500, |pane| {
+        root.push_edge(Left, 500, |pane| {
             draw_rect(&pane.rect(), (76, 88, 64), "left pane");
             // Buttons
             for _n in 0..25 {
-                pane.push(Top, 40, |child| {
+                pane.push_edge(Top, 40, |child| {
                     draw_rect(&child.rect(), (88, 96, 76), "button");
                 });
             }
         });
 
         // Right Panel
-        root.push(Right, 500, |pane| {
+        root.push_edge(Right, 500, |pane| {
             draw_rect(&pane.rect(), (88, 76, 64), "right pane");
         });
 
         // Middle Panel
-        root.fill(Left, 0.5, |pane| {
+        root.fill(TopLeft, 0.33, |pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane left");
         });
 
         // Middle Panel
-        root.fill(Top, 0.5,|pane| {
+        root.fill(TopLeft, 0.33,|pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane top");
         });
 
         // Middle Panel
-        root.fill(Top, 1.0,|pane| {
+        root.fill(TopLeft, 1.0,|pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane bottom");
         });
 
