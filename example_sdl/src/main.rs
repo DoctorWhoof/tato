@@ -1,4 +1,4 @@
-use matte::{Frame, Align::*, Edge::*};
+use matte::{Frame, Edge::*};
 
 fn main() -> Result<(), String> {
     let mut app = mini_sdl::App::new(
