@@ -4,6 +4,15 @@
 mod num;
 pub use num::*;
 
+/// shortens signature for a mutable frame reference
+macro_rules! child {
+    () => {
+        impl FnMut(&mut Frame<T>)
+    };
+}
+
+pub trait Child<T>: FnMut(&mut Frame<T>) {}
+
 /// A layout frame that manages rectangular areas with margins and scaling.
 /// A frame consists of an outer rectangle, an inner cursor rectangle (available space),
 /// and properties that control how child frames are created and positioned.
@@ -168,7 +177,7 @@ where
         }
     }
 
-    fn edge_to_alignment(edge:Edge) -> Align {
+    fn edge_to_alignment(edge: Edge) -> Align {
         match edge {
             Edge::Left => Align::LeftTop,
             Edge::Right => Align::RightTop,
@@ -245,8 +254,8 @@ where
         //     // Use the smaller of: requested scale or the maximum scale that fits
         //     self.scale.min(fit_scale * self.scale)
         // } else {
-            // For self.scale <= 1.0, use the smaller of: requested scale or fit_scale
-            // self.scale * fit_scale
+        // For self.scale <= 1.0, use the smaller of: requested scale or fit_scale
+        // self.scale * fit_scale
         // }
         match self.fitting {
             Fitting::Relaxed | Fitting::Aggressive | Fitting::Clamp => 1.0,
@@ -262,7 +271,7 @@ where
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn push_size(&mut self, align: Align, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+    pub fn push_size(&mut self, align: Align, w: T, h: T, func: child!()) {
         let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
         let side = Self::alignment_to_edge(align);
 
@@ -290,7 +299,7 @@ where
     /// * `len` - Length of the new frame
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn push_edge(&mut self, edge: Edge, len: T, func: impl FnMut(&mut Frame<T>)) {
+    pub fn push_edge(&mut self, edge: Edge, len: T, func: child!()) {
         // Default width and height based on the side
         let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
         let (w, h) = if is_horizontal {
@@ -311,21 +320,17 @@ where
     /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
     /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn fill_size(&mut self, align: Align, ratio_x: f32, ratio_y:f32, func: impl FnMut(&mut Frame<T>)) {
+    pub fn fill_size(&mut self, align: Align, fill_x: f32, fill_y: f32, func: child!()) {
         let side = Self::alignment_to_edge(align);
         let update_cursor = !matches!(align, Align::Center);
         // let is_horizontal = matches!(side, Edge::Left | Edge::Right);
 
         // Calculate available width and height after respecting margins
-        let available_width = self.rect.w.saturating_sub(self.margin * T::two());
-        let available_height = self.rect.h.saturating_sub(self.margin * T::two());
+        let max_w = self.rect.w.saturating_sub(self.margin * T::two());
+        let max_h = self.rect.h.saturating_sub(self.margin * T::two());
 
-
-        let max_w = self.cursor.w.to_f32();
-        let max_h = self.cursor.h.to_f32();
-
-        let w = T::from_f32((available_width.to_f32() * ratio_x.clamp(0.0, 1.0)).clamp(0.0, max_w));
-        let h = T::from_f32((available_height.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
+        let w = T::from_f32((max_w.to_f32() * fill_x.clamp(0.0, 1.0)).clamp(0.0, max_w.to_f32()));
+        let h = T::from_f32((max_h.to_f32() * fill_y.clamp(0.0, 1.0)).clamp(0.0, max_h.to_f32()));
 
         let (offset_x, offset_y, _) = self.calculate_align_offsets(align, w, h);
 
@@ -350,7 +355,7 @@ where
     /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
     /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn fill_edge(&mut self, edge: Edge, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
+    pub fn fill_edge(&mut self, edge: Edge, ratio: f32, func: child!()) {
         let align = Self::edge_to_alignment(edge);
         let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
         let (ratio_x, ratio_y) = if is_horizontal {
@@ -371,7 +376,7 @@ where
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
-    pub fn place(&mut self, align: Align, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+    pub fn place(&mut self, align: Align, x: T, y: T, w: T, h: T, func: child!()) {
         let side = Self::alignment_to_edge(align);
         let update_cursor = !matches!(align, Align::Center);
 
@@ -405,7 +410,7 @@ where
         scale: f32,
         update_cursor: bool,
         fitting: Fitting,
-        mut func: impl FnMut(&mut Frame<T>),
+        mut func: child!(),
     ) {
         let scaled_w = T::from_f32(w.to_f32() * scale);
         let scaled_h = T::from_f32(h.to_f32() * scale);
