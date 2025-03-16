@@ -64,17 +64,17 @@ fn main() -> Result<(), String> {
         });
 
         // Middle Panel
-        root.fill(TopLeft, 0.33, |pane| {
+        root.fill_edge(Top, 0.33, |pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane left");
         });
 
         // Middle Panel
-        root.fill(TopLeft, 0.33,|pane| {
+        root.fill_edge(Top, 0.33,|pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane top");
         });
 
         // Middle Panel
-        root.fill(TopLeft, 1.0,|pane| {
+        root.fill_edge(Top, 1.0,|pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane bottom");
         });
 
