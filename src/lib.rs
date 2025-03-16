@@ -41,8 +41,9 @@ pub struct Rect<T> {
 }
 
 /// Represents the side of a frame where a child frame can be added.
-#[derive(Debug, Clone, Copy)]
-pub enum Side {
+#[derive(Debug, Clone, Copy, Default)]
+pub enum Edge {
+    #[default]
     /// Left side of the frame
     Left,
     /// Right side of the frame
@@ -51,6 +52,29 @@ pub enum Side {
     Top,
     /// Bottom side of the frame
     Bottom,
+}
+
+/// Represents the alignment of a child frame that is sized (width, height).
+/// Notice that LeftTop is *not* the same as TopLeft! LeftTop means "push from the left,
+/// align to Top" and TopLeft means "push from Top, align to Left". The result may look the same,
+/// but the availble space will shrink from the left in the former, from the top in the latter.
+#[derive(Debug, Clone, Copy, Default)]
+pub enum Align {
+    #[default]
+    LeftTop,
+    LeftCenter,
+    LeftRight,
+    RightTop,
+    RightCenter,
+    RightBottom,
+    TopLeft,
+    TopCenter,
+    TopRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+    /// Only option that Does not shrink the available space (the "cursor" rect).
+    Center
 }
 
 /// Clipping strategy
@@ -174,8 +198,8 @@ where
     /// * `len` - Length of the new frame
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
-    pub fn push(&mut self, side: Side, len: T, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Side::Left | Side::Right);
+    pub fn push(&mut self, side: Edge, len: T, func: impl FnMut(&mut Frame<T>)) {
+        let is_horizontal = matches!(side, Edge::Left | Edge::Right);
 
         // Default width and height based on the side
         let (mut w, h) = if is_horizontal {
@@ -219,29 +243,29 @@ where
     #[inline(always)]
     pub fn push_size(
         &mut self,
-        side: Side,
-        align: Side,
+        side: Edge,
+        align: Edge,
         w: T,
         h: T,
         func: impl FnMut(&mut Frame<T>),
     ) {
         // Calculate offsets based on alignment
         let (offset_x, offset_y) = match side {
-            Side::Left | Side::Right => match align {
-                Side::Left | Side::Right => {
+            Edge::Left | Edge::Right => match align {
+                Edge::Left | Edge::Right => {
                     let space = self.cursor.h.saturating_sub(h) / T::two();
                     (T::zero(), space)
                 }
-                Side::Top => (T::zero(), T::zero()),
-                Side::Bottom => (T::zero(), self.cursor.h.saturating_sub(h)),
+                Edge::Top => (T::zero(), T::zero()),
+                Edge::Bottom => (T::zero(), self.cursor.h.saturating_sub(h)),
             },
-            Side::Top | Side::Bottom => match align {
-                Side::Top | Side::Bottom => {
+            Edge::Top | Edge::Bottom => match align {
+                Edge::Top | Edge::Bottom => {
                     let space = self.cursor.w.saturating_sub(w) / T::two();
                     (space, T::zero())
                 }
-                Side::Left => (T::zero(), T::zero()),
-                Side::Right => (self.cursor.w.saturating_sub(w), T::zero()),
+                Edge::Left => (T::zero(), T::zero()),
+                Edge::Right => (self.cursor.w.saturating_sub(w), T::zero()),
             },
         };
 
@@ -292,7 +316,7 @@ where
         let scaled_h = T::from_f32(h.to_f32() * actual_scale);
 
         self.add_scope(
-            Side::Left,
+            Edge::Left,
             scaled_w,
             scaled_h,
             x,
@@ -311,8 +335,8 @@ where
     /// * `side` - Which side to add the child frame to
     /// * `ratio` - Proportion of original available space (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Side::Left | Side::Right);
+    pub fn fill(&mut self, side: Edge, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
+        let is_horizontal = matches!(side, Edge::Left | Edge::Right);
 
         // Calculate available width and height after respecting margins
         let available_width = self.rect.w.saturating_sub(self.margin * T::two());
@@ -382,7 +406,7 @@ where
         };
 
         self.add_scope(
-            Side::Left,
+            Edge::Left,
             T::from_f32(w),
             T::from_f32(h),
             x,
@@ -402,7 +426,7 @@ where
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
-    pub fn place(&mut self, side: Side, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
+    pub fn place(&mut self, side: Edge, x: T, y: T, w: T, h: T, func: impl FnMut(&mut Frame<T>)) {
         // Calculate actual scale and apply it to dimensions, taking offsets into account
         let actual_scale = self.calculate_fit_scale(w, h, x, y);
         let scaled_w = T::from_f32(w.to_f32() * actual_scale);
@@ -425,7 +449,7 @@ where
     /// Internal jack-of-all-trades function called by the mode specialized public functions
     fn add_scope(
         &mut self,
-        side: Side,
+        side: Edge,
         w: T,
         h: T,
         extra_x: T,
@@ -442,7 +466,7 @@ where
 
         // Calculate the child rectangle based on the side
         let mut child_rect = match side {
-            Side::Left => {
+            Edge::Left => {
                 if self.cursor.x > self.rect.x + self.rect.w {
                     return;
                 }
@@ -453,13 +477,13 @@ where
                     h: scaled_h,
                 }
             }
-            Side::Right => Rect {
+            Edge::Right => Rect {
                 x: (self.cursor.x + self.cursor.w).saturating_sub(scaled_w) - extra_x,
                 y: self.cursor.y + extra_y,
                 w: scaled_w,
                 h: scaled_h,
             },
-            Side::Top => {
+            Edge::Top => {
                 if self.cursor.y > self.rect.y + self.rect.h {
                     return;
                 }
@@ -470,7 +494,7 @@ where
                     h: scaled_h,
                 }
             }
-            Side::Bottom => Rect {
+            Edge::Bottom => Rect {
                 x: self.cursor.x + extra_x,
                 y: (self.cursor.y + self.cursor.h).saturating_sub(scaled_h) - extra_y,
                 w: scaled_w,
@@ -531,21 +555,21 @@ where
         // Update parent cursor
         if update_cursor {
             match side {
-                Side::Left => {
+                Edge::Left => {
                     // Add extra_x to the cursor movement
                     self.cursor.x += scaled_w + gap + extra_x;
                     self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
                 }
-                Side::Right => {
+                Edge::Right => {
                     // Subtract extra_x in width reduction
                     self.cursor.w = self.cursor.w.saturating_sub(scaled_w + gap + extra_x);
                 }
-                Side::Top => {
+                Edge::Top => {
                     // Add extra_y to the cursor movement
                     self.cursor.y += scaled_h + gap + extra_y;
                     self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
                 }
-                Side::Bottom => {
+                Edge::Bottom => {
                     // Subtract extra_y in height reduction
                     self.cursor.h = self.cursor.h.saturating_sub(scaled_h + gap + extra_y);
                 }

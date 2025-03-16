@@ -28,7 +28,7 @@ Three examples are provided:
 ## Usage Example
 
 ```rust
-use matte::{Frame, Rect, Side::*, Fitting};
+use matte::{Frame, Rect, Edge::*, Fitting};
 
 fn main() {
     // Create a root frame

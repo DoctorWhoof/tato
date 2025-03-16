@@ -1,4 +1,4 @@
-use matte::{Fitting, Frame, Side::*};
+use matte::{Fitting, Frame, Edge::*};
 use macroquad::prelude::*;
 
 #[macroquad::main("Frame Layout")]

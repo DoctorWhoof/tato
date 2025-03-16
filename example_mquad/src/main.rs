@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use matte::{Fitting, Frame, Num, Side::*};
+use matte::{Fitting, Frame, Num, Edge::*};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {

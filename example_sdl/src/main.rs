@@ -45,7 +45,7 @@ fn main() -> Result<(), String> {
 
         // Process Layout;
         draw_rect(&root.rect(), (64, 64, 64), "");
-        use matte::Side::*;
+        use matte::Edge::*;
 
         // Left panel
         root.set_scale(1.0);
