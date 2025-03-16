@@ -1,5 +1,8 @@
 # Matte.rs
 
+**_WARNING: Under heavy development, API changes constantly._**
+------------------------------------------------------------------------
+
 A minimalist **_immediate mode_**, **_no_std_** and **_no allocations_** layout library for rectangular elements (Frames), intended for games, embedded systems, and other constrained environments. **Matte does not perform any rendering**, it simply lays out nested rectangles (Frames) with margins and gaps between children.
 
 While easy to use, Matte's approach is very limited and can't create complex layouts! There are several key functions to work with:
