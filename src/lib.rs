@@ -236,39 +236,6 @@ where
         );
     }
 
-    /// Creates a frame on the specified side taking a proportion of available space.
-    /// # Parameters
-    /// * `side` - Which side to add the child frame to
-    /// * `ratio` - Proportion of available space (0.0 to 1.0)
-    /// * `func` - Closure to execute with the new child frame
-    pub fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
-        let is_horizontal = matches!(side, Side::Left | Side::Right);
-
-        let (w, h) = if is_horizontal {
-            let len = self.cursor.w.to_f32() * ratio.clamp(0.0, 1.0);
-            (T::from_f32(len), self.cursor.h)
-        } else {
-            let len = self.cursor.h.to_f32() * ratio.clamp(0.0, 1.0);
-            (self.cursor.w, T::from_f32(len))
-        };
-
-        // Default offset is zero
-        let offset_x = T::zero();
-        let offset_y = T::zero();
-
-        self.add_scope(
-            side,
-            w,
-            h,
-            offset_x,
-            offset_y,
-            1.0,
-            true,
-            Fitting::Aggressive,
-            func,
-        );
-    }
-
     /// Creates a centered frame with specific dimensions. Does not modify the cursor!
     /// Scales the frame if necessary to fit available space while preserving aspect ratio.
     /// # Parameters
@@ -310,16 +277,66 @@ where
         );
     }
 
-    /// Creates a centered frame that takes a proportion of the available space.
+    /// Creates a frame on the specified side taking a proportion of the original available space,
+    /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
+    /// into 4 smaller frames just fill it four times using ratio = 0.25.
+    /// # Parameters
+    /// * `side` - Which side to add the child frame to
+    /// * `ratio` - Proportion of original available space (0.0 to 1.0)
+    /// * `func` - Closure to execute with the new child frame
+    pub fn fill(&mut self, side: Side, ratio: f32, func: impl FnMut(&mut Frame<T>)) {
+        let is_horizontal = matches!(side, Side::Left | Side::Right);
+
+        // Calculate available width and height after respecting margins
+        let available_width = self.rect.w.saturating_sub(self.margin * T::two());
+        let available_height = self.rect.h.saturating_sub(self.margin * T::two());
+
+        // Calculate dimensions based on original available space, not current cursor
+        let (w, h) = if is_horizontal {
+            let max_len = self.cursor.w.to_f32();
+            let len = (available_width.to_f32() * ratio.clamp(0.0, 1.0)).clamp(0.0, max_len);
+
+            (T::from_f32(len), self.cursor.h)
+        } else {
+            let max_len = self.cursor.h.to_f32();
+            let len = (available_height.to_f32() * ratio.clamp(0.0, 1.0)).clamp(0.0, max_len);
+            (self.cursor.w, T::from_f32(len))
+        };
+
+        // Default offset is zero
+        let offset_x = T::zero();
+        let offset_y = T::zero();
+
+        self.add_scope(
+            side,
+            w,
+            h,
+            offset_x,
+            offset_y,
+            1.0,
+            true,
+            Fitting::Aggressive,
+            func,
+        );
+    }
+
+    /// Creates a centered frame that takes a proportion of the original available space.
     /// Does not modify the available space!
     /// # Parameters
-    /// * `x_ratio` - Proportion of available width (0.0 to 1.0)
-    /// * `y_ratio` - Proportion of available height (0.0 to 1.0)
+    /// * `x_ratio` - Proportion of original available width (0.0 to 1.0)
+    /// * `y_ratio` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
     pub fn center_fill(&mut self, x_ratio: T, y_ratio: T, func: impl FnMut(&mut Frame<T>)) {
-        // Calculate width and height based on ratios
-        let w = self.cursor.w.to_f32() * x_ratio.to_f32().clamp(0.0, 1.0);
-        let h = self.cursor.h.to_f32() * y_ratio.to_f32().clamp(0.0, 1.0);
+        // Calculate available width and height after respecting margins
+        let available_width = self.rect.w.saturating_sub(self.margin * T::two());
+        let available_height = self.rect.h.saturating_sub(self.margin * T::two());
+
+        // Calculate width and height based on ratios of original available space, not current cursor
+        let max_w = self.cursor.w.to_f32();
+        let w = (available_width.to_f32() * x_ratio.to_f32().clamp(0.0, 1.0)).clamp(0.0, max_w);
+
+        let max_h = self.cursor.w.to_f32();
+        let h = (available_height.to_f32() * y_ratio.to_f32().clamp(0.0, 1.0)).clamp(0.0, max_h);
 
         // Calculate the centering offsets - should be half of the remaining space, not half the width
         let offset_x = (self.cursor.w.to_f32() - w) / 2.0;

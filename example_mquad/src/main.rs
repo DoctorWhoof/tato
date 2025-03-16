@@ -119,19 +119,23 @@ async fn main() {
             let top_space = 16.0;
             pane.push(Top, top_space, |_space| {});
             // Spiral rects!
-            let ratio = 0.3;
+            let mut ratio = 0.3;
             for _ in 0..3 {
                 pane.fill(Top, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "t".to_string());
+                    ratio *= 0.8;
                 });
                 pane.fill(Right, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "r".to_string());
+                    ratio *= 0.8;
                 });
                 pane.fill(Bottom, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "b".to_string());
+                    ratio *= 0.8;
                 });
                 pane.fill(Left, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "l".to_string());
+                    ratio *= 0.8;
                 });
             }
             pane.fill(Left, 1.0, |pane| {
