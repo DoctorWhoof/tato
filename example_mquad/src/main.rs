@@ -19,6 +19,8 @@ async fn main() {
             scale = 1.0;
         }
         scale = scale.clamp(0.2, 2.0);
+
+        // Macroquad Text params
         let fixed_text = TextParams {
             font_size: 16,
             ..Default::default()
@@ -110,6 +112,7 @@ async fn main() {
 
         // Middle Left
         root.fill_edge(Left, 0.25, |pane| {
+            pane.fitting = Fitting::Scale;
             draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left");
             // Sized rect, will scale down preserving aspect
             pane.push_size(BottomLeft, 100.0, 50.0, |sized| {
@@ -123,25 +126,23 @@ async fn main() {
             let top_space = 16.0;
             pane.push_edge(Top, top_space, |_space| {});
             // Spiral rects!
-            let mut ratio = 0.3;
+            let mut ratio = 0.2;
             for _ in 0..3 {
                 pane.fill_edge(Left, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "t");
-                    ratio *= 0.8;
                 });
                 pane.fill_edge(Top, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "r");
-                    ratio *= 0.8;
                 });
                 pane.fill_edge(Right, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "b");
-                    ratio *= 0.8;
                 });
                 pane.fill_edge(Bottom, ratio, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "l");
-                    ratio *= 0.8;
                 });
+                ratio *= 0.5
             }
+            // draw_rect(&pane.cursor(), [128, 255, 255, 255], "end");
             pane.fill_size(LeftTop, 1.0, 1.0, |pane| {
                 draw_rect(&pane.rect(), [220, 220, 220, 255], "end");
             });

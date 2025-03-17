@@ -90,6 +90,7 @@ pub enum Align {
 #[derive(Debug, Clone, Copy)]
 pub enum Fitting {
     /// Allows child frame even if it goes over the available space.
+    /// Also useful for debugging, since Frame is less likely to disappear when space is too small.
     Relaxed,
     /// Removes child frames that touch the margin.
     Aggressive,
@@ -282,10 +283,10 @@ where
 
         self.add_scope(
             side,
-            scaled_w,
-            scaled_h,
             offset_x,
             offset_y,
+            scaled_w,
+            scaled_h,
             1.0,
             update_cursor,
             self.fitting,
@@ -320,26 +321,27 @@ where
     /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
     /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn fill_size(&mut self, align: Align, fill_x: f32, fill_y: f32, func: child!()) {
+    pub fn fill_size(&mut self, align: Align, ratio_x: f32, ratio_y: f32, func: child!()) {
         let side = Self::alignment_to_edge(align);
         let update_cursor = !matches!(align, Align::Center);
-        // let is_horizontal = matches!(side, Edge::Left | Edge::Right);
 
         // Calculate available width and height after respecting margins
-        let max_w = self.rect.w.saturating_sub(self.margin * T::two());
-        let max_h = self.rect.h.saturating_sub(self.margin * T::two());
+        let max_w = self.cursor.w.to_f32();
+        let max_h = self.cursor.h.to_f32();
 
-        let w = T::from_f32((max_w.to_f32() * fill_x.clamp(0.0, 1.0)).clamp(0.0, max_w.to_f32()));
-        let h = T::from_f32((max_h.to_f32() * fill_y.clamp(0.0, 1.0)).clamp(0.0, max_h.to_f32()));
+        let original_cursor = rect_shrink(self.rect, self.margin);
+
+        let w = T::from_f32((original_cursor.w.to_f32() * ratio_x.clamp(0.0, 1.0)).clamp(0.0, max_w));
+        let h = T::from_f32((original_cursor.h.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
 
         let (offset_x, offset_y, _) = self.calculate_align_offsets(align, w, h);
 
         self.add_scope(
             side,
-            w,
-            h,
             offset_x,
             offset_y,
+            w,
+            h,
             1.0,
             update_cursor,
             self.fitting,
@@ -357,11 +359,12 @@ where
     /// * `func` - Closure to execute with the new child frame
     pub fn fill_edge(&mut self, edge: Edge, ratio: f32, func: child!()) {
         let align = Self::edge_to_alignment(edge);
+        // Calculate available width and height after respecting margins
         let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
         let (ratio_x, ratio_y) = if is_horizontal {
-            (ratio, self.cursor.h.to_f32() / self.scale)
+            (ratio, 1.0)
         } else {
-            (self.cursor.w.to_f32() / self.scale, ratio)
+            (1.0, ratio)
         };
         self.fill_size(align, ratio_x, ratio_y, func);
     }
@@ -388,10 +391,10 @@ where
         // Ensures "1.0" is used as scale since we've already applied scaling to dimensions
         self.add_scope(
             side,
-            scaled_w,
-            scaled_h,
             x,
             y,
+            scaled_w,
+            scaled_h,
             1.0,
             update_cursor,
             self.fitting,
@@ -403,10 +406,10 @@ where
     fn add_scope(
         &mut self,
         side: Edge,
-        w: T,
-        h: T,
         extra_x: T,
         extra_y: T,
+        w: T,
+        h: T,
         scale: f32,
         update_cursor: bool,
         fitting: Fitting,

@@ -47,11 +47,10 @@ async fn main() {
         });
 
         // Right Pane
-
         root.push_edge(Right, 200.0, |pane| {
             pane.fitting = Fitting::Scale;
             draw_rect(&pane.rect(), 2.0);
-            pane.push_size(Center, 50.0, 50.0, |center|{
+            pane.push_size(TopRight, 50.0, 50.0, |center|{
                 draw_rect(&center.rect(), 2.0);
             });
         });
