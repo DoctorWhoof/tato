@@ -67,7 +67,7 @@ pub enum Edge {
 /// Notice that LeftTop is *not* the same as TopLeft! LeftTop means "push_edge from the left,
 /// align to Top" and TopLeft means "push_edge from Top, align to Left". The result may look the same,
 /// but the availble space will shrink from the left in the former, from the top in the latter.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Align {
     #[default]
     LeftTop,
@@ -87,7 +87,7 @@ pub enum Align {
 }
 
 /// Clipping strategy
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Fitting {
     /// Allows child frame even if it goes over the available space.
     /// Also useful for debugging, since Frame is less likely to disappear when space is too small.
@@ -189,7 +189,7 @@ where
 
     /// Calculate offsets based on alignment for positioned frames
     fn calculate_align_offsets(&self, align: Align, w: T, h: T) -> (T, T, bool) {
-        let update_cursor = !matches!(align, Align::Center);
+        let update_cursor = align != Align::Center;
         let (offset_x, offset_y) = match align {
             // Left side alignments
             Align::LeftTop => (T::zero(), T::zero()),
@@ -229,38 +229,38 @@ where
     /// into the available space, preserving aspect ratio.
     /// Takes into account the offsets where the rectangle will be placed.
     fn calculate_fit_scale(&self, w: T, h: T, offset_x: T, offset_y: T) -> f32 {
-        let original_w = w.to_f32();
-        let original_h = h.to_f32();
-
-        // Calculate available space considering offsets
-        let available_w = self.cursor.w.to_f32() - offset_x.to_f32();
-        let available_h = self.cursor.h.to_f32() - offset_y.to_f32();
-
-        // Calculate actual scale to use, ensuring it won't exceed available space
-        // First determine what scale we need to fit the content
-        let fit_w_scale = if original_w > 0.0 {
-            available_w / (original_w * self.scale)
-        } else {
-            1.0
-        };
-        let fit_h_scale = if original_h > 0.0 {
-            available_h / (original_h * self.scale)
-        } else {
-            1.0
-        };
-        let fit_scale = fit_w_scale.min(fit_h_scale).clamp(0.0, 1.0);
-
-        // If self.scale is > 1.0, we need to ensure we still scale down if needed
-        // if self.scale > 1.0 {
-        //     // Use the smaller of: requested scale or the maximum scale that fits
-        //     self.scale.min(fit_scale * self.scale)
-        // } else {
-        // For self.scale <= 1.0, use the smaller of: requested scale or fit_scale
-        // self.scale * fit_scale
-        // }
         match self.fitting {
-            Fitting::Relaxed | Fitting::Aggressive | Fitting::Clamp => 1.0,
-            Fitting::Scale => self.scale * fit_scale,
+            Fitting::Relaxed | Fitting::Aggressive | Fitting::Clamp => self.scale,
+            Fitting::Scale => {
+                let original_w = w.to_f32();
+                let original_h = h.to_f32();
+
+                if original_w <= 0.0 || original_h <= 0.0 {
+                    return self.scale;
+                }
+
+                // Calculate available space considering offsets
+                let available_w = self.cursor.w.to_f32() - offset_x.to_f32();
+                let available_h = self.cursor.h.to_f32() - offset_y.to_f32();
+
+                if available_w <= 0.0 || available_h <= 0.0 {
+                    return self.scale;
+                }
+
+                // Calculate scale ratios for width and height
+                let scale_w = available_w / original_w;
+                let scale_h = available_h / original_h;
+
+                // Use the smaller ratio to maintain aspect ratio
+                let fit_scale = scale_w.min(scale_h);
+
+                // Apply base scale but cap it to fit in available space
+                if self.scale > 1.0 {
+                    self.scale.min(fit_scale)
+                } else {
+                    self.scale * fit_scale.min(1.0)
+                }
+            }
         }
     }
 
@@ -276,18 +276,20 @@ where
         let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
         let side = Self::alignment_to_edge(align);
 
-        // Calculate actual scale and apply it to dimensions, taking offsets into account
-        let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
-        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
-        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
+        // Calculate actual scale for Fitting::Scale
+        let actual_scale = if self.fitting == Fitting::Scale {
+            self.calculate_fit_scale(w, h, offset_x, offset_y)
+        } else {
+            self.scale
+        };
 
         self.add_scope(
             side,
             offset_x,
             offset_y,
-            scaled_w,
-            scaled_h,
-            1.0,
+            w,
+            h,
+            actual_scale,
             update_cursor,
             self.fitting,
             func,
@@ -304,9 +306,9 @@ where
         // Default width and height based on the side
         let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
         let (w, h) = if is_horizontal {
-            (len, self.cursor.h / T::from_f32(self.scale))
+            (len, T::from_f32(self.cursor.h.to_f32() / self.scale))
         } else {
-            (self.cursor.w / T::from_f32(self.scale), len)
+            (T::from_f32(self.cursor.w.to_f32() / self.scale), len)
         };
 
         let align = Self::edge_to_alignment(edge);
@@ -323,7 +325,7 @@ where
     /// * `func` - Closure to execute with the new child frame
     pub fn fill_size(&mut self, align: Align, ratio_x: f32, ratio_y: f32, func: child!()) {
         let side = Self::alignment_to_edge(align);
-        let update_cursor = !matches!(align, Align::Center);
+        let update_cursor = align != Align::Center;
 
         // Calculate available width and height after respecting margins
         let max_w = self.cursor.w.to_f32();
@@ -331,10 +333,19 @@ where
 
         let original_cursor = rect_shrink(self.rect, self.margin);
 
-        let w = T::from_f32((original_cursor.w.to_f32() * ratio_x.clamp(0.0, 1.0)).clamp(0.0, max_w));
-        let h = T::from_f32((original_cursor.h.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
+        let w =
+            T::from_f32((original_cursor.w.to_f32() * ratio_x.clamp(0.0, 1.0)).clamp(0.0, max_w));
+        let h =
+            T::from_f32((original_cursor.h.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
 
         let (offset_x, offset_y, _) = self.calculate_align_offsets(align, w, h);
+
+        // Calculate actual scale for Fitting::Scale
+        let actual_scale = if self.fitting == Fitting::Scale {
+            self.calculate_fit_scale(w, h, offset_x, offset_y)
+        } else {
+            1.0
+        };
 
         self.add_scope(
             side,
@@ -342,7 +353,7 @@ where
             offset_y,
             w,
             h,
-            1.0,
+            actual_scale,
             update_cursor,
             self.fitting,
             func,
@@ -381,21 +392,21 @@ where
     /// * `func` - Closure to execute with the new child frame
     pub fn place(&mut self, align: Align, x: T, y: T, w: T, h: T, func: child!()) {
         let side = Self::alignment_to_edge(align);
-        let update_cursor = !matches!(align, Align::Center);
+        let update_cursor = align != Align::Center;
 
         // Calculate actual scale and apply it to dimensions, taking offsets into account
         let actual_scale = self.calculate_fit_scale(w, h, x, y);
-        let scaled_w = T::from_f32(w.to_f32() * actual_scale);
-        let scaled_h = T::from_f32(h.to_f32() * actual_scale);
+        // let scaled_w = T::from_f32(w.to_f32() * actual_scale);
+        // let scaled_h = T::from_f32(h.to_f32() * actual_scale);
 
         // Ensures "1.0" is used as scale since we've already applied scaling to dimensions
         self.add_scope(
             side,
             x,
             y,
-            scaled_w,
-            scaled_h,
-            1.0,
+            w,
+            h,
+            actual_scale,
             update_cursor,
             self.fitting,
             func,
@@ -419,6 +430,10 @@ where
         let scaled_h = T::from_f32(h.to_f32() * scale);
         let margin = T::from_f32(self.gap.to_f32() * self.scale);
         let gap = T::from_f32(self.gap.to_f32() * self.scale);
+
+        if scaled_w < T::one() || scaled_h < T::one() {
+            return
+        }
 
         // Calculate the child rectangle based on the side
         let mut child_rect = match side {
@@ -458,7 +473,15 @@ where
             },
         };
 
-        match self.fitting {
+        if child_rect.x > self.cursor.x + self.cursor.w - self.margin  {
+            return
+        }
+
+        if child_rect.y > self.cursor.y + self.cursor.h - self.margin  {
+            return
+        }
+
+        match fitting {
             Fitting::Relaxed => {}
             Fitting::Aggressive => {
                 if (child_rect.x + child_rect.w).round_down()
@@ -472,33 +495,47 @@ where
                     return;
                 }
             }
-            Fitting::Clamp | Fitting::Scale => {
-                // For Clamp, we adjust the rectangle
-                // For Scale, we've already handled scaling in the caller methods
-                if matches!(self.fitting, Fitting::Clamp) {
-                    // Clamp to ensure the rect stays within cursor boundaries
-                    // Clamp x position
-                    if child_rect.x < self.cursor.x {
-                        let diff = self.cursor.x - child_rect.x;
-                        child_rect.x = self.cursor.x;
-                        child_rect.w = child_rect.w.saturating_sub(diff);
-                    }
+            Fitting::Clamp => {
+                // Clamp to ensure the rect stays within cursor boundaries
+                // Clamp x position
+                if child_rect.x < self.cursor.x {
+                    let diff = self.cursor.x - child_rect.x;
+                    child_rect.x = self.cursor.x;
+                    child_rect.w = child_rect.w.saturating_sub(diff);
+                }
 
-                    // Clamp y position
-                    if child_rect.y < self.cursor.y {
-                        let diff = self.cursor.y - child_rect.y;
-                        child_rect.y = self.cursor.y;
-                        child_rect.h = child_rect.h.saturating_sub(diff);
-                    }
+                // Clamp y position
+                if child_rect.y < self.cursor.y {
+                    let diff = self.cursor.y - child_rect.y;
+                    child_rect.y = self.cursor.y;
+                    child_rect.h = child_rect.h.saturating_sub(diff);
+                }
 
-                    // Clamp width
-                    if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
-                        child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
-                    }
+                // Clamp width
+                if child_rect.x + child_rect.w > self.cursor.x + self.cursor.w {
+                    child_rect.w = self.cursor.x + self.cursor.w - child_rect.x;
+                }
 
-                    // Clamp height
-                    if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
-                        child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+                // Clamp height
+                if child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
+                    child_rect.h = self.cursor.y + self.cursor.h - child_rect.y;
+                }
+            }
+            Fitting::Scale => {
+                // The scaling is now handled prior to this function in the calling methods
+                // We still need to check if the frame is within bounds
+                if child_rect.x < self.cursor.x
+                   || child_rect.y < self.cursor.y
+                   || child_rect.x + child_rect.w > self.cursor.x + self.cursor.w
+                   || child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
+                    if !matches!(side, Edge::Left | Edge::Top) {
+                        // Readjust position for right and bottom edges since they're calculated with subtraction
+                        if matches!(side, Edge::Right) {
+                            child_rect.x = (self.cursor.x + self.cursor.w).saturating_sub(child_rect.w) - extra_x;
+                        }
+                        if matches!(side, Edge::Bottom) {
+                            child_rect.y = (self.cursor.y + self.cursor.h).saturating_sub(child_rect.h) - extra_y;
+                        }
                     }
                 }
             }

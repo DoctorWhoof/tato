@@ -56,6 +56,7 @@ async fn main() {
         });
         // root.set_margin(4.0);
         root.set_scale(scale);
+        root.fitting = Fitting::Aggressive;
 
         // Process Layout;
         draw_text_ex(
@@ -66,27 +67,27 @@ async fn main() {
         );
         draw_rect(&root.rect(), [60, 60, 60, 255], "");
 
-        // Left pane
+        // Left pane;
         root.push_edge(Left, 200.0, |pane| {
             draw_rect(&pane.rect(), [76, 76, 76, 255], "left pane (scaled)");
             pane.set_margin(8.0);
-            pane.set_gap(1.0);
+            pane.set_gap(2.0);
             pane.push_edge(Top, 20.0, |_space| {});
             pane.fitting = Fitting::Scale;
             // Buttons
             for n in 0..20 {
-                pane.push_size(TopLeft, pane.cursor().w, 30.0, |button| {
-                    button.fitting = Fitting::Scale;
+                // pane.push_edge(Top, 30.0, |button| {
+                pane.push_size(TopLeft, 200.0, 30.0, |button| {
                     let text = if button.rect().h > 16.0 {
                         format!("button {}", n)
                     } else {
                         "".to_string()
                     };
                     draw_rect(&button.rect(), [100, 100, 100, 255], text.as_str());
-                    button.set_margin(2.0);
-                    button.push_edge(Right, 18.0, |icon| {
-                        draw_rect(&icon.rect(), [110, 110, 110, 255], "");
-                    });
+                    // button.set_margin(2.0);
+                    // button.push_edge(Right, 18.0, |icon| {
+                    //     draw_rect(&icon.rect(), [110, 110, 110, 255], "");
+                    // });
                 });
             }
         });
