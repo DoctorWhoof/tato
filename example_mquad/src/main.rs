@@ -76,18 +76,18 @@ async fn main() {
             pane.fitting = Fitting::Scale;
             // Buttons
             for n in 0..20 {
-                // pane.push_edge(Top, 30.0, |button| {
-                pane.push_size(TopLeft, 200.0, 30.0, |button| {
+                pane.push_edge(Top, 30.0, |button| {
+                // pane.push_size(TopLeft, 200.0, 30.0, |button| {
                     let text = if button.rect().h > 16.0 {
                         format!("button {}", n)
                     } else {
                         "".to_string()
                     };
                     draw_rect(&button.rect(), [100, 100, 100, 255], text.as_str());
-                    // button.set_margin(2.0);
-                    // button.push_edge(Right, 18.0, |icon| {
-                    //     draw_rect(&icon.rect(), [110, 110, 110, 255], "");
-                    // });
+                    button.set_margin(2.0);
+                    button.push_edge(Right, 18.0, |icon| {
+                        draw_rect(&icon.rect(), [110, 110, 110, 255], "");
+                    });
                 });
             }
         });
@@ -114,10 +114,14 @@ async fn main() {
         // Middle Left
         root.fill_edge(Left, 0.25, |pane| {
             pane.fitting = Fitting::Scale;
+            pane.set_margin(16.0);
             draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left");
             // Sized rect, will scale down preserving aspect
             pane.push_size(BottomLeft, 100.0, 50.0, |sized| {
                 draw_rect(&sized.rect(), [120, 120, 120, 255], "sized");
+            });
+            pane.push_edge(Top, 50.0, |button| {
+                draw_rect(&button.rect(), [120, 120, 120, 255], "");
             });
         });
 
@@ -151,10 +155,10 @@ async fn main() {
 
         // Middle Bottom
         root.fill_edge(Bottom, 1.0, |pane| {
-            pane.fitting = Fitting::Scale;
+            // pane.fitting = Fitting::Scale; // TODO: Uncommenting causes a sizing bug in "fancy_panel"!
             add_fancy_panel(pane, |area| {
-                area.push_edge(Bottom, 20.0, |button| {
-                    draw_rect(&button.rect(), [56, 56, 56, 255], "info bar");
+                area.push_edge(Bottom, 20.0, |info| {
+                    draw_rect(&info.rect(), [56, 56, 56, 255], "info bar");
                 });
                 for _ in 0..25 {
                     area.push_edge(Top, 40.0, |button| {
@@ -173,7 +177,7 @@ fn add_fancy_panel<T>(frame: &mut Frame<T>, mut func: impl FnMut(&mut Frame<T>))
 where
     T: Num,
 {
-    frame.fitting = Fitting::Scale;
+    // frame.fitting = Fitting::Scale;
     let text_size = 16.0;
     let text_params = TextParams {
         font_size: (text_size * frame.scale()) as u16,

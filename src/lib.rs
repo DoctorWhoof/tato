@@ -191,22 +191,22 @@ where
     fn calculate_align_offsets(&self, align: Align, w: T, h: T) -> (T, T, bool) {
         let update_cursor = align != Align::Center;
         let (offset_x, offset_y) = match align {
-            // Left side alignments
+            // Left edge alignments
             Align::LeftTop => (T::zero(), T::zero()),
             Align::LeftCenter => (T::zero(), (self.cursor.h - h) / T::two()),
             Align::LeftBottom => (T::zero(), self.cursor.h.saturating_sub(h)),
 
-            // Right side alignments
+            // Right edge alignments
             Align::RightTop => (T::zero(), T::zero()),
             Align::RightCenter => (T::zero(), (self.cursor.h - h) / T::two()),
             Align::RightBottom => (T::zero(), self.cursor.h.saturating_sub(h)),
 
-            // Top side alignments
+            // Top edge alignments
             Align::TopLeft => (T::zero(), T::zero()),
             Align::TopCenter => ((self.cursor.w - w) / T::two(), T::zero()),
             Align::TopRight => (self.cursor.w.saturating_sub(w), T::zero()),
 
-            // Bottom side alignments
+            // Bottom edge alignments
             Align::BottomLeft => (T::zero(), T::zero()),
             Align::BottomCenter => ((self.cursor.w - w) / T::two(), T::zero()),
             Align::BottomRight => (self.cursor.w.saturating_sub(w), T::zero()),
@@ -255,10 +255,10 @@ where
                 let fit_scale = scale_w.min(scale_h);
 
                 // Apply base scale but cap it to fit in available space
-                if self.scale > 1.0 {
+                if self.scale >= 1.0 {
                     self.scale.min(fit_scale)
                 } else {
-                    self.scale * fit_scale.min(1.0)
+                    self.scale.min(fit_scale) // ???
                 }
             }
         }
@@ -274,17 +274,13 @@ where
     #[inline(always)]
     pub fn push_size(&mut self, align: Align, w: T, h: T, func: child!()) {
         let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
-        let side = Self::alignment_to_edge(align);
+        let edge = Self::alignment_to_edge(align);
 
         // Calculate actual scale for Fitting::Scale
-        let actual_scale = if self.fitting == Fitting::Scale {
-            self.calculate_fit_scale(w, h, offset_x, offset_y)
-        } else {
-            self.scale
-        };
+        let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
 
         self.add_scope(
-            side,
+            edge,
             offset_x,
             offset_y,
             w,
@@ -296,14 +292,14 @@ where
         );
     }
 
-    /// Adds a new frame on the specified side with specified length.
+    /// Adds a new frame on the specified edge with specified length.
     /// # Parameters
-    /// * `side` - Which side to add the child frame to
+    /// * `edge` - Which edge to add the child frame to
     /// * `len` - Length of the new frame
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
     pub fn push_edge(&mut self, edge: Edge, len: T, func: child!()) {
-        // Default width and height based on the side
+        // Default width and height based on the edge
         let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
         let (w, h) = if is_horizontal {
             (len, T::from_f32(self.cursor.h.to_f32() / self.scale))
@@ -312,10 +308,23 @@ where
         };
 
         let align = Self::edge_to_alignment(edge);
-        self.push_size(align, w, h, func);
+        let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
+        let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
+
+        self.add_scope(
+            edge,
+            offset_x,
+            offset_y,
+            w,
+            h,
+            actual_scale,
+            update_cursor,
+            self.fitting,
+            func,
+        );
     }
 
-    /// Creates a frame on the specified side taking a proportion of the original available space,
+    /// Creates a frame on the specified edge taking a proportion of the original available space,
     /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
     /// into 4 smaller frames just fill it four times using ratio = 0.25.
     /// # Parameters
@@ -324,7 +333,7 @@ where
     /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
     pub fn fill_size(&mut self, align: Align, ratio_x: f32, ratio_y: f32, func: child!()) {
-        let side = Self::alignment_to_edge(align);
+        let edge = Self::alignment_to_edge(align);
         let update_cursor = align != Align::Center;
 
         // Calculate available width and height after respecting margins
@@ -348,7 +357,7 @@ where
         };
 
         self.add_scope(
-            side,
+            edge,
             offset_x,
             offset_y,
             w,
@@ -360,7 +369,7 @@ where
         );
     }
 
-    /// Creates a frame on the specified side taking a proportion of the original available space,
+    /// Creates a frame on the specified edge taking a proportion of the original available space,
     /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
     /// into 4 smaller frames just fill it four times using ratio = 0.25.
     /// # Parameters
@@ -391,7 +400,7 @@ where
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
     pub fn place(&mut self, align: Align, x: T, y: T, w: T, h: T, func: child!()) {
-        let side = Self::alignment_to_edge(align);
+        let edge = Self::alignment_to_edge(align);
         let update_cursor = align != Align::Center;
 
         // Calculate actual scale and apply it to dimensions, taking offsets into account
@@ -401,7 +410,7 @@ where
 
         // Ensures "1.0" is used as scale since we've already applied scaling to dimensions
         self.add_scope(
-            side,
+            edge,
             x,
             y,
             w,
@@ -416,7 +425,7 @@ where
     /// Internal jack-of-all-trades function called by the mode specialized public functions
     fn add_scope(
         &mut self,
-        side: Edge,
+        edge: Edge,
         extra_x: T,
         extra_y: T,
         w: T,
@@ -435,8 +444,8 @@ where
             return
         }
 
-        // Calculate the child rectangle based on the side
-        let mut child_rect = match side {
+        // Calculate the child rectangle based on the edge
+        let mut child_rect = match edge {
             Edge::Left => {
                 if self.cursor.x > self.rect.x + self.rect.w {
                     return;
@@ -522,22 +531,22 @@ where
                 }
             }
             Fitting::Scale => {
-                // The scaling is now handled prior to this function in the calling methods
-                // We still need to check if the frame is within bounds
-                if child_rect.x < self.cursor.x
-                   || child_rect.y < self.cursor.y
-                   || child_rect.x + child_rect.w > self.cursor.x + self.cursor.w
-                   || child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
-                    if !matches!(side, Edge::Left | Edge::Top) {
-                        // Readjust position for right and bottom edges since they're calculated with subtraction
-                        if matches!(side, Edge::Right) {
-                            child_rect.x = (self.cursor.x + self.cursor.w).saturating_sub(child_rect.w) - extra_x;
-                        }
-                        if matches!(side, Edge::Bottom) {
-                            child_rect.y = (self.cursor.y + self.cursor.h).saturating_sub(child_rect.h) - extra_y;
-                        }
-                    }
-                }
+                // // The scaling is now handled prior to this function in the calling methods
+                // // We still need to check if the frame is within bounds
+                // if child_rect.x < self.cursor.x
+                //    || child_rect.y < self.cursor.y
+                //    || child_rect.x + child_rect.w > self.cursor.x + self.cursor.w
+                //    || child_rect.y + child_rect.h > self.cursor.y + self.cursor.h {
+                //     if !matches!(edge, Edge::Left | Edge::Top) {
+                //         // Readjust position for right and bottom edges since they're calculated with subtraction
+                //         if matches!(edge, Edge::Right) {
+                //             child_rect.x = (self.cursor.x + self.cursor.w).saturating_sub(child_rect.w) - extra_x;
+                //         }
+                //         if matches!(edge, Edge::Bottom) {
+                //             child_rect.y = (self.cursor.y + self.cursor.h).saturating_sub(child_rect.h) - extra_y;
+                //         }
+                //     }
+                // }
             }
         }
 
@@ -547,7 +556,7 @@ where
 
         // Update parent cursor
         if update_cursor {
-            match side {
+            match edge {
                 Edge::Left => {
                     // Add extra_x to the cursor movement
                     self.cursor.x += scaled_w + gap + extra_x;
@@ -581,7 +590,7 @@ where
     }
 }
 
-/// Shrinks a rectangle by applying a margin on all sides.
+/// Shrinks a rectangle by applying a margin on all edges.
 #[inline(always)]
 fn rect_shrink<T>(rect: Rect<T>, margin: T) -> Rect<T>
 where
