@@ -188,8 +188,7 @@ where
     }
 
     /// Calculate offsets based on alignment for positioned frames
-    fn calculate_align_offsets(&self, align: Align, w: T, h: T) -> (T, T, bool) {
-        let update_cursor = align != Align::Center;
+    fn calculate_align_offsets(&self, align: Align, w: T, h: T) -> (T, T) {
         let (offset_x, offset_y) = match align {
             // Left edge alignments
             Align::LeftTop => (T::zero(), T::zero()),
@@ -222,7 +221,7 @@ where
         let x = offset_x.get_max(T::zero());
         let y = offset_y.get_max(T::zero());
 
-        (x, y, update_cursor)
+        (x, y)
     }
 
     /// Calculate the scale needed to fit a rectangle of given dimensions
@@ -273,11 +272,20 @@ where
     /// * `func` - Closure to execute with the new child frame
     #[inline(always)]
     pub fn push_size(&mut self, align: Align, w: T, h: T, func: child!()) {
-        let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
+        let (offset_x, offset_y) = self.calculate_align_offsets(align, w, h);
         let edge = Self::alignment_to_edge(align);
 
         // Calculate actual scale for Fitting::Scale
         let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
+
+        // Final offsets with actual size
+        let (offset_x, offset_y) = self.calculate_align_offsets(
+            align,
+            w * T::from_f32(actual_scale),
+            h * T::from_f32(actual_scale),
+        );
+
+        let update_cursor = align != Align::Center;
 
         self.add_scope(
             edge,
@@ -308,8 +316,9 @@ where
         };
 
         let align = Self::edge_to_alignment(edge);
-        let (offset_x, offset_y, update_cursor) = self.calculate_align_offsets(align, w, h);
+        let (offset_x, offset_y) = self.calculate_align_offsets(align, w, h);
         let actual_scale = self.calculate_fit_scale(w, h, offset_x, offset_y);
+        let update_cursor = align != Align::Center;
 
         self.add_scope(
             edge,
@@ -347,7 +356,7 @@ where
         let h =
             T::from_f32((original_cursor.h.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
 
-        let (offset_x, offset_y, _) = self.calculate_align_offsets(align, w, h);
+        let (offset_x, offset_y) = self.calculate_align_offsets(align, w, h);
 
         // Calculate actual scale for Fitting::Scale
         let actual_scale = if self.fitting == Fitting::Scale {
@@ -441,7 +450,7 @@ where
         let gap = T::from_f32(self.gap.to_f32() * self.scale);
 
         if scaled_w < T::one() || scaled_h < T::one() {
-            return
+            return;
         }
 
         // Calculate the child rectangle based on the edge
@@ -482,12 +491,12 @@ where
             },
         };
 
-        if child_rect.x > self.cursor.x + self.cursor.w - self.margin  {
-            return
+        if child_rect.x > self.cursor.x + self.cursor.w - self.margin {
+            return;
         }
 
-        if child_rect.y > self.cursor.y + self.cursor.h - self.margin  {
-            return
+        if child_rect.y > self.cursor.y + self.cursor.h - self.margin {
+            return;
         }
 
         match fitting {
