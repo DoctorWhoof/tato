@@ -366,7 +366,7 @@ where
             T::zero(),
             w,
             h,
-            self.scale,
+            1.0,
             true,
             self.fitting,
             func,

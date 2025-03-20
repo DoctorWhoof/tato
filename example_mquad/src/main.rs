@@ -157,7 +157,7 @@ async fn main() {
 
         // Middle Bottom
         root.fill(|pane| {
-            pane.fitting = Fitting::Scale; // TODO: Uncommenting causes a sizing bug in "fancy_panel"!
+            // pane.fitting = Fitting::Scale; // TODO: Uncommenting causes a sizing bug in "fancy_panel"!
             add_fancy_panel(pane, |area| {
                 area.push_edge(Bottom, 20.0, |info| {
                     draw_rect(&info.rect(), [56, 56, 56, 255], "info bar");
@@ -179,7 +179,8 @@ fn add_fancy_panel<T>(frame: &mut Frame<T>, mut func: impl FnMut(&mut Frame<T>))
 where
     T: Num,
 {
-    // frame.fitting = Fitting::Scale;
+    let bar = 16.0 * frame.get_scale();
+    frame.fitting = Fitting::Scale;
     let text_size = 16.0;
     let text_params = TextParams {
         font_size: (text_size * frame.get_scale()) as u16,
@@ -192,7 +193,7 @@ where
         frame.cursor().h.to_f32(),
     );
     let text_offset = Vec2::new(4.0, 12.0) * frame.get_scale();
-    let bar = 16.0 * frame.get_scale();
+
     let text = "Fancy Custom Panel";
     let text_width = text_size * 0.5 * text.chars().count() as f32 * frame.get_scale();
     if text_width < rect.w {
