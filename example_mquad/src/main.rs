@@ -81,7 +81,7 @@ async fn main() {
                     let text = if button.rect().h > 16.0 {
                         format!("button {}", n)
                     } else {
-                        "".to_string()
+                        format!("")
                     };
                     draw_rect(&button.rect(), [100, 100, 100, 255], text.as_str());
                     button.set_margin(2.0);
@@ -94,17 +94,13 @@ async fn main() {
 
         // Right Pane
         root.push_edge(Right, 200.0, |pane| {
+            pane.push_edge(Top, 16.0, |_top_space| {});
             draw_rect(&pane.rect(), [88, 88, 88, 255], "right pane");
-            let top_space = 16.0;
-            pane.push_edge(Top, top_space, |_space| {});
+            // Buttons
             let count = 20;
-            let gap_sum = (pane.get_margin() * 2.0) + (pane.get_gap() * count as f32) + top_space;
-            // Available space / count, but I subtract 1.0 to make it more stable
-            // when resizing (avoids occasionally skipping last element)
-            let button_size = (pane.rect().h - gap_sum - 1.0) / count as f32;
-
+            let split_h = pane.divide_height(count) / pane.get_scale();
             for n in 0..count {
-                pane.push_edge(Top, button_size, |button| {
+                pane.push_edge(Top, split_h, |button| {
                     let text = format!("resizable button {}", n + 1);
                     draw_rect(&button.rect(), [120, 120, 120, 255], text.as_str());
                 });

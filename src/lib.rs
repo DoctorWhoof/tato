@@ -170,14 +170,14 @@ where
     /// Calculates the size if you divide the available space's width by "columns",
     /// taking into account the size of the gaps between each column
     pub fn divide_width(&self, columns: u32) -> T {
-        let gaps = self.gap * T::from_f32((columns - 1) as f32);
+        let gaps = self.gap * T::from_f32((columns - 1) as f32 * self.scale);
         (self.cursor.w - gaps) / T::from_f32(columns as f32)
     }
 
     /// Calculates the size if you divide the available space's height by "rows",
     /// taking into account the size of the gaps between each row
     pub fn divide_height(&self, rows: u32) -> T {
-        let gaps = self.gap * T::from_f32((rows - 1) as f32);
+        let gaps = self.gap * T::from_f32((rows - 1) as f32 * self.scale);
         (self.cursor.h - gaps) / T::from_f32(rows as f32)
     }
 
@@ -352,20 +352,20 @@ where
     /// * `func` - Closure to execute with the new child frame
     pub fn fill(&mut self, func: child!()) {
         // Calculate available width and height after respecting margins
-        let max_w = self.cursor.w.to_f32();
-        let max_h = self.cursor.h.to_f32();
+        // let max_w = self.cursor.w.to_f32();
+        // let max_h = self.cursor.h.to_f32();
 
-        let original_cursor = rect_shrink(self.rect, self.margin);
+        // let original_cursor = rect_shrink(self.rect, self.margin);
 
-        let w = T::from_f32(original_cursor.w.to_f32().clamp(0.0, max_w));
-        let h = T::from_f32(original_cursor.h.to_f32().clamp(0.0, max_h));
+        // let w = T::from_f32(original_cursor.w.to_f32().clamp(0.0, max_w));
+        // let h = T::from_f32(original_cursor.h.to_f32().clamp(0.0, max_h));
 
         self.add_scope(
             Edge::Top,
             T::zero(),
             T::zero(),
-            w,
-            h,
+            self.cursor.w,
+            self.cursor.h,
             1.0,
             true,
             self.fitting,
