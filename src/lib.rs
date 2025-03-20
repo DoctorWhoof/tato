@@ -4,7 +4,7 @@
 mod num;
 pub use num::*;
 
-/// shortens signature for a mutable frame reference
+/// Shortens signature for a mutable frame reference
 macro_rules! child {
     () => {
         impl FnMut(&mut Frame<T>)
@@ -66,7 +66,7 @@ pub enum Edge {
 /// Represents the alignment of a child frame that is sized (width, height).
 /// Notice that LeftTop is *not* the same as TopLeft! LeftTop means "push_edge from the left,
 /// align to Top" and TopLeft means "push_edge from Top, align to Left". The result may look the same,
-/// but the availble space will shrink from the left in the former, from the top in the latter.
+/// but the available space will shrink from the left in the former, from the top in the latter.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Align {
     #[default]
@@ -105,7 +105,7 @@ where
     T: Num,
 {
     /// Creates a new frame with the specified outer rectangle.
-    /// Initializes with default values for scale (1.0) and margin (5 pixels).
+    /// Initializes with default values for scale (1.0) and margin (4 units).
     pub fn new(rect: Rect<T>) -> Self {
         let scale = 1.0;
         let margin = T::four();
@@ -126,7 +126,7 @@ where
         self.rect
     }
 
-    /// The available space to push_edge more child frames.
+    /// The available space to add more child frames.
     /// Shrinks every time a child frame is added.
     pub fn cursor(&self) -> Rect<T> {
         self.cursor
@@ -168,20 +168,20 @@ where
     }
 
     /// Calculates the size if you divide the available space's width by "columns",
-    /// taking into account the size of the gaps between each column
+    /// taking into account the size of the gaps between each column.
     pub fn divide_width(&self, columns: u32) -> T {
         let gaps = self.gap * T::from_f32((columns - 1) as f32 * self.scale);
         (self.cursor.w - gaps) / T::from_f32(columns as f32)
     }
 
     /// Calculates the size if you divide the available space's height by "rows",
-    /// taking into account the size of the gaps between each row
+    /// taking into account the size of the gaps between each row.
     pub fn divide_height(&self, rows: u32) -> T {
         let gaps = self.gap * T::from_f32((rows - 1) as f32 * self.scale);
         (self.cursor.h - gaps) / T::from_f32(rows as f32)
     }
 
-    /// Determine the edge associated with an alignment
+    /// Determines the edge associated with an alignment.
     fn alignment_to_edge(align: Align) -> Edge {
         match align {
             Align::LeftTop | Align::LeftCenter | Align::LeftBottom => Edge::Left,
@@ -192,6 +192,7 @@ where
         }
     }
 
+    /// Converts an edge to its default alignment.
     fn edge_to_alignment(edge: Edge) -> Align {
         match edge {
             Edge::Left => Align::LeftTop,
@@ -201,7 +202,7 @@ where
         }
     }
 
-    /// Calculate offsets based on alignment for positioned frames
+    /// Calculates offsets based on alignment for positioned frames.
     fn calculate_align_offsets(&self, align: Align, w: T, h: T) -> (T, T) {
         let (offset_x, offset_y) = match align {
             // Left edge alignments
@@ -238,7 +239,7 @@ where
         (x, y)
     }
 
-    /// Calculate the scale needed to fit a rectangle of given dimensions
+    /// Calculates the scale needed to fit a rectangle of given dimensions
     /// into the available space, preserving aspect ratio.
     /// Takes into account the offsets where the rectangle will be placed.
     fn calculate_fit_scale(&self, w: T, h: T, offset_x: T, offset_y: T) -> f32 {
@@ -271,14 +272,14 @@ where
                 if self.scale >= 1.0 {
                     self.scale.min(fit_scale)
                 } else {
-                    self.scale.min(fit_scale) // ???
+                    self.scale.min(fit_scale) // May need further investigation
                 }
             }
         }
     }
 
-    /// Attempts to push_edge a rect with size (w,h), if there isn't enough available space, the rect
-    /// is scaled down preserving the aspect ratio.
+    /// Attempts to add a frame with the specified size (w,h).
+    /// Does not modify the available space if Align is Center.
     /// # Parameters
     /// * `align` - Alignment that determines positioning and cursor updating
     /// * `w` - Width of the new frame
@@ -347,19 +348,10 @@ where
         );
     }
 
-    /// Fills the entire available cursor with a new Frame.
+    /// Fills the entire available cursor area with a new Frame.
     /// # Parameters
     /// * `func` - Closure to execute with the new child frame
     pub fn fill(&mut self, func: child!()) {
-        // Calculate available width and height after respecting margins
-        // let max_w = self.cursor.w.to_f32();
-        // let max_h = self.cursor.h.to_f32();
-
-        // let original_cursor = rect_shrink(self.rect, self.margin);
-
-        // let w = T::from_f32(original_cursor.w.to_f32().clamp(0.0, max_w));
-        // let h = T::from_f32(original_cursor.h.to_f32().clamp(0.0, max_h));
-
         self.add_scope(
             Edge::Top,
             T::zero(),
@@ -374,12 +366,12 @@ where
     }
 
     /// Allows arbitrary placement of the new frame in relation to the current frame.
-    /// Does not modify the available space by default, unless Align is not Center.
+    /// Does not modify the available space if Align is Center.
     /// Scales the frame if necessary to fit.
     /// # Parameters
     /// * `align` - Alignment that determines cursor updating
-    /// * `x` - X position of the new frame in relation to this frame.
-    /// * `y` - Y position of the new frame in relation to this frame.
+    /// * `x` - X position of the new frame in relation to this frame
+    /// * `y` - Y position of the new frame in relation to this frame
     /// * `w` - Width of the new frame
     /// * `h` - Height of the new frame
     /// * `func` - Closure to execute with the new child frame
@@ -389,8 +381,6 @@ where
 
         // Calculate actual scale and apply it to dimensions, taking offsets into account
         let actual_scale = self.calculate_fit_scale(w, h, x, y);
-        // let scaled_w = T::from_f32(w.to_f32() * actual_scale);
-        // let scaled_h = T::from_f32(h.to_f32() * actual_scale);
 
         // Ensures "1.0" is used as scale since we've already applied scaling to dimensions
         self.add_scope(
@@ -406,7 +396,7 @@ where
         );
     }
 
-    /// Internal jack-of-all-trades function called by the mode specialized public functions
+    /// Internal multi-purpose function called by the mode-specialized public functions.
     fn add_scope(
         &mut self,
         edge: Edge,
