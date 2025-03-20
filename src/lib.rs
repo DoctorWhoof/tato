@@ -132,6 +132,11 @@ where
         self.cursor
     }
 
+    /// Returns the current margin value.
+    pub fn get_margin(&self) -> T {
+        self.margin
+    }
+
     /// Sets a new margin value and recalculates the cursor rectangle.
     pub fn set_margin(&mut self, margin: T) {
         // Remove old margin
@@ -141,9 +146,9 @@ where
         self.cursor = rect_shrink(self.rect, self.margin);
     }
 
-    /// Returns the current margin value.
-    pub fn margin(&self) -> T {
-        self.margin
+    /// Returns the current gap value.
+    pub fn get_gap(&self) -> T {
+        self.gap
     }
 
     /// Sets a new gap value.
@@ -151,9 +156,9 @@ where
         self.gap = gap
     }
 
-    /// Returns the current gap value.
-    pub fn gap(&self) -> T {
-        self.gap
+    /// Returns the current scale factor.
+    pub fn get_scale(&self) -> f32 {
+        self.scale
     }
 
     /// Sets a new scale factor for the frame.
@@ -162,9 +167,18 @@ where
         // self.set_margin(self.margin);
     }
 
-    /// Returns the current scale factor.
-    pub fn scale(&self) -> f32 {
-        self.scale
+    /// Calculates the size if you divide the available space's width by "columns",
+    /// taking into account the size of the gaps between each column
+    pub fn divide_width(&self, columns: u32) -> T {
+        let gaps = self.gap * T::from_f32((columns - 1) as f32);
+        (self.cursor.w - gaps) / T::from_f32(columns as f32)
+    }
+
+    /// Calculates the size if you divide the available space's height by "rows",
+    /// taking into account the size of the gaps between each row
+    pub fn divide_height(&self, rows: u32) -> T {
+        let gaps = self.gap * T::from_f32((rows - 1) as f32);
+        (self.cursor.h - gaps) / T::from_f32(rows as f32)
     }
 
     /// Determine the edge associated with an alignment
@@ -333,69 +347,30 @@ where
         );
     }
 
-    /// Creates a frame on the specified edge taking a proportion of the original available space,
-    /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
-    /// into 4 smaller frames just fill it four times using ratio = 0.25.
+    /// Fills the entire available cursor with a new Frame.
     /// # Parameters
-    /// * `align` - Alignment that determines positioning and cursor updating
-    /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
-    /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
     /// * `func` - Closure to execute with the new child frame
-    pub fn fill_size(&mut self, align: Align, ratio_x: f32, ratio_y: f32, func: child!()) {
-        let edge = Self::alignment_to_edge(align);
-        let update_cursor = align != Align::Center;
-
+    pub fn fill(&mut self, func: child!()) {
         // Calculate available width and height after respecting margins
         let max_w = self.cursor.w.to_f32();
         let max_h = self.cursor.h.to_f32();
 
         let original_cursor = rect_shrink(self.rect, self.margin);
 
-        let w =
-            T::from_f32((original_cursor.w.to_f32() * ratio_x.clamp(0.0, 1.0)).clamp(0.0, max_w));
-        let h =
-            T::from_f32((original_cursor.h.to_f32() * ratio_y.clamp(0.0, 1.0)).clamp(0.0, max_h));
-
-        let (offset_x, offset_y) = self.calculate_align_offsets(align, w, h);
-
-        // Calculate actual scale for Fitting::Scale
-        let actual_scale = if self.fitting == Fitting::Scale {
-            self.calculate_fit_scale(w, h, offset_x, offset_y)
-        } else {
-            1.0
-        };
+        let w = T::from_f32(original_cursor.w.to_f32().clamp(0.0, max_w));
+        let h = T::from_f32(original_cursor.h.to_f32().clamp(0.0, max_h));
 
         self.add_scope(
-            edge,
-            offset_x,
-            offset_y,
+            Edge::Top,
+            T::zero(),
+            T::zero(),
             w,
             h,
-            actual_scale,
-            update_cursor,
+            self.scale,
+            true,
             self.fitting,
             func,
         );
-    }
-
-    /// Creates a frame on the specified edge taking a proportion of the original available space,
-    /// not the current available space. This is more intuitive, i.e. if you want to divide a Frame
-    /// into 4 smaller frames just fill it four times using ratio = 0.25.
-    /// # Parameters
-    /// * `align` - Alignment that determines positioning and cursor updating
-    /// * `ratio_x` - Proportion of original available width (0.0 to 1.0)
-    /// * `ratio_y` - Proportion of original available height (0.0 to 1.0)
-    /// * `func` - Closure to execute with the new child frame
-    pub fn fill_edge(&mut self, edge: Edge, ratio: f32, func: child!()) {
-        let align = Self::edge_to_alignment(edge);
-        // Calculate available width and height after respecting margins
-        let is_horizontal = matches!(edge, Edge::Left | Edge::Right);
-        let (ratio_x, ratio_y) = if is_horizontal {
-            (ratio, 1.0)
-        } else {
-            (1.0, ratio)
-        };
-        self.fill_size(align, ratio_x, ratio_y, func);
     }
 
     /// Allows arbitrary placement of the new frame in relation to the current frame.

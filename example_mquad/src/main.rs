@@ -98,7 +98,7 @@ async fn main() {
             let top_space = 16.0;
             pane.push_edge(Top, top_space, |_space| {});
             let count = 20;
-            let gap_sum = (pane.margin() * 2.0) + (pane.gap() * count as f32) + top_space;
+            let gap_sum = (pane.get_margin() * 2.0) + (pane.get_gap() * count as f32) + top_space;
             // Available space / count, but I subtract 1.0 to make it more stable
             // when resizing (avoids occasionally skipping last element)
             let button_size = (pane.rect().h - gap_sum - 1.0) / count as f32;
@@ -112,7 +112,8 @@ async fn main() {
         });
 
         // Middle Left
-        root.fill_edge(Left, 0.25, |pane| {
+        let split_h = root.divide_width(2);
+        root.push_edge(Left, split_h, |pane| {
             pane.fitting = Fitting::Scale;
             pane.set_margin(16.0);
             draw_rect(&pane.rect(), [120, 120, 120, 255], "middle left");
@@ -126,36 +127,37 @@ async fn main() {
         });
 
         // Middle Top
-        root.fill_edge(Top, 0.5, |pane| {
+        let split_h = root.divide_height(2);
+        root.push_edge(Top, split_h, |pane| {
             draw_rect(&pane.rect(), [130, 130, 130, 255], "middle top");
             let top_space = 16.0;
             pane.push_edge(Top, top_space, |_space| {});
             // Spiral rects!
-            let mut ratio = 0.2;
             for _ in 0..3 {
-                pane.fill_edge(Left, ratio, |pane| {
+                let split_h = pane.divide_width(4);
+                let split_v = pane.divide_height(4);
+                pane.push_edge(Left, split_h, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "t");
                 });
-                pane.fill_edge(Top, ratio, |pane| {
+                pane.push_edge(Top, split_v, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "r");
                 });
-                pane.fill_edge(Right, ratio, |pane| {
+                pane.push_edge(Right, split_h, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "b");
                 });
-                pane.fill_edge(Bottom, ratio, |pane| {
+                pane.push_edge(Bottom, split_v, |pane| {
                     draw_rect(&pane.rect(), [160, 160, 160, 255], "l");
                 });
-                ratio *= 0.5
             }
             // draw_rect(&pane.cursor(), [128, 255, 255, 255], "end");
-            pane.fill_size(LeftTop, 1.0, 1.0, |pane| {
-                draw_rect(&pane.rect(), [220, 220, 220, 255], "end");
+            pane.fill(|end_area| {
+                draw_rect(&end_area.rect(), [220, 220, 220, 255], "end");
             });
         });
 
         // Middle Bottom
-        root.fill_edge(Bottom, 1.0, |pane| {
-            // pane.fitting = Fitting::Scale; // TODO: Uncommenting causes a sizing bug in "fancy_panel"!
+        root.fill(|pane| {
+            pane.fitting = Fitting::Scale; // TODO: Uncommenting causes a sizing bug in "fancy_panel"!
             add_fancy_panel(pane, |area| {
                 area.push_edge(Bottom, 20.0, |info| {
                     draw_rect(&info.rect(), [56, 56, 56, 255], "info bar");
@@ -180,7 +182,7 @@ where
     // frame.fitting = Fitting::Scale;
     let text_size = 16.0;
     let text_params = TextParams {
-        font_size: (text_size * frame.scale()) as u16,
+        font_size: (text_size * frame.get_scale()) as u16,
         ..Default::default()
     };
     let rect = Rect::new(
@@ -189,10 +191,10 @@ where
         frame.cursor().w.to_f32(),
         frame.cursor().h.to_f32(),
     );
-    let text_offset = Vec2::new(4.0, 12.0) * frame.scale();
-    let bar = 16.0 * frame.scale();
+    let text_offset = Vec2::new(4.0, 12.0) * frame.get_scale();
+    let bar = 16.0 * frame.get_scale();
     let text = "Fancy Custom Panel";
-    let text_width = text_size * 0.5 * text.chars().count() as f32 * frame.scale();
+    let text_width = text_size * 0.5 * text.chars().count() as f32 * frame.get_scale();
     if text_width < rect.w {
         draw_rectangle(
             rect.x,
@@ -216,5 +218,5 @@ where
         );
     }
     frame.push_edge(Top, T::from_f32(bar), |_| {});
-    frame.fill_edge(Top, 1.0, |content| func(content));
+    frame.fill(|content| func(content));
 }

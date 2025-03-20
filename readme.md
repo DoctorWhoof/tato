@@ -8,15 +8,16 @@ A minimalist **_immediate mode_**, **_no_std_** and **_no allocations_** layout 
 While easy to use, Matte's approach is very limited and can't create complex layouts! There are a few key functions to work with:
 - [Frame::push_edge()] inserts a new frame by pushing any edge inwards by a certain amount
 - [Frame::push_size()] to add elements with specific dimensions (with automatic scaling)
-- [Frame::fill_edge()] like push_edge, but with a ratio of the parent rect for the length
-- [Frame::fill_size()] like push_size, but uses a ratio of the parent rect for w and h
 - [Frame::place()] for arbitrary positioning
+- [Frame::fill()] fills the entire available space with a new frame
 
-All these functions can operate from any side (Left, Right, Top, and Bottom). Repeatedly adding from the same side is analogous to using a "Row" or "Column" in a more complex GUI library.
+For instance, repeatedly pushing a new Frame from the same edge is analogous to using a "Row" or "Column" in a more complex GUI library.
 
 It does not have any knowledge of fancy things like *rendering* and *input*. Instead, it provides you with closures that are aware of their parent Frame's rectangle and available space, and you do the rendering and input yourself.
 
 It also does not know in advance the size of the children, so you may need to do the math yourself within the closure before adding children, although this is planned to be easier in the future. You can use the [Frame::cursor()] method to check the available space after margin is applied, or [Frame::rect()] to get the closure's rectangle.
+
+To evenly divide a frame into columns and rows, you can use the [Frame::divide_width()] and [Frame::divide_height()] functions to obtain the desired width and height of each child frame taking gaps and margin into account.
 
 ![LayframeScreenshot](screenshots/screenshot.png)
 
@@ -61,8 +62,8 @@ fn main() {
         });
     });
 
-    // Add a dynamic sidebar using 20% of the remaining space (ratio = 0.2)
-    root.fill_edge(Left, 0.2, |sidebar| {
+    // Add a sidebar with specific width
+    root.push_edge(Left, 200, |sidebar| {
         // Sidebar content
     });
 
@@ -71,8 +72,8 @@ fn main() {
         // Centered content that will scale to fit if necessary
     });
 
-    // Main content area (use remaining space with ratio = 1.0)
-    root.fill_edge(Left, 1.0, |content| {
+    // Main content area (fill remaining space)
+    root.fill(|content| {
         // Place an element at specific coordinates with automatic scaling
         content.place(LeftTop, 50, 50, 400, 300, |placed_element| {
             // Element content that scales to fit available space
@@ -87,19 +88,17 @@ fn main() {
 - **No Standard Library Dependencies**: Works in embedded environments with `no_std`
 - **Nested Layouts**: Create hierarchical frame structures
 - **Flexible Positioning**: Add child frames to any side (left, right, top, bottom)
-- **Margin & Gap Control**: Fine-tune spacing between elements
-- **Proportional Layouts**: Allocate space by ratio with the `fill()` method
+- **Margin & Gap Control**: Fine-tune spacing between elements with `set_margin()` and `set_gap()`
+- **Adaptive Sizing**: Calculate proportional sizes with `divide_width()` and `divide_height()`
 - **Adaptive Scaling**: Automatically scale elements to fit available space with aspect ratio preservation
 - **Smart Fitting**: Multiple strategies for handling elements that exceed available space:
   - `Relaxed`: Allows overflow
   - `Aggressive`: Removes elements that exceed boundaries
   - `Clamp`: Resizes elements to fit available space
   - `Scale`: Scales elements to fit while preserving aspect ratio
-- **Centered Elements**: Position elements in the center with `center()` and `center_fill()`
+- **Alignment Control**: Position elements precisely with various alignment options
 - **Precise Placement**: Position elements at exact coordinates with `place()`
-- **Scaling Support**: Adjust all elements with a scale factor
+- **Scaling Support**: Adjust all elements with a scale factor using `set_scale()`
 - **Generic Numeric Support**: Works with various numeric types (u16, f32, etc.)
 
 ## License
-
-MIT License

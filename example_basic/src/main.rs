@@ -1,5 +1,5 @@
-use matte::{Fitting, Frame, Edge::*, Align::*};
 use macroquad::prelude::*;
+use matte::{Align::*, Edge::*, Fitting, Frame};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -50,40 +50,42 @@ async fn main() {
         root.push_edge(Right, 200.0, |pane| {
             pane.fitting = Fitting::Scale;
             draw_rect(&pane.rect(), 2.0);
-            pane.push_size(TopRight, 50.0, 50.0, |center|{
+            pane.push_size(TopRight, 50.0, 50.0, |center| {
                 draw_rect(&center.rect(), 2.0);
             });
         });
 
         // Middle Left
-        root.fill_edge(Top, 0.25, |pane| {
+        let split_h = root.divide_width(4);
+        let split_v = root.divide_height(4);
+        root.push_edge(Top, split_h, |pane| {
             draw_rect(&pane.rect(), 2.0);
-            pane.fill_size(Center, 0.5, 0.5, |center|{
+            pane.push_size(Center, split_h / 2.0, split_v / 2.0, |center| {
                 draw_rect(&center.rect(), 2.0);
             });
         });
 
-        // Middle Top
-        root.fill_edge(Top, 0.5, |pane| {
+        // Middle
+        root.push_edge(Top, split_v * 2.0, |pane| {
             pane.fitting = Fitting::Scale;
             draw_rect(&pane.rect(), 4.0);
             // Centered. Notice how 'side' here affects which side the available space
             // will be, in this caseit will be on top (the frame was added "from the bottom")
-            pane.push_size(Center, 100.0, 100.0, |centered|{
+            pane.push_size(Center, 100.0, 100.0, |centered| {
                 draw_rect(&centered.rect(), 2.0);
             });
             // Allows specifying extra offsets, width and height.
-            pane.place(BottomLeft, 10.0, 10.0, 100.0, 20.0, |inner|{
+            pane.place(BottomLeft, 10.0, 10.0, 100.0, 20.0, |inner| {
                 draw_rect(&inner.rect(), 2.0);
             });
         });
 
         // Middle Bottom
-        root.fill_edge(Top, 1.0, |pane| { // ratio = 1.0 will use all available space
+        root.fill(|pane| {
             pane.fitting = Fitting::Scale;
             draw_rect(&pane.rect(), 2.0);
             // Sized rect, will scale down preserving aspect
-            pane.push_size(BottomCenter, 80.0, 50.0, |sized|{
+            pane.push_size(BottomCenter, 80.0, 50.0, |sized| {
                 draw_rect(&sized.rect(), 2.0);
             });
         });

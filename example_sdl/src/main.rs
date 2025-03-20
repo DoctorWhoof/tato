@@ -1,4 +1,4 @@
-use matte::{Frame, Edge::*};
+use matte::{Edge::*, Fitting, Frame, Num};
 
 fn main() -> Result<(), String> {
     let mut app = mini_sdl::App::new(
@@ -64,17 +64,20 @@ fn main() -> Result<(), String> {
         });
 
         // Middle Panel
-        root.fill_edge(Top, 0.33, |pane| {
-            draw_rect(&pane.rect(), (120, 130, 60), "middle pane left");
-        });
+        // root.fitting = Fitting::Clamp;
+        let split = root.divide_height(3);
 
-        // Middle Panel
-        root.fill_edge(Top, 0.33,|pane| {
+        root.push_edge(Top, split, |pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane top");
         });
 
         // Middle Panel
-        root.fill_edge(Top, 1.0,|pane| {
+        root.push_edge(Top, split, |pane| {
+            draw_rect(&pane.rect(), (120, 130, 60), "middle pane middle");
+        });
+
+        // Middle Panel
+        root.push_edge(Top, split, |pane| {
             draw_rect(&pane.rect(), (120, 130, 60), "middle pane bottom");
         });
 
