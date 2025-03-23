@@ -98,7 +98,7 @@ async fn main() {
             draw_rect(&pane.rect(), [88, 88, 88, 255], "right pane");
             // Buttons
             let count = 20;
-            let split_h = pane.divide_height(count) / pane.get_scale();
+            let split_h = pane.divide_height(count);// / pane.get_scale();
             for n in 0..count {
                 pane.push_edge(Top, split_h, |button| {
                     let text = format!("resizable button {}", n + 1);

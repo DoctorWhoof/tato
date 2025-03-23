@@ -169,16 +169,20 @@ where
 
     /// Calculates the size if you divide the available space's width by "columns",
     /// taking into account the size of the gaps between each column.
+    /// The number of columns stays consistent regardless of scale.
     pub fn divide_width(&self, columns: u32) -> T {
-        let gaps = self.gap * T::from_f32((columns - 1) as f32 * self.scale);
-        (self.cursor.w - gaps) / T::from_f32(columns as f32)
+        let gaps = self.gap.to_f32() * ((columns - 1) as f32 * self.scale);
+        let size = ((self.cursor.w.to_f32() - gaps) / (columns as f32)) / self.scale;
+        T::from_f32(size)
     }
 
     /// Calculates the size if you divide the available space's height by "rows",
     /// taking into account the size of the gaps between each row.
+    /// The number of rows stays consistent regardless of scale.
     pub fn divide_height(&self, rows: u32) -> T {
-        let gaps = self.gap * T::from_f32((rows - 1) as f32 * self.scale);
-        (self.cursor.h - gaps) / T::from_f32(rows as f32)
+        let gaps = self.gap.to_f32() * ((rows - 1) as f32 * self.scale);
+        let size = ((self.cursor.h.to_f32() - gaps) / (rows as f32)) / self.scale;
+        T::from_f32(size)
     }
 
     /// Determines the edge associated with an alignment.

@@ -27,8 +27,8 @@ async fn main() {
         // ----------------- Process Layout & Draw -----------------
         root.set_margin(8.0);
         root.set_scale(1.0);
-        // root.fitting = Fitting::Aggressive;
-        root.fitting = Fitting::Clamp;
+        root.fitting = Fitting::Aggressive;
+        // root.fitting = Fitting::Clamp;
 
         // Root rect
         draw_rect(&root.rect(), 4.0);
@@ -55,12 +55,14 @@ async fn main() {
             });
         });
 
-        // Middle Left
-        let split_h = root.divide_width(4);
+        // Height divided by 4, taking margin and gaps ingto account
         let split_v = root.divide_height(4);
-        root.push_edge(Top, split_h, |pane| {
+
+        // Middle Top
+        root.push_edge(Top, split_v, |pane| {
             draw_rect(&pane.rect(), 2.0);
-            pane.push_size(Center, split_h / 2.0, split_v / 2.0, |center| {
+            let size = pane.cursor();
+            pane.push_size(Center, size.w / 2.0, size.h / 2.0, |center| {
                 draw_rect(&center.rect(), 2.0);
             });
         });
