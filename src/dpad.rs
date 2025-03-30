@@ -1,10 +1,10 @@
-use crate::Button;
+use crate::{AnyButton, Button};
 
 /// A simple virtual Game controller with only digital buttons.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
-pub struct DPad{
-    pub state:u16,
-    pub previous:u16
+pub struct DPad {
+    pub state: u16,
+    pub previous: u16,
 }
 
 impl DPad {
@@ -44,9 +44,33 @@ impl DPad {
         !self.is_down(button) && (self.previous & button as u16 != 0)
     }
 
+    /// Whether any button in the group is currently down.
+    #[inline(always)]
+    pub fn is_any_down(&self, button_group: AnyButton) -> bool {
+        (self.state & button_group as u16) != 0
+    }
+
+    /// Whether any button in the group was just pressed this frame.
+    #[inline(always)]
+    pub fn is_any_just_pressed(&self, button_group: AnyButton) -> bool {
+        let current_state = self.state & button_group as u16;
+        let previous_state = self.previous & button_group as u16;
+
+        current_state != 0 && previous_state == 0
+    }
+
+    /// Whether any button in the group was just released this frame.
+    #[inline(always)]
+    pub fn is_any_just_released(&self, button_group: AnyButton) -> bool {
+        let current_state = self.state & button_group as u16;
+        let previous_state = self.previous & button_group as u16;
+
+        current_state == 0 && previous_state != 0
+    }
+
     /// Sets the bit for a particular button.
     #[inline(always)]
-    pub fn set_state(&mut self, button:Button, value:bool){
+    pub fn set_state(&mut self, button: Button, value: bool) {
         if value {
             self.state |= button as u16;
         } else {

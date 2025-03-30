@@ -1,4 +1,4 @@
-use crate::{Button, DPad};
+use crate::{Button, AnyButton, DPad};
 
 /// A simple virtual Game controller with digital buttons and a few analogue axis.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -43,6 +43,24 @@ impl APad {
     #[inline(always)]
     pub fn is_just_released(&self, button: Button) -> bool {
         self.buttons.is_just_released(button)
+    }
+
+    /// Whether any button in the group is currently down.
+    #[inline(always)]
+    pub fn is_any_down(&self, button_group: AnyButton) -> bool {
+        self.buttons.is_any_down(button_group)
+    }
+
+    /// Whether any button in the group was just pressed this frame.
+    #[inline(always)]
+    pub fn is_any_just_pressed(&self, button_group: AnyButton) -> bool {
+        self.buttons.is_any_just_pressed(button_group)
+    }
+
+    /// Whether any button in the group was just released this frame.
+    #[inline(always)]
+    pub fn is_any_just_released(&self, button_group: AnyButton) -> bool {
+        self.buttons.is_any_just_released(button_group)
     }
 
     /// A single u16 where each bit represents a button pressed or not.

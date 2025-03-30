@@ -1,6 +1,6 @@
 /// A virtual gamepad button with a 0 or 1 state.
 #[repr(u16)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq)]
 pub enum Button {
     None = 0,
     Up = 1,
@@ -18,11 +18,17 @@ pub enum Button {
     RightTrigger = 4096,
     LeftShoulder = 8192,
     RightShoulder = 16384,
-    Any = u16::MAX,
-    AnyDirection = 1 | 2 | 4 | 8,
-    AnyFace = 16 | 32 | 64 | 128,
-    AnySystem = 256 | 512 | 1024,
-    AnyUpper = 2048 | 4096 | 8192 | 16384,
+}
+
+#[repr(u16)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq)]
+pub enum AnyButton {
+    None = 0,
+    All = u16::MAX,
+    Direction = 1 | 2 | 4 | 8,
+    Face = 16 | 32 | 64 | 128,
+    System = 256 | 512 | 1024,
+    Upper = 2048 | 4096 | 8192 | 16384,
 }
 
 impl From<u16> for Button {
@@ -44,12 +50,35 @@ impl From<u16> for Button {
             4096 => Button::RightTrigger,
             8192 => Button::LeftShoulder,
             16384 => Button::RightShoulder,
-            15 => Button::AnyDirection,
-            240 => Button::AnyFace,
-            1792 => Button::AnySystem,
-            30720 => Button::AnyUpper,
-            u16::MAX => Button::Any,
             _ => Button::None,
         }
+    }
+}
+
+impl From<u16> for AnyButton {
+    fn from(val: u16) -> Self {
+        match val {
+            0 => AnyButton::None,
+            15 => AnyButton::Direction,
+            240 => AnyButton::Face,
+            1792 => AnyButton::System,
+            30720 => AnyButton::Upper,
+            u16::MAX => AnyButton::All,
+            _ => AnyButton::None,
+        }
+    }
+}
+
+impl Button {
+    /// Returns the number of variants in the enum
+    pub fn len() -> usize {
+        16 // Number of variants in the Button enum
+    }
+}
+
+impl AnyButton {
+    /// Returns the number of variants in the enum
+    pub fn len() -> usize {
+        6 // Number of variants in the Button enum
     }
 }
