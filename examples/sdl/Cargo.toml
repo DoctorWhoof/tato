@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-mini_sdl = { path = "../../../mini_sdl_old", features = ["ttf"]}
-basic_game = { path = "../../basic_game" }
-videochip = {path = "../../../videochip" }
+shared_game = { path = "../../_shared_game" }
+mini_sdl = { path = "../../../mini_sdl_old", features = ["ttf"] }
+videochip = { path = "../../" }

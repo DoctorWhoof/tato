@@ -8,6 +8,7 @@ use videochip::*;
 
 use padstate::*;
 
+#[derive(Debug, Clone, Copy)]
 pub struct AppState {
     pub pad: DPad,
     pub time: f64,
