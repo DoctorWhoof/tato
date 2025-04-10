@@ -78,9 +78,9 @@ fn main() -> SdlResult<()> {
 
         // Present and finish
         app.pixel_buffer_present()?;
-        app.overlay_push(format!("update time: {:.1} ms", app.update_time() * 1000.0));
+        // app.overlay_push(format!("update time: {:.1} ms", app.update_time() * 1000.0));
         // println!("{:.1} ms", time.elapsed().as_secs_f64() * 1000.0);
-        // println!("{:.1} ms", app.update_time() * 1000.0);
+        println!("{:.1} ms", app.update_time() * 1000.0);
 
         app.frame_finish()?;
         // println!("{:.3} ms, {:.1} fps", app.elapsed_time_raw() * 1000.0, app.fps());
