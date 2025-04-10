@@ -1,0 +1,9 @@
+[package]
+name = "basic_game"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libm = "0.2.11"
+padstate = "0.2.5"
+videochip = {path = "../"}

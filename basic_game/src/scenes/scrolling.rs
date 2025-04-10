@@ -1,0 +1,225 @@
+use crate::*;
+use core::array::from_fn;
+use padstate::{Button, AnyButton};
+use videochip::*;
+
+const SMILEY_COUNT: usize = 64;
+
+#[derive(Debug)]
+pub struct CameraScrolling {
+    player: Entity,
+    smileys: [Entity; SMILEY_COUNT],
+    movement_start: f32, // will be used to store the time when the player starts moving
+}
+
+impl CameraScrolling {
+    // Initialize and retuns a new scene
+    pub fn new(vid: &mut VideoChip) -> Self {
+        vid.bg_color = BLACK;
+        vid.wrap_bg = false;
+        vid.wrap_sprites = false;
+        // vid.set_viewport(8, 8, 240, 176);
+
+        // Palette test - defines BG palette as Grayscale!
+        // vid.bg_palette = [
+        //     ColorRGB { r:   0, g:   0, b:   0 }, // BG, 0
+        //     ColorRGB { r:  16, g:  16, b:  16 }, // Black, 1
+        //     ColorRGB { r:  32, g:  32, b:  32 }, // Dark Gray, 2
+        //     ColorRGB { r:  64, g:  64, b:  64 }, // Gray 1, 3
+        //     ColorRGB { r:  80, g:  80, b:  80 }, // Gray 2, 4
+        //     ColorRGB { r:  96, g:  96, b:  96 }, // Gray 3, 5
+        //     ColorRGB { r: 112, g: 112, b: 112 }, // Gray 4, 6
+        //     ColorRGB { r: 128, g: 128, b: 128 }, // Medium Gray, 7
+        //     ColorRGB { r: 144, g: 144, b: 144 }, // Gray 5, 8
+        //     ColorRGB { r: 160, g: 160, b: 160 }, // Gray 6, 9
+        //     ColorRGB { r: 176, g: 176, b: 176 }, // Gray 7, 10
+        //     ColorRGB { r: 192, g: 192, b: 192 }, // Light Gray, 11
+        //     ColorRGB { r: 208, g: 208, b: 208 }, // Gray 8, 12
+        //     ColorRGB { r: 224, g: 224, b: 224 }, // Gray 9, 13
+        //     ColorRGB { r: 240, g: 240, b: 240 }, // Gray 10, 14
+        //     ColorRGB { r: 255, g: 255, b: 255 }, // White, 15
+        // ];
+
+        // Procedural BG Palettes. Each PaletteID matches a ColorID
+        for i in 0..PALETTE_DEFAULT.len() {
+            let _ = vid.push_palette([BG, ColorID(i as u8), BLACK, BLACK]);
+        }
+
+        // Define new tiles
+        let checker = vid.new_tile(8, 8, &TILE_SOLID);
+        let smiley = vid.new_tile(8, 8, &SMILEY);
+        let arrow = vid.new_tile(8, 8, &ARROW);
+
+        // Set BG tiles
+        let mut rng = SimpleRng::<i16>::new(0);
+
+        for col in 0..BG_COLUMNS as i16 {
+            for row in 0..BG_ROWS as i16 {
+                // Calculate palette ID based on coordinates, limits to 14 indices
+                let index = (col + row) % 14 as i16;
+                // Adds 2 to avoid colors 0 and 1 in the BG
+                let adjusted_palette = PaletteID(2 + index as u8);
+                vid.bg_map.set_tile(BgData {
+                    col,
+                    row,
+                    tile_id: checker,
+                    flags: adjusted_palette.into(),
+                });
+            }
+        }
+
+        // Pre-generate smileys array
+        let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
+            // Avoid grayscale
+            Entity {
+                x: rng.gen_range::<u16>(0, BG_WIDTH - TILE_SIZE) as f32,
+                y: rng.gen_range::<u16>(0, BG_HEIGHT - TILE_SIZE) as f32,
+                tile: smiley,
+                flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale
+            }
+        });
+
+        // Sort smileys by y position only
+        smileys.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+
+        // Store initial state and return
+        Self {
+            player: Entity {
+                x: (BG_WIDTH / 2) as f32,
+                y: (BG_HEIGHT / 2) as f32,
+                tile: arrow,
+                flags: PaletteID(0).into(),
+            },
+            smileys,
+            movement_start: 0.0,
+        }
+    }
+
+    // Process the scene on each frame
+    pub fn update(&mut self, vid: &mut VideoChip, app:AppState) -> Option<Mode> {
+        vid.start_frame();
+
+        // ------------------------------ Input ------------------------------
+
+        if app.pad.is_just_pressed(Button::Start) {
+            vid.wrap_sprites = !vid.wrap_sprites;
+            vid.wrap_bg = !vid.wrap_bg;
+            // println!("Sprites wrap: {}, BG wrap: {}", vid.wrap_sprites, vid.wrap_bg);
+        }
+
+        // Increase speed if any "face" button (A,B,X,Y) is down
+        let speed = if app.pad.is_any_down(AnyButton::Face) {
+            30.0 * app.elapsed as f32
+        } else {
+            60.0 * app.elapsed as f32
+        };
+
+        // Ensures animation always starts from phase = 0.0;
+        if app.pad.is_any_just_pressed(AnyButton::Direction) {
+            self.movement_start = app.time as f32;
+        }
+
+        // Player Movement
+        let is_walking = {
+            let (mut vel_x, mut vel_y) = (0.0, 0.0);
+            if app.pad.is_down(Button::Left) {
+                if self.player.x > 0.0 {
+                    vel_x = -speed;
+                    self.player.flags.set_flip_x(true);
+                    self.player.flags.set_flip_y(false);
+                    self.player.flags.set_rotation(true);
+                }
+            } else if app.pad.is_down(Button::Right) {
+                if self.player.x < BG_WIDTH as f32 - TILE_SIZE as f32 {
+                    vel_x = speed;
+                    self.player.flags.set_flip_x(false);
+                    self.player.flags.set_flip_y(false);
+                    self.player.flags.set_rotation(true);
+                }
+            }
+            if app.pad.is_down(Button::Up) {
+                if self.player.y > 0.0 {
+                    vel_y = -speed;
+                    self.player.flags.set_flip_x(false);
+                    self.player.flags.set_flip_y(false);
+                    self.player.flags.set_rotation(false);
+                }
+            } else if app.pad.is_down(Button::Down) {
+                if self.player.y < BG_HEIGHT as f32 - TILE_SIZE as f32 {
+                    vel_y = speed;
+                    self.player.flags.set_flip_x(false);
+                    self.player.flags.set_flip_y(true);
+                    self.player.flags.set_rotation(false);
+                }
+            }
+
+            if vel_x != 0.0 || vel_y != 0.0 {
+                self.player.x += vel_x;
+                self.player.y += vel_y;
+                true
+            } else {
+                false
+            }
+        };
+
+        // ------------------------------ Draw ------------------------------
+
+        // Adjust scroll and palette before drawing characters! (immediate mode)
+        let target_x = (self.player.x + 4.0 - (vid.width() as f32 / 2.0)).floor() as i16;
+        let target_y = (self.player.y + 4.0 - (vid.height() as f32 / 2.0)).floor() as i16;
+        // let target_x = self.player.x as i16;
+        // let target_y = self.player.y as i16;
+        vid.scroll_x = target_x;
+        vid.scroll_y = target_y;
+
+        vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
+
+        // Draw Sprites with hover animation
+        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
+            let hover = (libm::sinf(phase * speed) + 1.0) * height;
+            vid.draw_sprite(DrawBundle {
+                x: (entity.x - 1.0).floor() as i16,
+                y: (entity.y - 1.0 - hover).floor() as i16,
+                id: entity.tile,
+                flags: entity.flags,
+            });
+        };
+
+        // Player goes in front. Due to how pixels are iterated, drawing a sprite
+        // first means it has highest priority!
+        let hover_phase = app.time as f32 - self.movement_start;
+        let hover_speed = if is_walking { 24.0 * speed } else { 8.0 };
+        let hover_height = if is_walking { 2.0 } else { 1.5 };
+        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
+
+        for entity in &self.smileys {
+            // passing x as phase gives us out-of-sync motion
+            let hover_phase = entity.x + app.time as f32;
+            sprite_hover(entity, hover_phase, 6.0, 1.5);
+        }
+
+        // Draw shadows last (lowest priority).
+        let mut sprite_shadow = |entity: &Entity| {
+            vid.draw_sprite(DrawBundle {
+                x: entity.x as i16,
+                y: entity.y as i16,
+                id: entity.tile,
+                // Remember, we generated palettes that match the color indices
+                flags: entity.flags.replace_palette(PaletteID(BLACK.0)),
+            });
+        };
+
+        for entity in &self.smileys {
+            sprite_shadow(entity);
+        }
+        sprite_shadow(&self.player);
+
+        // ------------------- Return mode switch request -------------------
+
+        if app.pad.is_just_pressed(Button::Menu) {
+            Some(Mode::B)
+        } else {
+            None
+        }
+    }
+}
