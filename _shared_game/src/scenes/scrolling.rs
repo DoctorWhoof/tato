@@ -19,6 +19,8 @@ impl CameraScrolling {
         vid.wrap_bg = false;
         vid.wrap_sprites = false;
         // vid.set_viewport(8, 8, 240, 176);
+        vid.set_crop_x(16);
+        vid.set_crop_y(16);
 
         // Palette test - defines BG palette as Grayscale!
         // vid.bg_palette = [
@@ -46,8 +48,8 @@ impl CameraScrolling {
         }
 
         // Define new tiles
-        let checker = vid.new_tile(8, 8, &TILE_SOLID);
         let smiley = vid.new_tile(8, 8, &SMILEY);
+        let checker = vid.new_tile(8, 8, &TILE_SOLID);
         let arrow = vid.new_tile(8, 8, &ARROW);
 
         // Set BG tiles
@@ -164,8 +166,10 @@ impl CameraScrolling {
         // ------------------------------ Draw ------------------------------
 
         // Adjust scroll and palette before drawing characters! (immediate mode)
-        let target_x = (self.player.x + 4.0 - (vid.width() as f32 / 2.0)).floor() as i16;
-        let target_y = (self.player.y + 4.0 - (vid.height() as f32 / 2.0)).floor() as i16;
+        // let target_x = (self.player.x + 4.0 - (vid.width() as f32 / 2.0)).floor() as i16;
+        // let target_y = (self.player.y + 4.0 - (vid.height() as f32 / 2.0)).floor() as i16;
+        let target_x = (self.player.x - 16.0 - (vid.width() as f32 / 2.0)).floor() as i16;
+        let target_y = (self.player.y - 16.0 - (vid.height() as f32 / 2.0)).floor() as i16;
         // let target_x = self.player.x as i16;
         // let target_y = self.player.y as i16;
         vid.scroll_x = target_x;
@@ -211,6 +215,13 @@ impl CameraScrolling {
         let hover_speed = if is_walking { 24.0 * speed } else { 8.0 };
         let hover_height = if is_walking { 2.0 } else { 1.5 };
         sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
+
+        vid.draw_sprite(DrawBundle {
+            x: 0,
+            y: 0,
+            id: TileID(0),
+            flags: TileFlags::default(),
+        });
 
         // ------------------- Return mode switch request -------------------
 

@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 use mini_sdl::*;
 use videochip::*;
 use shared_game::*;
@@ -40,8 +40,8 @@ fn main() -> SdlResult<()> {
         // Scene switching and update.
         let mode_request = match &mut scene {
             Scene::A(scn) => {
-                app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x, scn.player.y));
-                app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x as u8, scn.player.y as u8));
+                // app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x, scn.player.y));
+                // app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x as u8, scn.player.y as u8));
                 scn.update(&mut vid, state)
             },
             Scene::B(scn) => scn.update(&mut vid, state),

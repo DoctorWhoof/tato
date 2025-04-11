@@ -1,8 +1,5 @@
-// #![no_std]
+#![no_std]
 use core::array::from_fn;
-
-// mod sprite_grid;
-// pub use sprite_grid::*; // testing only, TODO: remove
 
 mod bg;
 pub use bg::*;
@@ -24,11 +21,8 @@ pub use pixels::*;
 mod tile;
 pub use tile::*;
 
-// mod scanline;
-// pub(crate) use scanline::*;
-
-// mod int;
-// pub(crate) use int::*;
+// FG Draw buffer height.
+pub const LINE_COUNT: usize = 196;
 
 // All tile dimensions must be a multiple of TILE_SIZE.
 pub const TILE_SIZE: u8 = 8;
@@ -44,17 +38,13 @@ pub const COLORS_PER_PALETTE: u8 = 16;
 pub const TILE_SUBPIXELS: u8 = PixelCluster::<2>::PIXELS_PER_BYTE as u8;
 pub const FRAMEBUFFER_SUBPIXELS: u8 = PixelCluster::<4>::PIXELS_PER_BYTE as u8;
 
-// FG Draw buffer width, in pixels. Effectively limits the maximum screen resolution
-// Update TODO: With new iterator approach this could be a field!
-pub const LINE_COUNT: usize = 192;
-
 // BG Map
 pub const BG_COLUMNS: u8 = 64;
 pub const BG_ROWS: u8 = 64;
 pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
 pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
 
-// Maximum sprite storage size in bytes (16 Kb, 256x256 pixels at 4 bpp).
+// Maximum sprite storage length (16 Kb if PixelCluster<2> used).
 const TILE_MEM_LEN: usize = 8182;
 
 /// A convenient packet of data used to draw a tile as a sprite.
@@ -89,13 +79,15 @@ pub struct VideoChip {
     // ---------------------- Main Data ----------------------
     // TODO: Make pub(Crate) after testing
     pub scanlines: [[PixelCluster<4>; 256 / 8]; LINE_COUNT],
+    crop_x: u8,
+    crop_y: u8,
     max_x: u8,
     max_y: u8,
     // Pixel buffers
     // sprite_grid: SpriteGrid,
     // Pixel data for all tiles, stored as palette indices.
     // Max 64Kb or 256 tiles, whichever runs out first!
-    tile_pixels: [PixelCluster<2>; TILE_MEM_LEN], // 2 bytes, 2 bits per pixel
+    tile_pixels: [PixelCluster<2>; TILE_MEM_LEN], // 2 bits per pixel
     // Array of sprite definitions. Max 256 (1 byte indices)
     tiles: [TileEntry; 256],
 
@@ -144,35 +136,33 @@ impl VideoChip {
             view_top: 0,
             view_right: (w - 1) as u8,
             view_bottom: (h - 1) as u8,
+            crop_x: 0,
+            crop_y: 0,
             scroll_x: 0,
             scroll_y: 0,
         };
         result.reset_all();
 
-        println!(
-            "Total Size of VideoChip:\t{:.1} Kb",
-            size_of::<VideoChip>() as f32 / 1024.0
-        );
-        println!(
-            "   Tile Memory:\t\t\t{:.1} Kb",
-            (result.tile_pixels.len() * size_of::<PixelCluster<2>>()) as f32 / 1024.0
-        );
         // println!(
-        //     "   Sprite Grid:\t\t\t{:.1} Kb",
-        //     size_of::<SpriteGrid>() as f32 / 1024.0
+        //     "Total Size of VideoChip:\t{:.1} Kb",
+        //     size_of::<VideoChip>() as f32 / 1024.0
         // );
-        println!(
-            "   Tile entries:\t\t{:.1} Kb",
-            (result.tiles.len() * size_of::<TileEntry>()) as f32 / 1024.0
-        );
-        println!(
-            "   BG Map:\t\t\t{:.1} Kb",
-            size_of::<BGMap>() as f32 / 1024.0
-        );
-        println!(
-            "Size of PixelIter:\t{:.1} Kb",
-            size_of::<PixelIter>() as f32 / 1024.0
-        );
+        // println!(
+        //     "   Tile Memory:\t\t\t{:.1} Kb",
+        //     (result.tile_pixels.len() * size_of::<PixelCluster<2>>()) as f32 / 1024.0
+        // );
+        // println!(
+        //     "   Tile entries:\t\t{:.1} Kb",
+        //     (result.tiles.len() * size_of::<TileEntry>()) as f32 / 1024.0
+        // );
+        // println!(
+        //     "   BG Map:\t\t\t{:.1} Kb",
+        //     size_of::<BGMap>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "Size of PixelIter:\t{:.1} Kb",
+        //     size_of::<PixelIter>() as f32 / 1024.0
+        // );
 
         result
     }
@@ -195,6 +185,22 @@ impl VideoChip {
 
     pub fn tile(&self, tile_id: TileID) -> TileEntry {
         self.tiles[tile_id.0 as usize]
+    }
+
+    pub fn set_crop_x(&mut self, value: u8) {
+        assert!(
+            value < 255 - self.max_x + 1,
+            err!("crop_x must be lower than 255 - width")
+        );
+        self.crop_x = value;
+    }
+
+    pub fn set_crop_y(&mut self, value: u8) {
+        assert!(
+            value < 255 - self.max_y + 1,
+            err!("crop_y must be lower than 255 - height")
+        );
+        self.crop_y = value;
     }
 
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter with BG Color!
@@ -347,12 +353,14 @@ impl VideoChip {
             wrapped_x = (data.x - self.scroll_x).rem_euclid(256) as u8;
             wrapped_y = (data.y - self.scroll_y).rem_euclid(LINE_COUNT as i16) as u8;
         } else {
-            if data.x < self.scroll_x || data.x > self.scroll_x + self.max_x as i16 {
+            let max_x = self.scroll_x + self.max_x as i16 + self.crop_x as i16;
+            if data.x < self.scroll_x || data.x > max_x {
                 return;
             } else {
                 wrapped_x = (data.x - self.scroll_x) as u8;
             }
-            if data.y < self.scroll_y || data.y > self.scroll_y + self.max_y as i16 {
+            let max_y = self.scroll_y + self.max_y as i16 + self.crop_y as i16;
+            if data.y < self.scroll_y || data.y > max_y {
                 return;
             } else {
                 wrapped_y = (data.y - self.scroll_y).clamp(0, LINE_COUNT as i16 - 1) as u8;

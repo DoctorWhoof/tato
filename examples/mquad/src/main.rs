@@ -5,7 +5,7 @@ use shared_game::*;
 #[macroquad::main(window_conf)]
 async fn main() {
     const W: u16 = 256;
-    const H: u16 = 192;
+    const H: u16 = 196;
 
     let mut vid = videochip::VideoChip::new(W, H);
     let mut scene = shared_game::Scene::A(CameraScrolling::new(&mut vid));

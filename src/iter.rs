@@ -45,8 +45,8 @@ impl<'a> PixelIter<'a> {
             force_bg_color: false,
         };
         // Check if we're outside the BG map at initialization
-        let raw_x = result.x as i16 + result.vid.scroll_x;
-        let raw_y = result.y as i16 + result.vid.scroll_y;
+        let raw_x = result.x as i16 + result.vid.scroll_x + vid.crop_x as i16;
+        let raw_y = result.y as i16 + result.vid.scroll_y + vid.crop_y as i16;
         let outside =
             raw_x < 0 || raw_y < 0 || raw_x >= BG_WIDTH as i16 || raw_y >= BG_HEIGHT as i16;
         result.force_bg_color = !result.wrap_bg && outside;
@@ -58,8 +58,8 @@ impl<'a> PixelIter<'a> {
 
             // Then adjust the subpixel_index based on scroll_x
             // This ensures we start with the correct offset within the cluster
-            let bg_x =
-                (result.x as i16 + result.vid.scroll_x as i16).rem_euclid(BG_WIDTH as i16) as u16;
+            let bg_x = (result.x as i16 + result.vid.scroll_x as i16 + vid.crop_x as i16)
+                .rem_euclid(BG_WIDTH as i16) as u16;
             let tile_x = bg_x % TILE_SIZE as u16;
             let local_index = tile_x as usize % TILE_SUBPIXELS as usize;
             result.subpixel_index = local_index as u8;
@@ -70,8 +70,10 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn update_indices(&mut self) {
         // Calculate bg "pixel" index
-        let bg_x = (self.x as i16 + self.vid.scroll_x as i16).rem_euclid(BG_WIDTH as i16) as u16;
-        let bg_y = (self.y as i16 + self.vid.scroll_y as i16).rem_euclid(BG_HEIGHT as i16) as u16;
+        let bg_x = (self.x as i16 + self.vid.scroll_x as i16 + self.vid.crop_x as i16)
+            .rem_euclid(BG_WIDTH as i16) as u16;
+        let bg_y = (self.y as i16 + self.vid.scroll_y as i16 + self.vid.crop_x as i16)
+            .rem_euclid(BG_HEIGHT as i16) as u16;
 
         // Calculate BG map coordinates
         let bg_col = bg_x / TILE_SIZE as u16;
@@ -123,10 +125,16 @@ impl<'a> Iterator for PixelIter<'a> {
             self.bg_color
         } else {
             // Check for foreground pixel
-            let x_cluster = self.x as usize / PIXELS_PER_CLUSTER as usize;
-            let sub_index = (self.x % PIXELS_PER_CLUSTER as u16) as u8;
-            let fg_cluster = self.vid.scanlines[self.y as usize][x_cluster];
-            let fg_pixel = fg_cluster.get_subpixel(sub_index);
+            let relative_x = (self.x as usize).saturating_add(self.vid.crop_x as usize);
+            let relative_y = (self.y as usize).saturating_add(self.vid.crop_y as usize);
+            let x_cluster = relative_x / PIXELS_PER_CLUSTER as usize;
+            let sub_index = (relative_x % PIXELS_PER_CLUSTER as usize) as u8;
+            let fg_pixel = if relative_y < LINE_COUNT {
+                let fg_cluster = self.vid.scanlines[relative_y][x_cluster];
+                fg_cluster.get_subpixel(sub_index)
+            } else {
+                0
+            };
 
             // Get color - FG has priority if not transparent
             if fg_pixel > 0 {
@@ -175,8 +183,8 @@ impl<'a> Iterator for PixelIter<'a> {
         // This will only run every few pixels, and once every new line
         if reload_cluster {
             // Calculate raw screen position for bounds check
-            let raw_x = self.x as i16 + self.vid.scroll_x;
-            let raw_y = self.y as i16 + self.vid.scroll_y;
+            let raw_x = self.x as i16 + self.vid.scroll_x + self.vid.crop_x as i16;
+            let raw_y = self.y as i16 + self.vid.scroll_y + self.vid.crop_y as i16;
 
             // Previous state - were we outside before?
             let was_outside = self.force_bg_color;
