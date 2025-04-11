@@ -1,142 +1,74 @@
-use crate::*;
+pub const PIXELS_PER_CLUSTER:u8 = 8;
 
-// Constants
-pub const BITS_PER_PIXEL: u8 = 2;
-pub const PIXELS_PER_CLUSTER: usize = PixelCluster::<u16>::pixel_count(); // For u16 with 2 bits per pixel
-
-// A distinct subpixel type
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SubPixel(pub u8);
-
-/// Generic PixelCluster that can use different integer types.
-/// With u16 and 2 bits per pixel each cluster holds 8 pixels.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct PixelCluster<T: IntegerOps = u16> {
-    data: T,
+/// A PixelCluster always stores 8 pixels
+#[derive(Clone, Copy)]
+pub struct PixelCluster<const BYTES: usize> {
+    // Raw storage - always 8 pixels
+    data: [u8; BYTES],
 }
 
-impl<T> PixelCluster<T>
-where
-    T: IntegerOps,
-{
-    // Calculate max pixels this type can store
-    #[inline(always)]
-    pub const fn pixel_count() -> usize {
-        T::BITS / BITS_PER_PIXEL as usize
-    }
-
-    #[inline(always)]
-    pub fn get_subpixel(&self, sub_index: usize) -> SubPixel {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sub_index < Self::pixel_count(), "Pixel index out of bounds");
+impl<const BYTES: usize> Default for PixelCluster<BYTES> {
+    fn default() -> Self {
+        Self {
+            data: [0; BYTES],
         }
-
-        // Calculate bit position
-        let bit_start = sub_index * BITS_PER_PIXEL as usize;
-        let shift = T::BITS - bit_start - BITS_PER_PIXEL as usize;
-
-        // Create mask
-        let mask = T::from_u8((1 << BITS_PER_PIXEL) - 1);
-
-        // Extract value
-        let value = (self.data >> shift) & mask;
-        SubPixel(value.to_u8())
-    }
-
-    #[inline(always)]
-    pub fn set_subpixel(&mut self, value: SubPixel, sub_index: usize) {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sub_index < Self::pixel_count(), "Pixel index out of bounds");
-        }
-
-        // Calculate bit position
-        let bit_start = sub_index * BITS_PER_PIXEL as usize;
-        let shift = T::BITS - bit_start - BITS_PER_PIXEL as usize;
-
-        // Create mask
-        let mask = T::from_u8((1 << BITS_PER_PIXEL) - 1);
-
-        // Clear bits
-        self.data = self.data & !(mask << shift);
-
-        // Set bits
-        let val = T::from_u8(value.0 & ((1 << BITS_PER_PIXEL) - 1));
-        self.data = self.data | (val << shift);
     }
 }
 
-// #[inline(always)]
-// pub const fn get_subpixel(cluster: u8, subpixel: usize) -> u8 {
-//     let bit_position = 6 - ((subpixel % 4) * 2);
-//     (cluster >> bit_position) & 0x03
-// }
+impl<const BYTES: usize> PixelCluster<BYTES> {
+    // How many pixels fit in each byte
+    pub const PIXELS_PER_BYTE: usize = PIXELS_PER_CLUSTER as usize / BYTES;
+    // How many bits each pixel uses
+    pub const BITS_PER_PIXEL: usize = PIXELS_PER_CLUSTER as usize / Self::PIXELS_PER_BYTE;
+    // Mask for extracting a single pixel value
+    pub const MASK: u8 = (1 << Self::BITS_PER_PIXEL) - 1;
 
-// #[inline(always)]
-// pub const fn set_subpixel(cluster: &mut u8, value: u8, subpixel: usize) {
-//     let bit_position = 6 - ((subpixel % 4) * 2);
-//     let value = value & 0x03;
-//     // Clear the bits
-//     *cluster &= !(0x03 << bit_position);
-//     // Set the bits
-//     *cluster |= value << bit_position;
-// }
+    #[inline(always)]
+    pub fn get_subpixel(&self, index: u8) -> u8 {
+        debug_assert!(index < PIXELS_PER_CLUSTER, "Pixel index out of bounds");
 
-// Versions that accept different bit counts per pixel!
+        // Calculate which byte contains this pixel
+        let byte_idx = index as usize / Self::PIXELS_PER_BYTE;
 
-// use error::err;
-// #[inline]
-// pub const fn get_subpixel(pixel_cluster: u8, bits_per_pixel: u8, pixel_index: usize) -> u8 {
-//     match bits_per_pixel {
-//         1 => {
-//             let bit_position = 7 - (pixel_index % 8);
-//             (pixel_cluster >> bit_position) & 0x01
-//         }
-//         2 => {
-//             let bit_position = 6 - ((pixel_index % 4) * 2);
-//             (pixel_cluster >> bit_position) & 0x03
-//         }
-//         4 => {
-//             let nibble_position = (pixel_index % 2) * 4;
-//             (pixel_cluster >> (4 - nibble_position)) & 0x0F
-//         }
-//         8 => pixel_cluster,
-//         _ => panic!(err!("Unsupported bits per pixel value")),
-//     }
-// }
+        // Calculate position within the byte
+        let pos_in_byte = index as usize % Self::PIXELS_PER_BYTE;
+        let shift = (Self::PIXELS_PER_BYTE - 1 - pos_in_byte) * Self::BITS_PER_PIXEL;
 
-// #[inline]
-// pub const fn set_subpixel(pixel_cluster: &mut u8, bits_per_pixel: u8, value: u8, pixel_index: usize) {
-//     match bits_per_pixel {
-//         1 => {
-//             let bit_position = 7 - (pixel_index % 8);
-//             let value = value & 0x01;
-//             // Clear the bit
-//             *pixel_cluster &= !(0x01 << bit_position);
-//             // Set the bit
-//             *pixel_cluster |= value << bit_position;
-//         }
-//         2 => {
-//             let bit_position = 6 - ((pixel_index % 4) * 2);
-//             let value = value & 0x03;
-//             // Clear the bits
-//             *pixel_cluster &= !(0x03 << bit_position);
-//             // Set the bits
-//             *pixel_cluster |= value << bit_position;
-//         }
-//         4 => {
-//             let nibble_position = (pixel_index % 2) * 4;
-//             let shift = 4 - nibble_position;
-//             let value = value & 0x0F;
-//             // Clear the nibble
-//             *pixel_cluster &= !(0x0F << shift);
-//             // Set the nibble
-//             *pixel_cluster |= value << shift;
-//         }
-//         8 => {
-//             *pixel_cluster = value;
-//         }
-//         _ => panic!(err!("Unsupported bits per pixel value")),
-//     }
-// }
+        // Extract the pixel value
+        (self.data[byte_idx] >> shift) & Self::MASK
+    }
+
+    #[inline(always)]
+    pub fn set_subpixel(&mut self, value: u8, index: u8) {
+        debug_assert!(index < PIXELS_PER_CLUSTER, "Pixel index out of bounds");
+
+        // Limit value to valid range
+        let value = value & Self::MASK;
+
+        // Calculate which byte contains this pixel
+        let byte_idx = index as usize / Self::PIXELS_PER_BYTE;
+
+        // Calculate position within the byte
+        let pos_in_byte = index as usize % Self::PIXELS_PER_BYTE;
+        let shift = (Self::PIXELS_PER_BYTE - 1 - pos_in_byte) * Self::BITS_PER_PIXEL;
+
+        // Clear the bits for this pixel
+        let mask = Self::MASK << shift;
+        self.data[byte_idx] &= !mask;
+
+        // Set the new value
+        self.data[byte_idx] |= value << shift;
+    }
+}
+
+impl<const BYTES: usize> core::fmt::Debug for PixelCluster<BYTES> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.data)
+    }
+}
+
+impl<const BYTES: usize> core::fmt::Display for PixelCluster<BYTES> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.data)
+    }
+}

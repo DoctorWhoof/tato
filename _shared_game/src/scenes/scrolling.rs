@@ -1,6 +1,6 @@
 use crate::*;
 use core::array::from_fn;
-use padstate::{Button, AnyButton};
+use padstate::{AnyButton, Button};
 use videochip::*;
 
 const SMILEY_COUNT: usize = 64;
@@ -70,10 +70,9 @@ impl CameraScrolling {
 
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
-            // Avoid grayscale
             Entity {
-                x: rng.gen_range::<u16>(0, BG_WIDTH - TILE_SIZE) as f32,
-                y: rng.gen_range::<u16>(0, BG_HEIGHT - TILE_SIZE) as f32,
+                x: rng.gen_range::<u8>(0, vid.max_x() - TILE_SIZE) as f32,
+                y: rng.gen_range::<u8>(0, vid.max_y() - TILE_SIZE) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale
             }
@@ -85,8 +84,8 @@ impl CameraScrolling {
         // Store initial state and return
         Self {
             player: Entity {
-                x: (BG_WIDTH / 2) as f32,
-                y: (BG_HEIGHT / 2) as f32,
+                x: (vid.max_x() / 2) as f32,
+                y: (vid.max_y() / 2) as f32,
                 tile: arrow,
                 flags: PaletteID(0).into(),
             },
@@ -96,7 +95,7 @@ impl CameraScrolling {
     }
 
     // Process the scene on each frame
-    pub fn update(&mut self, vid: &mut VideoChip, app:AppState) -> Option<Mode> {
+    pub fn update(&mut self, vid: &mut VideoChip, app: AppState) -> Option<Mode> {
         vid.start_frame();
 
         // ------------------------------ Input ------------------------------
@@ -123,34 +122,34 @@ impl CameraScrolling {
         let is_walking = {
             let (mut vel_x, mut vel_y) = (0.0, 0.0);
             if app.pad.is_down(Button::Left) {
-                if self.player.x > 0.0 {
-                    vel_x = -speed;
-                    self.player.flags.set_flip_x(true);
-                    self.player.flags.set_flip_y(false);
-                    self.player.flags.set_rotation(true);
-                }
+                // if self.player.x > 0.0 {
+                vel_x = -speed;
+                self.player.flags.set_flip_x(true);
+                self.player.flags.set_flip_y(false);
+                self.player.flags.set_rotation(true);
+                // }
             } else if app.pad.is_down(Button::Right) {
-                if self.player.x < BG_WIDTH as f32 - TILE_SIZE as f32 {
-                    vel_x = speed;
-                    self.player.flags.set_flip_x(false);
-                    self.player.flags.set_flip_y(false);
-                    self.player.flags.set_rotation(true);
-                }
+                // if self.player.x <= vid.max_x() as f32 - TILE_SIZE as f32 {
+                vel_x = speed;
+                self.player.flags.set_flip_x(false);
+                self.player.flags.set_flip_y(false);
+                self.player.flags.set_rotation(true);
+                // }
             }
             if app.pad.is_down(Button::Up) {
-                if self.player.y > 0.0 {
-                    vel_y = -speed;
-                    self.player.flags.set_flip_x(false);
-                    self.player.flags.set_flip_y(false);
-                    self.player.flags.set_rotation(false);
-                }
+                // if self.player.y > 0.0 {
+                vel_y = -speed;
+                self.player.flags.set_flip_x(false);
+                self.player.flags.set_flip_y(false);
+                self.player.flags.set_rotation(false);
+                // }
             } else if app.pad.is_down(Button::Down) {
-                if self.player.y < BG_HEIGHT as f32 - TILE_SIZE as f32 {
-                    vel_y = speed;
-                    self.player.flags.set_flip_x(false);
-                    self.player.flags.set_flip_y(true);
-                    self.player.flags.set_rotation(false);
-                }
+                // if self.player.y <= vid.max_y() as f32 - TILE_SIZE as f32 {
+                vel_y = speed;
+                self.player.flags.set_flip_x(false);
+                self.player.flags.set_flip_y(true);
+                self.player.flags.set_rotation(false);
+                // }
             }
 
             if vel_x != 0.0 || vel_y != 0.0 {
@@ -174,35 +173,11 @@ impl CameraScrolling {
 
         vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
 
-        // Draw Sprites with hover animation
-        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
-            let hover = (libm::sinf(phase * speed) + 1.0) * height;
-            vid.draw_sprite(DrawBundle {
-                x: (entity.x - 1.0).floor() as i16,
-                y: (entity.y - 1.0 - hover).floor() as i16,
-                id: entity.tile,
-                flags: entity.flags,
-            });
-        };
-
-        // Player goes in front. Due to how pixels are iterated, drawing a sprite
-        // first means it has highest priority!
-        let hover_phase = app.time as f32 - self.movement_start;
-        let hover_speed = if is_walking { 24.0 * speed } else { 8.0 };
-        let hover_height = if is_walking { 2.0 } else { 1.5 };
-        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
-
-        for entity in &self.smileys {
-            // passing x as phase gives us out-of-sync motion
-            let hover_phase = entity.x + app.time as f32;
-            sprite_hover(entity, hover_phase, 6.0, 1.5);
-        }
-
-        // Draw shadows last (lowest priority).
+        // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
             vid.draw_sprite(DrawBundle {
-                x: entity.x as i16,
-                y: entity.y as i16,
+                x: entity.x as u8,
+                y: entity.y as u8,
                 id: entity.tile,
                 // Remember, we generated palettes that match the color indices
                 flags: entity.flags.replace_palette(PaletteID(BLACK.0)),
@@ -213,6 +188,29 @@ impl CameraScrolling {
             sprite_shadow(entity);
         }
         sprite_shadow(&self.player);
+
+        // Draw Sprites with hover animation
+        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
+            let hover = (libm::sinf(phase * speed) + 1.0) * height;
+            vid.draw_sprite(DrawBundle {
+                x: (entity.x - 1.0).floor() as u8,
+                y: (entity.y - 1.0 - hover).floor() as u8,
+                id: entity.tile,
+                flags: entity.flags,
+            });
+        };
+
+        for entity in &self.smileys {
+            // passing x as phase gives us out-of-sync motion
+            let hover_phase = entity.x + app.time as f32;
+            sprite_hover(entity, hover_phase, 6.0, 1.5);
+        }
+
+        // Player goes in front. Drawing a sprite last means it has highest priority!
+        let hover_phase = app.time as f32 - self.movement_start;
+        let hover_speed = if is_walking { 24.0 * speed } else { 8.0 };
+        let hover_height = if is_walking { 2.0 } else { 1.5 };
+        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
 
         // ------------------- Return mode switch request -------------------
 

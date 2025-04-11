@@ -5,13 +5,13 @@ use shared_game::*;
 
 
 fn main() -> SdlResult<()> {
-    let mut vid = VideoChip::new(256, 192);
+    let mut vid = VideoChip::new(240, 180);
 
     let mut app = mini_sdl::App::new(
         "Basic Game",
         // 240, 180, // cropped to 240,180 option
-        vid.width() as u32,
-        vid.height() as u32,
+        vid.width(),
+        vid.height(),
         mini_sdl::Timing::Vsync,
         Scaling::PreserveAspect,
         None,
@@ -24,8 +24,8 @@ fn main() -> SdlResult<()> {
 
     // app.init_pixel_buffer()?;
 
-    let mut scene = Scene::A(CameraScrolling::new(&mut vid));
-    // let mut scene = Scene::C(MinimalScene::new(&mut vid));
+    // let mut scene = Scene::A(CameraScrolling::new(&mut vid));
+    let mut scene = Scene::C(MinimalScene::new(&mut vid));
 
     while !app.quit_requested {
         // let time = Instant::now();
@@ -43,6 +43,12 @@ fn main() -> SdlResult<()> {
             Scene::B(scn) => scn.update(&mut vid, state),
             Scene::C(scn) => scn.update(&mut vid, state),
         };
+
+        // Dump
+        // for line in &vid.scanlines {
+        //     println!("{:?}", line);
+        // }
+        // break;
 
         // Copy pixels to app
         let width = app.width() as usize;
@@ -83,7 +89,6 @@ fn main() -> SdlResult<()> {
         // println!("{:.1} ms", app.update_time() * 1000.0);
 
         app.frame_finish()?;
-        // println!("{:.3} ms, {:.1} fps", app.elapsed_time_raw() * 1000.0, app.fps());
         // println!("{:.3} ms", app.update_time() * 1000.0);
     }
     Ok(())

@@ -10,12 +10,12 @@ pub struct FixedCamera {
 impl FixedCamera {
     pub fn new(vid: &mut VideoChip) -> Self {
         // Center view
-        let x = vid.width() / 2;
-        let y = vid.height() / 2;
+        let x = vid.max_x() / 2;
+        let y = vid.max_y() / 2;
         // Shrinks the viewport by 8 pixels on each edge, creating the
         // illusion that sprites go outside the border - in reality they are
         // culled as soon as they hit the left or top border
-        vid.set_viewport(8, 8, 240, 176);
+        vid.set_viewport(8, 8, 224, 164);
 
         // Colors
         vid.bg_color = DARK_GREEN;
@@ -65,22 +65,19 @@ impl FixedCamera {
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
-            // if _i == 0 {
-            //     app.overlay_push(format!("{:.1}, {:.1}", entity.x, entity.y));
-            // }
             entity.x -= speed;
             entity.y += speed;
             vid.draw_sprite(DrawBundle {
-                x: entity.x as i16,
-                y: entity.y as i16,
+                x: entity.x as u8,
+                y: entity.y as u8,
                 id: entity.tile,
                 flags: entity.flags,
             });
         }
 
         vid.draw_sprite(DrawBundle {
-            x: self.player.x as i16,
-            y: self.player.y as i16,
+            x: self.player.x as u8,
+            y: self.player.y as u8,
             id: self.player.tile,
             flags: self.player.flags,
         });

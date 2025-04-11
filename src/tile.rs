@@ -8,9 +8,9 @@ pub struct TileID(pub u8);
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TileEntry {
     /// Width of the tile.
-    pub w: u16,
+    pub w: u8,
     /// Height of the tile.
-    pub h: u16,
+    pub h: u8,
     /// Index to the first cluster of the tile in the tile buffer. Each cluster is 1 byte.
     pub cluster_index: u16,
 }

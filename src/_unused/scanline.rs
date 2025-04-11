@@ -1,57 +1,31 @@
 use crate::*;
 
-/// Limit of sprites per scanline. Once reached, no more sprites can be drawn in this line.
-pub const MAX_SPRITES_PER_LINE: usize = 8;
-
-/// How many pixels long is a scanline slot
-pub(crate) const SLOT_WIDTH: u16 = FG_WIDTH / 32;
-
-/// How many bytes a segment takes, accounting for Pixel cluster size
-/// A pixel cluster contains TILE_SIZE pixels.
-const SEG_COUNT: usize = MAX_TILE_SIZE as usize / TILE_SIZE as usize; // in bytes
-
-#[derive(Debug, Clone, Copy, Default)]
-struct Segment {
-    source_x: i16, // Original x position of the sprite
-    flags: TileFlags,
-    pixels: [PixelCluster; SEG_COUNT],
-}
+const CLUSTERS_PER_LINE: usize = 256 / PIXELS_PER_CLUSTER as usize;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Scanline {
-    pub(crate) bit_slots: u32, // Bit field for 32 horizontal sections
-    segments: [Segment; MAX_SPRITES_PER_LINE], // Array of sprite segments
-    count: u8,                 // Count of active segments
+    data: [PixelCluster; CLUSTERS_PER_LINE],
 }
 
 impl Default for Scanline {
     fn default() -> Self {
-        Scanline {
-            count: 0,
-            bit_slots: 0,
-            segments: [Segment::default(); MAX_SPRITES_PER_LINE],
+        Self {
+            data: core::array::from_fn(|_| PixelCluster::default()),
         }
     }
-}
-
-pub(crate) struct MiniRect {
-    pub x: i16,
-    pub w: i16,
 }
 
 impl Scanline {
     #[inline]
     pub fn clear(&mut self) {
-        self.count = 0;
-        self.bit_slots = 0;
-        // No need to reset the segments themselves
+        self.data = core::array::from_fn(|_| PixelCluster::default());
     }
 
     #[inline]
     pub fn insert(
         &mut self,
         line_pixels: [PixelCluster; SEG_COUNT], // Pre-transformed scanline data
-        source_x: i16,                          // X position on screen
+        source_x: u8,                          // X position on screen
         flags: TileFlags,                       // Keep flags for palette info
         clamped_rect: MiniRect,                 // For bounds info
     ) {
@@ -81,9 +55,9 @@ impl Scanline {
     }
 
     #[inline]
-    pub fn get(&self, screen_x: u16) -> Option<PixelQuery> {
+    pub fn get(&self, screen_x: u8) -> Option<PixelQuery> {
         // Determine which bit in bit_slots corresponds to this x position
-        let section = screen_x / SLOT_WIDTH;
+        let section = screen_x as u16 / SLOT_WIDTH;
 
         // If this section has no sprites (bit is 0), return early
         if ((self.bit_slots >> section) & 1) == 0 {
@@ -95,14 +69,15 @@ impl Scanline {
             let segment = &self.segments[i];
 
             // Calculate local coordinates within the sprite
-            let local_x = (screen_x as i16 - segment.source_x) as usize;
+            if screen_x < segment.source_x { continue; }
+            let local_x = (screen_x - segment.source_x) as usize;
 
             // Get the pixel using the correct cluster size
-            let cluster_idx = local_x / PIXELS_PER_CLUSTER;
+            let cluster_idx = local_x / PIXELS_PER_CLUSTER as usize;
             if cluster_idx >= SEG_COUNT {
                 continue;
             }
-            let subpixel_idx = local_x % PIXELS_PER_CLUSTER;
+            let subpixel_idx = local_x % PIXELS_PER_CLUSTER as usize;
             let pixel = segment.pixels[cluster_idx].get_subpixel(subpixel_idx);
 
             // If the pixel is non-transparent, return it
