@@ -78,7 +78,7 @@ pub struct VideoChip {
 
     // ---------------------- Main Data ----------------------
     // TODO: Make pub(Crate) after testing
-    pub scanlines: [[PixelCluster<4>; 256 / 8]; LINE_COUNT],
+    scanlines: [[PixelCluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
     crop_x: u8,
     crop_y: u8,
     max_x: u8,

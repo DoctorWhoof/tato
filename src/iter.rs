@@ -13,7 +13,7 @@ pub struct PixelIter<'a> {
     force_bg_color: bool,        // will reuse last bg color when out-of-bounds
     current_bg_flags: TileFlags, // Current background tile flags
     bg_color: ColorRGB,          // Background color (cached)
-    // scanline: Scanline,          // Current scanline data
+    scanline: [PixelCluster<4>; 256 / PIXELS_PER_CLUSTER as usize], // Current scanline data
     bg_cluster: PixelCluster<2>, // Current pixel cluster
     fg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     bg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
@@ -27,6 +27,7 @@ pub struct ScreenCoords {
 
 impl<'a> PixelIter<'a> {
     pub fn new(vid: &'a VideoChip) -> Self {
+        let relative_y = vid.crop_y as usize;
         let mut result = Self {
             vid,
             x: 0,
@@ -41,7 +42,7 @@ impl<'a> PixelIter<'a> {
             fg_palette: vid.fg_palette.clone(),
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
-            // scanline: Scanline::default(),
+            scanline: vid.scanlines[relative_y].clone(),
             force_bg_color: false,
         };
         // Check if we're outside the BG map at initialization
@@ -124,16 +125,13 @@ impl<'a> Iterator for PixelIter<'a> {
         let color = if is_outside_viewport {
             self.bg_color
         } else {
-            // Check for foreground pixel
+            // Check for foreground pixel, compensating for crop_x
             let relative_x = (self.x as usize).saturating_add(self.vid.crop_x as usize);
-            let relative_y = (self.y as usize).saturating_add(self.vid.crop_y as usize);
             let x_cluster = relative_x / PIXELS_PER_CLUSTER as usize;
             let sub_index = (relative_x % PIXELS_PER_CLUSTER as usize) as u8;
-            let fg_pixel = if relative_y < LINE_COUNT {
-                let fg_cluster = self.vid.scanlines[relative_y][x_cluster];
+            let fg_pixel = {
+                let fg_cluster = self.scanline[x_cluster];
                 fg_cluster.get_subpixel(sub_index)
-            } else {
-                0
             };
 
             // Get color - FG has priority if not transparent
@@ -175,7 +173,9 @@ impl<'a> Iterator for PixelIter<'a> {
             self.x = 0;
             self.y += 1;
             if self.y < self.vid.max_y as u16 {
-                // self.scanline = self.vid.sprite_grid.lines[self.y as usize].clone();
+                // Cache scanline, compensating for crop_y
+                let relative_y = (self.y as usize).saturating_add(self.vid.crop_y as usize);
+                self.scanline = self.vid.scanlines[relative_y].clone();
                 reload_cluster = true;
             }
         }

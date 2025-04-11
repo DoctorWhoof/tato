@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 use mini_sdl::*;
 use videochip::*;
 use shared_game::*;
@@ -18,7 +18,7 @@ fn main() -> SdlResult<()> {
     )?;
     // let debug_font = app.font_load("src/debug/font.ttf", 32.0, 1.0)?;
     let debug_font = app.font_load("_shared_game/fonts/font.ttf", 32)?;
-    app.print_fps_interval = Some(1.0);
+    app.print_fps_interval = Some(1.0/30.0);
     app.display_overlay = true;
     app.default_font = Some(debug_font);
 
@@ -82,10 +82,6 @@ fn main() -> SdlResult<()> {
 
         // Present and finish
         app.pixel_buffer_present()?;
-        // app.overlay_push(format!("update time: {:.1} ms", app.update_time() * 1000.0));
-        // println!("{:.1} ms", time.elapsed().as_secs_f64() * 1000.0);
-        // println!("{:.1} ms", app.update_time() * 1000.0);
-
         app.frame_finish()?;
         // println!("{:.3} ms", app.update_time() * 1000.0);
     }
