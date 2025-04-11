@@ -7,7 +7,7 @@ const SMILEY_COUNT: usize = 64;
 
 #[derive(Debug)]
 pub struct CameraScrolling {
-    player: Entity,
+    pub player: Entity,
     smileys: [Entity; SMILEY_COUNT],
     movement_start: f32, // will be used to store the time when the player starts moving
 }
@@ -71,8 +71,8 @@ impl CameraScrolling {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rng.gen_range::<u8>(0, vid.max_x() - TILE_SIZE) as f32,
-                y: rng.gen_range::<u8>(0, vid.max_y() - TILE_SIZE) as f32,
+                x: rng.gen_range::<i16>(0, BG_WIDTH as i16 - TILE_SIZE as i16) as f32,
+                y: rng.gen_range::<i16>(0, BG_HEIGHT as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale
             }
@@ -176,8 +176,8 @@ impl CameraScrolling {
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
             vid.draw_sprite(DrawBundle {
-                x: entity.x as u8,
-                y: entity.y as u8,
+                x: entity.x as i16,
+                y: entity.y as i16,
                 id: entity.tile,
                 // Remember, we generated palettes that match the color indices
                 flags: entity.flags.replace_palette(PaletteID(BLACK.0)),
@@ -193,8 +193,8 @@ impl CameraScrolling {
         let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = (libm::sinf(phase * speed) + 1.0) * height;
             vid.draw_sprite(DrawBundle {
-                x: (entity.x - 1.0).floor() as u8,
-                y: (entity.y - 1.0 - hover).floor() as u8,
+                x: (entity.x - 1.0).floor() as i16,
+                y: (entity.y - 1.0 - hover).floor() as i16,
                 id: entity.tile,
                 flags: entity.flags,
             });

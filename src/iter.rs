@@ -1,8 +1,5 @@
 use crate::*;
 
-const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
-const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
-
 pub struct PixelIter<'a> {
     vid: &'a VideoChip,
     x: u16, // Current screen x position

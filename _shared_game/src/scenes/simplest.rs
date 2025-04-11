@@ -11,7 +11,7 @@ impl MinimalScene {
     pub fn new(vid: &mut VideoChip) -> Self {
         let _bg = vid.new_tile(8, 8, &TILE_CROSSHAIRS);
         let tile = vid.new_tile(8, 8, &TILE_SOLID);
-        let smiley = vid.new_tile(8, 8, &SMILEY);
+        let smiley = vid.new_tile(16, 16, &LARGE_SPRITE);
 
         for id in 0..16 as u8 {
             vid.bg_map.set_tile(BgData {
@@ -34,7 +34,7 @@ impl MinimalScene {
         for x in 0..16 {
             let time = (self.counter as f32 / 60.0) + offset;
             let wave = (libm::sinf(time) + 1.0) / 2.0;
-            let y = (wave * 180.0) as u8;
+            let y = (wave * 180.0) as i16;
             offset += 0.1;
             vid.draw_sprite(DrawBundle {
                 x: x * 16,

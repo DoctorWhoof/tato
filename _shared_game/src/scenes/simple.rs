@@ -68,16 +68,16 @@ impl FixedCamera {
             entity.x -= speed;
             entity.y += speed;
             vid.draw_sprite(DrawBundle {
-                x: entity.x as u8,
-                y: entity.y as u8,
+                x: entity.x as i16,
+                y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
             });
         }
 
         vid.draw_sprite(DrawBundle {
-            x: self.player.x as u8,
-            y: self.player.y as u8,
+            x: self.player.x as i16,
+            y: self.player.y as i16,
             id: self.player.tile,
             flags: self.player.flags,
         });

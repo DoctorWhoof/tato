@@ -39,16 +39,14 @@ fn main() -> SdlResult<()> {
 
         // Scene switching and update.
         let mode_request = match &mut scene {
-            Scene::A(scn) => scn.update(&mut vid, state),
+            Scene::A(scn) => {
+                app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x, scn.player.y));
+                app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x as u8, scn.player.y as u8));
+                scn.update(&mut vid, state)
+            },
             Scene::B(scn) => scn.update(&mut vid, state),
             Scene::C(scn) => scn.update(&mut vid, state),
         };
-
-        // Dump
-        // for line in &vid.scanlines {
-        //     println!("{:?}", line);
-        // }
-        // break;
 
         // Copy pixels to app
         let width = app.width() as usize;

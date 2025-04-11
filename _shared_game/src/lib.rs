@@ -16,9 +16,9 @@ pub struct AppState {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Entity {
-    x: f32,
-    y: f32,
+pub struct Entity {
+    pub x: f32,
+    pub y: f32,
     tile: TileID,
     flags: TileFlags,
 }

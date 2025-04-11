@@ -48,9 +48,11 @@ pub const FRAMEBUFFER_SUBPIXELS: u8 = PixelCluster::<4>::PIXELS_PER_BYTE as u8;
 // Update TODO: With new iterator approach this could be a field!
 pub const LINE_COUNT: usize = 192;
 
-// BG scrollable number ofe in tiles
+// BG Map
 pub const BG_COLUMNS: u8 = 64;
 pub const BG_ROWS: u8 = 64;
+pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
+pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
 
 // Maximum sprite storage size in bytes (16 Kb, 256x256 pixels at 4 bpp).
 const TILE_MEM_LEN: usize = 8182;
@@ -58,8 +60,8 @@ const TILE_MEM_LEN: usize = 8182;
 /// A convenient packet of data used to draw a tile as a sprite.
 #[derive(Debug, Clone, Copy)]
 pub struct DrawBundle {
-    pub x: u8,
-    pub y: u8,
+    pub x: i16,
+    pub y: i16,
     pub id: TileID,
     pub flags: TileFlags,
 }
@@ -339,8 +341,23 @@ impl VideoChip {
         }
 
         // Handle wrapping
-        let wrapped_x = (data.x as i16 - self.scroll_x).rem_euclid(256) as u8;
-        let wrapped_y = (data.y as i16 - self.scroll_y).rem_euclid(LINE_COUNT as i16) as u8;
+        let wrapped_x: u8;
+        let wrapped_y: u8;
+        if self.wrap_sprites {
+            wrapped_x = (data.x - self.scroll_x).rem_euclid(256) as u8;
+            wrapped_y = (data.y - self.scroll_y).rem_euclid(LINE_COUNT as i16) as u8;
+        } else {
+            if data.x < self.scroll_x || data.x > self.scroll_x + self.max_x as i16 {
+                return;
+            } else {
+                wrapped_x = (data.x - self.scroll_x) as u8;
+            }
+            if data.y < self.scroll_y || data.y > self.scroll_y + self.max_y as i16 {
+                return;
+            } else {
+                wrapped_y = (data.y - self.scroll_y).clamp(0, LINE_COUNT as i16 - 1) as u8;
+            }
+        }
 
         // Get tile info
         let tile = self.tiles[data.id.0 as usize];
