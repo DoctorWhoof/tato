@@ -3,7 +3,7 @@ use core::array::from_fn;
 use padstate::{AnyButton, Button};
 use tato_video::*;
 
-const SMILEY_COUNT: usize = 64;
+const SMILEY_COUNT: usize = 100;
 
 #[derive(Debug)]
 pub struct CameraScrolling {
@@ -22,24 +22,24 @@ impl CameraScrolling {
         vid.set_crop_x(16);
         vid.set_crop_y(16);
 
-        // Palette test - defines BG palette as Grayscale!
+        // Palette test - defines BG palette with a golden tint!
         vid.bg_palette = [
-            ColorRGB { r:   0, g:   0, b:   0 }, // BG, 0
-            ColorRGB { r:  16, g:  16, b:  16 }, // Black, 1
-            ColorRGB { r:  32, g:  32, b:  32 }, // Dark Gray, 2
-            ColorRGB { r:  64, g:  64, b:  64 }, // Gray 1, 3
-            ColorRGB { r:  80, g:  80, b:  80 }, // Gray 2, 4
-            ColorRGB { r:  96, g:  96, b:  96 }, // Gray 3, 5
-            ColorRGB { r: 112, g: 112, b: 112 }, // Gray 4, 6
-            ColorRGB { r: 128, g: 128, b: 128 }, // Medium Gray, 7
-            ColorRGB { r: 144, g: 144, b: 144 }, // Gray 5, 8
-            ColorRGB { r: 160, g: 160, b: 160 }, // Gray 6, 9
-            ColorRGB { r: 176, g: 176, b: 176 }, // Gray 7, 10
-            ColorRGB { r: 192, g: 192, b: 192 }, // Light Gray, 11
-            ColorRGB { r: 208, g: 208, b: 208 }, // Gray 8, 12
-            ColorRGB { r: 224, g: 224, b: 224 }, // Gray 9, 13
-            ColorRGB { r: 240, g: 240, b: 240 }, // Gray 10, 14
-            ColorRGB { r: 255, g: 255, b: 255 }, // White, 15
+            ColorRGB { r:  53, g:  28, b:  17 },
+            ColorRGB { r:  65, g:  33, b:  22 },
+            ColorRGB { r:  80, g:  43, b:  32 },
+            ColorRGB { r: 122, g:  54, b:  43 },
+            ColorRGB { r: 140, g:  60, b:  43 },
+            ColorRGB { r: 153, g:  71, b:  52 },
+            ColorRGB { r: 164, g:  87, b:  63 },
+            ColorRGB { r: 170, g:  97, b:  74 },
+            ColorRGB { r: 170, g: 107, b:  78 },
+            ColorRGB { r: 171, g: 116, b:  78 },
+            ColorRGB { r: 171, g: 121, b:  80 },
+            ColorRGB { r: 172, g: 131, b:  80 },
+            ColorRGB { r: 177, g: 136, b:  82 },
+            ColorRGB { r: 187, g: 141, b: 88 },
+            ColorRGB { r: 196, g: 147, b: 92 },
+            ColorRGB { r: 206, g: 152, b: 113 },
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
@@ -61,6 +61,7 @@ impl CameraScrolling {
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
+
                 vid.bg_map.set_tile(BgData {
                     col,
                     row,

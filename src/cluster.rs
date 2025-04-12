@@ -1,38 +1,46 @@
-use crate::{TILE_SIZE, TileFlags};
+use crate::{TILE_SIZE, TileFlags, err};
 
 pub const PIXELS_PER_CLUSTER: u8 = 8;
 
-/// A Cluster always stores 8 pixels
+/// A Cluster always stores 8 pixels, and simply gets larger the more colors you store in it.
+/// At 2 bits per pixel (4 colors) it is 2 bytes.
+/// Since we always have 8 bits per pixel, BITS_PER_PIXEL is also the number of bytes!
 #[derive(Clone, Copy)]
-pub struct Cluster<const BYTES: usize> {
-    // Raw storage - always 8 pixels
-    data: [u8; BYTES],
+pub struct Cluster<const BITS_PER_PIXEL: usize> {
+    data: [u8; BITS_PER_PIXEL],
 }
 
-impl<const BYTES: usize> Default for Cluster<BYTES> {
+impl<const BITS_PER_PIXEL: usize> Default for Cluster<BITS_PER_PIXEL> {
     fn default() -> Self {
-        Self { data: [0; BYTES] }
+        assert!(
+            BITS_PER_PIXEL > 0 && BITS_PER_PIXEL < 9,
+            err!("Invalid BITS_PER_PIXEL")
+        );
+        Self {
+            data: [0; BITS_PER_PIXEL],
+        }
     }
 }
 
-impl<const BYTES: usize> Cluster<BYTES> {
+impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
     // How many pixels fit in each byte
-    pub const PIXELS_PER_BYTE: usize = PIXELS_PER_CLUSTER as usize / BYTES;
-    // How many bits each pixel uses
-    pub const BITS_PER_PIXEL: usize = PIXELS_PER_CLUSTER as usize / Self::PIXELS_PER_BYTE;
+    pub const PIXELS_PER_BYTE: usize = PIXELS_PER_CLUSTER as usize / BITS_PER_PIXEL;
     // Mask for extracting a single pixel value
-    pub const MASK: u8 = (1 << Self::BITS_PER_PIXEL) - 1;
+    pub const MASK: u8 = (1 << BITS_PER_PIXEL) - 1;
 
     #[inline(always)]
     pub fn get_subpixel(&self, index: u8) -> u8 {
-        debug_assert!(index < PIXELS_PER_CLUSTER, "Pixel index out of bounds");
+        debug_assert!(
+            index < PIXELS_PER_CLUSTER,
+            err!("Pixel index out of bounds")
+        );
 
         // Calculate which byte contains this pixel
         let byte_idx = index as usize / Self::PIXELS_PER_BYTE;
 
         // Calculate position within the byte
         let pos_in_byte = index as usize % Self::PIXELS_PER_BYTE;
-        let shift = (Self::PIXELS_PER_BYTE - 1 - pos_in_byte) * Self::BITS_PER_PIXEL;
+        let shift = (Self::PIXELS_PER_BYTE - 1 - pos_in_byte) * BITS_PER_PIXEL;
 
         // Extract the pixel value
         (self.data[byte_idx] >> shift) & Self::MASK
@@ -40,7 +48,10 @@ impl<const BYTES: usize> Cluster<BYTES> {
 
     #[inline(always)]
     pub fn set_subpixel(&mut self, value: u8, index: u8) {
-        debug_assert!(index < PIXELS_PER_CLUSTER, "Pixel index out of bounds");
+        debug_assert!(
+            index < PIXELS_PER_CLUSTER,
+            err!("Pixel index out of bounds")
+        );
 
         // Limit value to valid range
         let value = value & Self::MASK;
@@ -50,7 +61,7 @@ impl<const BYTES: usize> Cluster<BYTES> {
 
         // Calculate position within the byte
         let pos_in_byte = index as usize % Self::PIXELS_PER_BYTE;
-        let shift = (Self::PIXELS_PER_BYTE - 1 - pos_in_byte) * Self::BITS_PER_PIXEL;
+        let shift = (Self::PIXELS_PER_BYTE - 1 - pos_in_byte) * BITS_PER_PIXEL;
 
         // Clear the bits for this pixel
         let mask = Self::MASK << shift;
@@ -62,7 +73,9 @@ impl<const BYTES: usize> Cluster<BYTES> {
 
     #[inline]
     pub fn flip(&self) -> Self {
-        let mut flipped = Self { data: [0; BYTES] };
+        let mut flipped = Self {
+            data: [0; BITS_PER_PIXEL],
+        };
 
         let mut left_pixel = 0;
         let mut right_pixel = PIXELS_PER_CLUSTER - 1;
@@ -71,12 +84,12 @@ impl<const BYTES: usize> Cluster<BYTES> {
             // Calculate positions for left pixel
             let left_byte = left_pixel as usize / Self::PIXELS_PER_BYTE;
             let left_pos = left_pixel as usize % Self::PIXELS_PER_BYTE;
-            let left_shift = (Self::PIXELS_PER_BYTE - 1 - left_pos) * Self::BITS_PER_PIXEL;
+            let left_shift = (Self::PIXELS_PER_BYTE - 1 - left_pos) * BITS_PER_PIXEL;
 
             // Calculate positions for right pixel
             let right_byte = right_pixel as usize / Self::PIXELS_PER_BYTE;
             let right_pos = right_pixel as usize % Self::PIXELS_PER_BYTE;
-            let right_shift = (Self::PIXELS_PER_BYTE - 1 - right_pos) * Self::BITS_PER_PIXEL;
+            let right_shift = (Self::PIXELS_PER_BYTE - 1 - right_pos) * BITS_PER_PIXEL;
 
             // Extract pixel values
             let left_val = (self.data[left_byte] >> left_shift) & Self::MASK;
@@ -100,7 +113,7 @@ impl<const BYTES: usize> Cluster<BYTES> {
     }
 
     #[inline]
-    pub fn from_tile(tile_pixels: &[Cluster<BYTES>], flags: TileFlags, row: u8) -> Self {
+    pub fn from_tile(tile_pixels: &[Cluster<BITS_PER_PIXEL>], flags: TileFlags, row: u8) -> Self {
         debug_assert!(row < 8, "Row index out of bounds");
 
         if flags.is_rotated() {
@@ -147,12 +160,9 @@ impl<const BYTES: usize> Cluster<BYTES> {
             if !flags.is_flipped_x() && !flags.is_flipped_y() {
                 return tile_pixels[row as usize];
             }
-
             // No rotation, just handle flipping
             let source_row = if flags.is_flipped_y() { 7 - row } else { row };
-
             let source_cluster = tile_pixels[source_row as usize];
-
             if flags.is_flipped_x() {
                 source_cluster.flip()
             } else {
