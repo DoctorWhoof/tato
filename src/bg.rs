@@ -47,7 +47,7 @@ impl BGMap {
         }
     }
 
-    pub fn set_tile_id(&mut self, col: u16, row: u16, tile_id: impl Into<TileID>) {
+    pub fn set_id(&mut self, col: u16, row: u16, tile_id: impl Into<TileID>) {
         if let Some(index) = self.get_index(col, row) {
             self.tiles[index] = tile_id.into();
         }
@@ -59,7 +59,7 @@ impl BGMap {
         }
     }
 
-    pub fn get_tile_id(&self, col: u16, row: u16) -> Option<TileID> {
+    pub fn get_id(&self, col: u16, row: u16) -> Option<TileID> {
         let index = self.get_index(col, row)?;
         Some(self.tiles[index])
     }

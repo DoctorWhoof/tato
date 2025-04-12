@@ -15,8 +15,8 @@ mod error;
 mod iter;
 use iter::*;
 
-mod pixels;
-pub use pixels::*;
+mod cluster;
+pub use cluster::*;
 
 mod tile;
 pub use tile::*;
@@ -39,10 +39,10 @@ pub const COLORS_PER_PALETTE: u8 = 16;
 pub const LOCAL_PALETTE_COUNT: u8 = 16;
 
 /// 4 pixels per byte (4 colors per pixel)
-pub const TILE_SUBPIXELS: u8 = PixelCluster::<2>::PIXELS_PER_BYTE as u8;
+pub const TILE_SUBPIXELS: u8 = Cluster::<2>::PIXELS_PER_BYTE as u8;
 
 /// 2 pixels per byte (16 colors per pixel)
-pub const FRAMEBUFFER_SUBPIXELS: u8 = PixelCluster::<4>::PIXELS_PER_BYTE as u8;
+pub const FRAMEBUFFER_SUBPIXELS: u8 = Cluster::<4>::PIXELS_PER_BYTE as u8;
 
 /// Number of columns in BG Map
 pub const BG_COLUMNS: u8 = 64;
@@ -56,7 +56,7 @@ pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
 /// Number of rows in BG Map times tile size, in pixels.
 pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
 
-/// Maximum sprite storage length (16 Kb with PixelCluster<2> used).
+/// Maximum sprite storage length (16 Kb with Cluster<2> used).
 const TILE_MEM_LEN: usize = 8182;
 
 /// A convenient packet of data used to draw a tile as a sprite.
@@ -90,7 +90,7 @@ pub struct VideoChip {
 
     // ---------------------- Main Data ----------------------
     // TODO: Make pub(Crate) after testing
-    scanlines: [[PixelCluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
+    scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
     crop_x: u8,
     crop_y: u8,
     max_x: u8,
@@ -99,7 +99,7 @@ pub struct VideoChip {
     // sprite_grid: SpriteGrid,
     // Pixel data for all tiles, stored as palette indices.
     // Max 64Kb or 256 tiles, whichever runs out first!
-    tile_pixels: [PixelCluster<2>; TILE_MEM_LEN], // 2 bits per pixel
+    tile_pixels: [Cluster<2>; TILE_MEM_LEN], // 2 bits per pixel
     // Array of sprite definitions. Max 256 (1 byte indices)
     tiles: [TileEntry; 256],
 
@@ -130,7 +130,7 @@ impl VideoChip {
             // fg_pixels: [0; FG_LEN],
             // sprite_grid: SpriteGrid::new(),
             bg_map: BGMap::new(),
-            tile_pixels: [PixelCluster::default(); TILE_MEM_LEN],
+            tile_pixels: [Cluster::default(); TILE_MEM_LEN],
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
@@ -138,7 +138,7 @@ impl VideoChip {
             fg_palette: [ColorRGB::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [ColorRGB::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-            scanlines: from_fn(|_| from_fn(|_| PixelCluster::default())),
+            scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
             max_x: (w - 1) as u8,
             max_y: (h - 1) as u8,
             tile_id_head: 0,
@@ -161,7 +161,7 @@ impl VideoChip {
         // );
         // println!(
         //     "   Tile Memory:\t\t\t{:.1} Kb",
-        //     (result.tile_pixels.len() * size_of::<PixelCluster<2>>()) as f32 / 1024.0
+        //     (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
         // );
         // println!(
         //     "   Tile entries:\t\t{:.1} Kb",
@@ -316,7 +316,7 @@ impl VideoChip {
         let tile_id = self.tile_id_head;
         let pixel_start = self.tile_pixel_head as usize;
 
-        // Each PixelCluster<2> holds 8 pixels, so divide by 8 to get cluster count
+        // Each Cluster<2> holds 8 pixels, so divide by 8 to get cluster count
         let len = (w as usize * h as usize + 7) / 8; // Ceiling division for required clusters
 
         // Check if we have enough space
@@ -423,24 +423,8 @@ impl VideoChip {
             for screen_x in wrapped_x..right_bound {
                 let local_x = screen_x - wrapped_x;
 
-                // Calculate tile coordinates and handle rotation/flipping
-                let (tx, ty) = if data.flags.is_rotated() {
-                    if data.flags.is_flipped_x() {
-                        (local_y, local_x)
-                    } else if data.flags.is_flipped_y() {
-                        (height - 1 - local_y, local_x)
-                    } else {
-                        (local_y, width - 1 - local_x)
-                    }
-                } else {
-                    if data.flags.is_flipped_x() {
-                        (width - 1 - local_x, local_y)
-                    } else if data.flags.is_flipped_y() {
-                        (local_x, height - 1 - local_y)
-                    } else {
-                        (local_x, local_y)
-                    }
-                };
+                let (tx, ty) =
+                    Self::transform_tile_coords(local_x, local_y, width, height, data.flags);
 
                 // Calculate pixel position within the tile
                 let pixel_index = ty as usize * tile.w as usize + tx as usize;
@@ -473,6 +457,32 @@ impl VideoChip {
         }
     }
 
+    #[inline(always)]
+    pub(crate) fn transform_tile_coords(x: u8, y: u8, w: u8, h: u8, flags: TileFlags) -> (u8, u8) {
+        // Handle both rotation and flipping
+        if flags.is_rotated() {
+            // For 90° clockwise rotation, swap x and y and flip the new x axis
+            let rotated_x = h - 1 - y;
+            let rotated_y = x;
+
+            // Apply additional flipping if needed
+            if flags.is_flipped_x() {
+                // Flipping X after 90° rotation is equivalent to flipping the new Y
+                (rotated_x, w - 1 - rotated_y)
+            } else if flags.is_flipped_y() {
+                // Flipping Y after 90° rotation is equivalent to flipping the new X
+                (h - 1 - rotated_x, rotated_y)
+            } else {
+                (rotated_x, rotated_y)
+            }
+        } else {
+            // Handle just flipping without rotation
+            let flipped_x = if flags.is_flipped_x() { w - 1 - x } else { x };
+            let flipped_y = if flags.is_flipped_y() { h - 1 - y } else { y };
+            (flipped_x, flipped_y)
+        }
+    }
+
     pub fn color_cycle(&mut self, palette: PaletteID, color: u8, min: u8, max: u8) {
         let color_cycle = &mut self.local_palettes[palette.id()][color as usize].0;
         if max > min {
@@ -491,7 +501,7 @@ impl VideoChip {
     pub fn start_frame(&mut self) {
         // Clear the sprite grid for the new frame
         for line in &mut self.scanlines {
-            *line = from_fn(|_| PixelCluster::default());
+            *line = from_fn(|_| Cluster::default());
         }
     }
 

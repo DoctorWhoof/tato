@@ -113,6 +113,26 @@ impl TileFlags {
         }
     }
 
+    pub const fn rotate_up(&mut self) {
+        self.0 &= 0b_0001_1111; // clear flags
+        self.0 |= 0b_0000_0000; // set flags
+    }
+
+    pub const fn rotate_left(&mut self) {
+        self.0 &= 0b_0001_1111; // clear flags
+        self.0 |= 0b_0010_0000; // set flags
+    }
+
+    pub const fn rotate_down(&mut self) {
+        self.0 &= 0b_0001_1111; // clear flags
+        self.0 |= 0b_0100_0000; // set flags
+    }
+
+    pub const fn rotate_right(&mut self) {
+        self.0 &= 0b_0001_1111; // clear flags
+        self.0 |= 0b_1010_0000; // set flags
+    }
+
     /// Current horizontal flip state.
     // First bit stores whether the tile is flipped horizontally
     pub const fn is_flipped_x(&self) -> bool {

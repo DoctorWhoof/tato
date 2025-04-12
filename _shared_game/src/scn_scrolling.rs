@@ -49,7 +49,7 @@ impl CameraScrolling {
 
         // Define new tiles
         let smiley = vid.new_tile(8, 8, &SMILEY);
-        let checker = vid.new_tile(8, 8, &TILE_SOLID);
+        let checker = vid.new_tile(8, 8, &ARROW);
         let arrow = vid.new_tile(8, 8, &ARROW);
 
         // Set BG tiles
@@ -124,34 +124,18 @@ impl CameraScrolling {
         let is_walking = {
             let (mut vel_x, mut vel_y) = (0.0, 0.0);
             if app.pad.is_down(Button::Left) {
-                // if self.player.x > 0.0 {
                 vel_x = -speed;
-                self.player.flags.set_flip_x(true);
-                self.player.flags.set_flip_y(false);
-                self.player.flags.set_rotation(true);
-                // }
+                self.player.flags.rotate_left();
             } else if app.pad.is_down(Button::Right) {
-                // if self.player.x <= vid.max_x() as f32 - TILE_SIZE as f32 {
                 vel_x = speed;
-                self.player.flags.set_flip_x(false);
-                self.player.flags.set_flip_y(false);
-                self.player.flags.set_rotation(true);
-                // }
+                self.player.flags.rotate_right();
             }
             if app.pad.is_down(Button::Up) {
-                // if self.player.y > 0.0 {
                 vel_y = -speed;
-                self.player.flags.set_flip_x(false);
-                self.player.flags.set_flip_y(false);
-                self.player.flags.set_rotation(false);
-                // }
+                self.player.flags.rotate_up();
             } else if app.pad.is_down(Button::Down) {
-                // if self.player.y <= vid.max_y() as f32 - TILE_SIZE as f32 {
                 vel_y = speed;
-                self.player.flags.set_flip_x(false);
-                self.player.flags.set_flip_y(true);
-                self.player.flags.set_rotation(false);
-                // }
+                self.player.flags.rotate_down();
             }
 
             if vel_x != 0.0 || vel_y != 0.0 {
@@ -166,16 +150,31 @@ impl CameraScrolling {
         // ------------------------------ Draw ------------------------------
 
         // Adjust scroll and palette before drawing characters! (immediate mode)
-        // let target_x = (self.player.x + 4.0 - (vid.width() as f32 / 2.0)).floor() as i16;
-        // let target_y = (self.player.y + 4.0 - (vid.height() as f32 / 2.0)).floor() as i16;
         let target_x = (self.player.x - 16.0 - (vid.width() as f32 / 2.0)).floor() as i16;
         let target_y = (self.player.y - 16.0 - (vid.height() as f32 / 2.0)).floor() as i16;
-        // let target_x = self.player.x as i16;
-        // let target_y = self.player.y as i16;
         vid.scroll_x = target_x;
         vid.scroll_y = target_y;
 
         vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
+
+        let counter = app.time as i64;
+        if counter % 2 == 0 {
+            for col in 0..BG_COLUMNS as u16 {
+                for row in 0..BG_ROWS as u16 {
+                    let Some(mut flags) = vid.bg_map.get_flags(col, row) else {
+                        continue;
+                    };
+                    if counter % 4 == 0 {
+                        // flags.rotate_up();
+                        flags.set_flip_y(false);
+                    } else {
+                        flags.set_flip_y(true);
+                        // flags.rotate_left();
+                    }
+                    vid.bg_map.set_flags(col, row, flags);
+                }
+            }
+        }
 
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
