@@ -1,17 +1,5 @@
-use videochip::*;
 
-mod scrolling;
-pub use scrolling::*;
-
-mod simple;
-pub use simple::*;
-
-mod simplest;
-pub use simplest::*;
-
-// ------------------------------- Shared Data -------------------------------
-
-pub const SMILEY: [u8; SINGLE_TILE_LEN] = [
+pub const SMILEY: [u8; 64] = [
     0, 0, 1, 1, 1, 1, 0, 0, //
     0, 1, 1, 1, 1, 1, 1, 0, //
     1, 1, 3, 1, 1, 3, 1, 1, //
@@ -22,7 +10,7 @@ pub const SMILEY: [u8; SINGLE_TILE_LEN] = [
     0, 0, 1, 1, 1, 1, 0, 0, //
 ];
 
-pub const ARROW: [u8; SINGLE_TILE_LEN] = [
+pub const ARROW: [u8; 64] = [
     0, 0, 0, 1, 0, 0, 0, 0, //
     0, 0, 1, 1, 1, 0, 0, 0, //
     0, 1, 1, 1, 1, 1, 0, 0, //
@@ -33,7 +21,7 @@ pub const ARROW: [u8; SINGLE_TILE_LEN] = [
     0, 0, 1, 1, 1, 0, 0, 0, //
 ];
 
-pub const LARGE_SPRITE: [u8; SINGLE_TILE_LEN * 4] = [
+pub const LARGE_SPRITE: [u8; 256] = [
     0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, //
     0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, //
     0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, //

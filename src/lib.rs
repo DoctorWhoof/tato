@@ -1,8 +1,5 @@
-// #![no_std]
+#![no_std]
 use core::array::from_fn;
-
-mod sprite_grid;
-pub use sprite_grid::*; // testing only, TODO: remove
 
 mod bg;
 pub use bg::*;
@@ -24,39 +21,52 @@ pub use pixels::*;
 mod tile;
 pub use tile::*;
 
-mod scanline;
-pub(crate) use scanline::*;
+/// FG Draw buffer height.
+pub const LINE_COUNT: usize = 196;
 
-mod int;
-pub(crate) use int::*;
-
-// All tile dimensions must be a multiple of TILE_SIZE.
-pub const TILE_SIZE: u16 = 8;
-pub const MIN_TILE_SIZE: u16 = 8;
-pub const MAX_TILE_SIZE: u16 = 32;
-pub const SINGLE_TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize; // in bytes
+/// All tile dimensions must be a multiple of TILE_SIZE.
+pub const TILE_SIZE: u8 = 8;
 
 // Colors and bit depth
-pub const PALETTE_COUNT: u8 = 16;
-pub const COLORS_PER_TILE: u8 = 1 << BITS_PER_PIXEL;
+/// Number of colors per tile (2 bits per pixel)
+pub const COLORS_PER_TILE: u8 = 4;
+
+/// Number of colors per palette (applies to FG and BG palette, 32 colors total)
 pub const COLORS_PER_PALETTE: u8 = 16;
 
-// FG Draw buffer width, in pixels. Effectively limits the maximum screen resolution
-// Update TODO: With new iterator approach this could be a field!
-pub const FG_WIDTH: u16 = 256;
-pub const FG_HEIGHT: u16 = 192;
-const LINES: usize = FG_HEIGHT as usize; // This is annoying but compiler requires it.
+/// How many "local" palettes
+/// (palettes of 4 colors that map each index to the main FG and BG palettes)
+pub const LOCAL_PALETTE_COUNT: u8 = 16;
 
-// BG scrollable size in pixels, also affects bg tile wrap around behavior
-// Must be multiple of TILE_SIZE!
-pub const BG_WIDTH: u16 = 512;
-pub const BG_HEIGHT: u16 = 512;
+/// 4 pixels per byte (4 colors per pixel)
+pub const TILE_SUBPIXELS: u8 = PixelCluster::<2>::PIXELS_PER_BYTE as u8;
 
-pub const BG_COLUMNS: u16 = BG_WIDTH / TILE_SIZE;
-pub const BG_ROWS: u16 = BG_HEIGHT / TILE_SIZE;
+/// 2 pixels per byte (16 colors per pixel)
+pub const FRAMEBUFFER_SUBPIXELS: u8 = PixelCluster::<4>::PIXELS_PER_BYTE as u8;
 
-// Maximum sprite storage size in bytes (16 Kb, 256x256 pixels at 4 bpp).
+/// Number of columns in BG Map
+pub const BG_COLUMNS: u8 = 64;
+
+/// Number of rows in BG Map
+pub const BG_ROWS: u8 = 64;
+
+/// Number of columns in BG Map times tile size, in pixels.
+pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
+
+/// Number of rows in BG Map times tile size, in pixels.
+pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
+
+/// Maximum sprite storage length (16 Kb with PixelCluster<2> used).
 const TILE_MEM_LEN: usize = 8182;
+
+/// A convenient packet of data used to draw a tile as a sprite.
+#[derive(Debug, Clone, Copy)]
+pub struct DrawBundle {
+    pub x: i16,
+    pub y: i16,
+    pub id: TileID,
+    pub flags: TileFlags,
+}
 
 /// Main drawing context that manages the screen, tiles, and palette.
 #[derive(Debug, Clone)]
@@ -69,7 +79,7 @@ pub struct VideoChip {
     pub fg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     pub bg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
-    pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; PALETTE_COUNT as usize],
+    pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     /// Maps all i16 values into the u8 range
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
@@ -79,15 +89,17 @@ pub struct VideoChip {
     pub scroll_y: i16,
 
     // ---------------------- Main Data ----------------------
-    // The width of the visible pixels. Does not include the scrolling buffer.
-    width: u16,
-    // The height of the visible pixels. Does not include the scrolling buffer.
-    height: u16,
+    // TODO: Make pub(Crate) after testing
+    scanlines: [[PixelCluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
+    crop_x: u8,
+    crop_y: u8,
+    max_x: u8,
+    max_y: u8,
     // Pixel buffers
-    sprite_grid: SpriteGrid<LINES>,
+    // sprite_grid: SpriteGrid,
     // Pixel data for all tiles, stored as palette indices.
     // Max 64Kb or 256 tiles, whichever runs out first!
-    tile_pixels: [PixelCluster; TILE_MEM_LEN],
+    tile_pixels: [PixelCluster<2>; TILE_MEM_LEN], // 2 bits per pixel
     // Array of sprite definitions. Max 256 (1 byte indices)
     tiles: [TileEntry; 256],
 
@@ -99,35 +111,24 @@ pub struct VideoChip {
     // Next available palette.
     palette_head: u8,
     // view rect cache
-    view_left: u16,
-    view_top: u16,
-    view_width: u16,
-    view_height: u16,
+    view_left: u8,
+    view_top: u8,
+    view_right: u8,
+    view_bottom: u8,
 }
+
+// TODO: change width and height into max_x and max_y
 
 impl VideoChip {
     /// Creates a new drawing context with default settings.
-    pub fn new(width: u16, height: u16) -> Self {
-        assert!(
-            width > 7 && width < 257,
-            err!("Screen width range is 8 to 256")
-        );
-        assert!(
-            height > 7 && height < 257,
-            err!("Screen height range is 8 to 256")
-        );
-        assert!(
-            BG_WIDTH % TILE_SIZE == 0,
-            err!("BG_WIDTH must be a multiple of TILE_SIZE")
-        );
-        assert!(
-            BG_HEIGHT % TILE_SIZE == 0,
-            err!("BG_HEIGHT must be a multiple of TILE_SIZE")
-        );
+    pub fn new(w: u32, h: u32) -> Self {
+        assert!(w > 7 && w < 257, err!("Screen width range is 8 to 256"));
+        assert!(h > 7 && h < 257, err!("Screen height range is 8 to 256"));
+        assert!(LINE_COUNT < 256, err!("LINE_COUNT must be less than 256"));
 
         let mut result = Self {
             // fg_pixels: [0; FG_LEN],
-            sprite_grid: SpriteGrid::new(width, height),
+            // sprite_grid: SpriteGrid::new(),
             bg_map: BGMap::new(),
             tile_pixels: [PixelCluster::default(); TILE_MEM_LEN],
             bg_color: GRAY,
@@ -136,67 +137,98 @@ impl VideoChip {
             tiles: [TileEntry::default(); 256],
             fg_palette: [ColorRGB::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [ColorRGB::default(); COLORS_PER_PALETTE as usize],
-            local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; PALETTE_COUNT as usize],
-            width,
-            height,
+            local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+            scanlines: from_fn(|_| from_fn(|_| PixelCluster::default())),
+            max_x: (w - 1) as u8,
+            max_y: (h - 1) as u8,
             tile_id_head: 0,
             tile_pixel_head: 0,
             palette_head: 0,
             view_left: 0,
             view_top: 0,
-            view_width: width,
-            view_height: height,
+            view_right: (w - 1) as u8,
+            view_bottom: (h - 1) as u8,
+            crop_x: 0,
+            crop_y: 0,
             scroll_x: 0,
             scroll_y: 0,
         };
         result.reset_all();
 
-        println!(
-            "Total Size of VideoChip:\t{:.1} Kb",
-            size_of::<VideoChip>() as f32 / 1024.0
-        );
-        println!(
-            "   Tile Memory:\t\t\t{:.1} Kb",
-            (result.tile_pixels.len() * size_of::<PixelCluster>()) as f32 / 1024.0
-        );
-        println!(
-            "   Sprite Grid:\t\t\t{:.1} Kb",
-            size_of::<SpriteGrid<LINES>>() as f32 / 1024.0
-        );
-        println!(
-            "   Tile entries:\t\t{:.1} Kb",
-            (result.tiles.len() * size_of::<TileEntry>()) as f32 / 1024.0
-        );
-        println!(
-            "   BG Map:\t\t\t{:.1} Kb",
-            size_of::<BGMap>() as f32 / 1024.0
-        );
-        println!(
-            "Size of PixelIter:\t{:.1} Kb",
-            size_of::<PixelIter>() as f32 / 1024.0
-        );
+        // println!(
+        //     "Total Size of VideoChip:\t{:.1} Kb",
+        //     size_of::<VideoChip>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "   Tile Memory:\t\t\t{:.1} Kb",
+        //     (result.tile_pixels.len() * size_of::<PixelCluster<2>>()) as f32 / 1024.0
+        // );
+        // println!(
+        //     "   Tile entries:\t\t{:.1} Kb",
+        //     (result.tiles.len() * size_of::<TileEntry>()) as f32 / 1024.0
+        // );
+        // println!(
+        //     "   BG Map:\t\t\t{:.1} Kb",
+        //     size_of::<BGMap>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "Size of PixelIter:\t{:.1} Kb",
+        //     size_of::<PixelIter>() as f32 / 1024.0
+        // );
 
         result
     }
 
-    pub fn width(&self) -> u16 {
-        self.width
+    pub fn max_x(&self) -> u8 {
+        self.max_x
     }
 
-    pub fn height(&self) -> u16 {
-        self.height
+    pub fn max_y(&self) -> u8 {
+        self.max_y
+    }
+
+    pub fn width(&self) -> u32 {
+        self.max_x as u32 + 1
+    }
+
+    pub fn height(&self) -> u32 {
+        self.max_y as u32 + 1
     }
 
     pub fn tile(&self, tile_id: TileID) -> TileEntry {
         self.tiles[tile_id.0 as usize]
     }
 
+    pub fn crop_x(&self) -> u8 {
+        self.crop_x
+    }
+
+    pub fn set_crop_x(&mut self, value: u8) {
+        assert!(
+            value < 255 - self.max_x + 1,
+            err!("crop_x must be lower than 255 - width")
+        );
+        self.crop_x = value;
+    }
+
+    pub fn crop_y(&self) -> u8 {
+        self.crop_y
+    }
+
+    pub fn set_crop_y(&mut self, value: u8) {
+        assert!(
+            value < 255 - self.max_y + 1,
+            err!("crop_y must be lower than 255 - height")
+        );
+        self.crop_y = value;
+    }
+
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter with BG Color!
-    pub fn set_viewport(&mut self, left: u16, top: u16, w: u16, h: u16) {
+    pub fn set_viewport(&mut self, left: u8, top: u8, w: u8, h: u8) {
         self.view_left = left;
         self.view_top = top;
-        self.view_width = w;
-        self.view_height = h;
+        self.view_right = left.saturating_add(w);
+        self.view_bottom = top.saturating_add(h);
     }
 
     pub fn reset_all(&mut self) {
@@ -206,6 +238,7 @@ impl VideoChip {
         self.reset_tiles();
         self.reset_palettes();
         self.reset_bgmap();
+        self.reset_crop();
         self.reset_viewport();
     }
 
@@ -237,6 +270,11 @@ impl VideoChip {
         self.scroll_y = 0;
     }
 
+    pub fn reset_crop(&mut self) {
+        self.crop_x = 0;
+        self.crop_y = 0;
+    }
+
     pub fn reset_bgmap(&mut self) {
         self.bg_map = BGMap::new();
     }
@@ -244,13 +282,13 @@ impl VideoChip {
     pub fn reset_viewport(&mut self) {
         self.view_left = 0;
         self.view_top = 0;
-        self.view_width = self.width;
-        self.view_height = self.height;
+        self.view_right = self.max_x;
+        self.view_bottom = self.max_y;
     }
 
     pub fn set_palette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
         debug_assert!(
-            index.0 < PALETTE_COUNT,
+            index.0 < LOCAL_PALETTE_COUNT,
             err!("Invalid local palette index, must be less than PALETTE_COUNT")
         );
         self.local_palettes[index.0 as usize] = colors;
@@ -274,10 +312,12 @@ impl VideoChip {
     /// - `h`: Height of the sprite
     /// - `data`: Array of bytes representing the sprite pixels
     /// (each byte is a local palette index, must be in range 0-3)
-    pub fn new_tile(&mut self, w: u16, h: u16, data: &[u8]) -> TileID {
+    pub fn new_tile(&mut self, w: u8, h: u8, data: &[u8]) -> TileID {
         let tile_id = self.tile_id_head;
         let pixel_start = self.tile_pixel_head as usize;
-        let len = (w as usize * h as usize) / 4; // Ceiling division for required bytes
+
+        // Each PixelCluster<2> holds 8 pixels, so divide by 8 to get cluster count
+        let len = (w as usize * h as usize + 7) / 8; // Ceiling division for required clusters
 
         // Check if we have enough space
         if self.tile_id_head == 255 || pixel_start + len > TILE_MEM_LEN {
@@ -291,8 +331,8 @@ impl VideoChip {
         );
 
         assert!(
-            w >= MIN_TILE_SIZE && w <= MAX_TILE_SIZE && h >= MIN_TILE_SIZE && h <= MAX_TILE_SIZE,
-            err!("Tile dimensions outside MIN_TILE_SIZE and MAX_TILE_SIZE")
+            w >= TILE_SIZE && h >= TILE_SIZE,
+            err!("Tile dimensions must be TILE_SIZE or larger")
         );
 
         // Assert that data length is correct
@@ -301,16 +341,18 @@ impl VideoChip {
             err!("Tile data length does not match w * h")
         );
 
-        // Pack 4 pixels (2 bits each) into each byte using set_subpixel
+        // Pack 8 pixels (2 bits each) into each cluster
         for i in 0..data.len() {
             // Clamp color to maximum allowed
             let value = data[i].clamp(0, COLORS_PER_TILE as u8);
-            // Acquire indices
-            let byte_index = i / PIXELS_PER_CLUSTER as usize;
-            let subpixel_index = i % PIXELS_PER_CLUSTER as usize;
+
+            // Acquire indices - each cluster holds 8 pixels
+            let cluster_index = i / 8; // 8 pixels per cluster
+            let subpixel_index = (i % 8) as u8;
+
             // Set pixel data
-            let cluster = &mut self.tile_pixels[pixel_start + byte_index];
-            cluster.set_subpixel(SubPixel(value), subpixel_index);
+            let cluster = &mut self.tile_pixels[pixel_start + cluster_index];
+            cluster.set_subpixel(value, subpixel_index);
         }
 
         let cluster_index = self.tile_pixel_head;
@@ -330,29 +372,105 @@ impl VideoChip {
             return;
         }
 
-        // Handle wrapping if enabled
-        let mut x = data.x - self.scroll_x;
-        let mut y = data.y - self.scroll_y;
-
+        // Handle wrapping
+        let wrapped_x: u8;
+        let wrapped_y: u8;
         if self.wrap_sprites {
-            x = (data.x - self.scroll_x).rem_euclid(FG_WIDTH as i16);
-            y = (data.y - self.scroll_y).rem_euclid(FG_HEIGHT as i16);
+            wrapped_x = (data.x - self.scroll_x).rem_euclid(256) as u8;
+            wrapped_y = (data.y - self.scroll_y).rem_euclid(LINE_COUNT as i16) as u8;
+        } else {
+            let max_x = self.scroll_x + self.max_x as i16 + self.crop_x as i16;
+            if data.x < self.scroll_x || data.x > max_x {
+                return;
+            } else {
+                wrapped_x = (data.x - self.scroll_x) as u8;
+            }
+            let max_y = self.scroll_y + self.max_y as i16 + self.crop_y as i16;
+            if data.y < self.scroll_y || data.y > max_y {
+                return;
+            } else {
+                wrapped_y = (data.y - self.scroll_y).clamp(0, LINE_COUNT as i16 - 1) as u8;
+            }
         }
 
-        // Insert the sprite into the grid
+        // Get tile info
         let tile = self.tiles[data.id.0 as usize];
-        let tile_len = tile.w as u16 * tile.h as u16;
-        let range = tile.cluster_index as usize..(tile.cluster_index + tile_len) as usize;
-        let clusters = &self.tile_pixels[range];
-        self.sprite_grid.insert(
-            clusters,
-            TileBundle {
-                flags: data.flags,
-                tile,
-                x,
-                y,
-            },
-        );
+
+        // Calculate effective sprite dimensions based on rotation
+        let (width, height) = if data.flags.is_rotated() {
+            (tile.h, tile.w) // Swap width and height for rotated sprites
+        } else {
+            (tile.w, tile.h)
+        };
+
+        // Calculate sprite boundaries in screen coordinates
+        let right_bound = if (wrapped_x as u16 + width as u16) > 255 {
+            255
+        } else {
+            wrapped_x + width
+        };
+
+        let bottom_bound = if (wrapped_y as u16 + height as u16) > LINE_COUNT as u16 {
+            LINE_COUNT as u8
+        } else {
+            wrapped_y + height
+        };
+
+        // Process each visible scanline
+        for screen_y in wrapped_y..bottom_bound {
+            let local_y = screen_y - wrapped_y;
+
+            for screen_x in wrapped_x..right_bound {
+                let local_x = screen_x - wrapped_x;
+
+                // Calculate tile coordinates and handle rotation/flipping
+                let (tx, ty) = if data.flags.is_rotated() {
+                    if data.flags.is_flipped_x() {
+                        (local_y, local_x)
+                    } else if data.flags.is_flipped_y() {
+                        (height - 1 - local_y, local_x)
+                    } else {
+                        (local_y, width - 1 - local_x)
+                    }
+                } else {
+                    if data.flags.is_flipped_x() {
+                        (width - 1 - local_x, local_y)
+                    } else if data.flags.is_flipped_y() {
+                        (local_x, height - 1 - local_y)
+                    } else {
+                        (local_x, local_y)
+                    }
+                };
+
+                // Calculate pixel position within the tile
+                let pixel_index = ty as usize * tile.w as usize + tx as usize;
+
+                // Calculate which cluster contains this pixel
+                let cluster_index = pixel_index / PIXELS_PER_CLUSTER as usize;
+
+                // Calculate the subpixel index within the cluster
+                let subpixel_index = (pixel_index % PIXELS_PER_CLUSTER as usize) as u8;
+
+                // Get the pixel color from the tile
+                let cluster = self.tile_pixels[(tile.cluster_index as usize) + cluster_index];
+                let color_index = cluster.get_subpixel(subpixel_index);
+
+                // If not transparent, draw it to the scanline
+                if color_index > 0 {
+                    // Translate to global palette color
+                    let palette_index = data.flags.palette().0 as usize;
+                    let color_id = self.local_palettes[palette_index][color_index as usize];
+
+                    // Calculate scanline cluster index and position
+                    let scanline_cluster = screen_x as usize / PIXELS_PER_CLUSTER as usize;
+                    let scanline_subpixel = (screen_x % PIXELS_PER_CLUSTER) as u8;
+
+                    // Set the pixel in the scanline
+                    self.scanlines[screen_y as usize][scanline_cluster]
+                        .set_subpixel(color_id.0, scanline_subpixel);
+                }
+            }
+        }
     }
 
     pub fn color_cycle(&mut self, palette: PaletteID, color: u8, min: u8, max: u8) {
@@ -372,7 +490,9 @@ impl VideoChip {
 
     pub fn start_frame(&mut self) {
         // Clear the sprite grid for the new frame
-        self.sprite_grid.clear();
+        for line in &mut self.scanlines {
+            *line = from_fn(|_| PixelCluster::default());
+        }
     }
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.

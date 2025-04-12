@@ -1,13 +1,13 @@
 use crate::*;
 use core::array::from_fn;
-use padstate::{Button, AnyButton};
+use padstate::{AnyButton, Button};
 use videochip::*;
 
 const SMILEY_COUNT: usize = 64;
 
 #[derive(Debug)]
 pub struct CameraScrolling {
-    player: Entity,
+    pub player: Entity,
     smileys: [Entity; SMILEY_COUNT],
     movement_start: f32, // will be used to store the time when the player starts moving
 }
@@ -19,6 +19,8 @@ impl CameraScrolling {
         vid.wrap_bg = false;
         vid.wrap_sprites = false;
         // vid.set_viewport(8, 8, 240, 176);
+        vid.set_crop_x(16);
+        vid.set_crop_y(16);
 
         // Palette test - defines BG palette as Grayscale!
         // vid.bg_palette = [
@@ -46,34 +48,33 @@ impl CameraScrolling {
         }
 
         // Define new tiles
-        let checker = vid.new_tile(8, 8, &TILE_SOLID);
         let smiley = vid.new_tile(8, 8, &SMILEY);
+        let checker = vid.new_tile(8, 8, &TILE_SOLID);
         let arrow = vid.new_tile(8, 8, &ARROW);
 
         // Set BG tiles
         let mut rng = SimpleRng::<i16>::new(0);
 
-        for col in 0..BG_COLUMNS as i16 {
-            for row in 0..BG_ROWS as i16 {
+        for col in 0..BG_COLUMNS as u16 {
+            for row in 0..BG_ROWS as u16 {
                 // Calculate palette ID based on coordinates, limits to 14 indices
-                let index = (col + row) % 14 as i16;
+                let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
                 vid.bg_map.set_tile(BgData {
                     col,
                     row,
                     tile_id: checker,
-                    flags: adjusted_palette.into(),
+                    flags: TileFlags::from(adjusted_palette),
                 });
             }
         }
 
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
-            // Avoid grayscale
             Entity {
-                x: rng.gen_range::<u16>(0, BG_WIDTH - TILE_SIZE) as f32,
-                y: rng.gen_range::<u16>(0, BG_HEIGHT - TILE_SIZE) as f32,
+                x: rng.gen_range::<i16>(0, BG_WIDTH as i16 - TILE_SIZE as i16) as f32,
+                y: rng.gen_range::<i16>(0, BG_HEIGHT as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale
             }
@@ -85,8 +86,8 @@ impl CameraScrolling {
         // Store initial state and return
         Self {
             player: Entity {
-                x: (BG_WIDTH / 2) as f32,
-                y: (BG_HEIGHT / 2) as f32,
+                x: (vid.max_x() / 2) as f32,
+                y: (vid.max_y() / 2) as f32,
                 tile: arrow,
                 flags: PaletteID(0).into(),
             },
@@ -96,7 +97,7 @@ impl CameraScrolling {
     }
 
     // Process the scene on each frame
-    pub fn update(&mut self, vid: &mut VideoChip, app:AppState) -> Option<Mode> {
+    pub fn update(&mut self, vid: &mut VideoChip, app: AppState) -> Option<Mode> {
         vid.start_frame();
 
         // ------------------------------ Input ------------------------------
@@ -123,34 +124,34 @@ impl CameraScrolling {
         let is_walking = {
             let (mut vel_x, mut vel_y) = (0.0, 0.0);
             if app.pad.is_down(Button::Left) {
-                if self.player.x > 0.0 {
-                    vel_x = -speed;
-                    self.player.flags.set_flip_x(true);
-                    self.player.flags.set_flip_y(false);
-                    self.player.flags.set_rotation(true);
-                }
+                // if self.player.x > 0.0 {
+                vel_x = -speed;
+                self.player.flags.set_flip_x(true);
+                self.player.flags.set_flip_y(false);
+                self.player.flags.set_rotation(true);
+                // }
             } else if app.pad.is_down(Button::Right) {
-                if self.player.x < BG_WIDTH as f32 - TILE_SIZE as f32 {
-                    vel_x = speed;
-                    self.player.flags.set_flip_x(false);
-                    self.player.flags.set_flip_y(false);
-                    self.player.flags.set_rotation(true);
-                }
+                // if self.player.x <= vid.max_x() as f32 - TILE_SIZE as f32 {
+                vel_x = speed;
+                self.player.flags.set_flip_x(false);
+                self.player.flags.set_flip_y(false);
+                self.player.flags.set_rotation(true);
+                // }
             }
             if app.pad.is_down(Button::Up) {
-                if self.player.y > 0.0 {
-                    vel_y = -speed;
-                    self.player.flags.set_flip_x(false);
-                    self.player.flags.set_flip_y(false);
-                    self.player.flags.set_rotation(false);
-                }
+                // if self.player.y > 0.0 {
+                vel_y = -speed;
+                self.player.flags.set_flip_x(false);
+                self.player.flags.set_flip_y(false);
+                self.player.flags.set_rotation(false);
+                // }
             } else if app.pad.is_down(Button::Down) {
-                if self.player.y < BG_HEIGHT as f32 - TILE_SIZE as f32 {
-                    vel_y = speed;
-                    self.player.flags.set_flip_x(false);
-                    self.player.flags.set_flip_y(true);
-                    self.player.flags.set_rotation(false);
-                }
+                // if self.player.y <= vid.max_y() as f32 - TILE_SIZE as f32 {
+                vel_y = speed;
+                self.player.flags.set_flip_x(false);
+                self.player.flags.set_flip_y(true);
+                self.player.flags.set_rotation(false);
+                // }
             }
 
             if vel_x != 0.0 || vel_y != 0.0 {
@@ -165,8 +166,10 @@ impl CameraScrolling {
         // ------------------------------ Draw ------------------------------
 
         // Adjust scroll and palette before drawing characters! (immediate mode)
-        let target_x = (self.player.x + 4.0 - (vid.width() as f32 / 2.0)).floor() as i16;
-        let target_y = (self.player.y + 4.0 - (vid.height() as f32 / 2.0)).floor() as i16;
+        // let target_x = (self.player.x + 4.0 - (vid.width() as f32 / 2.0)).floor() as i16;
+        // let target_y = (self.player.y + 4.0 - (vid.height() as f32 / 2.0)).floor() as i16;
+        let target_x = (self.player.x - 16.0 - (vid.width() as f32 / 2.0)).floor() as i16;
+        let target_y = (self.player.y - 16.0 - (vid.height() as f32 / 2.0)).floor() as i16;
         // let target_x = self.player.x as i16;
         // let target_y = self.player.y as i16;
         vid.scroll_x = target_x;
@@ -174,31 +177,7 @@ impl CameraScrolling {
 
         vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
 
-        // Draw Sprites with hover animation
-        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
-            let hover = (libm::sinf(phase * speed) + 1.0) * height;
-            vid.draw_sprite(DrawBundle {
-                x: (entity.x - 1.0).floor() as i16,
-                y: (entity.y - 1.0 - hover).floor() as i16,
-                id: entity.tile,
-                flags: entity.flags,
-            });
-        };
-
-        // Player goes in front. Due to how pixels are iterated, drawing a sprite
-        // first means it has highest priority!
-        let hover_phase = app.time as f32 - self.movement_start;
-        let hover_speed = if is_walking { 24.0 * speed } else { 8.0 };
-        let hover_height = if is_walking { 2.0 } else { 1.5 };
-        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
-
-        for entity in &self.smileys {
-            // passing x as phase gives us out-of-sync motion
-            let hover_phase = entity.x + app.time as f32;
-            sprite_hover(entity, hover_phase, 6.0, 1.5);
-        }
-
-        // Draw shadows last (lowest priority).
+        // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
             vid.draw_sprite(DrawBundle {
                 x: entity.x as i16,
@@ -213,6 +192,36 @@ impl CameraScrolling {
             sprite_shadow(entity);
         }
         sprite_shadow(&self.player);
+
+        // Draw Sprites with hover animation
+        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
+            let hover = (libm::sinf(phase * speed) + 1.0) * height;
+            vid.draw_sprite(DrawBundle {
+                x: (entity.x - 1.0).floor() as i16,
+                y: (entity.y - 1.0 - hover).floor() as i16,
+                id: entity.tile,
+                flags: entity.flags,
+            });
+        };
+
+        for entity in &self.smileys {
+            // passing x as phase gives us out-of-sync motion
+            let hover_phase = entity.x + app.time as f32;
+            sprite_hover(entity, hover_phase, 6.0, 1.5);
+        }
+
+        // Player goes in front. Drawing a sprite last means it has highest priority!
+        let hover_phase = app.time as f32 - self.movement_start;
+        let hover_speed = if is_walking { 24.0 * speed } else { 8.0 };
+        let hover_height = if is_walking { 2.0 } else { 1.5 };
+        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
+
+        vid.draw_sprite(DrawBundle {
+            x: 0,
+            y: 0,
+            id: TileID(0),
+            flags: TileFlags::default(),
+        });
 
         // ------------------- Return mode switch request -------------------
 

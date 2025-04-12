@@ -1,8 +1,17 @@
-mod scenes;
-pub use scenes::*;
+mod data;
+pub use data::*;
 
 mod random;
 pub use random::*;
+
+mod scn_scrolling;
+pub use scn_scrolling::*;
+
+mod scn_simple;
+pub use scn_simple::*;
+
+mod scn_simplest;
+pub use scn_simplest::*;
 
 use videochip::*;
 
@@ -16,9 +25,9 @@ pub struct AppState {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Entity {
-    x: f32,
-    y: f32,
+pub struct Entity {
+    pub x: f32,
+    pub y: f32,
     tile: TileID,
     flags: TileFlags,
 }

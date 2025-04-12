@@ -13,12 +13,18 @@ impl MinimalScene {
         let tile = vid.new_tile(8, 8, &TILE_SOLID);
         let smiley = vid.new_tile(16, 16, &LARGE_SPRITE);
 
+        for row in 0..BG_ROWS as u16 {
+            for col in 0..BG_COLUMNS as u16 {
+                vid.bg_map.set_flags(col, row, TileFlags::default().fg());
+            }
+        }
+
         for id in 0..16 as u8 {
             vid.bg_map.set_tile(BgData {
-                col: id as i16,
+                col: id as u16,
                 row: 0,
                 tile_id: tile,
-                flags: PaletteID(id % 16).into(),
+                flags: TileFlags::from(PaletteID(id % 16)).fg(),
             });
             vid.set_palette(PaletteID(id), [BG, ColorID(id), BG, BG]);
         }
@@ -26,7 +32,7 @@ impl MinimalScene {
         MinimalScene { smiley, counter: 0 }
     }
 
-    pub fn update(&mut self, vid: &mut VideoChip, app:AppState) -> Option<Mode> {
+    pub fn update(&mut self, vid: &mut VideoChip, app: AppState) -> Option<Mode> {
         vid.start_frame();
 
         // Drawing the sprite directly, no Entity
