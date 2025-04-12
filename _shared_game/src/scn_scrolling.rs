@@ -1,7 +1,7 @@
 use crate::*;
 use core::array::from_fn;
 use padstate::{AnyButton, Button};
-use videochip::*;
+use tato_video::*;
 
 const SMILEY_COUNT: usize = 64;
 

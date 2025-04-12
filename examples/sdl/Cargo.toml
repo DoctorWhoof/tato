@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 shared_game = { path = "../../_shared_game" }
 mini_sdl = { path = "../../../mini_sdl_old", features = ["ttf"] }
-videochip = { path = "../../" }
+tato_video = { path = "../../" }

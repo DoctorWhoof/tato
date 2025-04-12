@@ -1,7 +1,7 @@
 // #![no_std]
 use mini_sdl::*;
 use shared_game::*;
-use videochip::*;
+use tato_video::*;
 
 fn main() -> SdlResult<()> {
     let mut vid = VideoChip::new(240, 180);

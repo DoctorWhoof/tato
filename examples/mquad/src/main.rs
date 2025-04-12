@@ -7,7 +7,7 @@ async fn main() {
     const W: u16 = 256;
     const H: u16 = 196;
 
-    let mut vid = videochip::VideoChip::new(W, H);
+    let mut vid = tato_video::VideoChip::new(W, H);
     let mut scene = shared_game::Scene::A(CameraScrolling::new(&mut vid));
     let mut pad = padstate::DPad::new();
     let mut render_image = Image::gen_image_color(W.into(), H.into(), BLACK);

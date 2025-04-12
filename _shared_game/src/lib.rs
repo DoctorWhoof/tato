@@ -13,7 +13,7 @@ pub use scn_simple::*;
 mod scn_simplest;
 pub use scn_simplest::*;
 
-use videochip::*;
+use tato_video::*;
 
 use padstate::*;
 

@@ -7,4 +7,4 @@ edition = "2024"
 macroquad = "0.4.14"
 padstate = "0.2.5"
 shared_game = { path = "../../_shared_game" }
-videochip = { path = "../../" }
+tato_video = { path = "../../" }

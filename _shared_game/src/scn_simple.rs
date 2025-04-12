@@ -1,5 +1,5 @@
 use crate::*;
-use videochip::VideoChip;
+use tato_video::VideoChip;
 
 #[derive(Debug)]
 pub struct FixedCamera {

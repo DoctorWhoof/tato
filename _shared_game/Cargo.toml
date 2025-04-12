@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 libm = "0.2.11"
 padstate = "0.2.5"
-videochip = {path = "../"}
+tato_video = {path = "../"}
