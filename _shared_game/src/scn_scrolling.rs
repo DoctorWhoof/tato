@@ -55,17 +55,17 @@ impl CameraScrolling {
         // Set BG tiles
         let mut rng = SimpleRng::<i16>::new(0);
 
-        for col in 0..BG_COLUMNS as i16 {
-            for row in 0..BG_ROWS as i16 {
+        for col in 0..BG_COLUMNS as u16 {
+            for row in 0..BG_ROWS as u16 {
                 // Calculate palette ID based on coordinates, limits to 14 indices
-                let index = (col + row) % 14 as i16;
+                let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
                 vid.bg_map.set_tile(BgData {
                     col,
                     row,
                     tile_id: checker,
-                    flags: adjusted_palette.into(),
+                    flags: TileFlags::from(adjusted_palette),
                 });
             }
         }

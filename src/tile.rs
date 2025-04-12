@@ -65,8 +65,8 @@ impl TileFlags {
         Self(self.0 | 0b_0010_0000)
     }
 
-    /// Consumes the original flag and ensures it's rendered behind BG tiles.
-    pub const fn bg(self) -> Self {
+    /// Consumes the original flag and ensures a BG tiles is rendered in front of sprites.
+    pub const fn fg(self) -> Self {
         Self(self.0 | 0b_0001_0000)
     }
 
@@ -103,8 +103,9 @@ impl TileFlags {
         }
     }
 
-    /// If true flag will be rendered behind BG tiles.
-    pub const fn set_bg(&mut self, state: bool) {
+    /// If true and this is a BG tile, it will be rendered in front of sprites.
+    /// This value is ignored when used on sprites.
+    pub const fn set_fg(&mut self, state: bool) {
         if state {
             self.0 |= 0b_0001_0000
         } else {
@@ -130,9 +131,10 @@ impl TileFlags {
         self.0 & 0b_0010_0000 != 0
     }
 
-    /// Current rotation state.
+    /// If true and this is a BG tile, it will be rendered in front of sprites.
+    /// This value is ignored when used on sprites.
     // fourth bit
-    pub const fn is_bg(&self) -> bool {
+    pub const fn is_fg(&self) -> bool {
         self.0 & 0b_0001_0000 != 0
     }
 

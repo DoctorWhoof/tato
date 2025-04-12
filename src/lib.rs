@@ -21,30 +21,42 @@ pub use pixels::*;
 mod tile;
 pub use tile::*;
 
-// FG Draw buffer height.
+/// FG Draw buffer height.
 pub const LINE_COUNT: usize = 196;
 
-// All tile dimensions must be a multiple of TILE_SIZE.
+/// All tile dimensions must be a multiple of TILE_SIZE.
 pub const TILE_SIZE: u8 = 8;
-pub const MIN_TILE_SIZE: u8 = 8;
-pub const MAX_TILE_SIZE: u8 = 32;
-pub const SINGLE_TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize; // in bytes
 
 // Colors and bit depth
-pub const PALETTE_COUNT: u8 = 16;
+/// Number of colors per tile (2 bits per pixel)
 pub const COLORS_PER_TILE: u8 = 4;
+
+/// Number of colors per palette (applies to FG and BG palette, 32 colors total)
 pub const COLORS_PER_PALETTE: u8 = 16;
 
+/// How many "local" palettes
+/// (palettes of 4 colors that map each index to the main FG and BG palettes)
+pub const LOCAL_PALETTE_COUNT: u8 = 16;
+
+/// 4 pixels per byte (4 colors per pixel)
 pub const TILE_SUBPIXELS: u8 = PixelCluster::<2>::PIXELS_PER_BYTE as u8;
+
+/// 2 pixels per byte (16 colors per pixel)
 pub const FRAMEBUFFER_SUBPIXELS: u8 = PixelCluster::<4>::PIXELS_PER_BYTE as u8;
 
-// BG Map
+/// Number of columns in BG Map
 pub const BG_COLUMNS: u8 = 64;
+
+/// Number of rows in BG Map
 pub const BG_ROWS: u8 = 64;
+
+/// Number of columns in BG Map times tile size, in pixels.
 pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
+
+/// Number of rows in BG Map times tile size, in pixels.
 pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
 
-// Maximum sprite storage length (16 Kb if PixelCluster<2> used).
+/// Maximum sprite storage length (16 Kb with PixelCluster<2> used).
 const TILE_MEM_LEN: usize = 8182;
 
 /// A convenient packet of data used to draw a tile as a sprite.
@@ -67,7 +79,7 @@ pub struct VideoChip {
     pub fg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     pub bg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
-    pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; PALETTE_COUNT as usize],
+    pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     /// Maps all i16 values into the u8 range
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
@@ -125,7 +137,7 @@ impl VideoChip {
             tiles: [TileEntry::default(); 256],
             fg_palette: [ColorRGB::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [ColorRGB::default(); COLORS_PER_PALETTE as usize],
-            local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; PALETTE_COUNT as usize],
+            local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             scanlines: from_fn(|_| from_fn(|_| PixelCluster::default())),
             max_x: (w - 1) as u8,
             max_y: (h - 1) as u8,
@@ -187,12 +199,20 @@ impl VideoChip {
         self.tiles[tile_id.0 as usize]
     }
 
+    pub fn crop_x(&self) -> u8 {
+        self.crop_x
+    }
+
     pub fn set_crop_x(&mut self, value: u8) {
         assert!(
             value < 255 - self.max_x + 1,
             err!("crop_x must be lower than 255 - width")
         );
         self.crop_x = value;
+    }
+
+    pub fn crop_y(&self) -> u8 {
+        self.crop_y
     }
 
     pub fn set_crop_y(&mut self, value: u8) {
@@ -218,6 +238,7 @@ impl VideoChip {
         self.reset_tiles();
         self.reset_palettes();
         self.reset_bgmap();
+        self.reset_crop();
         self.reset_viewport();
     }
 
@@ -249,6 +270,11 @@ impl VideoChip {
         self.scroll_y = 0;
     }
 
+    pub fn reset_crop(&mut self) {
+        self.crop_x = 0;
+        self.crop_y = 0;
+    }
+
     pub fn reset_bgmap(&mut self) {
         self.bg_map = BGMap::new();
     }
@@ -262,7 +288,7 @@ impl VideoChip {
 
     pub fn set_palette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
         debug_assert!(
-            index.0 < PALETTE_COUNT,
+            index.0 < LOCAL_PALETTE_COUNT,
             err!("Invalid local palette index, must be less than PALETTE_COUNT")
         );
         self.local_palettes[index.0 as usize] = colors;
@@ -305,8 +331,8 @@ impl VideoChip {
         );
 
         assert!(
-            w >= MIN_TILE_SIZE && w <= MAX_TILE_SIZE && h >= MIN_TILE_SIZE && h <= MAX_TILE_SIZE,
-            err!("Tile dimensions outside MIN_TILE_SIZE and MAX_TILE_SIZE")
+            w >= TILE_SIZE && h >= TILE_SIZE,
+            err!("Tile dimensions must be TILE_SIZE or larger")
         );
 
         // Assert that data length is correct

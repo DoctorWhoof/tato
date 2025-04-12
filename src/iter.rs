@@ -17,7 +17,7 @@ pub struct PixelIter<'a> {
     bg_cluster: PixelCluster<2>, // Current pixel cluster
     fg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     bg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
-    local_palettes: [[ColorID; COLORS_PER_TILE as usize]; PALETTE_COUNT as usize],
+    local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
 }
 
 pub struct ScreenCoords {
@@ -101,6 +101,46 @@ impl<'a> PixelIter<'a> {
         // Get subpixel index within the cluster (0-7)
         self.subpixel_index = (local_index % PIXELS_PER_CLUSTER as usize) as u8;
     }
+
+    #[inline]
+    fn get_pixel_color(&self) -> ColorRGB {
+        if self.current_bg_flags.is_fg() && !self.force_bg_color {
+            let bg_palette = self.current_bg_flags.palette().0 as usize;
+            let color = self.bg_cluster.get_subpixel(self.subpixel_index);
+            if color > 0 {
+                let global_idx = self.local_palettes[bg_palette][color as usize].0 as usize;
+                return self.bg_palette[global_idx];
+            }
+        }
+
+        // Render sprite, fall back to BG if sprite is zero
+        let relative_x = (self.x as usize).saturating_add(self.vid.crop_x as usize);
+        let x_cluster = relative_x / PIXELS_PER_CLUSTER as usize;
+        let sub_index = (relative_x % PIXELS_PER_CLUSTER as usize) as u8;
+        let fg_pixel = {
+            let fg_cluster = self.scanline[x_cluster];
+            fg_cluster.get_subpixel(sub_index)
+        };
+
+        // Get color - FG has priority if not transparent
+        if fg_pixel > 0 {
+            self.fg_palette[fg_pixel as usize]
+        } else if self.force_bg_color {
+            // Use background color if we're outside bounds
+            self.bg_color
+        } else {
+            // Get pixel from current cluster
+            let color = self.bg_cluster.get_subpixel(self.subpixel_index);
+            // If transparent, use background color
+            if color == 0 {
+                self.bg_color
+            } else {
+                let bg_palette = self.current_bg_flags.palette().0 as usize;
+                let global_idx = self.local_palettes[bg_palette][color as usize].0 as usize;
+                self.bg_palette[global_idx]
+            }
+        }
+    }
 }
 
 impl<'a> Iterator for PixelIter<'a> {
@@ -126,33 +166,7 @@ impl<'a> Iterator for PixelIter<'a> {
             self.bg_color
         } else {
             // Check for foreground pixel, compensating for crop_x
-            let relative_x = (self.x as usize).saturating_add(self.vid.crop_x as usize);
-            let x_cluster = relative_x / PIXELS_PER_CLUSTER as usize;
-            let sub_index = (relative_x % PIXELS_PER_CLUSTER as usize) as u8;
-            let fg_pixel = {
-                let fg_cluster = self.scanline[x_cluster];
-                fg_cluster.get_subpixel(sub_index)
-            };
-
-            // Get color - FG has priority if not transparent
-            if fg_pixel > 0 {
-                self.fg_palette[fg_pixel as usize]
-            } else if self.force_bg_color {
-                // Use background color if we're outside bounds
-                self.bg_color
-            } else {
-                // Get pixel from current cluster
-                let color = self.bg_cluster.get_subpixel(self.subpixel_index);
-
-                // If transparent, use background color
-                if color == 0 {
-                    self.bg_color
-                } else {
-                    let palette = self.current_bg_flags.palette().0 as usize;
-                    let global_idx = self.local_palettes[palette][color as usize].0 as usize;
-                    self.bg_palette[global_idx]
-                }
-            }
+            self.get_pixel_color()
         };
 
         // Increment screen position
@@ -190,8 +204,9 @@ impl<'a> Iterator for PixelIter<'a> {
             let was_outside = self.force_bg_color;
 
             // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
-            let outside =
-                raw_x < 0 || raw_y < 0 || raw_x >= BG_WIDTH as i16 || raw_y >= BG_HEIGHT as i16;
+            let w = BG_WIDTH as i16;
+            let h = BG_HEIGHT as i16;
+            let outside = raw_x < 0 || raw_y < 0 || raw_x >= w || raw_y >= h;
 
             self.force_bg_color = !self.wrap_bg && outside;
 

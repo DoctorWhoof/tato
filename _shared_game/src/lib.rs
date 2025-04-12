@@ -1,8 +1,17 @@
-mod scenes;
-pub use scenes::*;
+mod data;
+pub use data::*;
 
 mod random;
 pub use random::*;
+
+mod scn_scrolling;
+pub use scn_scrolling::*;
+
+mod scn_simple;
+pub use scn_simple::*;
+
+mod scn_simplest;
+pub use scn_simplest::*;
 
 use videochip::*;
 
