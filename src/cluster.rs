@@ -1,4 +1,4 @@
-use crate::{TileFlags, TILE_SIZE};
+use crate::{TILE_SIZE, TileFlags};
 
 pub const PIXELS_PER_CLUSTER: u8 = 8;
 
@@ -100,17 +100,13 @@ impl<const BYTES: usize> Cluster<BYTES> {
     }
 
     #[inline]
-    pub fn from_tile(tile_pixels: &[Cluster<BYTES>; 8], flags: TileFlags, row: u8) -> Self {
+    pub fn from_tile(tile_pixels: &[Cluster<BYTES>], flags: TileFlags, row: u8) -> Self {
         debug_assert!(row < 8, "Row index out of bounds");
 
         if flags.is_rotated() {
             // For 90° clockwise rotation
             let mut rotated = Self::default();
-            const HIGH:u8 = TILE_SIZE - 1;
-
-            // In 90° clockwise rotation:
-            // - The top row (row 0) becomes the rightmost column (column 7)
-            // - The bottom row (row 7) becomes the leftmost column (column 0)
+            const HIGH: u8 = TILE_SIZE - 1;
 
             // First, determine which column we need
             let col = if flags.is_flipped_y() {
@@ -147,6 +143,11 @@ impl<const BYTES: usize> Cluster<BYTES> {
 
             rotated
         } else {
+            // No transformations - return the source cluster directly
+            if !flags.is_flipped_x() && !flags.is_flipped_y() {
+                return tile_pixels[row as usize];
+            }
+
             // No rotation, just handle flipping
             let source_row = if flags.is_flipped_y() { 7 - row } else { row };
 

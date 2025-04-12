@@ -85,17 +85,12 @@ impl<'a> PixelIter<'a> {
         let tile_y = (bg_y % TILE_SIZE as u16) as u8;
 
         // Get the tile
-        let tile = self.vid.tiles[current_bg_tile_id as usize];
-
-        // Create a local array of the 8 clusters that make up this tile
-        let mut tile_clusters: [Cluster<2>; 8] = [Cluster::default(); 8];
-        for i in 0..8 {
-            let cluster_idx = tile.cluster_index as usize + i;
-            tile_clusters[i] = self.vid.tile_pixels[cluster_idx];
-        }
+        let tile_entry = self.vid.tiles[current_bg_tile_id as usize];
+        let tile_start = tile_entry.cluster_index as usize;
+        let tile_clusters = &self.vid.tile_pixels[tile_start .. tile_start + 8];
 
         // Get the correct cluster with transformations applied
-        self.bg_cluster = Cluster::from_tile(&tile_clusters, self.current_bg_flags, tile_y);
+        self.bg_cluster = Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y);
 
         // Calculate subpixel index within the cluster (0-7)
         self.subpixel_index = tile_x % PIXELS_PER_CLUSTER;
