@@ -23,24 +23,24 @@ impl CameraScrolling {
         vid.set_crop_y(16);
 
         // Palette test - defines BG palette as Grayscale!
-        // vid.bg_palette = [
-        //     ColorRGB { r:   0, g:   0, b:   0 }, // BG, 0
-        //     ColorRGB { r:  16, g:  16, b:  16 }, // Black, 1
-        //     ColorRGB { r:  32, g:  32, b:  32 }, // Dark Gray, 2
-        //     ColorRGB { r:  64, g:  64, b:  64 }, // Gray 1, 3
-        //     ColorRGB { r:  80, g:  80, b:  80 }, // Gray 2, 4
-        //     ColorRGB { r:  96, g:  96, b:  96 }, // Gray 3, 5
-        //     ColorRGB { r: 112, g: 112, b: 112 }, // Gray 4, 6
-        //     ColorRGB { r: 128, g: 128, b: 128 }, // Medium Gray, 7
-        //     ColorRGB { r: 144, g: 144, b: 144 }, // Gray 5, 8
-        //     ColorRGB { r: 160, g: 160, b: 160 }, // Gray 6, 9
-        //     ColorRGB { r: 176, g: 176, b: 176 }, // Gray 7, 10
-        //     ColorRGB { r: 192, g: 192, b: 192 }, // Light Gray, 11
-        //     ColorRGB { r: 208, g: 208, b: 208 }, // Gray 8, 12
-        //     ColorRGB { r: 224, g: 224, b: 224 }, // Gray 9, 13
-        //     ColorRGB { r: 240, g: 240, b: 240 }, // Gray 10, 14
-        //     ColorRGB { r: 255, g: 255, b: 255 }, // White, 15
-        // ];
+        vid.bg_palette = [
+            ColorRGB { r:   0, g:   0, b:   0 }, // BG, 0
+            ColorRGB { r:  16, g:  16, b:  16 }, // Black, 1
+            ColorRGB { r:  32, g:  32, b:  32 }, // Dark Gray, 2
+            ColorRGB { r:  64, g:  64, b:  64 }, // Gray 1, 3
+            ColorRGB { r:  80, g:  80, b:  80 }, // Gray 2, 4
+            ColorRGB { r:  96, g:  96, b:  96 }, // Gray 3, 5
+            ColorRGB { r: 112, g: 112, b: 112 }, // Gray 4, 6
+            ColorRGB { r: 128, g: 128, b: 128 }, // Medium Gray, 7
+            ColorRGB { r: 144, g: 144, b: 144 }, // Gray 5, 8
+            ColorRGB { r: 160, g: 160, b: 160 }, // Gray 6, 9
+            ColorRGB { r: 176, g: 176, b: 176 }, // Gray 7, 10
+            ColorRGB { r: 192, g: 192, b: 192 }, // Light Gray, 11
+            ColorRGB { r: 208, g: 208, b: 208 }, // Gray 8, 12
+            ColorRGB { r: 224, g: 224, b: 224 }, // Gray 9, 13
+            ColorRGB { r: 240, g: 240, b: 240 }, // Gray 10, 14
+            ColorRGB { r: 255, g: 255, b: 255 }, // White, 15
+        ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
         for i in 0..PALETTE_DEFAULT.len() {
@@ -65,7 +65,7 @@ impl CameraScrolling {
                     col,
                     row,
                     tile_id: checker,
-                    flags: TileFlags::from(adjusted_palette),
+                    flags: TileFlags::from(adjusted_palette).with_rotation(),
                 });
             }
         }
@@ -157,22 +157,15 @@ impl CameraScrolling {
 
         vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
 
-        let counter = app.time as i64;
-        if counter % 2 == 0 {
-            for col in 0..BG_COLUMNS as u16 {
-                for row in 0..BG_ROWS as u16 {
-                    let Some(mut flags) = vid.bg_map.get_flags(col, row) else {
-                        continue;
-                    };
-                    if counter % 4 == 0 {
-                        // flags.rotate_up();
-                        flags.set_flip_y(false);
-                    } else {
-                        flags.set_flip_y(true);
-                        // flags.rotate_left();
-                    }
-                    vid.bg_map.set_flags(col, row, flags);
-                }
+        for col in 0..BG_COLUMNS as u16 {
+            for row in 0..BG_ROWS as u16 {
+                let Some(mut flags) = vid.bg_map.get_flags(col, row) else {
+                    continue;
+                };
+                flags.set_rotation(self.player.flags.is_rotated());
+                flags.set_flip_x(self.player.flags.is_flipped_x());
+                flags.set_flip_y(self.player.flags.is_flipped_y());
+                vid.bg_map.set_flags(col, row, flags);
             }
         }
 
@@ -183,7 +176,7 @@ impl CameraScrolling {
                 y: entity.y as i16,
                 id: entity.tile,
                 // Remember, we generated palettes that match the color indices
-                flags: entity.flags.replace_palette(PaletteID(BLACK.0)),
+                flags: entity.flags.with_palette(PaletteID(BLACK.0)),
             });
         };
 

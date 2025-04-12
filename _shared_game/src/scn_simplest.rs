@@ -15,7 +15,7 @@ impl MinimalScene {
 
         for row in 0..BG_ROWS as u16 {
             for col in 0..BG_COLUMNS as u16 {
-                vid.bg_map.set_flags(col, row, TileFlags::default().fg());
+                vid.bg_map.set_flags(col, row, TileFlags::default().with_fg());
             }
         }
 
@@ -24,7 +24,7 @@ impl MinimalScene {
                 col: id as u16,
                 row: 0,
                 tile_id: tile,
-                flags: TileFlags::from(PaletteID(id % 16)).fg(),
+                flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
             });
             vid.set_palette(PaletteID(id), [BG, ColorID(id), BG, BG]);
         }

@@ -51,7 +51,7 @@ impl<'a> PixelIter<'a> {
         // Calculate the starting subpixel_index based on scroll position
         if !result.force_bg_color {
             // First update the cluster
-            result.update_indices();
+            result.update_bg_cluster();
 
             let bg_x = (result.x as i16 + result.vid.scroll_x as i16 + vid.crop_x as i16)
                 .rem_euclid(BG_WIDTH as i16) as u16;
@@ -64,7 +64,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline]
-    fn update_indices(&mut self) {
+    fn update_bg_cluster(&mut self) {
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
         let bg_x = (self.x as i16 + self.vid.scroll_x as i16 + self.vid.crop_x as i16)
             .rem_euclid(BG_WIDTH as i16) as u16;
@@ -81,37 +81,29 @@ impl<'a> PixelIter<'a> {
         self.current_bg_flags = self.vid.bg_map.flags[bg_map_index];
 
         // Calculate local tile coordinates
-        let tile_x = bg_x % TILE_SIZE as u16;
-        let mut tile_y = bg_y % TILE_SIZE as u16;
+        let tile_x = (bg_x % TILE_SIZE as u16) as u8;
+        let tile_y = (bg_y % TILE_SIZE as u16) as u8;
 
-        // Handle Y flipping at tile coordinate level
-        if self.current_bg_flags.is_flipped_y() {
-            tile_y = TILE_SIZE as u16 - 1 - tile_y;
-        }
-
-        // Calculate pixel index within the tile
-        let local_idx = tile_x as usize + (tile_y as usize * TILE_SIZE as usize);
-
-        // Get the cluster - IMPORTANT: Now we're using 8 pixels per cluster!
+        // Get the tile
         let tile = self.vid.tiles[current_bg_tile_id as usize];
-        let cluster_idx = tile.cluster_index as usize + (local_idx / PIXELS_PER_CLUSTER as usize);
 
-        // Get the original cluster
-        let cluster = self.vid.tile_pixels[cluster_idx];
-
-        // Apply horizontal flipping if needed
-        if self.current_bg_flags.is_flipped_x() {
-            self.bg_cluster = cluster.flip();
-        } else {
-            self.bg_cluster = cluster;
+        // Create a local array of the 8 clusters that make up this tile
+        let mut tile_clusters: [Cluster<2>; 8] = [Cluster::default(); 8];
+        for i in 0..8 {
+            let cluster_idx = tile.cluster_index as usize + i;
+            tile_clusters[i] = self.vid.tile_pixels[cluster_idx];
         }
 
-        // Get subpixel index within the cluster (0-7)
-        self.subpixel_index = (local_idx % PIXELS_PER_CLUSTER as usize) as u8;
+        // Get the correct cluster with transformations applied
+        self.bg_cluster = Cluster::from_tile(&tile_clusters, self.current_bg_flags, tile_y);
+
+        // Calculate subpixel index within the cluster (0-7)
+        self.subpixel_index = tile_x % PIXELS_PER_CLUSTER;
     }
 
     #[inline]
     fn get_pixel_color(&self) -> ColorRGB {
+        // If BG Tile is set to FG and is not zero, return early
         if self.current_bg_flags.is_fg() && !self.force_bg_color {
             let bg_palette = self.current_bg_flags.palette().0 as usize;
             let color = self.bg_cluster.get_subpixel(self.subpixel_index);
@@ -224,7 +216,7 @@ impl<'a> Iterator for PixelIter<'a> {
 
             // Only do tile calculations if we're using the actual background
             if !self.force_bg_color || was_outside {
-                self.update_indices();
+                self.update_bg_cluster();
             }
         }
 

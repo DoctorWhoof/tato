@@ -51,27 +51,27 @@ impl TileFlags {
     }
 
     /// Consumes the original flag and ensures x is flipped
-    pub const fn flip_x(self) -> Self {
+    pub const fn with_flip_x(self) -> Self {
         Self(self.0 | 0b_1000_0000)
     }
 
     /// Consumes the original flag and ensures y is flipped
-    pub const fn flip_y(self) -> Self {
+    pub const fn with_flip_y(self) -> Self {
         Self(self.0 | 0b_0100_0000)
     }
 
     /// Consumes the original flag and ensures it's rotated 90 degrees
-    pub const fn rotate(self) -> Self {
+    pub const fn with_rotation(self) -> Self {
         Self(self.0 | 0b_0010_0000)
     }
 
     /// Consumes the original flag and ensures a BG tiles is rendered in front of sprites.
-    pub const fn fg(self) -> Self {
+    pub const fn with_fg(self) -> Self {
         Self(self.0 | 0b_0001_0000)
     }
 
     /// Consumes the original flag and replaces its palette
-    pub const fn replace_palette(self, palette: PaletteID) -> Self {
+    pub const fn with_palette(self, palette: PaletteID) -> Self {
         let data = self.0 & 0b_1111_0000;
         Self(data | palette.0)
     }
