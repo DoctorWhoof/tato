@@ -158,11 +158,6 @@ impl<'a> Iterator for PixelIter<'a> {
         if self.y == self.vid.max_y as u16 {
             return None;
         }
-        // Cache result coordinates
-        let result_coords = ScreenCoords {
-            x: self.x as i32,
-            y: self.y as i32,
-        };
 
         let is_outside_viewport = self.x < self.vid.view_left as u16
             || self.x >= self.vid.view_right as u16
@@ -174,6 +169,12 @@ impl<'a> Iterator for PixelIter<'a> {
         } else {
             // Check for foreground pixel, compensating for crop_x
             self.get_pixel_color()
+        };
+
+        // // Cache result coordinates
+        let result_coords = ScreenCoords {
+            x: self.x as i32,
+            y: self.y as i32,
         };
 
         // Increment screen position

@@ -1,8 +1,7 @@
 // #![no_std]
 use mini_sdl::*;
-use videochip::*;
 use shared_game::*;
-
+use videochip::*;
 
 fn main() -> SdlResult<()> {
     let mut vid = VideoChip::new(240, 180);
@@ -17,7 +16,7 @@ fn main() -> SdlResult<()> {
         None,
     )?;
     // let debug_font = app.font_load("src/debug/font.ttf", 32.0, 1.0)?;
-    let debug_font = app.font_load("_shared_game/fonts/font.ttf", 32)?;
+    let debug_font = app.font_load("_shared_game/fonts/font.ttf", 24)?;
     app.print_fps_interval = Some(1.0/30.0);
     app.display_overlay = true;
     app.default_font = Some(debug_font);
@@ -43,7 +42,7 @@ fn main() -> SdlResult<()> {
                 // app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x, scn.player.y));
                 // app.overlay_push(format!("player: {:.1},{:.1}", scn.player.x as u8, scn.player.y as u8));
                 scn.update(&mut vid, state)
-            },
+            }
             Scene::B(scn) => scn.update(&mut vid, state),
             Scene::C(scn) => scn.update(&mut vid, state),
         };
@@ -70,7 +69,6 @@ fn main() -> SdlResult<()> {
         })?;
 
         // Scenes request a new scene if their return is Some(mode).
-        // Processed after copying pixels for this frame.
         if let Some(mode) = mode_request {
             vid.reset_all();
             match mode {
@@ -81,6 +79,7 @@ fn main() -> SdlResult<()> {
         }
 
         // Present and finish
+        app.calculate_update_time();
         app.pixel_buffer_present()?;
         app.frame_finish()?;
         // println!("{:.3} ms", app.update_time() * 1000.0);
