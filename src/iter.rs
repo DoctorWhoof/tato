@@ -10,14 +10,14 @@ pub struct PixelIter<'a> {
     subpixel_index: u8, // Primary counter for background position
 
     // Caching
-    force_bg_color: bool,        // will reuse last bg color when out-of-bounds
-    current_bg_flags: TileFlags, // Current background tile flags
-    bg_color: ColorRGB,          // Background color (cached)
-    scanline: [Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize], // Current scanline data
-    bg_cluster: Cluster<2>,      // Current pixel cluster
     fg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     bg_palette: [ColorRGB; COLORS_PER_PALETTE as usize],
     local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+    current_bg_flags: TileFlags, // Current background tile flags
+    bg_color: ColorRGB,          // Background color (cached)
+    bg_cluster: Cluster<2>,      // Current pixel cluster
+    scanline: &'a [Cluster<4>],  // Reference to current sprite scanline
+    force_bg_color: bool,        // will reuse last bg color when out-of-bounds
 }
 
 pub struct ScreenCoords {
@@ -34,7 +34,6 @@ impl<'a> PixelIter<'a> {
             y: 0,
 
             wrap_bg: vid.wrap_bg,
-            // current_bg_tile_id: 0,
             current_bg_flags: TileFlags::default(),
             bg_cluster: Cluster::default(),
             subpixel_index: 0,
@@ -42,8 +41,8 @@ impl<'a> PixelIter<'a> {
             fg_palette: vid.fg_palette.clone(),
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
-            scanline: vid.scanlines[relative_y].clone(),
             force_bg_color: false,
+            scanline: &vid.scanlines[relative_y],
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -87,7 +86,7 @@ impl<'a> PixelIter<'a> {
         // Get the tile
         let tile_entry = self.vid.tiles[current_bg_tile_id as usize];
         let tile_start = tile_entry.cluster_index as usize;
-        let tile_clusters = &self.vid.tile_pixels[tile_start .. tile_start + 8];
+        let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + 8];
 
         // Get the correct cluster with transformations applied
         self.bg_cluster = Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y);
@@ -197,7 +196,7 @@ impl<'a> Iterator for PixelIter<'a> {
             if self.y < self.vid.max_y as u16 {
                 // Cache scanline, compensating for crop_y
                 let relative_y = (self.y as usize).saturating_add(self.vid.crop_y as usize);
-                self.scanline = self.vid.scanlines[relative_y].clone();
+                self.scanline = &self.vid.scanlines[relative_y];
                 reload_cluster = true;
             }
         }
