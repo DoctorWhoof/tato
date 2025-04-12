@@ -46,21 +46,16 @@ impl<'a> PixelIter<'a> {
             force_bg_color: false,
         };
         // Check if we're outside the BG map at initialization
-        let raw_x = result.x as i16 + result.vid.scroll_x + vid.crop_x as i16;
-        let raw_y = result.y as i16 + result.vid.scroll_y + vid.crop_y as i16;
-        let outside =
-            raw_x < 0 || raw_y < 0 || raw_x >= BG_WIDTH as i16 || raw_y >= BG_HEIGHT as i16;
-        result.force_bg_color = !result.wrap_bg && outside;
+        result.force_bg_color = !result.wrap_bg && result.is_outside();
 
         // Calculate the starting subpixel_index based on scroll position
         if !result.force_bg_color {
             // First update the cluster
             result.update_indices();
 
-            // Then adjust the subpixel_index based on scroll_x
-            // This ensures we start with the correct offset within the cluster
             let bg_x = (result.x as i16 + result.vid.scroll_x as i16 + vid.crop_x as i16)
                 .rem_euclid(BG_WIDTH as i16) as u16;
+
             let tile_x = bg_x % TILE_SIZE as u16;
             let local_index = tile_x as usize % TILE_SUBPIXELS as usize;
             result.subpixel_index = local_index as u8;
@@ -141,6 +136,18 @@ impl<'a> PixelIter<'a> {
             }
         }
     }
+
+    #[inline(always)]
+    fn is_outside(&self) -> bool {
+        // Calculate raw screen position for bounds check
+        let raw_x = self.x as i16 + self.vid.scroll_x + self.vid.crop_x as i16;
+        let raw_y = self.y as i16 + self.vid.scroll_y + self.vid.crop_y as i16;
+
+        // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
+        let w = BG_WIDTH as i16;
+        let h = BG_HEIGHT as i16;
+        raw_x < 0 || raw_y < 0 || raw_x >= w || raw_y >= h
+    }
 }
 
 impl<'a> Iterator for PixelIter<'a> {
@@ -196,19 +203,10 @@ impl<'a> Iterator for PixelIter<'a> {
 
         // This will only run every few pixels, and once every new line
         if reload_cluster {
-            // Calculate raw screen position for bounds check
-            let raw_x = self.x as i16 + self.vid.scroll_x + self.vid.crop_x as i16;
-            let raw_y = self.y as i16 + self.vid.scroll_y + self.vid.crop_y as i16;
-
             // Previous state - were we outside before?
-            let was_outside = self.force_bg_color;
+            let was_outside = self.force_bg_color || self.x == 0;
 
-            // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
-            let w = BG_WIDTH as i16;
-            let h = BG_HEIGHT as i16;
-            let outside = raw_x < 0 || raw_y < 0 || raw_x >= w || raw_y >= h;
-
-            self.force_bg_color = !self.wrap_bg && outside;
+            self.force_bg_color = !self.wrap_bg && self.is_outside();
 
             // Only do tile calculations if we're using the actual background
             if !self.force_bg_color || was_outside {
