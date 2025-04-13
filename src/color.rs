@@ -1,3 +1,5 @@
+use crate::err;
+
 /// Local Palette index
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]
 pub struct PaletteID(pub u8);
@@ -56,41 +58,78 @@ pub const LIGHT_BLUE: ColorID = ColorID(14);
 pub const PINK: ColorID = ColorID(15);
 
 /// Adjusted from the "pure" 512 color palette to be less saturated and less contrasty.
-pub const PALETTE_DEFAULT: [ColorRGB; 16] = [
-    ColorRGB { r:   0, g:   0, b:   0 }, // BG, 0
-    ColorRGB { r:  10, g:  10, b:  10 }, // Black, 1
-    ColorRGB { r: 122, g: 122, b: 122 }, // Gray, 2
-    ColorRGB { r: 228, g: 228, b: 228 }, // White, 3
-    ColorRGB { r: 110, g:  42, b:  20 }, // Dark Red, 4
-    ColorRGB { r: 192, g:  64, b:  64 }, // Red, 5
-    ColorRGB { r: 212, g: 156, b: 148 }, // Light Red, 6
-    ColorRGB { r: 178, g: 126, b:  20 }, // Orange, 7
-    ColorRGB { r: 212, g: 202, b:  46 }, // Yellow, 8
-    ColorRGB { r:  42, g:  72, b:  48 }, // Dark Green, 9
-    ColorRGB { r:  46, g: 154, b:  46 }, // Green, 10
-    ColorRGB { r: 140, g: 202, b: 126 }, // Green Light, 11
-    ColorRGB { r:  40, g:  40, b: 126 }, // Dark Blue, 12
-    ColorRGB { r:  64, g:  72, b: 212 }, // Blue, 13
-    ColorRGB { r: 124, g: 176, b: 228 }, // Light Blue, 14
-    ColorRGB { r: 188, g:  88, b: 148 }, // Pink, 15
+pub const PALETTE_DEFAULT: [Color9Bit; 16] = [
+    Color9Bit::new(0, 0, 0), // BG, 0
+    Color9Bit::new(0, 0, 0), // Black, 1
+    Color9Bit::new(3, 3, 3), // Gray, 2
+    Color9Bit::new(6, 6, 6), // White, 3
+    Color9Bit::new(3, 1, 0), // Dark Red, 4
+    Color9Bit::new(5, 2, 2), // Red, 5
+    Color9Bit::new(6, 4, 4), // Light Red, 6
+    Color9Bit::new(5, 3, 0), // Orange, 7
+    Color9Bit::new(6, 5, 1), // Yellow, 8
+    Color9Bit::new(1, 2, 1), // Dark Green, 9
+    Color9Bit::new(1, 4, 1), // Green, 10
+    Color9Bit::new(4, 5, 3), // Green Light, 11
+    Color9Bit::new(1, 1, 3), // Dark Blue, 12
+    Color9Bit::new(2, 2, 6), // Blue, 13
+    Color9Bit::new(3, 5, 6), // Light Blue, 14
+    Color9Bit::new(5, 2, 4), // Pink, 15
 ];
 
-/// "Pure" 3 bits per channel palette. Very bright and saturated.
-pub const PALETTE_512_MAPPED_TO_16: [ColorRGB; 16] = [
-    ColorRGB { r:   0, g:   0, b:   0 }, // BG, 0
-    ColorRGB { r:   0, g:   0, b:   0 }, // Black, 1
-    ColorRGB { r: 128, g: 128, b: 128 }, // Gray, 2
-    ColorRGB { r: 255, g: 255, b: 255 }, // White, 3
-    ColorRGB { r:  96, g:  32, b:  32 }, // Dark Red, 4
-    ColorRGB { r: 192, g:  32, b:  32 }, // Red, 5
-    ColorRGB { r: 255, g: 160, b: 128 }, // Light Red, 6
-    ColorRGB { r: 192, g: 128, b:   0 }, // Orange, 7
-    ColorRGB { r: 255, g: 255, b:  32 }, // Yellow, 8
-    ColorRGB { r:  32, g:  64, b:  32 }, // Dark Green, 9
-    ColorRGB { r:  32, g: 160, b:  32 }, // Green, 10
-    ColorRGB { r: 128, g: 255, b: 128 }, // Green Light, 11
-    ColorRGB { r:  32, g:  32, b: 128 }, // Dark Blue, 12
-    ColorRGB { r:  32, g:  64, b: 255 }, // Blue, 13
-    ColorRGB { r: 128, g: 255, b: 255 }, // Light Blue, 14
-    ColorRGB { r: 192, g:  64, b: 192 }, // Pink, 15
-];
+// /// "Pure" 3 bits per channel palette. Very bright and saturated.
+// pub const PALETTE_DEFAULT: [Color9Bit; 16] = [
+//     Color9Bit::new(0, 0, 0), // BG, 0
+//     Color9Bit::new(0, 0, 0), // Black, 1
+//     Color9Bit::new(4, 4, 4), // Gray, 2
+//     Color9Bit::new(7, 7, 7), // White, 3
+//     Color9Bit::new(3, 1, 1), // Dark Red, 4
+//     Color9Bit::new(5, 1, 1), // Red, 5
+//     Color9Bit::new(7, 4, 3), // Light Red, 6
+//     Color9Bit::new(5, 3, 0), // Orange, 7
+//     Color9Bit::new(7, 7, 1), // Yellow, 8
+//     Color9Bit::new(1, 2, 1), // Dark Green, 9
+//     Color9Bit::new(1, 4, 1), // Green, 10
+//     Color9Bit::new(3, 7, 3), // Green Light, 11
+//     Color9Bit::new(1, 1, 3), // Dark Blue, 12
+//     Color9Bit::new(1, 2, 7), // Blue, 13
+//     Color9Bit::new(3, 7, 7), // Light Blue, 14
+//     Color9Bit::new(5, 2, 5), // Pink, 15
+// ];
+
+
+/// The output format of the palette. For each ColorID there's a corresponding ColorRGB.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Hash)]
+pub struct Color9Bit {
+    pub data:u16
+}
+
+
+impl Color9Bit {
+    pub const fn new(r:u8, g:u8, b:u8) -> Self {
+        assert!(r < 8, err!("Exceeded maximum value for Red channel"));
+        assert!(g < 8, err!("Exceeded maximum value for Gree channel"));
+        assert!(b < 8, err!("Exceeded maximum value for BLue channel"));
+
+        // Pack the 3-bit values into the data field
+        // Red in bits 6-8, Green in bits 3-5, Blue in bits 0-2
+        let packed_data = ((r as u16) << 6) | ((g as u16) << 3) | (b as u16);
+        Self { data: packed_data }
+    }
+}
+
+impl From<Color9Bit> for ColorRGB {
+    fn from(color: Color9Bit) -> Self {
+        // Extract the 3-bit color components
+        let r = ((color.data >> 6) & 0x7) as u8;
+        let g = ((color.data >> 3) & 0x7) as u8;
+        let b = (color.data & 0x7) as u8;
+
+        // Scale the 3-bit values (0-7) to 8-bit range (0-255)
+        Self {
+            r: (r * 36) + (r / 2), // Approximates r * 36.4 without overflow
+            g: (g * 36) + (g / 2), // Approximates g * 36.4 without overflow
+            b: (b * 36) + (b / 2), // Approximates b * 36.4 without overflow
+        }
+    }
+}

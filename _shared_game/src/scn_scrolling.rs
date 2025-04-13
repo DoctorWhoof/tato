@@ -24,22 +24,22 @@ impl CameraScrolling {
 
         // Palette test - defines BG palette with a golden tint!
         vid.bg_palette = [
-            ColorRGB { r:  53, g:  28, b:  17 },
-            ColorRGB { r:  65, g:  33, b:  22 },
-            ColorRGB { r:  80, g:  43, b:  32 },
-            ColorRGB { r: 122, g:  54, b:  43 },
-            ColorRGB { r: 140, g:  60, b:  43 },
-            ColorRGB { r: 153, g:  71, b:  52 },
-            ColorRGB { r: 164, g:  87, b:  63 },
-            ColorRGB { r: 170, g:  97, b:  74 },
-            ColorRGB { r: 170, g: 107, b:  78 },
-            ColorRGB { r: 171, g: 116, b:  78 },
-            ColorRGB { r: 171, g: 121, b:  80 },
-            ColorRGB { r: 172, g: 131, b:  80 },
-            ColorRGB { r: 177, g: 136, b:  82 },
-            ColorRGB { r: 187, g: 141, b: 88 },
-            ColorRGB { r: 196, g: 147, b: 92 },
-            ColorRGB { r: 206, g: 152, b: 113 },
+            Color9Bit::new(1, 1, 1),
+            Color9Bit::new(2, 1, 1),
+            Color9Bit::new(3, 1, 1),
+            Color9Bit::new(4, 2, 1),
+            Color9Bit::new(5, 2, 1),
+            Color9Bit::new(5, 2, 2),
+            Color9Bit::new(6, 3, 2),
+            Color9Bit::new(6, 3, 2),
+            Color9Bit::new(6, 4, 3),
+            Color9Bit::new(6, 4, 3),
+            Color9Bit::new(6, 4, 3),
+            Color9Bit::new(6, 5, 3),
+            Color9Bit::new(6, 5, 3),
+            Color9Bit::new(7, 5, 3),
+            Color9Bit::new(7, 5, 3),
+            Color9Bit::new(7, 6, 4),
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID

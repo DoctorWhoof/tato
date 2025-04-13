@@ -3,6 +3,10 @@
 
 [x] Scanline cache in iterator
 
-[ ] BG Flag for sprites
+[x] FG Flag for BG tiles
 
-[ ] Flip and rotate flags for BG Tiles
+[x] Flip and rotate flags for BG Tiles
+
+[3] 3 bit per channel RGB
+
+[ ] Test with a real project!
