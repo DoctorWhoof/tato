@@ -62,7 +62,7 @@ impl CameraScrolling {
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
 
-                vid.bg_map.set_tile(BgData {
+                vid.bg_map.set_tile(BgBundle {
                     col,
                     row,
                     tile_id: checker,

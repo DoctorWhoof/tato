@@ -13,7 +13,7 @@ pub struct BGMap {
 
 /// A simple packet of required data to fully set the attributes on a BG tile.
 #[derive(Debug, Clone, Copy)]
-pub struct BgData {
+pub struct BgBundle {
     pub col: u16,
     pub row: u16,
     pub tile_id: TileID,
@@ -40,7 +40,7 @@ impl BGMap {
         Some((row as usize * BG_COLUMNS as usize) + col as usize)
     }
 
-    pub fn set_tile(&mut self, data: BgData) {
+    pub fn set_tile(&mut self, data: BgBundle) {
         if let Some(index) = self.get_index(data.col, data.row) {
             self.tiles[index] = data.tile_id;
             self.flags[index] = data.flags;

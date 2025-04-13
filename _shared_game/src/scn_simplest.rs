@@ -20,7 +20,7 @@ impl MinimalScene {
         }
 
         for id in 0..16 as u8 {
-            vid.bg_map.set_tile(BgData {
+            vid.bg_map.set_tile(BgBundle {
                 col: id as u16,
                 row: 0,
                 tile_id: tile,
