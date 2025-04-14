@@ -1,6 +1,6 @@
 [package]
 name = "tato_video"
-version = "0.1.2"
+version = "0.1.21"
 edition = "2024"
 description = "A Fantasy video chip that runs on any potato powered computers. Bring your own back-end!"
 license = "MIT"
