@@ -1,8 +1,8 @@
 use crate::*;
 
-/// Every color in the main palettes (FG and BG palette) is stored as 9 bits-per-channel,
-/// allowing a maximum of 512 possible colors. Can be converted to ColorRGB24 (8 bits per channel)
-/// for easy interop with graphics back-ends.
+/// Every color in the main palettes (FG and BG palette) is stored as 3 bits-per-channel,
+/// allowing a maximum of 512 possible colors packed into 9 bits.
+/// Can be converted to ColorRGB24 (8 bits per channel) for easy interop with graphics back-ends.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Hash)]
 pub struct Color9Bit {
     pub data:u16
