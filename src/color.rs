@@ -43,7 +43,7 @@ pub const LIGHT_BLUE: ColorID = ColorID(14);
 pub const PINK: ColorID = ColorID(15);
 
 /// Adjusted from the "pure" 512 color palette to be less saturated and less contrasty.
-pub const PALETTE_DEFAULT: [Color9Bit; 16] = [
+pub(crate) const PALETTE_DEFAULT: [Color9Bit; 16] = [
     Color9Bit::new(0, 0, 0), // BG, 0
     Color9Bit::new(0, 0, 0), // Black, 1
     Color9Bit::new(3, 3, 3), // Gray, 2
