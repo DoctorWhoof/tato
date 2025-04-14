@@ -1,11 +1,11 @@
 [package]
 name = "tato"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 license = "MIT"
 description = "A ridiculously obsolete collection of zero-dependency game development modules that can run on any computer, even potato-powered ones!"
 repository = "https://github.com/DoctorWhoof/tato"
-# readme = "readme.md"
+categories = ["no_std"]
 
 [dependencies]
 tato_video = "0.1.21"
