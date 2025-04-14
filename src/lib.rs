@@ -8,9 +8,8 @@ pub mod prelude {
 
 pub mod color;
 pub mod data;
-
+use color::*;
 // Visible by default
-pub use color::*;
 
 mod error;
 
