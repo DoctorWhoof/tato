@@ -9,4 +9,4 @@ It encompasses:
 - **Tato Video**, a "fantasy video chip" that operates like an early 1980's video chip.
 - **Tato Sound**, a "fantasy audio chip". *Not uploaded yet*!
 - **Tato Pad**, a way to store the state of a gamepad and perform checks.
-- **Tato Layout**, a GUI layout library. *Not uploaded yet!*
+- **Tato Layout**, a GUI layout library.

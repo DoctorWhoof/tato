@@ -1,6 +1,6 @@
 [package]
 name = "tato"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 license = "MIT"
 description = "A ridiculously obsolete collection of zero-dependency game development modules that can run on any computer, even potato-powered ones!"
@@ -10,6 +10,7 @@ categories = ["no-std"]
 [dependencies]
 tato_video = "0.1.21"
 tato_pad = "0.2.5"
+tato_layout = "0.3.21"
 
 [workspace]
 members = [ "examples/videochip"]

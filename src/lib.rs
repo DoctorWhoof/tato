@@ -2,6 +2,7 @@
 
 pub use tato_pad as pad;
 pub use tato_video as video;
+pub use tato_layout as layout;
 
 pub mod prelude {
     pub use crate::backend::*;
