@@ -1,5 +1,6 @@
 use crate::*;
 
+/// Renders every pixel as it iterates the entire screen.
 pub struct PixelIter<'a> {
     vid: &'a VideoChip,
     x: u16, // Current screen x position
@@ -56,7 +57,7 @@ impl<'a> PixelIter<'a> {
                 .rem_euclid(BG_WIDTH as i16) as u16;
 
             let tile_x = bg_x % TILE_SIZE as u16;
-            let local_idx = tile_x as usize % TILE_SUBPIXELS as usize;
+            let local_idx = tile_x as usize % SUBPIXELS_TILE as usize;
             result.subpixel_index = local_idx as u8;
         }
         result
@@ -150,7 +151,7 @@ impl<'a> PixelIter<'a> {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (ColorRGB, ScreenCoords);
+    type Item = (ColorRGB24, ScreenCoords);
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -164,10 +165,10 @@ impl<'a> Iterator for PixelIter<'a> {
             || self.y >= self.vid.view_bottom as u16;
 
         let color = if is_outside_viewport {
-            ColorRGB::from(self.bg_color)
+            ColorRGB24::from(self.bg_color)
         } else {
             // Check for foreground pixel, compensating for crop_x
-            ColorRGB::from(self.get_pixel_color())
+            ColorRGB24::from(self.get_pixel_color())
         };
 
         // // Cache result coordinates

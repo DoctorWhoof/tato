@@ -16,7 +16,7 @@ pub struct TileEntry {
 }
 
 /// A single byte struct that stores a tile's render state such as
-/// horizontal flip, vertical flip and local palette.
+/// horizontal flip, vertical flip, rotation and local palette.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TileFlags(pub u8);
 
@@ -28,7 +28,6 @@ impl From<PaletteID> for TileFlags {
     }
 }
 
-// Currently bits 3 and 4 are unused
 impl TileFlags {
     pub const fn new(flip_h: bool, flip_v: bool, palette: PaletteID) -> Self {
         assert!(

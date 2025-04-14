@@ -1,5 +1,6 @@
 use crate::{TILE_SIZE, TileFlags, err};
 
+/// A cluster always contains 8 pixels, regardless of color depth.
 pub const PIXELS_PER_CLUSTER: u8 = 8;
 
 /// A Cluster always stores 8 pixels, and simply gets larger the more colors you store in it.

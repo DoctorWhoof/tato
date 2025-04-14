@@ -1,19 +1,24 @@
 #![no_std]
 use core::array::from_fn;
 
-mod bg;
-pub use bg::*;
+pub mod prelude {
+    pub use crate::color::*;
+    pub use crate::data::*;
+}
 
-mod color;
+pub mod color;
+pub mod data;
+
+// Visible by default
 pub use color::*;
-
-mod data;
-pub use data::*;
 
 mod error;
 
+mod bg;
+pub use bg::*;
+
 mod iter;
-use iter::*;
+pub use iter::*;
 
 mod cluster;
 pub use cluster::*;
@@ -39,10 +44,10 @@ pub const COLORS_PER_PALETTE: u8 = 16;
 pub const LOCAL_PALETTE_COUNT: u8 = 16;
 
 /// 4 pixels per byte (4 colors per pixel)
-pub const TILE_SUBPIXELS: u8 = Cluster::<2>::PIXELS_PER_BYTE as u8;
+pub const SUBPIXELS_TILE: u8 = Cluster::<2>::PIXELS_PER_BYTE as u8;
 
 /// 2 pixels per byte (16 colors per pixel)
-pub const FRAMEBUFFER_SUBPIXELS: u8 = Cluster::<4>::PIXELS_PER_BYTE as u8;
+pub const SUBPIXELS_FRAMEBUFFER: u8 = Cluster::<4>::PIXELS_PER_BYTE as u8;
 
 /// Number of columns in BG Map
 pub const BG_COLUMNS: u8 = 64;
@@ -75,17 +80,19 @@ pub struct VideoChip {
     pub bg_map: BGMap,
     /// The color rendered if resulting pixel is transparent
     pub bg_color: ColorID,
-    /// Global RGB Color Palettes (16 colors).
+    /// The main FG palette with 16 colors. Used by sprites.
     pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    /// The main BG palette with 16 colors. Used by BG tiles.
     pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
     pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-    /// Maps all i16 values into the u8 range
+    /// Maps i16 coordinates into the u8 range, bringing sprites "outside the screen" into view.
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
     pub wrap_bg: bool,
-
+    /// Offsets the BG Map and Sprite tiles horizontally
     pub scroll_x: i16,
+    /// Offsets the BG Map and Sprite tiles vertically
     pub scroll_y: i16,
 
     // ---------------------- Main Data ----------------------
@@ -195,7 +202,7 @@ impl VideoChip {
         self.max_y as u32 + 1
     }
 
-    pub fn tile(&self, tile_id: TileID) -> TileEntry {
+    pub fn tile_entry(&self, tile_id: TileID) -> TileEntry {
         self.tiles[tile_id.0 as usize]
     }
 
@@ -223,7 +230,8 @@ impl VideoChip {
         self.crop_y = value;
     }
 
-    /// Does not affect BG or Sprites calculation, but "masks" PixelIter with BG Color!
+    /// Does not affect BG or Sprites calculation, but "masks" PixelIter pixels outside
+    /// this rectangular area with the BG Color
     pub fn set_viewport(&mut self, left: u8, top: u8, w: u8, h: u8) {
         self.view_left = left;
         self.view_top = top;
@@ -231,6 +239,7 @@ impl VideoChip {
         self.view_bottom = top.saturating_add(h);
     }
 
+    /// Resets the chip to its initial state.
     pub fn reset_all(&mut self) {
         self.bg_color = GRAY;
         self.wrap_sprites = true;
@@ -302,16 +311,9 @@ impl VideoChip {
         PaletteID(result)
     }
 
-    /// Creates a new sprite from the provided pixel data.
-    /// Returns a unique identifier for the newly created sprite.
+    /// Creates a new tile from the provided pixel data, and returns a unique identifier.
     /// Panics if there's not enough space for the new sprite or
     /// if the length of data doesn't match w * h.
-    ///
-    /// # Parameters
-    /// - `w`: Width of the sprite
-    /// - `h`: Height of the sprite
-    /// - `data`: Array of bytes representing the sprite pixels
-    /// (each byte is a local palette index, must be in range 0-3)
     pub fn new_tile(&mut self, w: u8, h: u8, data: &[u8]) -> TileID {
         let tile_id = self.tile_id_head;
         let pixel_start = self.tile_pixel_head as usize;
@@ -367,6 +369,8 @@ impl VideoChip {
         TileID(tile_id)
     }
 
+    /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
+    /// also provide various tile flags, like flipping, and specify a palette id.
     pub fn draw_sprite(&mut self, data: DrawBundle) {
         if data.id.0 >= self.tile_id_head {
             return;
@@ -483,6 +487,8 @@ impl VideoChip {
         }
     }
 
+    /// Increments or decrements an index in a local palette so that its value
+    /// cycles between "min" and "max", which represent colors in the Main FG and BG palettes.
     pub fn color_cycle(&mut self, palette: PaletteID, color: u8, min: u8, max: u8) {
         let color_cycle = &mut self.local_palettes[palette.id()][color as usize].0;
         if max > min {
