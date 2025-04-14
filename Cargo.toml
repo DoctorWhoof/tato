@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 description = "A ridiculously obsolete collection of zero-dependency game development modules that can run on any computer, even potato-powered ones!"
 repository = "https://github.com/DoctorWhoof/tato"
-readme = "readme.md"
+# readme = "readme.md"
 
 [dependencies]
 tato_video = "0.1.21"
