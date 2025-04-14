@@ -3,11 +3,12 @@
 /*.lock
 .vscode
 .zed
-.DS_*
-*/.DS_*
+.DS_Store
+*/.DS_Store
 converted
 
 *.anims
 *.fonts
 *.maps
+src/.DS_Store
 src/.DS_Store

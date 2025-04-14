@@ -1,32 +1,26 @@
-#![warn(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
-
 #![no_std]
-#[cfg(feature = "std")] extern crate std;
-#[cfg(feature = "std")] pub use std::{print, println};
 
-extern crate alloc;
+pub use tato_pad as pad;
+pub use tato_video as video;
 
-mod test;
-#[path ="common/_common.rs"] mod common;
-#[path ="engine/_engine.rs"] mod engine;
+pub mod prelude {
+    pub use crate::backend::*;
+    pub use tato_pad::*;
+    pub use tato_video::*;
+}
 
-pub use engine::*;
-pub use common::*;
+pub mod backend {
+    use tato_pad::AnaloguePad;
+    use tato_video::VideoChip;
 
-// Consts
-pub const ATLAS_HEADER_TEXT:&str = "atlas_1.0";
-pub const TILESET_HEADER_TEXT:&str = "tileset_1.0";
-pub const TILEMAP_HEADER_TEXT:&str = "tilemap_1.0" ;
-
-pub const ANIM_MAX_FRAMES:usize = 6;        // TODO: Move to specs
-pub const ANIM_TILES_PER_FRAME:usize = 12;  // TODO: Move to specs
-
-pub const TILEMAP_HEADER_LEN:usize = 15;
-pub const TILEMAP_LEN:usize = 48 * 48;
-
-pub const COLOR_TRANSPARENCY:Color32 = Color32{r:0, g:255, b:0, a:255};
-pub const COLOR_ENTITY_RECT:Color32 = Color32{r:0, g:255, b:255, a:255};
-pub const COLOR_COLLIDER:Color32 = Color32{r:255, g:128, b:128, a:255};
-pub const COLOR_COLLISION_PROBE:Color32 = Color32{r:255, g:128, b:0, a:255};
-
-
+    pub trait BackendVideo {
+        fn new_window(vid: &VideoChip) -> Self;
+        fn frame_start(&mut self, vid: &VideoChip);
+        fn frame_update(&mut self, vid: &VideoChip);
+        fn frame_finish(&mut self, vid: &VideoChip);
+        fn gamepad(&self) -> AnaloguePad;
+        fn quit_requested(&self) -> bool;
+        fn elapsed(&self) -> f64;
+        fn time(&self) -> f64;
+    }
+}

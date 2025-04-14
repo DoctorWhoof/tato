@@ -1,33 +1,15 @@
 [package]
 name = "tato"
-version = "0.1.4"
-edition = "2021"
+version = "0.2.0"
+edition = "2024"
 license = "MIT"
-description = "A ridiculous, obsolete engine that aims to run on any computer, even potato powered ones!"
+description = "A ridiculously obsolete collection of zero-dependency game development modules that can run on any computer, even potato-powered ones!"
 repository = "https://github.com/DoctorWhoof/tato"
 readme = "readme.md"
 
-[features]
-std = []
+[dependencies]
+tato_video = "0.1.21"
+tato_pad = "0.2.5"
 
 [workspace]
-members = [
-    "demo_bugs",
-    "demo_collisions",
-    "demo_pattern",
-    "demo_ponck",
-    "tato_mquad"
-]
-
-[profile.release]
-# debug = true
-panic = "abort"
-# These settings are likely to increase compile times in release mode!
-strip = true
-lto = true
-opt-level = 3
-codegen-units = 1
-
-[dependencies]
-num-traits = { version = "0.2.18" }
-slotmap = { version = "1.0.7", default-features = false }
+members = [ "examples/videochip"]
