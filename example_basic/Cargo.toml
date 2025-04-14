@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-matte =  { path = "../" }
+tato_layout =  { path = "../" }
 macroquad = "0.4.13"

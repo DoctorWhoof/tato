@@ -1,4 +1,4 @@
-# Matte.rs
+# Tato Layout
 
 **_WARNING: Under heavy development, API changes constantly._**
 ------------------------------------------------------------------------
@@ -29,7 +29,7 @@ Three examples are provided:
 ## Usage Example
 
 ```rust
-use matte::{Frame, Rect, Fitting, Edge::*, Align::*};
+use tato_layout::{Frame, Rect, Fitting, Edge::*, Align::*};
 
 fn main() {
     // Create a root frame

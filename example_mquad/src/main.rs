@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use matte::{Align::*, Edge::*, Fitting, Frame, Num};
+use tato_layout::{Align::*, Edge::*, Fitting, Frame, Num};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -28,7 +28,7 @@ async fn main() {
 
         // Drawing helper function. Defined as a closure so that it can use the current
         // "scale" without passing it as an argument
-        let draw_rect = |rect: &matte::Rect<f32>, color: [u8; 4], text: &'_ str| {
+        let draw_rect = |rect: &tato_layout::Rect<f32>, color: [u8; 4], text: &'_ str| {
             let rect_text = TextParams {
                 font_size: (16.0 * scale) as u16,
                 ..Default::default()
@@ -47,7 +47,7 @@ async fn main() {
 
         // Init Layout. Prevents negative values.
         // You can optionally clamp it to  a minimum UI size.
-        let mut root = Frame::new(matte::Rect {
+        let mut root = Frame::new(tato_layout::Rect {
             x: 10.0,
             y: 30.0,
             w: (width - 20.0).clamp(0.0, 8192.0),
