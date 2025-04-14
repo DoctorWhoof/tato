@@ -2,13 +2,13 @@ use crate::{Button, AnyButton, DPad};
 
 /// A simple virtual Game controller with digital buttons and a few analogue axis.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
-pub struct APad {
+pub struct AnaloguePad {
     pub left_stick_x: i16,
     pub left_stick_y: i16,
     pub buttons: DPad,
 }
 
-impl APad {
+impl AnaloguePad {
     pub fn new() -> Self {
         Self::default()
     }
