@@ -43,7 +43,6 @@ pub struct Channel {
     noise_period: f32,
     noise_output: f32,
     // Internal State
-    midi_note: f32,
     volume_attn: f32,
     wave_output: f32,
     left_mult: f32,
@@ -68,7 +67,6 @@ impl Default for Channel {
             rng: Rng::new(16, 0xCAFE),
             noise_period: 0.0,
             noise_output: 0.0,
-            midi_note: 60.0,
             volume_attn: 1.0,
             wave_output: 0.0,
             left_mult: 0.5,
@@ -81,18 +79,6 @@ impl Default for Channel {
 }
 
 impl Channel {
-    /// Current octave.
-    pub fn octave(&self) -> u32 {
-        debug_assert!(self.midi_note > 0.0);
-        (self.midi_note / 12.0) as u32 - 1
-    }
-
-    /// Current midi note (C4 = 60). Does not account for pitch envelope.
-    pub fn note(&self) -> u32 {
-        debug_assert!(self.midi_note > 0.0);
-        (self.midi_note) as u32 % 12
-    }
-
     /// Current frequency. Does not account for pitch envelope.
     pub fn frequency(&self) -> f32 {
         1.0 / self.period
@@ -150,7 +136,6 @@ impl Channel {
         let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
 
         self.period = 1.0 / tone_frequency;
-        self.midi_note = frequency_to_note(tone_frequency);
 
         // Adjust time to ensure continuous change (instead of abrupt change)
         self.time = self.phase * self.period;

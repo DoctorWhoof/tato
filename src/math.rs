@@ -6,9 +6,15 @@ pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
     start + t * (end - start)
 }
 
+// Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
+#[inline(always)]
+pub(crate) fn wrap(value: i32, modulus: i32) -> i32 {
+    ((value % modulus) + modulus) % modulus
+}
+
 /// Round a floating point number to the nearest integer value as an f32
 #[inline(always)]
-pub fn round(x: f32) -> f32 {
+pub(crate) fn round(x: f32) -> f32 {
     let integer_part = x as i32;
     let fractional_part = x - integer_part as f32;
 
@@ -19,6 +25,26 @@ pub fn round(x: f32) -> f32 {
     } else {
         integer_part as f32
     }
+}
+
+/// Floor a floating point number to the largest integer less than or equal to x as an f32
+#[inline(always)]
+pub(crate) fn floor(x: f32) -> f32 {
+    let integer_part = x as i32;
+    let fractional_part = x - integer_part as f32;
+
+    if fractional_part < 0.0 {
+        (integer_part - 1) as f32
+    } else {
+        integer_part as f32
+    }
+}
+
+/// Truncate a floating point number to the integer component as an f32
+#[inline(always)]
+pub(crate) fn trunc(x: f32) -> f32 {
+    let integer_part = x as i32;
+    integer_part as f32
 }
 
 /// Maps a continuous value to one of a finite set of discrete values (steps)
