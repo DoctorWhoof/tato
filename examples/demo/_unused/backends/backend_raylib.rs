@@ -52,7 +52,7 @@ impl TatoBackend for Backend {
         Self {
             target_fps,
             frame_start_time: Instant::now(),
-            pixels: std::array::from_fn(|_| 0),
+            pixels: core::array::from_fn(|_| 0),
             render_texture,
             pad: AnaloguePad::default(),
             rl_handle,

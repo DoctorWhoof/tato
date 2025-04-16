@@ -80,25 +80,14 @@ pub fn copy_pixels_to_texture(
     let draw_rect_x = (screen_width - w) / 2;
     let draw_rect_y = (screen_height - h) / 2;
 
-    // // Get update time before actually drawing
-    // println!(
-    //     "fps:{:.1}, elapsed:{:.1}, update:{:.1}",
-    //     ray.get_fps(),
-    //     ray.get_frame_time() * 1000.0,
-    //     self.frame_start_time.elapsed().as_secs_f64() * 1000.0
-    // );
-
     // Present frame
-    {
-        let mut d = ray.begin_drawing(thread);
-        d.clear_background(Color::BLACK);
-        // d.draw_texture(&self.render_texture, 0, 0, Color::WHITE);
-        d.draw_texture_ex(
-            &texture,
-            Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
-            0.0,
-            scale as f32,
-            Color::WHITE,
-        );
-    }
+    let mut canvas = ray.begin_drawing(thread);
+    canvas.clear_background(Color::BLACK);
+    canvas.draw_texture_ex(
+        &texture,
+        Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
+        0.0,
+        scale as f32,
+        Color::WHITE,
+    );
 }

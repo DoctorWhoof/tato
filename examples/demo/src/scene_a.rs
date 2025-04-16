@@ -1,5 +1,5 @@
 use crate::*;
-use std::array::from_fn;
+use core::array::from_fn;
 use tato::pad::*;
 use tato::video::prelude::*;
 
@@ -22,25 +22,25 @@ impl SceneA {
         vid.set_crop_x(16);
         vid.set_crop_y(16);
 
-        // Palette test - defines BG palette with a golden tint!
-        vid.bg_palette = [
-            Color9Bit::new(1, 1, 1),
-            Color9Bit::new(2, 1, 1),
-            Color9Bit::new(3, 1, 1),
-            Color9Bit::new(4, 2, 1),
-            Color9Bit::new(4, 2, 1),
-            Color9Bit::new(5, 2, 2),
-            Color9Bit::new(5, 3, 2),
-            Color9Bit::new(5, 4, 2),
-            Color9Bit::new(5, 4, 3),
-            Color9Bit::new(6, 4, 3),
-            Color9Bit::new(6, 4, 4),
-            Color9Bit::new(6, 5, 4),
-            Color9Bit::new(6, 6, 4),
-            Color9Bit::new(6, 6, 4),
-            Color9Bit::new(6, 6, 5),
-            Color9Bit::new(6, 6, 5),
-        ];
+        // // Palette test - defines BG palette with a golden tint!
+        // vid.bg_palette = [
+        //     Color9Bit::new(1, 1, 1),
+        //     Color9Bit::new(2, 1, 1),
+        //     Color9Bit::new(3, 1, 1),
+        //     Color9Bit::new(4, 2, 1),
+        //     Color9Bit::new(4, 2, 1),
+        //     Color9Bit::new(5, 2, 2),
+        //     Color9Bit::new(5, 3, 2),
+        //     Color9Bit::new(5, 4, 2),
+        //     Color9Bit::new(5, 4, 3),
+        //     Color9Bit::new(6, 4, 3),
+        //     Color9Bit::new(6, 4, 4),
+        //     Color9Bit::new(6, 5, 4),
+        //     Color9Bit::new(6, 6, 4),
+        //     Color9Bit::new(6, 6, 4),
+        //     Color9Bit::new(6, 6, 5),
+        //     Color9Bit::new(6, 6, 5),
+        // ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
         for i in 0..vid.bg_palette.len() {
@@ -49,7 +49,7 @@ impl SceneA {
 
         // Define new tiles
         let smiley = vid.new_tile(8, 8, &data::SMILEY);
-        let checker = vid.new_tile(8, 8, &data::ARROW);
+        let checker = vid.new_tile(8, 8, &TILE_SOLID);
         let arrow = vid.new_tile(8, 8, &data::ARROW);
 
         // Set BG tiles

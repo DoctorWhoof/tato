@@ -60,9 +60,7 @@ impl TatoBackend for Backend {
     }
 
     fn gamepad(&self) -> tato::pad::AnaloguePad {
-        unsafe {
-            core::mem::transmute(self.app.pad)
-        }
+        unsafe { core::mem::transmute(self.app.pad) }
     }
 
     fn quit_requested(&self) -> bool {

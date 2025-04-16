@@ -4,14 +4,12 @@ mod scene_a;
 mod scene_b;
 mod scene_c;
 
-// use backends::*;
+use backend_raylib::*;
+use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
 use tato::{audio::*, prelude::*};
-
-use backend_raylib::*;
-use raylib::prelude::*;
 
 const W: usize = 240;
 const H: usize = 180;
@@ -61,7 +59,7 @@ fn main() {
     let h = video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
         .size(w * 3, h * 3)
-        .title("Tato Videochip")
+        .title("Tato Demo")
         .vsync()
         .resizable()
         .build();
@@ -69,7 +67,7 @@ fn main() {
     ray.set_target_fps(target_fps as u32);
 
     // Create texture for rendering
-    let mut pixels: [u8; PIXEL_COUNT] = std::array::from_fn(|_| 0);
+    let mut pixels: [u8; PIXEL_COUNT] = core::array::from_fn(|_| 0);
     let mut render_texture = {
         let render_image = Image::gen_image_color(w, h, Color::BLACK);
         ray.load_texture_from_image(&ray_thread, &render_image)
@@ -77,7 +75,9 @@ fn main() {
     };
     // Audio
     let ray_audio = raylib::core::audio::RaylibAudio::init_audio_device().unwrap();
-    let mut audio_stream = ray_audio.new_audio_stream(audio.sample_rate, 16, 1);
+    let mut audio_stream = ray_audio.new_audio_stream(audio.sample_rate, 16, 2);
+    let audio_len = (audio.sample_rate as f64 / target_fps).floor() as usize / 2;
+    let mut wave_out = Vec::<i16>::with_capacity(audio_len);
     audio_stream.play();
 
     // Main Loop
@@ -113,13 +113,13 @@ fn main() {
             &video,
         );
 
-        let audio_len = (audio.sample_rate as f64 / target_fps / 2.0) as usize;
-        let mut wave = Vec::<i16>::with_capacity(audio_len);
-        for _ in 0..audio_len {
-            let sample = audio.process_sample();
-            wave.push(sample.left);
-            wave.push(sample.right);
-        }
-        audio_stream.update(wave.as_slice());
+        // TODO: Audio still broken, write samples to wav file for debugging
+        // for _ in 0..audio_len {
+        //     let sample = audio.process_sample();
+        //     wave_out.push(sample.left);
+        //     wave_out.push(sample.right);
+        // }
+        // audio_stream.update(wave_out.as_slice());
+        // wave_out.clear();
     }
 }
