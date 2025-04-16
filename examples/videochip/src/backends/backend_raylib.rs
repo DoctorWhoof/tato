@@ -1,8 +1,6 @@
 use raylib::prelude::*;
 use std::time::Instant;
-use tato::backend::*;
-use tato::pad::*;
-use tato::video::*;
+use tato::{audio::*, backend::*, pad::*, video::*};
 
 pub struct Backend {
     target_fps: f64,
@@ -12,12 +10,16 @@ pub struct Backend {
     pad: AnaloguePad,
     rl_handle: RaylibHandle,
     rl_thread: RaylibThread,
+    // audio_stream: AudioStream<'a>,
 }
 
-impl BackendVideo for Backend {
-    fn new_window(vid: &VideoChip) -> Self {
-        let w = vid.width() as i32;
-        let h = vid.height() as i32;
+impl TatoBackend for Backend {
+    fn new_window(video_chip: Option<&VideoChip>, audio_chip: Option<&AudioChip>) -> Self {
+        // let audio_chip = audio_chip.unwrap();
+        let video_chip = video_chip.unwrap();
+
+        let w = video_chip.width() as i32;
+        let h = video_chip.height() as i32;
 
         let (mut rl_handle, rl_thread) = raylib::init()
             .size(w * 3, h * 3)
@@ -41,6 +43,12 @@ impl BackendVideo for Backend {
             raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
         }
 
+        // let audio = raylib::core::audio::RaylibAudio::init_audio_device().unwrap();
+        // let audio_stream = audio.new_audio_stream(
+        //     audio_chip.sample_rate,
+        //     16,
+        //     1
+        // );
         Self {
             target_fps,
             frame_start_time: Instant::now(),
@@ -49,6 +57,7 @@ impl BackendVideo for Backend {
             pad: AnaloguePad::default(),
             rl_handle,
             rl_thread,
+            // audio_stream
         }
     }
 
@@ -153,11 +162,17 @@ impl BackendVideo for Backend {
         self.rl_handle.get_time() as f64
     }
 
+    fn quit_requested(&self) -> bool {
+        self.rl_handle.window_should_close()
+    }
+
+    // Input
     fn gamepad(&self) -> AnaloguePad {
         self.pad
     }
 
-    fn quit_requested(&self) -> bool {
-        self.rl_handle.window_should_close()
+    // Audio
+    fn audio_update_buffer(&mut self, _audio: &AudioChip) {
+        // self.
     }
 }

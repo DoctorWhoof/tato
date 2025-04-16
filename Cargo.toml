@@ -8,9 +8,10 @@ repository = "https://github.com/DoctorWhoof/tato"
 categories = ["no-std"]
 
 [dependencies]
+tato_audio = { path = "../tato_audio" }
 tato_video = "0.1.21"
 tato_pad = "0.2.5"
 tato_layout = "0.3.21"
 
 [workspace]
-members = [ "examples/videochip"]
+members = ["examples/videochip"]

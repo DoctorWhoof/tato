@@ -8,7 +8,7 @@ use backends::*;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use tato::prelude::*;
+use tato::{audio::*, prelude::*};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BackendState {
@@ -43,7 +43,8 @@ pub enum Scene {
 
 fn main() {
     let mut vid = VideoChip::new(240, 180);
-    let mut backend = Backend::new_window(&vid);
+    let mut audio = AudioChip::default();
+    let mut backend = Backend::new_window(Some(&vid), Some(&audio));
     let mut scene = Scene::A(SceneA::new(&mut vid));
 
     while !backend.quit_requested() {

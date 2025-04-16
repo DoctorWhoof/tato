@@ -1,17 +1,19 @@
 use mini_sdl::*;
-use tato::backend::*;
-use tato::video::*;
+use tato::prelude::*;
 
 pub struct Backend {
     app: App,
 }
 
-impl BackendVideo for Backend {
-    fn new_window(vid: &VideoChip) -> Self {
+impl TatoBackend for Backend {
+    fn new_window(video_chip: Option<&VideoChip>, audio_chip: Option<&AudioChip>) -> Self {
+        let audio_chip = audio_chip.unwrap();
+        let video_chip = video_chip.unwrap();
+
         let mut app = App::new(
             "Test",
-            vid.width(),
-            vid.height(),
+            video_chip.width(),
+            video_chip.height(),
             Timing::Vsync,
             Scaling::Integer,
             // None,
@@ -57,11 +59,18 @@ impl BackendVideo for Backend {
         self.app.time().as_secs_f64()
     }
 
-    fn gamepad(&self) -> AnaloguePad {
-        self.app.pad
+    fn gamepad(&self) -> tato::pad::AnaloguePad {
+        unsafe {
+            core::mem::transmute(self.app.pad)
+        }
     }
 
     fn quit_requested(&self) -> bool {
         self.app.quit_requested
+    }
+
+    // Audio
+    fn audio_update_buffer(&mut self, _audio: &AudioChip) {
+        // self.
     }
 }
