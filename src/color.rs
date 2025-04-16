@@ -56,8 +56,8 @@ pub(crate) const PALETTE_DEFAULT: [Color9Bit; 16] = [
     Color9Bit::new(0, 2, 1), // Dark Green, 9
     Color9Bit::new(2, 4, 2), // Green, 10
     Color9Bit::new(4, 6, 3), // Green Light, 11
-    Color9Bit::new(0, 1, 2), // Dark Blue, 12
-    Color9Bit::new(1, 2, 5), // Blue, 13
+    Color9Bit::new(0, 1, 3), // Dark Blue, 12
+    Color9Bit::new(1, 2, 6), // Blue, 13
     Color9Bit::new(4, 6, 7), // Light Blue, 14
     Color9Bit::new(6, 3, 6), // Pink, 15
 ];
