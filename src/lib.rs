@@ -23,7 +23,7 @@ pub struct Sample<T> {
 }
 
 /// Contains multiple sound channels, and can render and mix them all at once.
-pub struct SoundChip {
+pub struct AudioChip {
     /// The sampling rate at which mixing is performed. Should match your audio playback device,
     /// but can be lower for improved performance. Usually 44100 or 48000.
     pub sample_rate: u32,
@@ -33,9 +33,9 @@ pub struct SoundChip {
     last_sample_time: f64,
 }
 
-impl Default for SoundChip {
+impl Default for AudioChip {
     fn default() -> Self {
-        SoundChip {
+        AudioChip {
             sample_rate: 44100,
             channels: core::array::from_fn(|_| Channel::default()),
             sample_head: 0,
@@ -44,7 +44,7 @@ impl Default for SoundChip {
     }
 }
 
-impl SoundChip {
+impl AudioChip {
     /// Process a single sample, advancing internal timer.
     pub fn process_sample(&mut self) -> Sample<i16> {
         let mut left: f32 = 0.0;
@@ -68,9 +68,9 @@ impl SoundChip {
     }
 }
 
-/// Iterates a specified number of samples. Use [SoundChip::iter()] to obtain this.
+/// Iterates a specified number of samples. Use [AudioChip::iter()] to obtain this.
 pub struct SoundChipIter<'a> {
-    chip: &'a mut SoundChip,
+    chip: &'a mut AudioChip,
     head: usize,
     sample_count: usize,
 }

@@ -38,6 +38,8 @@ pub struct Channel {
     phase: f32,
     time: f32,
     time_noise: f32,
+    // Note cache
+    current_midi_note:f32,
     // Noise
     rng: Rng,
     noise_period: f32,
@@ -64,6 +66,7 @@ impl Default for Channel {
             phase: 0.0,
             time: 0.0,
             time_noise: 0.0,
+            current_midi_note: get_midi_note(4, 0) as f32,
             rng: Rng::new(16, 0xCAFE),
             noise_period: 0.0,
             noise_output: 0.0,
@@ -126,13 +129,15 @@ impl Channel {
     /// Same as set_note, but the notes are an f32 value which allows "in-between" notes, or pitch sliding,
     /// and uses MIDI codes instead of octave and note, i.e. C4 is MIDI code 60.
     pub fn set_midi_note(&mut self, note: impl Into<f32>) {
-        let note: f32 = note.into();
-        let frequency = note_to_frequency(note);
+        self.current_midi_note = note.into();
+        let frequency = note_to_frequency(self.current_midi_note);
         self.set_frequency(frequency);
     }
 
     /// Set the channel's frequency.
-    pub fn set_frequency(&mut self, frequency: f32) {
+    // Private for now, so that the "right" way to set frequency is via note values,
+    // and we can easily store those values
+    fn set_frequency(&mut self, frequency: f32) {
         let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
 
         self.period = 1.0 / tone_frequency;
