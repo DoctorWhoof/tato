@@ -34,7 +34,7 @@ impl SceneB {
                 tile,
                 flags: palette_cycler.into(),
             },
-            smileys: core::array::from_fn(|_| Entity {
+            smileys: std::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
                 // using "wrap_width" and "wrap_height"
                 x: rand::random_range(0.0 .. 255.0), // - 32_000.0,

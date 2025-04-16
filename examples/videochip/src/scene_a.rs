@@ -1,5 +1,5 @@
 use crate::*;
-use core::array::from_fn;
+use std::array::from_fn;
 use tato::pad::*;
 use tato::video::prelude::*;
 
