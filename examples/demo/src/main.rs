@@ -114,12 +114,12 @@ fn main() {
         );
 
         // TODO: Audio still broken, write samples to wav file for debugging
-        // for _ in 0..audio_len {
-        //     let sample = audio.process_sample();
-        //     wave_out.push(sample.left);
-        //     wave_out.push(sample.right);
-        // }
-        // audio_stream.update(wave_out.as_slice());
-        // wave_out.clear();
+        for _ in 0..audio_len {
+            let sample = audio.process_sample();
+            wave_out.push(sample.left);
+            wave_out.push(sample.right);
+        }
+        audio_stream.update(wave_out.as_slice());
+        wave_out.clear();
     }
 }
