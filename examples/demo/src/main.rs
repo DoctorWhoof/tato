@@ -6,10 +6,15 @@ mod scene_c;
 mod wave_writer;
 
 use backend_raylib::*;
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
+use std::{
+    collections::VecDeque,
+    sync::mpsc::{self, Receiver, Sender},
+};
 use tato::{audio::*, prelude::*};
 
 const W: usize = 240;
@@ -77,15 +82,67 @@ fn main() {
 
     // Audio chip
     audio.channels[0].set_volume(15);
-    let audio_buffer_size = (audio.sample_rate as f64 / target_fps) as usize;
-    println!("Audio Buffer Len: {}", audio_buffer_size);
-    let mut wave_out = Vec::<i16>::with_capacity(audio_buffer_size);
+    audio.channels[0].set_note(4, 0);
 
-    // Raylib audio
-    let ray_audio = raylib::core::audio::RaylibAudio::init_audio_device().unwrap();
-    ray_audio.set_audio_stream_buffer_size_default(audio_buffer_size as i32 * 4);
-    let mut audio_stream = ray_audio.new_audio_stream(audio.sample_rate, 16, 1);
-    audio_stream.play();
+    // CPAL setup
+    let host = cpal::default_host();
+    let device = host.default_output_device().expect("No output device");
+    let config = device.default_output_config().unwrap();
+    let sample_rate = config.sample_rate().0;
+    println!("Audio sample rate: {}", sample_rate);
+
+    // Calculate samples needed per frame for smooth playback
+    // We double the theoretical value to ensure buffer doesn't underrun
+    let samples_per_frame = ((sample_rate as f64 / target_fps) * 2.0) as usize + 50;
+    println!("Samples per frame: {}", samples_per_frame);
+
+    // Channel for passing batches of samples
+    let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = mpsc::channel();
+
+    // Sample queue for the audio callback
+    let mut sample_queue = VecDeque::with_capacity(samples_per_frame * 4); // Extra headroom
+
+    // Start audio stream
+    let stream = device
+        .build_output_stream(
+            &config.into(),
+            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                // Get any new batches of samples and add to our queue
+                while let Ok(samples) = rx.try_recv() {
+                    sample_queue.extend(samples);
+                }
+
+                // Fill the output buffer
+                for sample_slot in data.iter_mut() {
+                    if let Some(sample) = sample_queue.pop_front() {
+                        // Convert i16 to float in range [-1.0, 1.0]
+                        *sample_slot = sample as f32 / 32768.0;
+                    } else {
+                        // Queue underrun - fill with silence
+                        *sample_slot = 0.0;
+                        // You could log underruns during development
+                        // println!("Audio buffer underrun");
+                    }
+                }
+
+                // Optional: Monitor queue size for debugging
+                // println!("Queue size: {}", sample_queue.len());
+            },
+            |err| eprintln!("Audio error: {}", err),
+            None,
+        )
+        .unwrap();
+
+    stream.play().unwrap();
+
+    // Pre-fill the audio buffer before starting the game loop
+    // This ensures we have audio ready to play immediately
+    let mut startup_samples = Vec::with_capacity(samples_per_frame * 2);
+    for _ in 0..(samples_per_frame * 2) {
+        let sample = audio.process_sample();
+        startup_samples.push(sample.left);
+    }
+    let _ = tx.send(startup_samples);
 
     // Set up audio file writing for debugging, check "wave_writer" mod.
     let mut wav_file = wave_writer::WaveWriter::new(audio.sample_rate);
@@ -115,6 +172,17 @@ fn main() {
             }
         }
 
+        // Generate batch of audio samples for this frame
+        let mut frame_samples = Vec::with_capacity(samples_per_frame);
+        for _ in 0..samples_per_frame {
+            let sample = audio.process_sample();
+            frame_samples.push(sample.left);
+            wav_file.push(sample.left); // For WAV file debugging
+        }
+
+        // Send the entire batch at once
+        let _ = tx.send(frame_samples);
+
         copy_pixels_to_texture(
             &video,
             &ray_thread,
@@ -122,17 +190,6 @@ fn main() {
             &mut pixels,
             &mut render_texture,
         );
-
-        for _ in 0..audio_buffer_size {
-            let sample = audio.process_sample();
-            wave_out.push(sample.left);
-            wav_file.push(sample.left);
-        }
-
-        if audio_stream.is_processed() {
-            audio_stream.update(wave_out.as_slice());
-            wave_out.clear();
-        }
     }
 
     wav_file.write_file();

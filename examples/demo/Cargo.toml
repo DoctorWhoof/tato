@@ -10,6 +10,7 @@ raylib = "5.5.1"
 
 # For audio debugging
 hound = "3.5.1"
+cpal = "0.15.3"
 
 ## Other backends, currently not used
 # mini_sdl = { path = "../../../mini_sdl"}
