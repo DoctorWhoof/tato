@@ -80,27 +80,25 @@ fn main() {
             .unwrap()
     };
 
-    // Audio chip
-    audio.channels[0].set_volume(15);
-    audio.channels[0].set_note(4, 0);
-
     // CPAL setup
     let host = cpal::default_host();
     let device = host.default_output_device().expect("No output device");
     let config = device.default_output_config().unwrap();
     let sample_rate = config.sample_rate().0;
+    let samples_per_frame = ((sample_rate as f64 / target_fps) * 2.0) as usize + 100;
     println!("Audio sample rate: {}", sample_rate);
-
-    // Calculate samples needed per frame for smooth playback
-    // We double the theoretical value to ensure buffer doesn't underrun
-    let samples_per_frame = ((sample_rate as f64 / target_fps) * 2.0) as usize + 50;
     println!("Samples per frame: {}", samples_per_frame);
 
     // Channel for passing batches of samples
     let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = mpsc::channel();
 
+    // Audio chip
+    audio.channels[0].set_volume(15);
+    audio.channels[0].set_note(0, 4);
+    audio.sample_rate = config.sample_rate().0;
+
     // Sample queue for the audio callback
-    let mut sample_queue = VecDeque::with_capacity(samples_per_frame * 4); // Extra headroom
+    let mut sample_queue = VecDeque::with_capacity(samples_per_frame * 2); // Extra headroom
 
     // Start audio stream
     let stream = device
@@ -138,9 +136,10 @@ fn main() {
     // Pre-fill the audio buffer before starting the game loop
     // This ensures we have audio ready to play immediately
     let mut startup_samples = Vec::with_capacity(samples_per_frame * 2);
-    for _ in 0..(samples_per_frame * 2) {
+    for _ in 0..(samples_per_frame) {
         let sample = audio.process_sample();
         startup_samples.push(sample.left);
+        startup_samples.push(sample.right);
     }
     let _ = tx.send(startup_samples);
 
@@ -177,6 +176,7 @@ fn main() {
         for _ in 0..samples_per_frame {
             let sample = audio.process_sample();
             frame_samples.push(sample.left);
+            frame_samples.push(sample.right);
             wav_file.push(sample.left); // For WAV file debugging
         }
 
