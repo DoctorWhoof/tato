@@ -3,6 +3,7 @@ mod data;
 mod scene_a;
 mod scene_b;
 mod scene_c;
+mod wave_writer;
 
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
@@ -73,12 +74,21 @@ fn main() {
         ray.load_texture_from_image(&ray_thread, &render_image)
             .unwrap()
     };
-    // Audio
+
+    // Audio chip
+    audio.channels[0].set_volume(15);
+    let audio_buffer_size = (audio.sample_rate as f64 / target_fps) as usize;
+    println!("Audio Buffer Len: {}", audio_buffer_size);
+    let mut wave_out = Vec::<i16>::with_capacity(audio_buffer_size);
+
+    // Raylib audio
     let ray_audio = raylib::core::audio::RaylibAudio::init_audio_device().unwrap();
-    let mut audio_stream = ray_audio.new_audio_stream(audio.sample_rate, 16, 2);
-    let audio_len = (audio.sample_rate as f64 / target_fps).floor() as usize / 2;
-    let mut wave_out = Vec::<i16>::with_capacity(audio_len);
+    ray_audio.set_audio_stream_buffer_size_default(audio_buffer_size as i32 * 4);
+    let mut audio_stream = ray_audio.new_audio_stream(audio.sample_rate, 16, 1);
     audio_stream.play();
+
+    // Set up audio file writing for debugging, check "wave_writer" mod.
+    let mut wav_file = wave_writer::WaveWriter::new(audio.sample_rate);
 
     // Main Loop
     while !ray.window_should_close() {
@@ -106,20 +116,24 @@ fn main() {
         }
 
         copy_pixels_to_texture(
+            &video,
             &ray_thread,
             &mut ray,
             &mut pixels,
             &mut render_texture,
-            &video,
         );
 
-        // TODO: Audio still broken, write samples to wav file for debugging
-        for _ in 0..audio_len {
+        for _ in 0..audio_buffer_size {
             let sample = audio.process_sample();
             wave_out.push(sample.left);
-            wave_out.push(sample.right);
+            wav_file.push(sample.left);
         }
-        audio_stream.update(wave_out.as_slice());
-        wave_out.clear();
+
+        if audio_stream.is_processed() {
+            audio_stream.update(wave_out.as_slice());
+            wave_out.clear();
+        }
     }
+
+    wav_file.write_file();
 }

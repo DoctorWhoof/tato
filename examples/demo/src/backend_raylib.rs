@@ -54,11 +54,11 @@ pub fn update_gamepad(ray: &RaylibHandle, pad: &mut AnaloguePad) {
 }
 
 pub fn copy_pixels_to_texture(
+    vid: &VideoChip,
     thread: &RaylibThread,
     ray: &mut RaylibHandle,
     pixels: &mut [u8; PIXEL_COUNT],
     texture: &mut Texture2D,
-    vid: &VideoChip,
 ) {
     // Copy from framebuffer to raylib texture
     for (color, coords) in vid.iter_pixels() {

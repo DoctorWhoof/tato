@@ -8,5 +8,8 @@ tato = { path = "../../"}
 rand = {version = "0.9.0" }
 raylib = "5.5.1"
 
+# For audio debugging
+hound = "3.5.1"
+
 ## Other backends, currently not used
 # mini_sdl = { path = "../../../mini_sdl"}
