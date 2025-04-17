@@ -8,7 +8,7 @@ const FREQ_C4: f32 = 261.63;
 const TONE_FREQ_STEPS: u16 = 4096;
 const NOISE_FREQ_STEPS: u16 = 4096;
 const NOISE_PITCH_MULTIPLIER: f32 = 16.0;
-const VOLUME_ATTENUATION: f32 = 0.000; // TODO: zeroed for debuggin, unzero
+const VOLUME_ATTENUATION: f32 = 0.002; // TODO: zeroed for debuggin, unzero
 
 // C0 to C10 in "scientific pitch"", roughly the human hearing range
 pub const FREQ_RANGE: RangeInclusive<f32> = 16.0..=16384.0;
@@ -28,6 +28,7 @@ pub enum NoiseMode {
 #[derive(Debug)]
 pub struct Channel {
     // Main properties
+    pub(crate) sample_rate: f32,
     pub wavetable: [u4; 16], // 0 .. 16 only!
     pub noise_mode: NoiseMode,
     noise_mix: u4,
@@ -36,8 +37,7 @@ pub struct Channel {
     // Timing
     period: f32,
     phase: f32,
-    time: f32,
-    time_noise: f32,
+    // time_noise: f32,
     // Note cache
     current_midi_note: f32,
     // Noise
@@ -51,13 +51,17 @@ pub struct Channel {
     right_mult: f32,
     last_sample_index: usize,
     last_sample_value: f32,
+    cycle_index: usize, // Count of complete cycles
     last_cycle_index: usize,
+    phase_increment: f32,      // How much to advance phase per sample
+    noise_period_samples: f32, // Noise period in samples
 }
 
-/// Volume is zero by default! Remember to set each channel volume individually.
-impl Default for Channel {
-    fn default() -> Self {
+impl Channel {
+    /// Volume is zero by default! Remember to set each channel volume individually.
+    pub(crate) fn new(sample_rate: f32) -> Self {
         let mut result = Self {
+            sample_rate,
             wavetable: WAVE_SQUARE_50,
             noise_mode: NoiseMode::default(),
             volume: 0,
@@ -65,8 +69,7 @@ impl Default for Channel {
             noise_mix: 0,
             period: 1.0 / FREQ_C4,
             phase: 0.0,
-            time: 0.0,
-            time_noise: 0.0,
+            // time_noise: 0.0,
             current_midi_note: get_midi_note(4, 0) as f32,
             rng: Rng::new(16, 0xCAFE),
             noise_period: 0.0,
@@ -78,6 +81,9 @@ impl Default for Channel {
             last_sample_index: 0,
             last_sample_value: 0.0,
             last_cycle_index: 0,
+            phase_increment: 0.0,
+            noise_period_samples: 0.0,
+            cycle_index: 0,
         };
         result.set_volume(0);
         result.set_pan(0);
@@ -85,9 +91,7 @@ impl Default for Channel {
         result.set_note(0, 4); // C4
         result
     }
-}
 
-impl Channel {
     /// Current frequency. Does not account for pitch envelope.
     pub fn frequency(&self) -> f32 {
         1.0 / self.period
@@ -138,8 +142,8 @@ impl Channel {
     pub fn set_midi_note(&mut self, note: impl Into<f32>) {
         self.current_midi_note = note.into();
         let frequency = note_to_frequency(self.current_midi_note);
-        println!("MIDI: {:.2}", self.current_midi_note);
-        println!("freq: {:.2}", frequency);
+        // println!("MIDI: {:.2}", self.current_midi_note);
+        // println!("freq: {:.2}", frequency);
         self.set_frequency(frequency);
     }
 
@@ -147,42 +151,48 @@ impl Channel {
     // Private for now, so that the "right" way to set frequency is via note values,
     // and we can easily store those values
     fn set_frequency(&mut self, frequency: f32) {
-        // let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
-        let tone_frequency = frequency;
+        // Quantize to simulate limited pitch steps
+        let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
 
+        // Calculate how much to advance phase per sample
+        self.phase_increment = tone_frequency / self.sample_rate as f32;
+
+        // Keep period for any code that still needs it
         self.period = 1.0 / tone_frequency;
-
-        // Adjust time to ensure continuous change (instead of abrupt change)
-        self.time = self.phase * self.period;
 
         // SpecsNoise
         let noise_freq = quantize_range(frequency, NOISE_FREQ_STEPS, FREQ_RANGE);
         let noise_period = 1.0 / noise_freq;
         self.noise_period = noise_period / NOISE_PITCH_MULTIPLIER;
+
+        // Calculate noise period in samples
+        self.noise_period_samples = (self.sample_rate as f32 * self.noise_period).round();
     }
 
     #[inline(always)]
-    /// Returns the current sample and peeks the internal timer.
-    pub fn next_sample(&mut self, delta_time: f32) -> Sample<f32> {
+    /// Returns the current sample and advances the internal phase by one sample at the configured sample rate
+    pub fn next_sample(&mut self) -> Sample<f32> {
         // Always apply attenuation, so that values always drift to zero
         self.wave_output *= self.volume_attn;
 
-        // Generate noise level, will be mixed later
-        if self.noise_mix > 0 {
-            self.noise_output = {
-                if self.time_noise >= self.noise_period {
-                    self.time_noise = 0.0;
-                    let float_noise = self.rng.next_f32();
-                    match self.noise_mode {
-                        NoiseMode::Noise1Bit => quantize_range(float_noise, 1, -1.0..=1.0),
-                        NoiseMode::WhiteNoise => quantize_range(float_noise, u16::MAX, -1.0..=1.0),
-                        NoiseMode::MelodicNoise => todo!(),
-                    }
-                } else {
-                    self.noise_output
-                }
-            };
-        }
+        // // Generate noise level, will be mixed later
+        // if self.noise_mix > 0 {
+        //     self.noise_output = {
+        //         // Advance noise phase counter
+        //         self.time_noise += 1.0;
+        //         if self.time_noise >= self.noise_period_samples {
+        //             self.time_noise = 0.0;
+        //             let float_noise = self.rng.next_f32();
+        //             match self.noise_mode {
+        //                 NoiseMode::Noise1Bit => quantize_range(float_noise, 1, -1.0..=1.0),
+        //                 NoiseMode::WhiteNoise => quantize_range(float_noise, u16::MAX, -1.0..=1.0),
+        //                 NoiseMode::MelodicNoise => todo!(),
+        //             }
+        //         } else {
+        //             self.noise_output
+        //         }
+        //     };
+        // }
 
         // Determine wavetable index
         let len = self.wavetable.len();
@@ -196,25 +206,26 @@ impl Channel {
             // Avoids resetting attenuation if value hasn't changed
             if value != self.last_sample_value {
                 // Prevents sampling envelope in the middle of a wave cycle
-                let cycle_index = (self.time as f64 / self.period as f64) as usize;
-                if cycle_index != self.last_cycle_index {
-                    self.last_cycle_index = cycle_index;
+                if self.cycle_index != self.last_cycle_index {
+                    self.last_cycle_index = self.cycle_index;
+                    // TODO: Is this doing anything??
+                    // UPDATE: Probably used to deal with envelope sampling!
                 }
-                self.wave_output = value;
+                // Map to (-1.0 .. 1.0) here, ensures proper attenuation over time
+                self.wave_output = (value * 2.0) - 1.0;
                 self.last_sample_value = value;
             }
         }
 
-        // adjust timers
-        self.time += delta_time;
-        self.time_noise += delta_time;
-        self.phase = (self.time % self.period) / self.period;
-
-        // Mix with noise (currently just overwrites). TODO: optional mix
-        // if self.noise_mix > 0 {
-        //     let mix = self.noise_mix as f32 / 15.0;
-        //     self.wave_output = lerp(self.wave_output, self.noise_output, mix);
-        // }
+        // Advance phase and count cycles properly
+        self.phase += self.phase_increment;
+        if self.phase >= 1.0 {
+            // Calculate how many complete cycles we've advanced
+            let complete_cycles = (self.phase as u32) as usize;
+            self.cycle_index += complete_cycles;
+            // Keep only the fractional part of phase
+            self.phase -= complete_cycles as f32;
+        }
 
         // Apply main volume
         let output = self.wave_output * (self.volume as f32 / 15.0);

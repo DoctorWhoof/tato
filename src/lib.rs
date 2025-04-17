@@ -27,21 +27,21 @@ pub struct Sample<T> {
 /// Contains multiple sound channels, and can render and mix them all at once.
 #[derive(Debug)]
 pub struct AudioChip {
-    /// The sampling rate at which mixing is performed. Should match your audio playback device,
-    /// but can be lower for improved performance. Usually 44100 or 48000.
-    pub sample_rate: u32,
     /// Vector containing sound channels. You can directly manipulate it to add/remove channels.
     pub channels: [Channel; CHANNEL_COUNT],
     /// Global mix gain, will probably clip audio if more than 1.0 / CHANNEL_COUNT
     pub gain: f32,
+
+    sample_rate: u32,
     sample_head: usize,
 }
 
 impl Default for AudioChip {
     fn default() -> Self {
+        let sample_rate = 48000;
         AudioChip {
-            sample_rate: 48000,
-            channels: core::array::from_fn(|_| Channel::default()),
+            sample_rate,
+            channels: core::array::from_fn(|_| Channel::new(sample_rate as f32)),
             gain: 1.0 / CHANNEL_COUNT as f32,
             sample_head: 0,
         }
@@ -49,26 +49,34 @@ impl Default for AudioChip {
 }
 
 impl AudioChip {
+    /// The sampling rate at which mixing is performed. Should match your audio playback device,
+    /// but can be lower for improved performance. Usually 44100 or 48000.
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    pub fn set_sample_rate(&mut self, value:u32) {
+        self.sample_rate = value;
+        for ch in &mut self.channels{
+            ch.sample_rate = value as f32;
+        };
+    }
+
     /// Process a single sample, advancing internal timer.
     pub fn process_sample(&mut self) -> Sample<i16> {
-        // delta will be always tiny, f32 is fine(?)
-        let delta_time = 1.0 / self.sample_rate as f32;
-
         let mut left: f32 = 0.0;
         let mut right: f32 = 0.0;
         for channel in &mut self.channels {
-            let sample = channel.next_sample(delta_time);
+            let sample = channel.next_sample();
             // Accumulate channels
             left += sample.left;
             right += sample.right;
         }
 
         self.sample_head += 1;
-        let adjusted_left = ((left * 2.0) - 1.0) * self.gain;
-        let adjusted_right = ((right * 2.0) - 1.0) * self.gain;
         Sample {
-            left: (adjusted_left.clamp(-1.0, 1.0) * MAX_I16) as i16,
-            right: (adjusted_right.clamp(-1.0, 1.0) * MAX_I16) as i16,
+            left: ((left * self.gain).clamp(-1.0, 1.0) * MAX_I16) as i16,
+            right: ((right * self.gain).clamp(-1.0, 1.0) * MAX_I16) as i16,
         }
     }
 }
