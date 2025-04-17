@@ -1,10 +1,10 @@
 use core::ops::RangeInclusive;
 
-/// Linear interpolation.
-#[inline(always)]
-pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
-    start + t * (end - start)
-}
+// /// Linear interpolation.
+// #[inline(always)]
+// pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
+//     start + t * (end - start)
+// }
 
 // Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
 #[inline(always)]

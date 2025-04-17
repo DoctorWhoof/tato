@@ -1,6 +1,6 @@
 use core::ops::RangeInclusive;
 
-use crate::{math::*, notes::*, rng::*, *};
+use crate::{data::WAVE_SQUARE_50, math::*, notes::*, rng::*, *};
 
 const FREQ_C4: f32 = 261.63;
 
@@ -8,7 +8,7 @@ const FREQ_C4: f32 = 261.63;
 const TONE_FREQ_STEPS: u16 = 4096;
 const NOISE_FREQ_STEPS: u16 = 4096;
 const NOISE_PITCH_MULTIPLIER: f32 = 16.0;
-const VOLUME_ATTENUATION: f32 = 0.002;
+const VOLUME_ATTENUATION: f32 = 0.000; // TODO: zeroed for debuggin, unzero
 
 // C0 to C10 in "scientific pitch"", roughly the human hearing range
 pub const FREQ_RANGE: RangeInclusive<f32> = 16.0..=16384.0;
@@ -39,7 +39,7 @@ pub struct Channel {
     time: f32,
     time_noise: f32,
     // Note cache
-    current_midi_note:f32,
+    current_midi_note: f32,
     // Noise
     rng: Rng,
     noise_period: f32,
@@ -54,10 +54,11 @@ pub struct Channel {
     last_cycle_index: usize,
 }
 
+/// Volume is zero by default! Remember to set each channel volume individually.
 impl Default for Channel {
     fn default() -> Self {
-        Self {
-            wavetable: [0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 15, 15, 15, 15, 15, 15],
+        let mut result = Self {
+            wavetable: WAVE_SQUARE_50,
             noise_mode: NoiseMode::default(),
             volume: 0,
             pan: 0,
@@ -77,7 +78,12 @@ impl Default for Channel {
             last_sample_index: 0,
             last_sample_value: 0.0,
             last_cycle_index: 0,
-        }
+        };
+        result.set_volume(0);
+        result.set_pan(0);
+        result.set_noise_mix(0);
+        result.set_note(0, 4); // C4
+        result
     }
 }
 
@@ -103,25 +109,26 @@ impl Channel {
     }
 
     pub fn set_volume(&mut self, volume: u4) {
+        let volume = volume.min(15);
         self.volume = volume;
         self.calculate_multipliers();
     }
 
     /// Stereo panning, centered is zero.
     pub fn set_pan(&mut self, pan: i4) {
+        let pan = pan.clamp(-7, 7);
         self.pan = pan;
         self.calculate_multipliers();
     }
 
     /// Switches channel between tone and noise generation, if specs allow noise.
-    /// Will be overriden if a noise envelope is used.
     pub fn set_noise_mix(&mut self, mix: u4) {
+        let mix = mix.min(15);
         self.noise_mix = mix;
     }
 
     /// Adjusts internal pitch values to correspond to octave and note ( where C = 0, C# = 1, etc.).
-    /// "reset_time" forces the waveform to start from position 0, ignoring previous phase.
-    pub fn set_note(&mut self, octave: impl Into<i32>, note: impl Into<i32>) {
+    pub fn set_note(&mut self, note: impl Into<i32>, octave: impl Into<i32>) {
         let midi_note = get_midi_note(octave, note);
         self.set_midi_note(midi_note as f32);
     }
@@ -131,6 +138,8 @@ impl Channel {
     pub fn set_midi_note(&mut self, note: impl Into<f32>) {
         self.current_midi_note = note.into();
         let frequency = note_to_frequency(self.current_midi_note);
+        println!("MIDI: {:.2}", self.current_midi_note);
+        println!("freq: {:.2}", frequency);
         self.set_frequency(frequency);
     }
 
@@ -138,7 +147,8 @@ impl Channel {
     // Private for now, so that the "right" way to set frequency is via note values,
     // and we can easily store those values
     fn set_frequency(&mut self, frequency: f32) {
-        let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
+        // let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
+        let tone_frequency = frequency;
 
         self.period = 1.0 / tone_frequency;
 
@@ -201,10 +211,10 @@ impl Channel {
         self.phase = (self.time % self.period) / self.period;
 
         // Mix with noise (currently just overwrites). TODO: optional mix
-        if self.noise_mix > 0 {
-            let mix = self.noise_mix as f32 / 15.0;
-            self.wave_output = lerp(self.wave_output, self.noise_output, mix);
-        }
+        // if self.noise_mix > 0 {
+        //     let mix = self.noise_mix as f32 / 15.0;
+        //     self.wave_output = lerp(self.wave_output, self.noise_output, mix);
+        // }
 
         // Apply main volume
         let output = self.wave_output * (self.volume as f32 / 15.0);
@@ -226,10 +236,17 @@ impl Channel {
         debug_assert!(self.pan > -8 && self.pan < 8);
         // Pre calculate this so we don't do it on every sample
         self.volume_attn = 1.0 - VOLUME_ATTENUATION;
-        // Pan quantization
-        let pan = self.pan as f32 * 7.0; // -7 to 7
-        // Is applying gain to the pan OK? Needs testing
-        self.left_mult = (pan - 1.0) / -2.0;
-        self.right_mult = (pan + 1.0) / 2.0;
+
+        // Pan factor (-1.0 to 1.0)
+        let pan_factor = self.pan as f32 / 7.0;
+
+        // Standard equal-power panning
+        if pan_factor <= 0.0 {
+            self.left_mult = 1.0;
+            self.right_mult = 1.0 + pan_factor; // Decreases as pan goes left
+        } else {
+            self.left_mult = 1.0 - pan_factor; // Decreases as pan goes right
+            self.right_mult = 1.0;
+        }
     }
 }

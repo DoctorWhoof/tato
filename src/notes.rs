@@ -23,6 +23,13 @@ pub fn note_to_frequency(note: f32) -> f32 {
     let octaves = trunc(semitones_from_a4 / 12.0);
     let semitones = semitones_from_a4 - (octaves * 12.0);
 
+    // Handle negative semitones by normalizing to 0-11.999... range
+    let normalized_semitones = if semitones < 0.0 {
+        semitones + 12.0
+    } else {
+        semitones
+    };
+
     // Pre-computed semitone ratios for exactly one octave
     const SEMITONE_RATIOS: [f32; 13] = [
         1.0,         // 0 semitones from reference
@@ -41,8 +48,8 @@ pub fn note_to_frequency(note: f32) -> f32 {
     ];
 
     // Get the appropriate semitone ratio using linear interpolation
-    let semitone_index = floor(semitones) as usize;
-    let fraction = semitones - floor(semitones);
+    let semitone_index = floor(normalized_semitones) as usize;
+    let fraction = normalized_semitones - floor(normalized_semitones);
 
     let ratio = if fraction > 0.0 && semitone_index < 12 {
         let ratio1 = SEMITONE_RATIOS[semitone_index];
@@ -52,17 +59,22 @@ pub fn note_to_frequency(note: f32) -> f32 {
         SEMITONE_RATIOS[semitone_index]
     };
 
-    // Apply octave shift (corrected to ensure consistent types)
-    let octave_multiplier = if octaves >= 0.0 {
-        (1 << octaves as i32) as f32
+    // Calculate octave adjustment, accounting for negative semitones
+    let adjusted_octaves = if semitones < 0.0 {
+        octaves - 1.0
     } else {
-        1.0 / (1 << (-octaves as i32)) as f32
+        octaves
+    };
+
+    // Apply octave shift using bit shifting for integer octaves
+    let octave_multiplier = if adjusted_octaves >= 0.0 {
+        (1 << adjusted_octaves as i32) as f32
+    } else {
+        1.0 / (1 << (-adjusted_octaves as i32)) as f32
     };
 
     A4_FREQ * ratio * octave_multiplier
 }
-
-
 
 // // Complete table of frequencies for all MIDI notes 0-127
 // const MIDI_FREQS: [f32; 120] = [
