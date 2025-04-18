@@ -58,7 +58,6 @@ pub struct Channel {
     queued_volume: Option<u4>,
     queued_pan: Option<i4>,
     cycle_step: usize, // Zeroed out on every new cycle
-    volume_scale: f32 // restores full range after applying non-linear curve
 }
 
 impl Channel {
@@ -90,9 +89,7 @@ impl Channel {
             queued_volume: None,
             queued_pan: None,
             cycle_step: 0,
-            volume_scale: 1.0 / powf(1.0, VOLUME_EXPONENT),
         };
-        println!("volume_non_linear: {}", result.volume_non_linear);
         result.set_volume(0);
         result.set_pan(0);
         result.set_noise_mix(0);
@@ -230,7 +227,7 @@ impl Channel {
                 let mut recalc_multipliers = false;
                 if let Some(volume) = self.queued_volume {
                     self.volume = volume;
-                    self.volume_non_linear = powf(volume as f32 / 15.0, VOLUME_EXPONENT) * self.volume_scale;
+                    self.volume_non_linear = powf(volume as f32 / 15.0, VOLUME_EXPONENT);
                     // println!("{}", self.volume_non_linear);
                     self.queued_volume = None;
                     recalc_multipliers = true;
