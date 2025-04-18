@@ -1,7 +1,7 @@
 // #![no_std]
 mod channel;
 mod math;
-mod notes;
+mod note;
 mod rng;
 
 pub mod data;
@@ -11,6 +11,7 @@ const CHANNEL_COUNT: usize = 4;
 // const MIX_COMPRESSION: f32 = 1.6;
 
 pub use channel::*;
+pub use note::*;
 
 #[allow(non_camel_case_types)]
 pub type u4 = u8;

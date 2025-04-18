@@ -1,6 +1,6 @@
 use core::ops::RangeInclusive;
 
-use crate::{data::WAVE_SQUARE_50, math::*, notes::*, rng::*, *};
+use crate::{data::*, math::*,rng::*, *};
 
 const FREQ_C4: f32 = 261.63;
 
@@ -35,11 +35,8 @@ pub struct Channel {
     volume: u4,
     pan: i4,
     // Timing
-    period: f32,
+    frequency: f32,
     phase: f32,
-    // time_noise: f32,
-    // Note cache
-    current_midi_note: f32,
     // Noise
     rng: Rng,
     noise_period: f32,
@@ -50,9 +47,7 @@ pub struct Channel {
     left_mult: f32,
     right_mult: f32,
     last_sample_index: usize,
-    last_sample_value: f32,
-    cycle_index: usize, // Count of complete cycles
-    last_cycle_index: usize,
+    last_sample_value: u4,
     phase_increment: f32,      // How much to advance phase per sample
     noise_period_samples: f32, // Noise period in samples
 }
@@ -62,15 +57,14 @@ impl Channel {
     pub(crate) fn new(sample_rate: f32) -> Self {
         let mut result = Self {
             sample_rate,
-            wavetable: WAVE_SQUARE_50,
+            wavetable: WAVE_TRIANGLE,
             noise_mode: NoiseMode::default(),
             volume: 0,
             pan: 0,
             noise_mix: 0,
-            period: 1.0 / FREQ_C4,
+            frequency: FREQ_C4,
             phase: 0.0,
             // time_noise: 0.0,
-            current_midi_note: get_midi_note(4, 0) as f32,
             rng: Rng::new(16, 0xCAFE),
             noise_period: 0.0,
             noise_output: 0.0,
@@ -79,11 +73,9 @@ impl Channel {
             left_mult: 0.5,
             right_mult: 0.5,
             last_sample_index: 0,
-            last_sample_value: 0.0,
-            last_cycle_index: 0,
+            last_sample_value: 0,
             phase_increment: 0.0,
             noise_period_samples: 0.0,
-            cycle_index: 0,
         };
         result.set_volume(0);
         result.set_pan(0);
@@ -94,7 +86,7 @@ impl Channel {
 
     /// Current frequency. Does not account for pitch envelope.
     pub fn frequency(&self) -> f32 {
-        1.0 / self.period
+        self.frequency
     }
 
     /// The main volume level.
@@ -105,6 +97,12 @@ impl Channel {
     /// Current stereo panning. Zero means centered (mono).
     pub fn pan(&self) -> i4 {
         self.pan
+    }
+
+    /// Equivalent midi note value for the current frequency
+    /// TODO: Needs testing!
+    pub fn midi_note(&self) -> f32 {
+        frequency_to_note(self.frequency)
     }
 
     /// Current noise mix. 0 is pure tone, 15 is pure noise.
@@ -140,25 +138,19 @@ impl Channel {
     /// Same as set_note, but the notes are an f32 value which allows "in-between" notes, or pitch sliding,
     /// and uses MIDI codes instead of octave and note, i.e. C4 is MIDI code 60.
     pub fn set_midi_note(&mut self, note: impl Into<f32>) {
-        self.current_midi_note = note.into();
-        let frequency = note_to_frequency(self.current_midi_note);
+        let frequency = note_to_frequency(note.into());
+        self.set_frequency(frequency);
         // println!("MIDI: {:.2}", self.current_midi_note);
         // println!("freq: {:.2}", frequency);
-        self.set_frequency(frequency);
     }
 
     /// Set the channel's frequency.
-    // Private for now, so that the "right" way to set frequency is via note values,
-    // and we can easily store those values
-    fn set_frequency(&mut self, frequency: f32) {
+    pub fn set_frequency(&mut self, frequency: f32) {
         // Quantize to simulate limited pitch steps
-        let tone_frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
+        self.frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
 
         // Calculate how much to advance phase per sample
-        self.phase_increment = tone_frequency / self.sample_rate as f32;
-
-        // Keep period for any code that still needs it
-        self.period = 1.0 / tone_frequency;
+        self.phase_increment = self.frequency / self.sample_rate as f32;
 
         // SpecsNoise
         let noise_freq = quantize_range(frequency, NOISE_FREQ_STEPS, FREQ_RANGE);
@@ -202,18 +194,12 @@ impl Channel {
         if index != self.last_sample_index {
             self.last_sample_index = index;
             let wave = self.wavetable[index];
-            let value = wave as f32 / 15.0; // -1.0 to 1.0 range
             // Avoids resetting attenuation if value hasn't changed
-            if value != self.last_sample_value {
-                // Prevents sampling envelope in the middle of a wave cycle
-                if self.cycle_index != self.last_cycle_index {
-                    self.last_cycle_index = self.cycle_index;
-                    // TODO: Is this doing anything??
-                    // UPDATE: Probably used to deal with envelope sampling!
-                }
+            if wave != self.last_sample_value {
+                let value = wave as f32 / 15.0; // 0.0 to 1.0 range
                 // Map to (-1.0 .. 1.0) here, ensures proper attenuation over time
                 self.wave_output = (value * 2.0) - 1.0;
-                self.last_sample_value = value;
+                self.last_sample_value = wave;
             }
         }
 
@@ -222,7 +208,6 @@ impl Channel {
         if self.phase >= 1.0 {
             // Calculate how many complete cycles we've advanced
             let complete_cycles = (self.phase as u32) as usize;
-            self.cycle_index += complete_cycles;
             // Keep only the fractional part of phase
             self.phase -= complete_cycles as f32;
         }

@@ -1,50 +1,38 @@
 use core::ops::RangeInclusive;
 
+use libm::roundf;
+
 // /// Linear interpolation.
 // #[inline(always)]
 // pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
 //     start + t * (end - start)
 // }
 
+/// Returns the MIDI note value given an octave (zero to 10) and a note (zero to 11).
+pub fn get_midi_note(octave: impl Into<i32>, note: impl Into<i32>) -> i32 {
+    // Handle negative values and values beyond range
+    let octave = wrap(octave.into(), 10);
+    let note = wrap(note.into(), 12);
+    // MIDI note number, where C4 is 60
+    ((octave + 1) * 12) + note
+}
+
+#[inline(always)]
+/// The frequency in Hz of any MIDI note value.
+pub fn note_to_frequency(note: f32) -> f32 {
+    libm::powf(2.0, (note - 69.0) / 12.0) * 440.0
+}
+
+#[inline(always)]
+/// The corresponding note of a frequency
+pub fn frequency_to_note(frequency: f32) -> f32 {
+    69.0 + 12.0 * libm::log2f(frequency / 440.0)
+}
+
 // Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
 #[inline(always)]
 pub(crate) fn wrap(value: i32, modulus: i32) -> i32 {
     ((value % modulus) + modulus) % modulus
-}
-
-/// Round a floating point number to the nearest integer value as an f32
-#[inline(always)]
-pub(crate) fn round(x: f32) -> f32 {
-    let integer_part = x as i32;
-    let fractional_part = x - integer_part as f32;
-
-    if fractional_part >= 0.5 {
-        (integer_part + 1) as f32
-    } else if fractional_part <= -0.5 {
-        (integer_part - 1) as f32
-    } else {
-        integer_part as f32
-    }
-}
-
-/// Floor a floating point number to the largest integer less than or equal to x as an f32
-#[inline(always)]
-pub(crate) fn floor(x: f32) -> f32 {
-    let integer_part = x as i32;
-    let fractional_part = x - integer_part as f32;
-
-    if fractional_part < 0.0 {
-        (integer_part - 1) as f32
-    } else {
-        integer_part as f32
-    }
-}
-
-/// Truncate a floating point number to the integer component as an f32
-#[inline(always)]
-pub(crate) fn trunc(x: f32) -> f32 {
-    let integer_part = x as i32;
-    integer_part as f32
 }
 
 /// Maps a continuous value to one of a finite set of discrete values (steps)
@@ -64,7 +52,7 @@ pub(crate) fn quantize_range(value: f32, steps: u16, range: RangeInclusive<f32>)
     let max = *range.end();
     let step_size = (max - min) / steps as f32;
     // Find the nearest step by dividing the clamped value by step size, rounding it, and multiplying back
-    let quantized_value = (round((value - min) / step_size) * step_size) + min;
+    let quantized_value = (roundf((value - min) / step_size) * step_size) + min;
     // Ensure the result is within the range after quantization
     quantized_value.clamp(min, max)
 }
