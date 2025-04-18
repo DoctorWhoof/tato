@@ -1,11 +1,11 @@
-#![no_std]
+// #![no_std]
 mod channel;
 mod math;
 mod note;
 mod rng;
 
-pub mod waveform;
 pub mod iter;
+pub mod waveform;
 
 pub use channel::*;
 pub use note::*;
@@ -21,10 +21,15 @@ pub type i4 = i8;
 
 // "Chip Specs"
 // const MIX_COMPRESSION: f32 = 1.6;
-const MAX_I16: f32 = (i16::MAX - 1) as f32;
-const SIZE_U4:u8 = 16;
-const SIZE_I4:i8 = 8;
-const MAX_SAMPLE:u8 = 15;
+const SIZE_U4: u8 = 16;
+const SIZE_I4: i8 = 8;
+
+const MAX_I16: f32 = (i16::MAX - 1) as f32; // Technically we don't need to subtract one, but I find it a little safer
+const MAX_U4: u8 = SIZE_U4 - 1;
+const MAX_I4: i8 = SIZE_I4 - 1;
+const MIN_I4: i8 = -MAX_I4;
+
+const MAX_SAMPLE: u8 = 15;
 const CHANNEL_COUNT: usize = 4;
 const TONE_FREQ_STEPS: u16 = 4096;
 // const NOISE_FREQ_STEPS: u16 = 4096;
@@ -55,7 +60,8 @@ pub struct AudioChip {
     pub sample_rate: u32,
     sample_head: usize,
     // Noise
-    rng: Rng,
+    lfsr: Rng,
+    white_noise: Rng,
     // noise_period: f32,
     // noise_output: f32,
     // noise_period_samples: f32, // Noise period in samples
@@ -71,10 +77,8 @@ impl Default for AudioChip {
             gain: 1.0 / CHANNEL_COUNT as f32,
             sample_head: 0,
             // Noise
-            rng: Rng::new(16, 0xCAFE),
-            // noise_period: 0.0,
-            // noise_output: 0.0,
-            // noise_period_samples: 0.0, // TODO: Move to chip
+            lfsr: Rng::new(5, 0xCAFE),
+            white_noise: Rng::new(16, 0xFACE),
         }
     }
 }
@@ -82,15 +86,16 @@ impl Default for AudioChip {
 impl AudioChip {
     /// Process a single sample, advancing internal timer.
     pub fn process_sample(&mut self) -> Sample<i16> {
-
         // Generates a new noise sample per step. It's up to the channels to
         // use this sample or not, according to their settings.
-        let noise = self.rng.next_f32();
+        let lfsr_noise = self.lfsr.next_f32();
+        let white_noise = self.white_noise.next_f32();
 
         let mut left: f32 = 0.0;
         let mut right: f32 = 0.0;
         for channel in &mut self.channels {
-            let sample = channel.next_sample(self.sample_rate, noise);
+
+            let sample = channel.next_sample(self.sample_rate, white_noise, lfsr_noise);
             // Accumulate channels
             left += sample.left;
             right += sample.right;

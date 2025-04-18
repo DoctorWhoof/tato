@@ -3,10 +3,10 @@ use core::ops::RangeInclusive;
 use libm::roundf;
 
 // /// Linear interpolation.
-// #[inline(always)]
-// pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
-//     start + t * (end - start)
-// }
+#[inline(always)]
+pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
+    start + (t * (end - start))
+}
 
 // // use core::f32::consts::FRAC_2_PI;
 // use libm::sinf;
@@ -15,7 +15,6 @@ use libm::roundf;
 // pub(crate) fn compress_volume(input_vol:f32, max_vol:f32) -> f32 {
 //     sinf(input_vol/(max_vol*FRAC_2_PI))
 // }
-
 
 /// Returns the MIDI note value given an octave (zero to 10) and a note (zero to 11).
 pub fn get_midi_note(note: impl Into<i32>, octave: impl Into<i32>) -> i32 {
@@ -44,8 +43,29 @@ pub(crate) fn wrap(value: i32, modulus: i32) -> i32 {
     ((value % modulus) + modulus) % modulus
 }
 
+/// Maps a continuous value to a step size, from 0.0  to 1.0
+#[inline]
+pub(crate) fn quantize(value: f32, steps: u8) -> f32 {
+    // Zero steps returns zero, useful in setting the pan
+    if steps == 0 {
+        return 0.0;
+    }
+    // One step returns one, useful in channels without volume control, i.e. NES Triangle.
+    if steps == 1 {
+        return 1.0;
+    }
+    // Everything else...
+    let steps = steps - 1;
+    let step_size = 1.0 / steps as f32;
+    // Find the nearest step by dividing the value by step size, rounding it, and multiplying back
+    let quantized_value = roundf(value / step_size) * step_size;
+    // Ensure the result is within the range after quantization
+    quantized_value.clamp(0.0, 1.0)
+}
+
 /// Maps a continuous value to one of a finite set of discrete values (steps)
 /// that are evenly distributed within the specified range.
+#[inline]
 pub(crate) fn quantize_range(value: f32, steps: u16, range: RangeInclusive<f32>) -> f32 {
     // Zero steps returns zero, useful in setting the pan
     if steps == 0 {

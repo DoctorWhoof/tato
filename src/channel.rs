@@ -6,7 +6,7 @@ pub enum WaveMode {
     #[default]
     WaveTable,
     Random1Bit,
-    Random4Bit,
+    RandomSample,
 }
 
 /// A single sound channel with configurable properties. Volume is zero by default.
@@ -27,17 +27,17 @@ pub struct Channel {
     queued_volume: Option<u4>,
     queued_pan: Option<i4>,
     // Misc. Internal State and caches
-    frequency: f32,
-    phase: f32,
+    out: f32,      // The actual, mono output value
+    wave_out: f32, // Persists from step to step, may not be set
+    noise_out: f32,
     volume_non_linear: f32,
     volume_attn: f32,
-    wave_level: f32, // The "voltage" of the output, drops over time and resets on every new sample
-    wave_out: f32,   // The actual output value, combines level, wavetable and volume
     left_mult: f32,
     right_mult: f32,
+    frequency: f32,
+    phase: f32,
     last_sample_index: usize,
-    last_tone_sample: u4,
-
+    last_sample: u4,
     cycle_step: usize, // Zeroed out on every new cycle, used to detect new cycles
 }
 impl Default for Channel {
@@ -53,16 +53,17 @@ impl Default for Channel {
             queued_volume: None,
             queued_pan: None,
             // Misc. Internal State and caches
-            frequency: FREQ_C4,
-            phase: 0.0,
+            out: 0.0,
+            wave_out: 0.0,
+            noise_out: 0.0,
             volume_non_linear: 0.0,
             volume_attn: 1.0,
-            wave_level: 0.0,
-            wave_out: 0.0,
             left_mult: 0.5,
             right_mult: 0.5,
+            frequency: FREQ_C4,
+            phase: 0.0,
             last_sample_index: 0,
-            last_tone_sample: 0,
+            last_sample: 0,
             cycle_step: 0,
         };
         result.set_volume(0);
@@ -125,7 +126,8 @@ impl Channel {
             mix < SIZE_U4,
             "Channel Error: Noise mix outside allowed range"
         );
-        let mix = mix.min(15);
+        let mix = mix.min(MAX_U4);
+        // println!("mix: {}", mix);
         self.noise_mix = mix;
     }
 
@@ -148,7 +150,7 @@ impl Channel {
             },
             "Channel Error: Octave outside allowed range"
         );
-        let midi_note = get_midi_note(octave, note);
+        let midi_note = get_midi_note(note, octave);
         self.set_midi_note(midi_note as f32);
     }
 
@@ -163,75 +165,29 @@ impl Channel {
     pub fn set_frequency(&mut self, frequency: f32) {
         // Quantize to simulate limited pitch steps
         self.frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
-
-        // SpecsNoise
-        // let noise_freq = quantize_range(frequency, NOISE_FREQ_STEPS, FREQ_RANGE);
-        // let noise_period = 1.0 / noise_freq;
-        // self.noise_period = noise_period / NOISE_PITCH_MULTIPLIER;
-
-        // Calculate noise period in samples
-        // self.noise_period_samples = roundf(self.sample_rate as f32 * self.noise_period);
     }
 
     #[inline(always)]
     /// Returns the current sample and advances the internal phase by one sample at the configured sample rate
-    pub fn next_sample(&mut self, sample_rate: u32, _noise: f32) -> Sample<f32> {
-        // Always apply attenuation, so that values always drift to zero
-        self.wave_level *= self.volume_attn;
-
-        // Calculate how much to advance phase per sample
-        let phase_increment = self.frequency / sample_rate as f32;
-        self.phase += phase_increment;
-        // Advance phase and count cycles properly
-        self.cycle_step += 1;
-        if self.phase >= 1.0 {
-            // Calculate how many complete cycles we've advanced
-            let full_cycles = (self.phase as u32) as usize;
-            self.cycle_step = 0;
-            // Keep only the fractional part of phase
-            self.phase -= full_cycles as f32;
-        }
-
+    pub fn next_sample(
+        &mut self,
+        sample_rate: u32,
+        white_noise: f32,
+        lfsr_noise: f32,
+    ) -> Sample<f32> {
         // Determine wavetable index
         let len = self.wavetable.len();
         let sample_index = (self.phase * len as f32) as usize;
 
-        // // Generate noise level, will be mixed later
-        if self.noise_mix > 0 {
-            //     self.noise_output = {
-            //         // Advance noise phase counter
-            //         self.time_noise += 1.0;
-            //         if self.time_noise >= self.noise_period_samples {
-            //             self.time_noise = 0.0;
-            //             let float_noise = self.rng.next_f32();
-            //             match self.noise_mode {
-            //                 NoiseMode::Noise1Bit => quantize_range(float_noise, 1, -1.0..=1.0),
-            //                 NoiseMode::WhiteNoise => quantize_range(float_noise, u16::MAX, -1.0..=1.0),
-            //                 NoiseMode::MelodicNoise => todo!(),
-            //             }
-            //         } else {
-            //             self.noise_output
-            //         }
-            //     };
-        }
-
-        // Obtain wavetable sample and set it to output
+        // Obtain wavetable sample and set it to wave_out
         if sample_index != self.last_sample_index {
             self.last_sample_index = sample_index;
-            let sample = self.wavetable[sample_index].min(MAX_SAMPLE);
-            // Avoids resetting attenuation if value hasn't changed
-            if sample != self.last_tone_sample {
-                let value = sample as f32 / 15.0; // 0.0 to 1.0 range
-                // Map to (-1.0 .. 1.0) here, ensures proper attenuation over time
-                self.wave_level = (value * 2.0) - 1.0;
-                self.last_tone_sample = sample;
-            }
+            // Only apply volume and pan at cycle resets
             if self.cycle_step == 0 {
                 let mut recalc_multipliers = false;
                 if let Some(volume) = self.queued_volume {
                     self.volume = volume;
                     self.volume_non_linear = powf(volume as f32 / 15.0, VOLUME_EXPONENT);
-                    // println!("{}", self.volume_non_linear);
                     self.queued_volume = None;
                     recalc_multipliers = true;
                 }
@@ -244,20 +200,63 @@ impl Channel {
                     self.calculate_multipliers();
                 }
             }
-        }
-
-        // Apply main volume
-        self.wave_out = if self.volume > 0 {
-            // self.wave_level * (self.volume as f32 / 15.0)
-            self.wave_level * self.volume_non_linear
-        } else {
-            self.wave_out * self.volume_attn
+            // Fetch noise sample
+            self.noise_out = if white_noise < 0.5 { -1.0 } else { 1.0 };
+            // Fetch wave sample
+            let sample = match self.wave_mode {
+                WaveMode::WaveTable => self.wavetable[sample_index].min(MAX_SAMPLE),
+                WaveMode::Random1Bit => {
+                    if lfsr_noise < 0.5 {
+                        0
+                    } else {
+                        MAX_U4
+                    }
+                }
+                WaveMode::RandomSample => (quantize(lfsr_noise, SIZE_U4) * MAX_U4 as f32) as u8,
+            };
+            // Avoids resetting attenuation if value hasn't changed
+            if sample != self.last_sample {
+                let value = sample as f32 / 15.0; // 0.0 to 1.0 range
+                // Map to (-1.0 .. 1.0) here, ensures proper attenuation over time
+                self.wave_out = (value * 2.0) - 1.0;
+                self.last_sample = sample;
+            }
         };
 
-        // Return sample with volume and pan applied
+        // Acquire noise sample
+
+
+        // Generate mix with noise, if any
+        let mix = {
+            let t = self.noise_mix as f32 / MAX_U4 as f32;
+            lerp(self.wave_out, self.noise_out, t)
+        };
+
+        // Apply main volume
+        self.out = if self.volume > 0 {
+            // mix * (self.volume as f32 / MAX_U4)
+            mix * self.volume_non_linear
+        } else {
+            self.out * self.volume_attn
+        };
+
+        // Advance phase and count cycles properly
+        // Done at the end of a step to allow cycle_step = 0 on first step!
+        let phase_increment = self.frequency / sample_rate as f32;
+        self.phase += phase_increment;
+        self.cycle_step += 1;
+        if self.phase >= 1.0 {
+            // Calculate how many complete cycles we've advanced
+            let full_cycles = (self.phase as u32) as usize;
+            self.cycle_step = 0;
+            // Keep only the fractional part of phase
+            self.phase -= full_cycles as f32;
+        }
+
+        // Return sample with pan applied
         Sample {
-            left: self.wave_out * self.left_mult,
-            right: self.wave_out * self.right_mult,
+            left: self.out * self.left_mult,
+            right: self.out * self.right_mult,
         }
     }
 }
@@ -272,7 +271,7 @@ impl Channel {
         // Pre calculate this so we don't do it on every sample
         self.volume_attn = 1.0 - VOLUME_ATTENUATION;
 
-        let pan = self.pan as f32 / 7.0; // Maps from -7..=7 to -1.0..=1.0
+        let pan = self.pan as f32 / MAX_I4 as f32; // Maps from -7..=7 to -1.0..=1.0
 
         self.left_mult = (pan - 1.0) / -2.0;
         self.right_mult = (pan + 1.0) / 2.0;
