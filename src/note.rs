@@ -1,8 +1,7 @@
 use crate::math::note_to_frequency;
 
 /// The Note enum can be used in lieu of MIDI note codes in any function
-/// that takes i32 or f32 as an argument, via the "into()" method.
-
+/// that takes i32 or f32 as an argument.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Note {
@@ -21,13 +20,13 @@ pub enum Note {
 
 impl Note {
     /// Corresponding frequency in Hz.
-    pub fn frequency(&self) -> f32 {
-        note_to_frequency((*self as i32) as f32)
+    pub fn frequency(self) -> f32 {
+        note_to_frequency((self as u8) as f32)
     }
 
     /// Corresponding MIDI note.
-    pub fn midi_note(&self) -> f32 {
-        (*self as i32) as f32
+    pub fn midi_note(self) -> f32 {
+        (self as u8) as f32
     }
 }
 

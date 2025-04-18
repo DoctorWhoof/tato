@@ -8,6 +8,15 @@ use libm::roundf;
 //     start + t * (end - start)
 // }
 
+// // use core::f32::consts::FRAC_2_PI;
+// use libm::sinf;
+
+// #[inline(always)]
+// pub(crate) fn compress_volume(input_vol:f32, max_vol:f32) -> f32 {
+//     sinf(input_vol/(max_vol*FRAC_2_PI))
+// }
+
+
 /// Returns the MIDI note value given an octave (zero to 10) and a note (zero to 11).
 pub fn get_midi_note(note: impl Into<i32>, octave: impl Into<i32>) -> i32 {
     // Handle negative values and values beyond range
