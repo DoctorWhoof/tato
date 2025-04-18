@@ -22,6 +22,8 @@ pub type i4 = i8;
 // "Chip Specs"
 // const MIX_COMPRESSION: f32 = 1.6;
 const MAX_I16: f32 = (i16::MAX - 1) as f32;
+const SIZE_U4:u8 = 16;
+const SIZE_I4:i8 = 8;
 const MAX_SAMPLE:u8 = 15;
 const CHANNEL_COUNT: usize = 4;
 const TONE_FREQ_STEPS: u16 = 4096;

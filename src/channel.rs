@@ -2,11 +2,11 @@ use crate::{math::*, waveform::*, *};
 use libm::powf;
 
 #[derive(Debug, Default, Clone, Copy)]
-pub enum NoiseMode {
+pub enum WaveMode {
     #[default]
-    Noise1Bit,
-    WhiteNoise,
-    MelodicNoise,
+    WaveTable,
+    Random1Bit,
+    Random4Bit,
 }
 
 /// A single sound channel with configurable properties. Volume is zero by default.
@@ -16,8 +16,10 @@ pub enum NoiseMode {
 #[derive(Debug)]
 pub struct Channel {
     // Main properties
+    /// Each sample can have a 0 to 15 value (4 bits). This will be ignore if the
+    /// wave_mode is set to anything but WaveTable
     pub wavetable: [u4; 16], // 0 .. 16 only!
-    pub noise_mode: NoiseMode,
+    pub wave_mode: WaveMode,
     volume: u4,
     pan: i4,
     noise_mix: u4,
@@ -43,7 +45,7 @@ impl Default for Channel {
     fn default() -> Self {
         let mut result = Self {
             wavetable: WAVE_SAWTOOTH,
-            noise_mode: NoiseMode::default(),
+            wave_mode: WaveMode::default(),
             volume: 0,
             pan: 0,
             noise_mix: 0,
@@ -99,24 +101,53 @@ impl Channel {
     }
 
     pub fn set_volume(&mut self, volume: u4) {
+        debug_assert!(
+            volume < SIZE_U4,
+            "Channel Error: Volume outside allowed range"
+        );
         let volume = volume.min(15);
         self.queued_volume = Some(volume);
     }
 
     /// Stereo panning, centered is zero.
     pub fn set_pan(&mut self, pan: i4) {
+        debug_assert!(
+            pan < SIZE_I4 && pan > -SIZE_I4,
+            "Channel Error: pan outside allowed range"
+        );
         let pan = pan.clamp(-7, 7);
         self.queued_pan = Some(pan);
     }
 
     /// Switches channel between tone and noise generation, if specs allow noise.
     pub fn set_noise_mix(&mut self, mix: u4) {
+        debug_assert!(
+            mix < SIZE_U4,
+            "Channel Error: Noise mix outside allowed range"
+        );
         let mix = mix.min(15);
         self.noise_mix = mix;
     }
 
     /// Adjusts internal pitch values to correspond to octave and note ( where C = 0, C# = 1, etc.).
-    pub fn set_note(&mut self, note: impl Into<i32>, octave: impl Into<i32>) {
+    pub fn set_note<T>(&mut self, note: T, octave: T)
+    where
+        T: Into<i32> + Clone,
+    {
+        debug_assert!(
+            {
+                let note: i32 = note.clone().into();
+                note > Note::LowerBound.into() && note < Note::UpperBound.into()
+            },
+            "Channel Error: Note outside allowed range"
+        );
+        debug_assert!(
+            {
+                let octave: i32 = octave.clone().into();
+                octave > -1 && octave < 11
+            },
+            "Channel Error: Octave outside allowed range"
+        );
         let midi_note = get_midi_note(octave, note);
         self.set_midi_note(midi_note as f32);
     }
@@ -126,8 +157,6 @@ impl Channel {
     pub fn set_midi_note(&mut self, note: impl Into<f32>) {
         let frequency = note_to_frequency(note.into());
         self.set_frequency(frequency);
-        // println!("MIDI: {:.2}", self.current_midi_note);
-        // println!("freq: {:.2}", frequency);
     }
 
     /// Set the channel's frequency.
@@ -146,7 +175,7 @@ impl Channel {
 
     #[inline(always)]
     /// Returns the current sample and advances the internal phase by one sample at the configured sample rate
-    pub fn next_sample(&mut self, sample_rate: u32, _noise:f32) -> Sample<f32> {
+    pub fn next_sample(&mut self, sample_rate: u32, _noise: f32) -> Sample<f32> {
         // Always apply attenuation, so that values always drift to zero
         self.wave_level *= self.volume_attn;
 

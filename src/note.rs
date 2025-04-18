@@ -5,7 +5,8 @@ use crate::math::note_to_frequency;
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Note {
-    C0 = 12, CSharp0, D0, DSharp0, E0, F0, FSharp0, G0, GSharp0, A0, ASharp0, B0,
+    LowerBound = 11,
+    C0, CSharp0, D0, DSharp0, E0, F0, FSharp0, G0, GSharp0, A0, ASharp0, B0,
     C1, CSharp1, D1, DSharp1, E1, F1, FSharp1, G1, GSharp1, A1, ASharp1, B1,
     C2, CSharp2, D2, DSharp2, E2, F2, FSharp2, G2, GSharp2, A2, ASharp2, B2,
     C3, CSharp3, D3, DSharp3, E3, F3, FSharp3, G3, GSharp3, A3, ASharp3, B3,
@@ -15,7 +16,7 @@ pub enum Note {
     C7, CSharp7, D7, DSharp7, E7, F7, FSharp7, G7, GSharp7, A7, ASharp7, B7,
     C8, CSharp8, D8, DSharp8, E8, F8, FSharp8, G8, GSharp8, A8, ASharp8, B8,
     C9, CSharp9, D9, DSharp9, E9, F9, FSharp9, G9, GSharp9, A9, ASharp9, B9,
-    C10,
+    C10, UpperBound
 }
 
 impl Note {
