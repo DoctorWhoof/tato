@@ -1,6 +1,8 @@
 use core::ops::RangeInclusive;
 
-use crate::{data::*, math::*,rng::*, *};
+use libm::roundf;
+
+use crate::{waveform::*, math::*,rng::*, *};
 
 const FREQ_C4: f32 = 261.63;
 
@@ -159,7 +161,7 @@ impl Channel {
         self.noise_period = noise_period / NOISE_PITCH_MULTIPLIER;
 
         // Calculate noise period in samples
-        self.noise_period_samples = (self.sample_rate as f32 * self.noise_period).round();
+        self.noise_period_samples = roundf(self.sample_rate as f32 * self.noise_period);
     }
 
     #[inline(always)]
