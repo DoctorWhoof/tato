@@ -7,9 +7,9 @@ use crate::wave_writer::WaveWriter;
 pub struct AudioBackend {
     pub tx: Sender<Vec<i16>>,
     pub wav_file: WaveWriter,
-    stream: cpal::Stream,
     samples_per_frame: usize,
     sample_rate: u32,
+    _stream: cpal::Stream,
 }
 
 impl AudioBackend {
@@ -29,7 +29,7 @@ impl AudioBackend {
         // Set up audio file writing for debugging, check "wave_writer" mod.
         let wav_file = WaveWriter::new(sample_rate);
 
-        let stream = device
+        let _stream = device
             .build_output_stream(
                 &config.into(),
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
@@ -50,23 +50,19 @@ impl AudioBackend {
             )
             .unwrap();
 
-        stream.play().unwrap();
+        _stream.play().unwrap();
 
         AudioBackend {
             tx,
-            stream,
             samples_per_frame,
             sample_rate,
-            wav_file
+            wav_file,
+            _stream,
         }
     }
 
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate
-    }
-
-    pub fn samples_per_frame(&self) -> usize {
-        self.samples_per_frame
     }
 
     pub fn init_audio(&mut self, audio: &mut AudioChip) {

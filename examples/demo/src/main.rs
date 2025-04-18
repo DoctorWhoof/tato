@@ -11,8 +11,11 @@ use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use std::{f32::consts::{PI, TAU}, time::Instant};
-use tato::{audio::*, prelude::*};
+use std::{f32::consts::TAU, time::Instant};
+use tato::{
+    audio::{data::*, *},
+    prelude::*,
+};
 
 const W: usize = 240;
 const H: usize = 180;
@@ -82,9 +85,10 @@ fn main() {
     audio.set_sample_rate(audio_backend.sample_rate());
     audio.channels[0].set_volume(0);
     audio.channels[0].set_note(0, 4);
+    audio.channels[0].wavetable = WAVE_TRIANGLE;
 
     audio_backend.init_audio(&mut audio);
-    let note = 60.0;
+    let note = Note::C4.midi_note();
     let time = Instant::now();
 
     // Main Loop
@@ -113,7 +117,7 @@ fn main() {
         }
 
         let elapsed = time.elapsed().as_secs_f32();
-        let note_offset = (elapsed * TAU).sin() * 12.0;
+        let note_offset = ((elapsed * TAU * 6.0).sin() + 1.0) * 6.0;
         let volume = (((elapsed * TAU).sin() + 1.0) * 8.0) as u8;
 
         audio.channels[0].set_midi_note(note + note_offset);
