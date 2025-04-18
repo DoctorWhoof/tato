@@ -17,7 +17,7 @@ impl WaveWriter {
         };
         println!("Saving wav file to: {:?}", target_file);
         let wav_spec = WavSpec {
-            channels: 1,
+            channels: 2,
             sample_rate,
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,

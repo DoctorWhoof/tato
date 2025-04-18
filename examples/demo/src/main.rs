@@ -82,11 +82,12 @@ fn main() {
     audio.set_sample_rate(audio_backend.sample_rate());
     audio.channels[0].set_volume(0);
     audio.channels[0].set_note(0, 4);
-    audio.channels[0].wavetable = WAVE_TRIANGLE;
+    audio.channels[0].wavetable = WAVE_SAWTOOTH;
 
     audio_backend.init_audio(&mut audio);
-    let note = Note::C4.midi_note();
+    let note = Note::A3.midi_note();
     let time = Instant::now();
+    let mut counter = 0;
 
     // Main Loop
     while !ray.window_should_close() {
@@ -114,11 +115,15 @@ fn main() {
         }
 
         let elapsed = time.elapsed().as_secs_f32();
-        let note_offset = ((elapsed * TAU * 6.0).sin() + 1.0) * 6.0;
-        let volume = (((elapsed * TAU).sin() + 1.0) * 8.0) as u8;
+        let note_offset = ((elapsed * TAU * 8.0).sin() + 2.0) * 12.0;
+        let pan = (elapsed * TAU * 2.0).sin() * 7.0;
+        let volume = [15, 3, 12, 0];
+        audio.channels[0].set_volume(volume[counter % 4]);
 
+        // let volume = ((elapsed * TAU * 4.0).sin() + 4.0) * 4.0;
+        // audio.channels[0].set_volume(volume as u8);
         audio.channels[0].set_midi_note(note + note_offset);
-        audio.channels[0].set_volume(volume);
+        audio.channels[0].set_pan(pan as i8);
         audio_backend.process_frame(&mut audio);
 
         copy_pixels_to_texture(
@@ -128,6 +133,8 @@ fn main() {
             &mut pixels,
             &mut render_texture,
         );
+
+        counter += 1;
     }
 
     audio_backend.wav_file.write_file();

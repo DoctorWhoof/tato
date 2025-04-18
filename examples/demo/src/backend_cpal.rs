@@ -72,6 +72,7 @@ impl AudioBackend {
             startup_samples.push(sample.left);
             startup_samples.push(sample.right);
             self.wav_file.push(sample.left);
+            self.wav_file.push(sample.right);
         }
         let _ = self.tx.send(startup_samples);
     }
@@ -84,6 +85,7 @@ impl AudioBackend {
             frame_samples.push(sample.left);
             frame_samples.push(sample.right);
             self.wav_file.push(sample.left);
+            self.wav_file.push(sample.right);
         }
         let _ = self.tx.send(frame_samples);
     }
