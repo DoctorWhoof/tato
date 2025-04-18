@@ -9,7 +9,7 @@ use libm::roundf;
 // }
 
 /// Returns the MIDI note value given an octave (zero to 10) and a note (zero to 11).
-pub fn get_midi_note(octave: impl Into<i32>, note: impl Into<i32>) -> i32 {
+pub fn get_midi_note(note: impl Into<i32>, octave: impl Into<i32>) -> i32 {
     // Handle negative values and values beyond range
     let octave = wrap(octave.into(), 10);
     let note = wrap(note.into(), 12);

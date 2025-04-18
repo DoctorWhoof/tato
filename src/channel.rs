@@ -147,7 +147,8 @@ impl Channel {
     /// Set the channel's frequency.
     pub fn set_frequency(&mut self, frequency: f32) {
         // Quantize to simulate limited pitch steps
-        self.frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
+        // self.frequency = quantize_range(frequency, TONE_FREQ_STEPS, FREQ_RANGE);
+        self.frequency = frequency;
 
         // Calculate how much to advance phase per sample
         self.phase_increment = self.frequency / self.sample_rate as f32;
@@ -187,6 +188,7 @@ impl Channel {
         // }
 
         // Determine wavetable index
+        // println!("phase: {}", self.phase);
         let len = self.wavetable.len();
         let index = (self.phase * len as f32) as usize;
 
