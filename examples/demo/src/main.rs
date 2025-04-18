@@ -11,7 +11,7 @@ use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use std::{f32::consts::TAU, time::Instant};
+use std::{f32::consts::{PI, TAU}, time::Instant};
 use tato::prelude::*;
 
 const W: usize = 240;
@@ -114,32 +114,33 @@ fn main() {
             }
         }
 
-        // let pan = (elapsed * TAU * 2.0).sin() * 7.0;
-
-        // audio.channels[0].set_midi_note(60.0);
-
-        // let volume = [15, 3, 12, 0];
-        // audio.channels[0].set_volume(volume[counter % 4]);
+        let volume = [15, 3, 12];
+        audio.channels[0].set_volume(volume[counter % 3]);
 
         let elapsed = time.elapsed().as_secs_f32();
-        let note_offset = ((elapsed * TAU).sin()) * 12.0;
+        let note_offset = ((elapsed * PI).sin()) * 24.0;
         // let mix = ((((elapsed * TAU).sin() + 1.0) / 2.0) * 16.0).min(15.0) as u8;
 
         // audio.channels[0].set_noise_mix(mix);
         // audio.channels[0].set_volume(volume as u8);
 
-        // audio.channels[0].set_pan(pan as i8);
-        let stage = counter % 240;
-        if stage < 60 {
+        // audio.channels[0].set_noise_mix(5);
+        let stage = counter % 480;
+        if stage < 120 {
+            // println!("WaveTable");
             audio.channels[0].set_noise_mix(0);
             audio.channels[0].wave_mode = WaveMode::WaveTable;
-        } else if stage >= 60 && stage < 120 {
-            audio.channels[0].set_noise_mix(0);
+        } else if stage >= 120 && stage < 240 {
+            // println!("Wave Rabndom 1Bit");
+            // audio.channels[0].set_noise_mix(0);
             audio.channels[0].wave_mode = WaveMode::Random1Bit;
-        } else if stage >= 120 && stage < 180 {
-            audio.channels[0].set_noise_mix(0);
+        } else if stage >= 240 && stage < 360 {
+            // println!("Wave Random Sample");
+            // audio.channels[0].set_noise_mix(0);
             audio.channels[0].wave_mode = WaveMode::RandomSample;
         } else {
+            // println!("Noise");
+            // audio.channels[0].set_noise_mix(15);
             audio.channels[0].set_noise_mix(15);
             audio.channels[0].wave_mode = WaveMode::WaveTable;
         }
