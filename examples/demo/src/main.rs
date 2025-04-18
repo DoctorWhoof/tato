@@ -115,10 +115,13 @@ fn main() {
         }
 
         // Tremolo
-        // let volume = [15, 13, 11, 0];
-        // audio.channels[0].set_volume(volume[frame_count % 4]);
+        let elapsed = time.elapsed().as_secs_f32() % 2.0;
+        let tremolo = [15, 15, 8, 8];
+        let env_len = 2.0;
+        let env = (env_len - elapsed).clamp(0.0, 1.0);
+        let volume = tremolo[frame_count % tremolo.len()] as f32 * env;
+        audio.channels[0].set_volume(volume as u8);
 
-        let elapsed = time.elapsed().as_secs_f32();
         let note_offset = ((elapsed * PI).sin()) * 24.0;
         audio.channels[0].set_midi_note(note + note_offset);
 

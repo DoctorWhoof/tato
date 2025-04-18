@@ -9,7 +9,7 @@ pub struct AudioBackend {
     pub wav_file: WaveWriter,
     samples_per_frame: usize,
     sample_rate: u32,
-    // buffer: Vec<tato::audio::Sample<i16>>,
+    buffer_status_rx: Receiver<usize>, // Add feedback channel
     _stream: cpal::Stream,
 }
 
@@ -19,23 +19,30 @@ impl AudioBackend {
         let device = host.default_output_device().expect("No output device");
         let config = device.default_output_config().unwrap();
         let sample_rate = config.sample_rate().0;
-        let samples_per_frame = (sample_rate as f64 / target_fps) as usize + 100;
+
+        // Calculate exact sample count (no +100 buffer)
+        let exact_samples_per_frame = (sample_rate as f64 / target_fps) as usize;
 
         println!("Audio sample rate: {}", sample_rate);
-        println!("Samples per frame: {}", samples_per_frame);
+        println!("Samples per frame: {}", exact_samples_per_frame);
 
         let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = mpsc::channel();
-        let mut sample_queue = VecDeque::with_capacity(samples_per_frame * 2);
+        // Create channel for buffer status feedback
+        let (buffer_status_tx, buffer_status_rx) = mpsc::channel();
+
+        let mut sample_queue = VecDeque::with_capacity(exact_samples_per_frame * 4);
         let _stream = device
             .build_output_stream(
                 &config.into(),
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                    // Request more samples if needed
                     while let Ok(samples) = rx.try_recv() {
                         for value in samples {
                             sample_queue.push_back(value);
                         }
                     }
 
+                    // Fill the output buffer
                     for sample_slot in data.iter_mut() {
                         if let Some(sample) = sample_queue.pop_front() {
                             *sample_slot = sample as f32 / 32768.0;
@@ -43,6 +50,9 @@ impl AudioBackend {
                             *sample_slot = 0.0;
                         }
                     }
+
+                    // Report buffer status about every frame
+                    let _ = buffer_status_tx.send(sample_queue.len());
                 },
                 |err| eprintln!("Audio error: {}", err),
                 None,
@@ -50,16 +60,14 @@ impl AudioBackend {
             .unwrap();
 
         _stream.play().unwrap();
-
-        // Set up audio file writing for debugging, check "wave_writer" mod.
         let wav_file = WaveWriter::new(sample_rate);
 
         AudioBackend {
             tx,
-            samples_per_frame,
+            samples_per_frame: exact_samples_per_frame,
             sample_rate,
+            buffer_status_rx,
             wav_file,
-            // buffer,
             _stream,
         }
     }
@@ -82,14 +90,30 @@ impl AudioBackend {
 
     #[inline]
     pub fn process_frame(&mut self, audio: &mut AudioChip) {
-        let mut frame_samples = Vec::with_capacity(self.samples_per_frame);
-        for _ in 0..self.samples_per_frame {
+        // Check current buffer status
+        let mut additional_samples = 0;
+
+        // Try to get the latest buffer status
+        while let Ok(buffer_size) = self.buffer_status_rx.try_recv() {
+            // If buffer is low, add more samples
+            // Target maintaining ~2 frames worth of samples in the buffer
+            let target_buffer = self.samples_per_frame * 2;
+            if buffer_size < target_buffer {
+                additional_samples = target_buffer - buffer_size;
+            }
+        }
+
+        // Generate samples for this frame, plus any additional if needed
+        let total_samples = self.samples_per_frame + additional_samples/2; // Divide by 2 for stereo
+        let mut frame_samples = Vec::with_capacity(total_samples * 2);
+
+        for _ in 0..total_samples {
             let sample = audio.process_sample();
             frame_samples.push(sample.left);
             frame_samples.push(sample.right);
             self.wav_file.push(sample.left);
-            // self.wav_file.push(sample.right);
         }
+
         let _ = self.tx.send(frame_samples);
     }
 }
