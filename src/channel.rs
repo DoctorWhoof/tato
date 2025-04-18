@@ -1,6 +1,6 @@
 use core::ops::RangeInclusive;
 
-use libm::roundf;
+use libm::{powf, roundf};
 
 use crate::{math::*, rng::*, waveform::*, *};
 
@@ -11,6 +11,7 @@ const TONE_FREQ_STEPS: u16 = 4096;
 const NOISE_FREQ_STEPS: u16 = 4096;
 const NOISE_PITCH_MULTIPLIER: f32 = 16.0;
 const VOLUME_ATTENUATION: f32 = 0.0025;
+const VOLUME_EXPONENT: f32 = 2.5;
 
 // C0 to C10 in "scientific pitch"", roughly the human hearing range
 pub const FREQ_RANGE: RangeInclusive<f32> = 16.0..=16384.0;
@@ -44,6 +45,7 @@ pub struct Channel {
     noise_period: f32,
     noise_output: f32,
     // Misc. Internal State
+    volume_non_linear: f32,
     volume_attn: f32,
     wave_level: f32, // The "voltage" of the output, drops over time and resets on every new sample
     wave_out: f32,   // The actual output value, combines level, wavetable and volume
@@ -56,6 +58,7 @@ pub struct Channel {
     queued_volume: Option<u4>,
     queued_pan: Option<i4>,
     cycle_step: usize, // Zeroed out on every new cycle
+    volume_scale: f32 // restores full range after applying non-linear curve
 }
 
 impl Channel {
@@ -74,6 +77,7 @@ impl Channel {
             rng: Rng::new(16, 0xCAFE),
             noise_period: 0.0,
             noise_output: 0.0,
+            volume_non_linear: 0.0,
             volume_attn: 1.0,
             wave_level: 0.0,
             wave_out: 0.0,
@@ -86,7 +90,9 @@ impl Channel {
             queued_volume: None,
             queued_pan: None,
             cycle_step: 0,
+            volume_scale: 1.0 / powf(1.0, VOLUME_EXPONENT),
         };
+        println!("volume_non_linear: {}", result.volume_non_linear);
         result.set_volume(0);
         result.set_pan(0);
         result.set_noise_mix(0);
@@ -224,6 +230,8 @@ impl Channel {
                 let mut recalc_multipliers = false;
                 if let Some(volume) = self.queued_volume {
                     self.volume = volume;
+                    self.volume_non_linear = powf(volume as f32 / 15.0, VOLUME_EXPONENT) * self.volume_scale;
+                    // println!("{}", self.volume_non_linear);
                     self.queued_volume = None;
                     recalc_multipliers = true;
                 }
@@ -240,10 +248,12 @@ impl Channel {
 
         // Apply main volume
         self.wave_out = if self.volume > 0 {
-            self.wave_level * (self.volume as f32 / 15.0)
+            // self.wave_level * (self.volume as f32 / 15.0)
+            self.wave_level * self.volume_non_linear
         } else {
             self.wave_out * self.volume_attn
         };
+
         // Return sample with volume and pan applied
         Sample {
             left: self.wave_out * self.left_mult,
@@ -262,16 +272,18 @@ impl Channel {
         // Pre calculate this so we don't do it on every sample
         self.volume_attn = 1.0 - VOLUME_ATTENUATION;
 
-        // Pan factor (-1.0 to 1.0)
-        let pan_factor = self.pan as f32 / 7.0;
+        let pan = self.pan as f32 / 7.0; // Maps from -7..=7 to -1.0..=1.0
 
-        // Standard equal-power panning
-        if pan_factor <= 0.0 {
-            self.left_mult = 1.0;
-            self.right_mult = 1.0 + pan_factor; // Decreases as pan goes left
-        } else {
-            self.left_mult = 1.0 - pan_factor; // Decreases as pan goes right
-            self.right_mult = 1.0;
-        }
+        self.left_mult = (pan - 1.0) / -2.0;
+        self.right_mult = (pan + 1.0) / 2.0;
+
+        // // Standard equal-power panning
+        // if pan_factor <= 0.0 {
+        //     self.left_mult = 1.0;
+        //     self.right_mult = 1.0 + pan_factor; // Decreases as pan goes left
+        // } else {
+        //     self.left_mult = 1.0 - pan_factor; // Decreases as pan goes right
+        //     self.right_mult = 1.0;
+        // }
     }
 }

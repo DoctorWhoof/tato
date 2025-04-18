@@ -16,6 +16,7 @@ pub enum Note {
     C7, CSharp7, D7, DSharp7, E7, F7, FSharp7, G7, GSharp7, A7, ASharp7, B7,
     C8, CSharp8, D8, DSharp8, E8, F8, FSharp8, G8, GSharp8, A8, ASharp8, B8,
     C9, CSharp9, D9, DSharp9, E9, F9, FSharp9, G9, GSharp9, A9, ASharp9, B9,
+    C10,
 }
 
 impl Note {
