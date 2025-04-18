@@ -11,7 +11,7 @@ use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use std::{f32::consts::{PI, TAU}, time::Instant};
+use std::{f32::consts::PI, time::Instant};
 use tato::prelude::*;
 
 const W: usize = 240;
@@ -82,12 +82,12 @@ fn main() {
     audio.sample_rate = audio_backend.sample_rate();
     audio.channels[0].set_volume(15);
     audio.channels[0].set_note(0, 4);
-    audio.channels[0].wavetable = WAVE_SAWTOOTH;
+    audio.channels[0].wavetable = WAVE_SQUARE_50;
 
     audio_backend.init_audio(&mut audio);
     let note = Note::A3.midi_note();
     let time = Instant::now();
-    let mut counter = 0;
+    let mut frame_count = 0;
 
     // Main Loop
     while !ray.window_should_close() {
@@ -114,37 +114,29 @@ fn main() {
             }
         }
 
-        let volume = [15, 3, 12];
-        audio.channels[0].set_volume(volume[counter % 3]);
+        // Tremolo
+        // let volume = [15, 13, 11, 0];
+        // audio.channels[0].set_volume(volume[frame_count % 4]);
 
         let elapsed = time.elapsed().as_secs_f32();
         let note_offset = ((elapsed * PI).sin()) * 24.0;
+        audio.channels[0].set_midi_note(note + note_offset);
+
         // let mix = ((((elapsed * TAU).sin() + 1.0) / 2.0) * 16.0).min(15.0) as u8;
-
         // audio.channels[0].set_noise_mix(mix);
-        // audio.channels[0].set_volume(volume as u8);
 
-        // audio.channels[0].set_noise_mix(5);
-        let stage = counter % 480;
-        if stage < 120 {
-            // println!("WaveTable");
+        let stage = time.elapsed().as_secs_f32() % 8.0;
+        if stage < 2.0 {
             audio.channels[0].set_noise_mix(0);
             audio.channels[0].wave_mode = WaveMode::WaveTable;
-        } else if stage >= 120 && stage < 240 {
-            // println!("Wave Rabndom 1Bit");
-            // audio.channels[0].set_noise_mix(0);
+        } else if stage >= 2.0 && stage < 4.0 {
             audio.channels[0].wave_mode = WaveMode::Random1Bit;
-        } else if stage >= 240 && stage < 360 {
-            // println!("Wave Random Sample");
-            // audio.channels[0].set_noise_mix(0);
+        } else if stage >= 4.0 && stage < 6.0 {
             audio.channels[0].wave_mode = WaveMode::RandomSample;
         } else {
-            // println!("Noise");
-            // audio.channels[0].set_noise_mix(15);
             audio.channels[0].set_noise_mix(15);
             audio.channels[0].wave_mode = WaveMode::WaveTable;
         }
-        audio.channels[0].set_midi_note(note + note_offset);
         audio_backend.process_frame(&mut audio);
 
         copy_pixels_to_texture(
@@ -155,7 +147,7 @@ fn main() {
             &mut render_texture,
         );
 
-        counter += 1;
+        frame_count += 1;
     }
 
     audio_backend.wav_file.write_file();

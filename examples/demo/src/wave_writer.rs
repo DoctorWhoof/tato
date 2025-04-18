@@ -7,7 +7,6 @@ pub struct WaveWriter {
 
 impl WaveWriter {
     pub fn new(sample_rate: u32) -> Self {
-        // Writing in mono for debugging simplicity. Ensure no pan is set in the channel!
         let target_file: PathBuf = {
             let os_var = var_os("CARGO_MANIFEST_DIR").unwrap();
             {
@@ -17,7 +16,8 @@ impl WaveWriter {
         };
         println!("Saving wav file to: {:?}", target_file);
         let wav_spec = WavSpec {
-            channels: 2,
+            // Writing in mono for debugging simplicity. Ensure no pan is set in the channel!
+            channels: 1,
             sample_rate,
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,

@@ -9,6 +9,7 @@ pub struct AudioBackend {
     pub wav_file: WaveWriter,
     samples_per_frame: usize,
     sample_rate: u32,
+    // buffer: Vec<tato::audio::Sample<i16>>,
     _stream: cpal::Stream,
 }
 
@@ -18,23 +19,21 @@ impl AudioBackend {
         let device = host.default_output_device().expect("No output device");
         let config = device.default_output_config().unwrap();
         let sample_rate = config.sample_rate().0;
-        let samples_per_frame = ((sample_rate as f64 / target_fps) * 2.0) as usize + 100;
+        let samples_per_frame = (sample_rate as f64 / target_fps) as usize + 100;
 
         println!("Audio sample rate: {}", sample_rate);
         println!("Samples per frame: {}", samples_per_frame);
 
         let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = mpsc::channel();
         let mut sample_queue = VecDeque::with_capacity(samples_per_frame * 2);
-
-        // Set up audio file writing for debugging, check "wave_writer" mod.
-        let wav_file = WaveWriter::new(sample_rate);
-
         let _stream = device
             .build_output_stream(
                 &config.into(),
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     while let Ok(samples) = rx.try_recv() {
-                        sample_queue.extend(samples);
+                        for value in samples {
+                            sample_queue.push_back(value);
+                        }
                     }
 
                     for sample_slot in data.iter_mut() {
@@ -52,11 +51,15 @@ impl AudioBackend {
 
         _stream.play().unwrap();
 
+        // Set up audio file writing for debugging, check "wave_writer" mod.
+        let wav_file = WaveWriter::new(sample_rate);
+
         AudioBackend {
             tx,
             samples_per_frame,
             sample_rate,
             wav_file,
+            // buffer,
             _stream,
         }
     }
@@ -66,13 +69,13 @@ impl AudioBackend {
     }
 
     pub fn init_audio(&mut self, audio: &mut AudioChip) {
-        let mut startup_samples = Vec::with_capacity(self.samples_per_frame * 2);
+        let mut startup_samples = Vec::with_capacity(self.samples_per_frame);
         for _ in 0..self.samples_per_frame {
             let sample = audio.process_sample();
             startup_samples.push(sample.left);
             startup_samples.push(sample.right);
             self.wav_file.push(sample.left);
-            self.wav_file.push(sample.right);
+            // self.wav_file.push(sample.right);
         }
         let _ = self.tx.send(startup_samples);
     }
@@ -85,7 +88,7 @@ impl AudioBackend {
             frame_samples.push(sample.left);
             frame_samples.push(sample.right);
             self.wav_file.push(sample.left);
-            self.wav_file.push(sample.right);
+            // self.wav_file.push(sample.right);
         }
         let _ = self.tx.send(frame_samples);
     }
