@@ -60,7 +60,6 @@ pub struct AudioChip {
     pub sample_rate: u32,
     sample_head: usize,
     // Noise
-    lfsr: Rng,
     white_noise: Rng,
     // noise_period: f32,
     // noise_output: f32,
@@ -77,7 +76,6 @@ impl Default for AudioChip {
             gain: 1.0 / CHANNEL_COUNT as f32,
             sample_head: 0,
             // Noise
-            lfsr: Rng::new(5, 0xCAFE),
             white_noise: Rng::new(16, 0xFACE),
         }
     }
@@ -88,14 +86,13 @@ impl AudioChip {
     pub fn process_sample(&mut self) -> Sample<i16> {
         // Generates a new noise sample per step. It's up to the channels to
         // use this sample or not, according to their settings.
-        let lfsr_noise = self.lfsr.next_f32();
         let white_noise = self.white_noise.next_f32();
 
         let mut left: f32 = 0.0;
         let mut right: f32 = 0.0;
         for channel in &mut self.channels {
 
-            let sample = channel.next_sample(self.sample_rate, white_noise, lfsr_noise);
+            let sample = channel.next_sample(self.sample_rate, white_noise);
             // Accumulate channels
             left += sample.left;
             right += sample.right;

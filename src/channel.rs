@@ -1,6 +1,8 @@
 use crate::{math::*, waveform::*, *};
 use libm::powf;
 
+const MID_U32: u32 = u32::MAX / 2;
+
 #[derive(Debug, Default, Clone, Copy)]
 pub enum WaveMode {
     #[default]
@@ -27,6 +29,7 @@ pub struct Channel {
     queued_volume: Option<u4>,
     queued_pan: Option<i4>,
     // Misc. Internal State and caches
+    lfsr: Rng,
     out: f32,      // The actual, mono output value
     wave_out: f32, // Persists from step to step, may not be set
     noise_out: f32,
@@ -53,6 +56,7 @@ impl Default for Channel {
             queued_volume: None,
             queued_pan: None,
             // Misc. Internal State and caches
+            lfsr: Rng::new(6, 0xCAFE),
             out: 0.0,
             wave_out: 0.0,
             noise_out: 0.0,
@@ -169,12 +173,7 @@ impl Channel {
 
     #[inline(always)]
     /// Returns the current sample and advances the internal phase by one sample at the configured sample rate
-    pub fn next_sample(
-        &mut self,
-        sample_rate: u32,
-        white_noise: f32,
-        lfsr_noise: f32,
-    ) -> Sample<f32> {
+    pub fn next_sample(&mut self, sample_rate: u32, white_noise: f32) -> Sample<f32> {
         // Determine wavetable index
         let len = self.wavetable.len();
         let sample_index = (self.phase * len as f32) as usize;
@@ -200,19 +199,19 @@ impl Channel {
                     self.calculate_multipliers();
                 }
             }
-            // Fetch noise sample
+            // Fetch white noise sample
             self.noise_out = if white_noise < 0.5 { -1.0 } else { 1.0 };
             // Fetch wave sample
             let sample = match self.wave_mode {
                 WaveMode::WaveTable => self.wavetable[sample_index].min(MAX_SAMPLE),
                 WaveMode::Random1Bit => {
-                    if lfsr_noise < 0.5 {
-                        0
-                    } else {
-                        MAX_U4
-                    }
+                    let lfsr_noise = self.lfsr.next_f32();
+                    if lfsr_noise < 0.5 { 0 } else { MAX_U4 }
                 }
-                WaveMode::RandomSample => (quantize(lfsr_noise, SIZE_U4) * MAX_U4 as f32) as u8,
+                WaveMode::RandomSample => {
+                    let lfsr_noise = self.lfsr.next_f32();
+                    (quantize(lfsr_noise, SIZE_U4) * MAX_U4 as f32) as u8
+                }
             };
             // Avoids resetting attenuation if value hasn't changed
             if sample != self.last_sample {
@@ -223,9 +222,6 @@ impl Channel {
             }
         };
 
-        // Acquire noise sample
-
-
         // Generate mix with noise, if any
         let mix = {
             let t = self.noise_mix as f32 / MAX_U4 as f32;
@@ -234,7 +230,6 @@ impl Channel {
 
         // Apply main volume
         self.out = if self.volume > 0 {
-            // mix * (self.volume as f32 / MAX_U4)
             mix * self.volume_non_linear
         } else {
             self.out * self.volume_attn
