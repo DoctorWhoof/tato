@@ -36,7 +36,7 @@ pub struct Channel {
     left_mult: f32,
     right_mult: f32,
     last_sample_index: usize,
-    last_sample_value: u4,
+    last_tone_sample: u4,
 
     cycle_step: usize, // Zeroed out on every new cycle, used to detect new cycles
 }
@@ -62,7 +62,7 @@ impl Default for Channel {
             left_mult: 0.5,
             right_mult: 0.5,
             last_sample_index: 0,
-            last_sample_value: 0,
+            last_tone_sample: 0,
             cycle_step: 0,
         };
         result.set_volume(0);
@@ -137,7 +137,7 @@ impl Channel {
         debug_assert!(
             {
                 let note: i32 = note.clone().into();
-                note > Note::LowerBound.into() && note < Note::UpperBound.into()
+                note > -1 && note < 12
             },
             "Channel Error: Note outside allowed range"
         );
@@ -192,39 +192,39 @@ impl Channel {
             self.phase -= full_cycles as f32;
         }
 
-        // // Generate noise level, will be mixed later
-        // if self.noise_mix > 0 {
-        //     self.noise_output = {
-        //         // Advance noise phase counter
-        //         self.time_noise += 1.0;
-        //         if self.time_noise >= self.noise_period_samples {
-        //             self.time_noise = 0.0;
-        //             let float_noise = self.rng.next_f32();
-        //             match self.noise_mode {
-        //                 NoiseMode::Noise1Bit => quantize_range(float_noise, 1, -1.0..=1.0),
-        //                 NoiseMode::WhiteNoise => quantize_range(float_noise, u16::MAX, -1.0..=1.0),
-        //                 NoiseMode::MelodicNoise => todo!(),
-        //             }
-        //         } else {
-        //             self.noise_output
-        //         }
-        //     };
-        // }
-
         // Determine wavetable index
         let len = self.wavetable.len();
         let sample_index = (self.phase * len as f32) as usize;
 
+        // // Generate noise level, will be mixed later
+        if self.noise_mix > 0 {
+            //     self.noise_output = {
+            //         // Advance noise phase counter
+            //         self.time_noise += 1.0;
+            //         if self.time_noise >= self.noise_period_samples {
+            //             self.time_noise = 0.0;
+            //             let float_noise = self.rng.next_f32();
+            //             match self.noise_mode {
+            //                 NoiseMode::Noise1Bit => quantize_range(float_noise, 1, -1.0..=1.0),
+            //                 NoiseMode::WhiteNoise => quantize_range(float_noise, u16::MAX, -1.0..=1.0),
+            //                 NoiseMode::MelodicNoise => todo!(),
+            //             }
+            //         } else {
+            //             self.noise_output
+            //         }
+            //     };
+        }
+
         // Obtain wavetable sample and set it to output
         if sample_index != self.last_sample_index {
             self.last_sample_index = sample_index;
-            let wave = self.wavetable[sample_index].min(MAX_SAMPLE);
+            let sample = self.wavetable[sample_index].min(MAX_SAMPLE);
             // Avoids resetting attenuation if value hasn't changed
-            if wave != self.last_sample_value {
-                let value = wave as f32 / 15.0; // 0.0 to 1.0 range
+            if sample != self.last_tone_sample {
+                let value = sample as f32 / 15.0; // 0.0 to 1.0 range
                 // Map to (-1.0 .. 1.0) here, ensures proper attenuation over time
                 self.wave_level = (value * 2.0) - 1.0;
-                self.last_sample_value = wave;
+                self.last_tone_sample = sample;
             }
             if self.cycle_step == 0 {
                 let mut recalc_multipliers = false;
