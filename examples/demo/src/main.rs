@@ -12,10 +12,7 @@ use scene_a::*;
 use scene_b::*;
 use scene_c::*;
 use std::{f32::consts::TAU, time::Instant};
-use tato::{
-    audio::{data::*, *},
-    prelude::*,
-};
+use tato::prelude::*;
 
 const W: usize = 240;
 const H: usize = 180;
