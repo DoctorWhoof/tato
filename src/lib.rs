@@ -4,7 +4,7 @@ mod math;
 mod note;
 mod rng;
 
-pub mod data;
+mod data;
 
 const MAX_I16: f32 = (i16::MAX - 1) as f32;
 const CHANNEL_COUNT: usize = 4;
@@ -12,6 +12,7 @@ const CHANNEL_COUNT: usize = 4;
 
 pub use channel::*;
 pub use note::*;
+pub use data::*;
 
 #[allow(non_camel_case_types)]
 pub type u4 = u8;

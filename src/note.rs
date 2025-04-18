@@ -1,4 +1,4 @@
-use crate::math::{get_midi_note, note_to_frequency};
+use crate::math::note_to_frequency;
 
 /// The Note enum can be used in lieu of MIDI note codes in any function
 /// that takes i32 or f32 as an argument, via the "into()" method.
