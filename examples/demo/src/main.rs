@@ -1,3 +1,4 @@
+mod backend_cpal;
 mod backend_raylib;
 mod data;
 mod scene_a;
@@ -6,15 +7,11 @@ mod scene_c;
 mod wave_writer;
 
 use backend_raylib::*;
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use std::{
-    collections::VecDeque,
-    sync::mpsc::{self, Receiver, Sender},
-};
+use std::{f32::consts::{PI, TAU}, time::Instant};
 use tato::{audio::*, prelude::*};
 
 const W: usize = 240;
@@ -80,71 +77,15 @@ fn main() {
             .unwrap()
     };
 
-    // CPAL setup
-    let host = cpal::default_host();
-    let device = host.default_output_device().expect("No output device");
-    let config = device.default_output_config().unwrap();
-    let sample_rate = config.sample_rate().0;
-    let samples_per_frame = ((sample_rate as f64 / target_fps) * 2.0) as usize + 100;
-    println!("Audio sample rate: {}", sample_rate);
-    println!("Samples per frame: {}", samples_per_frame);
-
-    // Channel for passing batches of samples
-    let (tx, rx): (Sender<Vec<i16>>, Receiver<Vec<i16>>) = mpsc::channel();
-
-    // Audio chip
-    audio.channels[0].set_volume(15);
+    // Audio setup
+    let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
+    audio.set_sample_rate(audio_backend.sample_rate());
+    audio.channels[0].set_volume(0);
     audio.channels[0].set_note(0, 4);
-    audio.sample_rate = config.sample_rate().0;
 
-    // Sample queue for the audio callback
-    let mut sample_queue = VecDeque::with_capacity(samples_per_frame * 2); // Extra headroom
-
-    // Start audio stream
-    let stream = device
-        .build_output_stream(
-            &config.into(),
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                // Get any new batches of samples and add to our queue
-                while let Ok(samples) = rx.try_recv() {
-                    sample_queue.extend(samples);
-                }
-
-                // Fill the output buffer
-                for sample_slot in data.iter_mut() {
-                    if let Some(sample) = sample_queue.pop_front() {
-                        // Convert i16 to float in range [-1.0, 1.0]
-                        *sample_slot = sample as f32 / 32768.0;
-                    } else {
-                        // Queue underrun - fill with silence
-                        *sample_slot = 0.0;
-                        // You could log underruns during development
-                        // println!("Audio buffer underrun");
-                    }
-                }
-
-                // Optional: Monitor queue size for debugging
-                // println!("Queue size: {}", sample_queue.len());
-            },
-            |err| eprintln!("Audio error: {}", err),
-            None,
-        )
-        .unwrap();
-
-    stream.play().unwrap();
-
-    // Pre-fill the audio buffer before starting the game loop
-    // This ensures we have audio ready to play immediately
-    let mut startup_samples = Vec::with_capacity(samples_per_frame * 2);
-    for _ in 0..(samples_per_frame) {
-        let sample = audio.process_sample();
-        startup_samples.push(sample.left);
-        startup_samples.push(sample.right);
-    }
-    let _ = tx.send(startup_samples);
-
-    // Set up audio file writing for debugging, check "wave_writer" mod.
-    let mut wav_file = wave_writer::WaveWriter::new(audio.sample_rate);
+    audio_backend.init_audio(&mut audio);
+    let note = 60.0;
+    let time = Instant::now();
 
     // Main Loop
     while !ray.window_should_close() {
@@ -171,17 +112,13 @@ fn main() {
             }
         }
 
-        // Generate batch of audio samples for this frame
-        let mut frame_samples = Vec::with_capacity(samples_per_frame);
-        for _ in 0..samples_per_frame {
-            let sample = audio.process_sample();
-            frame_samples.push(sample.left);
-            frame_samples.push(sample.right);
-            wav_file.push(sample.left); // For WAV file debugging
-        }
+        let elapsed = time.elapsed().as_secs_f32();
+        let note_offset = (elapsed * TAU).sin() * 12.0;
+        let volume = (((elapsed * TAU).sin() + 1.0) * 8.0) as u8;
 
-        // Send the entire batch at once
-        let _ = tx.send(frame_samples);
+        audio.channels[0].set_midi_note(note + note_offset);
+        audio.channels[0].set_volume(volume);
+        audio_backend.process_frame(&mut audio);
 
         copy_pixels_to_texture(
             &video,
@@ -192,5 +129,5 @@ fn main() {
         );
     }
 
-    wav_file.write_file();
+    audio_backend.wav_file.write_file();
 }
