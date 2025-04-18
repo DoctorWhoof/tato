@@ -27,12 +27,13 @@ impl Rng {
         Self {
             state,
             mask,
-            tap: get_tap(bit_count),
+            tap: tap(bit_count),
             f32_max: (1u64 << bit_count) as f32, // works with bit count up to 63, so we're good
         }
     }
 
     /// Next random u32 value in the sequence
+    #[inline]
     pub fn next_u32(&mut self) -> u32 {
         let lsb = self.state & 1; // Store least significant bit
         self.state = xor_with_tap(self.state >> 1, self.tap, lsb);
@@ -51,7 +52,7 @@ fn xor_with_tap(value: u32, tap: u32, bit: u32) -> u32 {
     value ^ (tap & (bit * 0xFFFFFFFF))
 }
 
-fn get_tap(bit_count: u32) -> u32 {
+fn tap(bit_count: u32) -> u32 {
     // Maximal-length tap configurations.
     match bit_count {
         3 => 0b110,

@@ -81,8 +81,9 @@ impl AudioChip {
     /// Process a single sample, advancing internal timer.
     pub fn process_sample(&mut self) -> Sample<i16> {
 
-        // TODO: Implement "global" noise per chip, not per channel
-        let noise = 1.0;
+        // Generates a new noise sample per step. It's up to the channels to
+        // use this sample or not, according to their settings.
+        let noise = self.rng.next_f32();
 
         let mut left: f32 = 0.0;
         let mut right: f32 = 0.0;
