@@ -79,8 +79,8 @@ fn main() {
 
     // Audio setup
     let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
-    audio.set_sample_rate(audio_backend.sample_rate());
-    audio.channels[0].set_volume(0);
+    audio.sample_rate = audio_backend.sample_rate();
+    audio.channels[0].set_volume(15);
     audio.channels[0].set_note(0, 4);
     audio.channels[0].wavetable = WAVE_SAWTOOTH;
 
@@ -114,16 +114,36 @@ fn main() {
             }
         }
 
-        let elapsed = time.elapsed().as_secs_f32();
-        let note_offset = ((elapsed * TAU * 8.0).sin() + 2.0) * 12.0;
-        let pan = (elapsed * TAU * 2.0).sin() * 7.0;
-        let volume = [15, 3, 12, 0];
-        audio.channels[0].set_volume(volume[counter % 4]);
+        // let pan = (elapsed * TAU * 2.0).sin() * 7.0;
 
-        // let volume = ((elapsed * TAU * 4.0).sin() + 4.0) * 4.0;
+        // audio.channels[0].set_midi_note(60.0);
+
+        // let volume = [15, 3, 12, 0];
+        // audio.channels[0].set_volume(volume[counter % 4]);
+
+        let elapsed = time.elapsed().as_secs_f32();
+        let note_offset = ((elapsed * TAU).sin()) * 12.0;
+        // let mix = ((((elapsed * TAU).sin() + 1.0) / 2.0) * 16.0).min(15.0) as u8;
+
+        // audio.channels[0].set_noise_mix(mix);
         // audio.channels[0].set_volume(volume as u8);
+
+        // audio.channels[0].set_pan(pan as i8);
+        let stage = counter % 240;
+        if stage < 60 {
+            audio.channels[0].set_noise_mix(0);
+            audio.channels[0].wave_mode = WaveMode::WaveTable;
+        } else if stage >= 60 && stage < 120 {
+            audio.channels[0].set_noise_mix(0);
+            audio.channels[0].wave_mode = WaveMode::Random1Bit;
+        } else if stage >= 120 && stage < 180 {
+            audio.channels[0].set_noise_mix(0);
+            audio.channels[0].wave_mode = WaveMode::RandomSample;
+        } else {
+            audio.channels[0].set_noise_mix(15);
+            audio.channels[0].wave_mode = WaveMode::WaveTable;
+        }
         audio.channels[0].set_midi_note(note + note_offset);
-        audio.channels[0].set_pan(pan as i8);
         audio_backend.process_frame(&mut audio);
 
         copy_pixels_to_texture(
