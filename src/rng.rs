@@ -1,7 +1,4 @@
 //! A simple, "old school" LFSR with configurable bit count.
-
-use libm::powf;
-
 #[derive(Debug)]
 pub struct Rng {
     state: u32,
@@ -37,6 +34,8 @@ impl Rng {
         }
     }
 
+    #[allow(unused)]
+    #[inline]
     pub fn max_value(&self) -> u32 {
         self.mask
     }
@@ -47,11 +46,6 @@ impl Rng {
         let lsb = self.state & 1; // Store least significant bit
         self.state = xor_with_tap(self.state >> 1, self.tap, lsb);
         self.state & self.mask
-    }
-
-    pub fn next_u8(&mut self) -> u8 {
-        let size = self.mask + 1;  // This equals 2^bit_count
-        (self.next_u32() % size) as u8
     }
 
     /// Converts next random u32 value to range (0.0 .. 1.0)
