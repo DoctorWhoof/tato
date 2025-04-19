@@ -1,17 +1,14 @@
-mod backend_cpal;
 mod backend_raylib;
 mod data;
 mod scene_a;
 mod scene_b;
 mod scene_c;
-mod wave_writer;
 
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use std::{f32::consts::PI, time::Instant};
 use tato::prelude::*;
 
 const W: usize = 240;
@@ -52,7 +49,6 @@ pub enum Scene {
 fn main() {
     // Tato setup + initial scene
     let mut video = VideoChip::new(W as u32, H as u32);
-    let mut audio = AudioChip::default();
     let mut pad = AnaloguePad::default();
     let mut scene = Scene::A(SceneA::new(&mut video));
 
@@ -76,18 +72,6 @@ fn main() {
         ray.load_texture_from_image(&ray_thread, &render_image)
             .unwrap()
     };
-
-    // Audio setup
-    let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
-    audio.sample_rate = audio_backend.sample_rate();
-    audio.channels[0].set_volume(15);
-    audio.channels[0].set_note(Note::C4);
-    audio.channels[0].wavetable = WAVE_SAWTOOTH;
-
-    audio_backend.init_audio(&mut audio);
-    let note = Note::A3.midi_note();
-    let time = Instant::now();
-    let mut frame_count = 0;
 
     // Main Loop
     while !ray.window_should_close() {
@@ -114,35 +98,7 @@ fn main() {
             }
         }
 
-        // Sound test
-        let elapsed = time.elapsed().as_secs_f32() % 2.0;
-        let tremolo = [15, 14, 13, 12, 13, 14];
-        let env_len = 2.0;
-        let env = (env_len - elapsed).clamp(0.0, 1.0);
-        let volume = tremolo[frame_count % tremolo.len()] as f32 * env;
-        audio.channels[0].set_volume(volume as u8);
-
-        let note_offset = ((elapsed * PI).sin()) * 24.0;
-        audio.channels[0].set_note(note + note_offset);
-
-        // let mix = ((((elapsed * TAU).sin() + 1.0) / 2.0) * 16.0).min(15.0) as u8;
-        // audio.channels[0].set_noise_mix(mix);
-
-        let stage = time.elapsed().as_secs_f32() % 8.0;
-        if stage < 2.0 {
-            audio.channels[0].set_noise_mix(0);
-            audio.channels[0].wave_mode = WaveMode::WaveTable;
-        } else if stage >= 2.0 && stage < 4.0 {
-            audio.channels[0].wave_mode = WaveMode::Random1Bit;
-        } else if stage >= 4.0 && stage < 6.0 {
-            audio.channels[0].wave_mode = WaveMode::RandomSample;
-        } else {
-            audio.channels[0].set_noise_mix(15);
-            audio.channels[0].wave_mode = WaveMode::WaveTable;
-        }
-
-        // Update backends
-        audio_backend.process_frame(&mut audio);
+        // Update backend
         copy_pixels_to_texture(
             &video,
             &ray_thread,
@@ -150,9 +106,5 @@ fn main() {
             &mut pixels,
             &mut render_texture,
         );
-
-        frame_count += 1;
     }
-
-    audio_backend.wav_file.write_file();
 }

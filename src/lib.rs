@@ -5,11 +5,14 @@ pub use tato_layout as layout;
 pub use tato_pad as pad;
 pub use tato_video as video;
 
+pub mod text;
+
 pub mod prelude {
     pub use tato_audio::*;
     pub use tato_audio::waveform::*;
     pub use tato_video::*;
     pub use tato_pad::*;
+    pub use crate::text::*;
 }
 
 #[derive(Debug)]
