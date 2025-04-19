@@ -81,8 +81,8 @@ fn main() {
     let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
     audio.sample_rate = audio_backend.sample_rate();
     audio.channels[0].set_volume(15);
-    audio.channels[0].set_note(0, 4);
-    audio.channels[0].wavetable = WAVE_SQUARE_50;
+    audio.channels[0].set_note(Note::C4);
+    audio.channels[0].wavetable = WAVE_SAWTOOTH;
 
     audio_backend.init_audio(&mut audio);
     let note = Note::A3.midi_note();
@@ -114,16 +114,16 @@ fn main() {
             }
         }
 
-        // Tremolo
+        // Sound test
         let elapsed = time.elapsed().as_secs_f32() % 2.0;
-        let tremolo = [15, 15, 8, 8];
+        let tremolo = [15, 14, 13, 12, 13, 14];
         let env_len = 2.0;
         let env = (env_len - elapsed).clamp(0.0, 1.0);
         let volume = tremolo[frame_count % tremolo.len()] as f32 * env;
         audio.channels[0].set_volume(volume as u8);
 
         let note_offset = ((elapsed * PI).sin()) * 24.0;
-        audio.channels[0].set_midi_note(note + note_offset);
+        audio.channels[0].set_note(note + note_offset);
 
         // let mix = ((((elapsed * TAU).sin() + 1.0) / 2.0) * 16.0).min(15.0) as u8;
         // audio.channels[0].set_noise_mix(mix);
@@ -140,8 +140,9 @@ fn main() {
             audio.channels[0].set_noise_mix(15);
             audio.channels[0].wave_mode = WaveMode::WaveTable;
         }
-        audio_backend.process_frame(&mut audio);
 
+        // Update backends
+        audio_backend.process_frame(&mut audio);
         copy_pixels_to_texture(
             &video,
             &ray_thread,
