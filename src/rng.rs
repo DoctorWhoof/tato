@@ -1,5 +1,7 @@
 //! A simple, "old school" LFSR with configurable bit count.
 
+use libm::powf;
+
 #[derive(Debug)]
 pub struct Rng {
     state: u32,
@@ -20,16 +22,23 @@ impl Rng {
         let bit_count = bit_count.clamp(3, 32);
         let mask = ((1u64 << bit_count) - 1) as u32;
         let state = if (initial_state & mask) == 0 {
+            print!("Overriding Inital State: ");
             DEFAULT_VALUE & mask
         } else {
+            print!("Inital State: ");
             initial_state & mask
         };
+        println!(" 0x{:X}", state);
         Self {
             state,
             mask,
             tap: tap(bit_count),
             f32_max: (1u64 << bit_count) as f32, // works with bit count up to 63, so we're good
         }
+    }
+
+    pub fn max_value(&self) -> u32 {
+        self.mask
     }
 
     /// Next random u32 value in the sequence
@@ -40,10 +49,17 @@ impl Rng {
         self.state & self.mask
     }
 
+    pub fn next_u8(&mut self) -> u8 {
+        let size = self.mask + 1;  // This equals 2^bit_count
+        (self.next_u32() % size) as u8
+    }
+
     /// Converts next random u32 value to range (0.0 .. 1.0)
     pub fn next_f32(&mut self) -> f32 {
         self.next_u32() as f32 / self.f32_max
     }
+
+
 }
 
 #[inline(always)]
@@ -58,7 +74,7 @@ fn tap(bit_count: u32) -> u32 {
         3 => 0b110,
         4 => 0b1100,
         5 => 0b10100,
-        6 => 0b110000,
+        6 => 0b100001,
         7 => 0b1100000,
         8 => 0b10111000,
         9 => 0b100010000,

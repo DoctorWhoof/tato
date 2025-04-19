@@ -1,8 +1,6 @@
 use crate::{math::*, waveform::*, *};
 use libm::powf;
 
-const MID_U32: u32 = u32::MAX / 2;
-
 #[derive(Debug, Default, Clone, Copy)]
 pub enum WaveMode {
     #[default]
@@ -31,8 +29,8 @@ pub struct Channel {
     // Misc. Internal State and caches
     lfsr: Rng,
     out: f32,      // The actual, mono output value
-    wave_out: f32, // Persists from step to step, may not be set
-    noise_out: f32,
+    wave_out: u8,  // Persists from step to step, may not be set
+    noise_out: u8, // Persists from step to step, may not be set
     volume_non_linear: f32,
     volume_attn: f32,
     left_mult: f32,
@@ -40,7 +38,6 @@ pub struct Channel {
     frequency: f32,
     phase: f32,
     last_sample_index: usize,
-    last_sample: u4,
     cycle_step: usize, // Zeroed out on every new cycle, used to detect new cycles
 }
 impl Default for Channel {
@@ -56,10 +53,10 @@ impl Default for Channel {
             queued_volume: None,
             queued_pan: None,
             // Misc. Internal State and caches
-            lfsr: Rng::new(6, 0xCAFE),
+            lfsr: Rng::new(6, 0x_CAFE),
             out: 0.0,
-            wave_out: 0.0,
-            noise_out: 0.0,
+            wave_out: 0,
+            noise_out: 0,
             volume_non_linear: 0.0,
             volume_attn: 1.0,
             left_mult: 0.5,
@@ -67,13 +64,12 @@ impl Default for Channel {
             frequency: FREQ_C4,
             phase: 0.0,
             last_sample_index: 0,
-            last_sample: 0,
             cycle_step: 0,
         };
         result.set_volume(0);
         result.set_pan(0);
         result.set_noise_mix(0);
-        result.set_note(0, 4); // C4
+        result.set_note(Note::C4); // C4
         result
     }
 }
@@ -135,32 +131,19 @@ impl Channel {
         self.noise_mix = mix;
     }
 
-    /// Adjusts internal pitch values to correspond to octave and note ( where C = 0, C# = 1, etc.).
-    pub fn set_note<T>(&mut self, note: T, octave: T)
+    /// Same as set_note, but the notes are an f32 value which allows "in-between" notes, or pitch sliding,
+    /// and uses MIDI codes instead of octave and note, i.e. C4 is MIDI code 60.
+    pub fn set_note<T>(&mut self, note: T)
     where
-        T: Into<i32> + Clone,
+        T: Into<f32> + Clone,
     {
         debug_assert!(
             {
-                let note: i32 = note.clone().into();
-                note > -1 && note < 12
+                let note: f32 = note.clone().into();
+                note > -1.0 && note < 133.0
             },
             "Channel Error: Note outside allowed range"
         );
-        debug_assert!(
-            {
-                let octave: i32 = octave.clone().into();
-                octave > -1 && octave < 11
-            },
-            "Channel Error: Octave outside allowed range"
-        );
-        let midi_note = get_midi_note(note, octave);
-        self.set_midi_note(midi_note as f32);
-    }
-
-    /// Same as set_note, but the notes are an f32 value which allows "in-between" notes, or pitch sliding,
-    /// and uses MIDI codes instead of octave and note, i.e. C4 is MIDI code 60.
-    pub fn set_midi_note(&mut self, note: impl Into<f32>) {
         let frequency = note_to_frequency(note.into());
         self.set_frequency(frequency);
     }
@@ -177,10 +160,12 @@ impl Channel {
         // Determine wavetable index
         let len = self.wavetable.len();
         let sample_index = (self.phase * len as f32) as usize;
+        let mut new_sample = false;
 
-        // Obtain wavetable sample and set it to wave_out
+        // Obtain samples only when index changes
         if sample_index != self.last_sample_index {
             self.last_sample_index = sample_index;
+
             // Only apply volume and pan at cycle resets
             if self.cycle_step == 0 {
                 let mut recalc_multipliers = false;
@@ -199,8 +184,14 @@ impl Channel {
                     self.calculate_multipliers();
                 }
             }
+
             // Fetch white noise sample
-            self.noise_out = if white_noise < 0.5 { -1.0 } else { 1.0 };
+            let new_noise_sample = if white_noise < 0.5 { 0 } else { MAX_U4 };
+            if self.noise_out != new_noise_sample && self.noise_mix > 0 {
+                self.noise_out = new_noise_sample;
+                new_sample = true;
+            }
+
             // Fetch wave sample
             let sample = match self.wave_mode {
                 WaveMode::WaveTable => self.wavetable[sample_index].min(MAX_SAMPLE),
@@ -213,26 +204,22 @@ impl Channel {
                     (quantize(lfsr_noise, SIZE_U4) * MAX_U4 as f32) as u8
                 }
             };
+
             // Avoids resetting attenuation if value hasn't changed
-            if sample != self.last_sample {
-                let value = sample as f32 / 15.0; // 0.0 to 1.0 range
-                // Map to (-1.0 .. 1.0) here, ensures proper attenuation over time
-                self.wave_out = (value * 2.0) - 1.0;
-                self.last_sample = sample;
+            if sample != self.wave_out {
+                new_sample = true;
+                self.wave_out = sample;
             }
         };
 
         // Generate mix with noise, if any
         let mix = {
+            debug_assert!(self.wave_out < SIZE_U4);
+            debug_assert!(self.noise_out < SIZE_U4);
             let t = self.noise_mix as f32 / MAX_U4 as f32;
-            lerp(self.wave_out, self.noise_out, t)
-        };
-
-        // Apply main volume
-        self.out = if self.volume > 0 {
-            mix * self.volume_non_linear
-        } else {
-            self.out * self.volume_attn
+            let wave_out = ((self.wave_out as f32 / MAX_U4 as f32) * 2.0) - 1.0;
+            let noise_out = ((self.noise_out as f32 / MAX_U4 as f32) * 2.0) - 1.0;
+            lerp(wave_out, noise_out, t)
         };
 
         // Advance phase and count cycles properly
@@ -248,6 +235,15 @@ impl Channel {
             self.phase -= full_cycles as f32;
         }
 
+        // Apply main volume
+        self.out = if new_sample && self.volume > 0 {
+            // Reset output with new sample
+            mix * self.volume_non_linear
+        } else {
+            // If no new sample was detected, let output decay
+            self.out * self.volume_attn
+        };
+
         // Return sample with pan applied
         Sample {
             left: self.out * self.left_mult,
@@ -262,7 +258,8 @@ impl Channel {
     // Used to pre-calculate as many values as possible instead of doing it per sample, since
     // this function is called much less frequently (by orders of magnitude)
     fn calculate_multipliers(&mut self) {
-        debug_assert!(self.pan > -8 && self.pan < 8);
+        debug_assert!(self.volume < SIZE_U4);
+        debug_assert!(self.pan > -SIZE_I4 && self.pan < SIZE_I4);
         // Pre calculate this so we don't do it on every sample
         self.volume_attn = 1.0 - VOLUME_ATTENUATION;
 

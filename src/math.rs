@@ -16,14 +16,14 @@ pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
 //     sinf(input_vol/(max_vol*FRAC_2_PI))
 // }
 
-/// Returns the MIDI note value given an octave (zero to 10) and a note (zero to 11).
-pub fn get_midi_note(note: impl Into<i32>, octave: impl Into<i32>) -> i32 {
-    // Handle negative values and values beyond range
-    let octave = wrap(octave.into(), 10);
-    let note = wrap(note.into(), 12);
-    // MIDI note number, where C4 is 60
-    ((octave + 1) * 12) + note
-}
+// /// Returns the MIDI note value given an octave (zero to 10) and a note (zero to 11).
+// pub fn get_midi_note(note: impl Into<i32>) -> i32 {
+//     // Handle negative values and values beyond range
+//     let octave = wrap(octave.into(), 10);
+//     let note = wrap(note.into(), 12);
+//     // MIDI note number, where C4 is 60
+//     ((octave + 1) * 12) + note
+// }
 
 #[inline(always)]
 /// The frequency in Hz of any MIDI note value.
@@ -37,11 +37,11 @@ pub fn frequency_to_note(frequency: f32) -> f32 {
     69.0 + 12.0 * libm::log2f(frequency / 440.0)
 }
 
-// Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
-#[inline(always)]
-pub(crate) fn wrap(value: i32, modulus: i32) -> i32 {
-    ((value % modulus) + modulus) % modulus
-}
+// // Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
+// #[inline(always)]
+// pub(crate) fn wrap(value: i32, modulus: i32) -> i32 {
+//     ((value % modulus) + modulus) % modulus
+// }
 
 /// Maps a continuous value to a step size, from 0.0  to 1.0
 #[inline]

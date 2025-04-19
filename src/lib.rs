@@ -27,7 +27,6 @@ const SIZE_I4: i8 = 8;
 const MAX_I16: f32 = (i16::MAX - 1) as f32; // Technically we don't need to subtract one, but I find it a little safer
 const MAX_U4: u8 = SIZE_U4 - 1;
 const MAX_I4: i8 = SIZE_I4 - 1;
-const MIN_I4: i8 = -MAX_I4;
 
 const MAX_SAMPLE: u8 = 15;
 const CHANNEL_COUNT: usize = 4;
