@@ -7,6 +7,7 @@ pub(crate) struct AnimBuilder {
     pub frames: Vec<FrameBuilder>,
     pub fps: u8,
     pub columns: u8,
+    pub rows: u8,
 }
 
 impl AnimBuilder {

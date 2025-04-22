@@ -14,6 +14,7 @@ fn test_anim(){
     // Finally, insert the actual assets into a tileset
     // A "font" is merely an animation where each frame is a letter!
     pipe.new_anim("test/font.png", 1, 10, 4, tileset_a, palette_a);
+    pipe.new_anim("test/spy_idle.png", 8, 4, 1, tileset_a, palette_a);
 
     // Write output file
     pipe.write_assets("test/output.rs");

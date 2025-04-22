@@ -97,6 +97,7 @@ impl Pipeline {
             // id: tileset.anims.len().try_into().unwrap(),
             fps,
             columns: u8::try_from(cols_per_frame).unwrap(),
+            rows: u8::try_from(rows_per_frame).unwrap(),
             frames: (0..frame_count)
                 .map(|n| {
                     let index = n * tiles_per_frame;
@@ -178,9 +179,10 @@ impl Pipeline {
         for tileset in &self.tilesets {
             for anim in &tileset.anims {
                 code.write_line(&format!(
-                    "pub const {}: Anim<{}, 1> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
+                    "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
                     anim.name.to_uppercase(),
                     anim.frames.len(),
+                    anim.columns as usize * anim.rows as usize,
                     anim.fps,
                     anim.columns
                 ));
