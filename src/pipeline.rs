@@ -1,4 +1,4 @@
-use tato::video::{TileID, TILE_SIZE};
+use tato::video::*;
 
 use crate::*;
 
@@ -45,15 +45,14 @@ impl Pipeline {
     }
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_tileset(&mut self, name: impl Into<String>, palette_id: PaletteID) -> TilesetID {
+    pub fn new_tileset(&mut self, name: impl Into<String>) -> TilesetID {
         let id: u8 = self.tileset_head;
         self.tileset_head += 1;
         println!(
             "cargo:warning=Pipeline: initializing tileset at index {}.",
             id
         );
-        self.tilesets
-            .push(TilesetBuilder::new(name.into(), palette_id));
+        self.tilesets.push(TilesetBuilder::new(name.into()));
         TilesetID(id)
     }
 

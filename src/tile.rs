@@ -1,7 +1,7 @@
 use tato::video::{TileFlags, TileID};
 
 
-const SIZE_OF_TILE: usize = core::mem::size_of::<Tile>();
+// const SIZE_OF_TILE: usize = core::mem::size_of::<Tile>();
 
 // /// Allows recovering the absolute Renderer index from a tile within a tileset.
 // #[derive(Clone, Copy, Debug, PartialEq)]

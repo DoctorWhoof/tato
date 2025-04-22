@@ -9,7 +9,7 @@ fn test_anim(){
 
     // New empty tilesets, will populate their own tile pixels
     // and the colors on one of the palettes
-    let tileset_a = pipe.new_tileset("gui", palette_a);
+    let tileset_a = pipe.new_tileset("gui");
 
     // Finally, insert the actual assets into a tileset
     // A "font" is merely an animation where each frame is a letter!

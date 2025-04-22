@@ -27,7 +27,7 @@ pub struct TilesetBuilder {
 }
 
 impl TilesetBuilder {
-    pub fn new(name:String, palette_id: PaletteID) -> Self {
+    pub fn new(name:String) -> Self {
         Self {
             name,
             pixels: vec![],
