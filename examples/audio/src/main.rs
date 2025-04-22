@@ -1,10 +1,7 @@
 mod backend_cpal;
 mod backend_raylib;
-mod data;
-mod debug {
-    pub mod wave_writer;
-    pub use wave_writer::*;
-}
+mod wave_writer;
+pub use wave_writer::*;
 
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
@@ -15,13 +12,6 @@ const W: usize = 240;
 const H: usize = 180;
 pub const PIXEL_COUNT: usize = W * H * 4;
 
-#[derive(Debug, Clone, Copy)]
-pub struct BackendState {
-    pub pad: AnaloguePad,
-    pub time: f64,
-    pub elapsed: f64,
-}
-
 pub enum SoundType {
     WaveTable,
     WaveRandom,
@@ -29,12 +19,15 @@ pub enum SoundType {
     WhiteNoise
 }
 
+// TODO: Remove Videochip since this is an audio demo?
+// Can just use raylib to display text on the window
+
 fn main() {
     // Tato setup + initial scene
-    let mut video = VideoChip::new(W as u32, H as u32);
+    let video = VideoChip::new(W as u32, H as u32);
     let mut audio = AudioChip::default();
     let mut pad = AnaloguePad::default();
-    let mut sound = SoundType::WaveTable;
+    // let mut sound = SoundType::WaveTable;
 
     // Raylib setup
     let target_fps = 60.0;
@@ -72,12 +65,6 @@ fn main() {
     // Main Loop
     while !ray.window_should_close() {
         update_gamepad(&ray, &mut pad);
-
-        let state = BackendState {
-            pad,
-            time: ray.get_time(),
-            elapsed: 1.0 / target_fps,
-        };
 
         // Sound test
         let elapsed = time.elapsed().as_secs_f32() % 2.0;

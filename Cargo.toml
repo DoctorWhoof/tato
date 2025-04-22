@@ -14,4 +14,4 @@ tato_pad = "0.2.5"
 tato_layout = "0.3.21"
 
 [workspace]
-members = ["examples/scenes", "examples/audio"]
+members = ["examples/scenes", "examples/audio", "examples/pipe"]

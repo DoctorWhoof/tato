@@ -1,11 +1,13 @@
 #![no_std]
-
 pub use tato_audio as audio;
 pub use tato_layout as layout;
 pub use tato_pad as pad;
 pub use tato_video as video;
 
 pub mod text;
+
+mod anim;
+pub use anim::Anim;
 
 pub mod prelude {
     pub use tato_audio::*;

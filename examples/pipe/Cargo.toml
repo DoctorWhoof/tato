@@ -1,0 +1,11 @@
+[package]
+name = "pipe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tato = { path = "../../" }
+
+[build-dependencies]
+tato = { path = "../../" }
+tato_pipe = { path = "../../../tato_pipe" }

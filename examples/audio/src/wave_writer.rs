@@ -5,6 +5,8 @@ pub struct WaveWriter {
     writer: WavWriter<BufWriter<File>>,
 }
 
+/// A simple helper wrapper around Hound to create a .wav file with
+/// the sound output from AudioChip
 impl WaveWriter {
     pub fn new(sample_rate: u32) -> Self {
         let target_file: PathBuf = {
@@ -16,7 +18,8 @@ impl WaveWriter {
         };
         println!("Saving wav file to: {:?}", target_file);
         let wav_spec = WavSpec {
-            // Writing in mono for debugging simplicity. Ensure no pan is set in the channel!
+            // Writing in mono for debugging simplicity.
+            // Ensure pan = 0 in the channel!
             channels: 1,
             sample_rate,
             bits_per_sample: 16,
