@@ -1,0 +1,9 @@
+[package]
+name = "tato_pipe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# image = { path = "0.25.6", default-features = false, features = ["png"] }
+image = "0.25.6"
+tato = { path = "../tato" }
