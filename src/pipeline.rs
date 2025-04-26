@@ -46,14 +46,15 @@ impl Pipeline {
     }
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_tileset(&mut self, name: impl Into<String>) -> TilesetID {
+    pub fn new_tileset(&mut self, name: impl Into<String>, palette_id: PaletteID) -> TilesetID {
         let id: u8 = self.tileset_head;
         self.tileset_head += 1;
         println!(
             "cargo:warning=Pipeline: initializing tileset at index {}.",
             id
         );
-        self.tilesets.push(TilesetBuilder::new(name.into()));
+        self.tilesets
+            .push(TilesetBuilder::new(name.into(), palette_id));
         TilesetID(id)
     }
 
@@ -68,16 +69,18 @@ impl Pipeline {
         frames_h: u8,
         frames_v: u8,
         tileset_id: TilesetID,
-        palette_id: PaletteID,
         // group_id: impl GroupEnum,
     ) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
 
-        let palette = self.palettes.get_mut(palette_id.0 as usize).unwrap();
+        let palette = self
+            .palettes
+            .get_mut(tileset.palette_id.0 as usize)
+            .unwrap();
         let img = PalettizedImg::from_image(path, frames_h, frames_v, palette);
-        let tiles = tileset.add_tiles(&img); //, group, false);
+        let tiles = tileset.add_tiles(&img, palette); //, group, false);
         let tiles_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
@@ -142,10 +145,14 @@ impl Pipeline {
             // Tilesets
             for tileset in &self.tilesets {
                 // Sub-Palettes
-                for (i, sub_plt) in tileset.sub_palettes.iter().enumerate() {
+                for sub_plt in &tileset.sub_palettes {
                     code.write_line(&format!(
-                        "pub const SUB_PALETTE_{}: [u8; {}] = [",
-                        i,
+                        "pub const {}: [u8; {}] = [",
+                        tileset
+                            .sub_palette_name_hash
+                            .get(sub_plt)
+                            .unwrap()
+                            .to_uppercase(),
                         sub_plt.len()
                     ));
                     code.indent();
@@ -179,7 +186,10 @@ impl Pipeline {
                     code.dedent();
                     code.write_line("]};");
                 }
+            }
 
+            // Write Pixels at the bottom of the file!
+            for tileset in &self.tilesets {
                 code.write_line(&format!(
                     "pub const TILESET_{}: [u8; {}] = [",
                     tileset.name.to_uppercase(),
@@ -210,7 +220,9 @@ impl Pipeline {
             }
             Err(e) => {
                 println!("cargo:warning=Failed to run rustfmt: {}", e);
-                println!("cargo:warning=Make sure rustfmt is installed (rustup component add rustfmt)");
+                println!(
+                    "cargo:warning=Make sure rustfmt is installed (rustup component add rustfmt)"
+                );
             }
         }
     }

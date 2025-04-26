@@ -13,23 +13,28 @@ pub struct TilesetID(pub u8);
 pub struct TilesetBuilder {
     pub name: String,
     pub pixels: Vec<u8>,
+    // Stores the Tile (ID and Flags) for each unique set of pixels
     pub tile_hash: HashMap<Vec<u8>, Tile>,
-    pub sub_palette_hash: HashMap<Vec<u8>, u8>,
-    pub next_tile: u16,
-    pub sub_palettes: Vec<[u8; 4]>,
+    // Stores the names of each unique palette
+    pub sub_palette_name_hash: HashMap<[u8; SUB_PALETTE_COLOR_COUNT], String>,
+    // The actual color indices for the sub-palettes
+    pub sub_palettes: Vec<[u8; SUB_PALETTE_COLOR_COUNT]>,
     pub anims: Vec<AnimBuilder>,
+    pub palette_id: PaletteID,
+    next_tile: u16,
     sub_palette_head: usize,
 }
 
 impl TilesetBuilder {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, palette_id:PaletteID) -> Self {
         Self {
             name,
             pixels: vec![],
             tile_hash: HashMap::new(),
-            sub_palette_hash: HashMap::new(),
+            sub_palette_name_hash: HashMap::new(),
             next_tile: 0,
             anims: vec![],
+            palette_id,
             sub_palettes: Vec::new(),
             sub_palette_head: 0,
         }
@@ -59,6 +64,7 @@ impl TilesetBuilder {
     pub fn add_tiles(
         &mut self,
         img: &PalettizedImg,
+        palette: &PaletteBuilder,
         // group: u8,
         // is_collider: bool,
     ) -> Vec<Tile> {
@@ -102,13 +108,32 @@ impl TilesetBuilder {
                             }
                         }
 
-                        if !self.sub_palette_hash.contains_key(&sub_palette_candidate) {
+                        // Sort and Convert Vec to array
+                        sub_palette_candidate.sort();
+                        let offset = SUB_PALETTE_COLOR_COUNT - sub_palette_candidate.len();
+                        let sub_palette_candidate: [u8; SUB_PALETTE_COLOR_COUNT] = from_fn(|i| {
+                            if i >= offset {
+                                match sub_palette_candidate.get(i + offset) {
+                                    Some(value) => *value,
+                                    None => 0,
+                                }
+                            } else {
+                                0
+                            }
+                        });
+
+                        if !self
+                            .sub_palette_name_hash
+                            .contains_key(&sub_palette_candidate)
+                        {
                             let sum: u8 = sub_palette_candidate.iter().sum();
+                            // Prevents adding empty sub palettes
                             if sum > 0 {
-                                let global_palette_index =
-                                    self.push_sub_palette(sub_palette_candidate.as_slice());
-                                self.sub_palette_hash
-                                    .insert(sub_palette_candidate, global_palette_index);
+                                let index = self.push_sub_palette(sub_palette_candidate.as_slice());
+                                let name = format!("{}_{}", palette.name, index);
+                                println!("Name: {}", name);
+                                self.sub_palette_name_hash
+                                    .insert(sub_palette_candidate, name);
                             }
                         }
 
