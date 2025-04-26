@@ -16,7 +16,7 @@ pub enum SoundType {
     WaveTable,
     WaveRandom,
     WaveRandom1Bit,
-    WhiteNoise
+    WhiteNoise,
 }
 
 // TODO: Remove Videochip since this is an audio demo?
@@ -24,7 +24,23 @@ pub enum SoundType {
 
 fn main() {
     // Tato setup + initial scene
-    let video = VideoChip::new(W as u32, H as u32);
+    let mut video = VideoChip::new(W as u32, H as u32);
+    for tile in tato::font::FONT.chunks(64) {
+        video.new_tile(8, 8, tile);
+    }
+    let mut index = 0;
+    for row in 0..4 {
+        for col in 0..10 {
+            video.bg_map.set_tile(BgBundle {
+                col,
+                row,
+                tile_id: TileID(index),
+                flags: TileFlags::default(),
+            });
+            index += 1;
+        }
+    }
+
     let mut audio = AudioChip::default();
     let mut pad = AnaloguePad::default();
     // let mut sound = SoundType::WaveTable;
@@ -106,5 +122,5 @@ fn main() {
         frame_count += 1;
     }
 
-    audio_backend.wav_file.write_file();
+    audio_backend.write_wav_file();
 }

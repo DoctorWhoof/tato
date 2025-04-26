@@ -6,7 +6,7 @@ use crate::WaveWriter;
 
 pub struct AudioBackend {
     pub tx: Sender<Vec<i16>>,
-    pub wav_file: WaveWriter,
+    pub wav_file: Option<WaveWriter>,
     samples_per_frame: usize,
     sample_rate: u32,
     buffer_status_rx: Receiver<usize>, // Add feedback channel
@@ -60,7 +60,9 @@ impl AudioBackend {
             .unwrap();
 
         _stream.play().unwrap();
-        let wav_file = WaveWriter::new(sample_rate);
+
+        let wav_file = None;
+        // let wav_file = Some(WaveWriter::new(sample_rate));
 
         AudioBackend {
             tx,
@@ -82,7 +84,9 @@ impl AudioBackend {
             let sample = audio.process_sample();
             startup_samples.push(sample.left);
             startup_samples.push(sample.right);
-            self.wav_file.push(sample.left);
+            if let Some(wav_file) = &mut self.wav_file {
+                wav_file.push(sample.left);
+            }
             // self.wav_file.push(sample.right);
         }
         let _ = self.tx.send(startup_samples);
@@ -111,9 +115,17 @@ impl AudioBackend {
             let sample = audio.process_sample();
             frame_samples.push(sample.left);
             frame_samples.push(sample.right);
-            self.wav_file.push(sample.left);
+            if let Some(wav_file) = &mut self.wav_file {
+                wav_file.push(sample.left);
+            }
         }
 
         let _ = self.tx.send(frame_samples);
+    }
+
+    pub fn write_wav_file(self){
+        if let Some(wav_file) = self.wav_file {
+            wav_file.write_file();
+        }
     }
 }

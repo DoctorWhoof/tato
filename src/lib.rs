@@ -5,6 +5,7 @@ pub use tato_pad as pad;
 pub use tato_video as video;
 
 pub mod text;
+pub mod font;
 
 mod anim;
 pub use anim::Anim;
