@@ -1,5 +1,5 @@
 use image::{DynamicImage, ImageReader};
-use tato::video::{TILE_SIZE, color::Color9Bit};
+use tato::video::*;
 
 use crate::*;
 
@@ -15,14 +15,12 @@ pub(crate) struct PalettizedImg {
     pub cols_per_frame: u8,
     pub rows_per_frame: u8,
     pub width: usize,
-    pub height: usize,
     pub pixels: Vec<u8>,
 }
 
 impl PalettizedImg {
     pub fn from_image(
         file_name: &str,
-        // frame_layout: Option<(u8, u8)>,
         frames_h: u8,
         frames_v: u8,
         palette: &mut PaletteBuilder,
@@ -57,23 +55,12 @@ impl PalettizedImg {
 
         let cols_per_frame = (img_rgba.width() / frames_h as u32) / TILE_SIZE as u32;
         let rows_per_frame = (img_rgba.height() / frames_v as u32) / TILE_SIZE as u32;
-        // let (cols_per_frame, rows_per_frame) = match frame_layout {
-        //     Some(value) => (value.0, value.1),
-        //     None => (1, 1),
-        // };
-        // let frames_h = u8::try_from(width / cols_per_frame as usize).ok().unwrap();
-        // let frames_v = u8::try_from(height / rows_per_frame as usize).ok().unwrap();
-
-        // println!(
-        //     "cargo:warning=    Tilifying '{}' to {} frames with {}x{} tiles",
-        //     asset_name,
-        //     frames_h as usize * frames_v as usize,
-        //     cols_per_frame,
-        //     rows_per_frame
-        // );
 
         println!("cargo:warning=    Tilifying '{}'", asset_name);
-        println!("cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
+        println!(
+            "cols per frame: {}, rows per frame: {}",
+            cols_per_frame, rows_per_frame
+        );
         println!("frames_h: {}, frames_v: {}", frames_h, frames_v);
 
         PalettizedImg {
@@ -83,7 +70,6 @@ impl PalettizedImg {
             cols_per_frame: u8::try_from(cols_per_frame).unwrap(),
             rows_per_frame: u8::try_from(rows_per_frame).unwrap(),
             width,
-            height,
             pixels: Self::palletize(img_rgba, palette),
         }
     }
@@ -131,74 +117,3 @@ impl PalettizedImg {
         pixels
     }
 }
-
-// Json must be in Aseprite export format
-// fn read_anim_from_json(path:PathBuf) -> Result<HashMap<String, Vec<u8>>, Error> {
-//     let mut result = HashMap::new();
-
-//     let text = std::fs::read_to_string(path)?;
-//     let parsed:JsonValue = text.parse().unwrap();
-//     let json: HashMap<_, _> = parsed.try_into().unwrap();
-
-//     // Aseprite parsing
-//     let meta = &json["meta"];
-//     let frame_tags = &meta["frameTags"];
-//     if let JsonValue::Array(tags) = frame_tags {
-//         for tag in tags.iter() {
-//             let JsonValue::String(name) = &tag["name"] else { break };
-//             let JsonValue::Number(head) = &tag["from"] else { break };
-//             let JsonValue::Number(tail) = &tag["to"] else { break };
-//             let Ok(head) = u8::try_from(*head as usize) else { break };
-//             let Ok(tail) = u8::try_from(*tail as usize) else { break };
-
-//             let range = (head ..= tail).collect(); // indices start at 0! (not in atlas space)
-//             result.insert(name.clone(), range);
-//         }
-//     }
-
-//     Ok(result)
-// }
-
-// OLD
-
-// pub fn convert_sprite(file_name:&str, frame_cols:usize, frame_rows:usize, sub_palette:u8) {
-//     // Load image
-//     let img = AtlasBuilder::from_image(file_name, Some((frame_cols, frame_rows)), sub_palette);
-
-//     // split into tiles, remove redundant tiles and save resulting unique tiles
-//     let (img_bytes, tile_ids) = tilify(&img);
-//     write( format!("{ASSET_DEST}{file_name}.pix"), img_bytes.as_slice()).unwrap();
-
-//     // Use JSON data to save each animation into a separate file
-//     if let Some(anims) = img.anims {
-//         for (name, anim) in anims {
-//             if name.is_empty() { continue }
-//             let mut tiles_per_anim = vec![];
-//             let frame_size = frame_cols * frame_rows;
-//             for frame in anim {
-//                 let offset = frame_size * frame as usize;
-//                 // Push all tiles per frame
-//                 for index in 0 .. frame_size {
-//                     tiles_per_anim.push(tile_ids[index + offset])
-//                 }
-//             }
-//             write(
-//                 format!("{ASSET_DEST}{file_name}_{name}.anim"),
-//                 tiles_per_anim.as_slice()
-//             ).unwrap();
-//         }
-//     }
-// }
-
-// pub fn convert_tiles(file_name:&str, sub_palette:u8, save_map:bool) {
-//     // Load image
-//     let img = AtlasBuilder::from_image(file_name, None, sub_palette);
-
-//     // split into tiles, remove redundant tiles and save resulting unique tiles
-//     let (img_bytes, tile_ids) = tilify(&img);
-//     write( format!("{ASSET_DEST}{file_name}.pix"), img_bytes.as_slice()).unwrap();
-
-//     if save_map {
-//         write( format!("{ASSET_DEST}{file_name}.map"), tile_ids.as_slice()).unwrap();
-//     }
-// }

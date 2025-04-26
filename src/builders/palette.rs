@@ -10,7 +10,7 @@ pub(crate) struct PaletteBuilder {
     pub colors: Vec<Color14Bit>,
     pub color_hash: HashMap<Color14Bit, u8>,
     id: u8,
-    head: usize,
+    palette_head: usize,
 }
 
 impl PaletteBuilder {
@@ -19,17 +19,17 @@ impl PaletteBuilder {
             name,
             colors: vec![Color14Bit::default(); color_count as usize],
             color_hash: HashMap::new(),
-            head: 0,
+            palette_head: 0,
             id,
         }
     }
 
     pub fn push(&mut self, color: Color14Bit) {
-        if self.head == self.colors.len() {
+        if self.palette_head == self.colors.len() {
             panic!("Palette error: capacity of {} exceeded.", self.colors.len())
         }
-        self.colors[self.head] = color;
-        self.head += 1;
+        self.colors[self.palette_head] = color;
+        self.palette_head += 1;
     }
 
     pub fn id(&self) -> u8 {

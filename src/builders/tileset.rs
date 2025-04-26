@@ -1,8 +1,9 @@
+use core::array::from_fn;
 use tato::video::{TILE_SIZE, TileFlags, TileID};
 
 use super::*;
 use crate::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{vec, vec::Vec};
 
 // TODO: Move to main engine?
@@ -12,17 +13,12 @@ pub struct TilesetID(pub u8);
 pub struct TilesetBuilder {
     pub name: String,
     pub pixels: Vec<u8>,
-    // pub palette_hash: HashMap<Color9Bit, u8>,
-    // pub palette_id: PaletteID,
     pub tile_hash: HashMap<Vec<u8>, Tile>,
+    pub sub_palette_hash: HashMap<Vec<u8>, u8>,
     pub next_tile: u16,
-    // pub tile_count: u8,
+    pub sub_palettes: Vec<[u8; 4]>,
     pub anims: Vec<AnimBuilder>,
-    // pub fonts: Vec<Font>,
-    // pub tilemaps: Vec<Tilemap>,
-    // pub anim_names: Vec<String>,
-    // pub font_names: Vec<String>,
-    // pub tilemap_names: Vec<String>,
+    sub_palette_head: usize,
 }
 
 impl TilesetBuilder {
@@ -30,18 +26,32 @@ impl TilesetBuilder {
         Self {
             name,
             pixels: vec![],
-            // palette_hash: HashMap::new(),
-            // palette_id,
             tile_hash: HashMap::new(),
+            sub_palette_hash: HashMap::new(),
             next_tile: 0,
-            // tile_count: 0,
             anims: vec![],
-            // anim_names: vec![],
-            // fonts: vec![],
-            // font_names: vec![],
-            // tilemaps: vec![],
-            // tilemap_names: vec![],
+            sub_palettes: Vec::new(),
+            sub_palette_head: 0,
         }
+    }
+
+    fn push_sub_palette(&mut self, sub_palette: &[u8]) -> u8 {
+        if self.sub_palette_head == SUB_PALETTE_COUNT {
+            panic!(
+                "Tileset error: capacity of {} sub-palettes exceeded.",
+                self.sub_palettes.len()
+            )
+        }
+
+        self.sub_palettes
+            .push(from_fn(|i| match sub_palette.get(i) {
+                Some(value) => *value,
+                None => 0,
+            }));
+
+        let result = u8::try_from(self.sub_palette_head).unwrap();
+        self.sub_palette_head += 1;
+        result
     }
 
     /// Main workhorse function! Splits images into 8x8 tiles (8 pixels wide, as many pixels as it needs tall)
@@ -65,6 +75,8 @@ impl TilesetBuilder {
 
                         let mut tile_candidate = vec![0u8; tile_length];
                         let mut tile_candidate_flip_h = vec![0u8; tile_length];
+                        let mut sub_palette_candidate = Vec::<u8>::new();
+                        let mut sub_palette_hash = HashSet::<u8>::new();
                         for y in 0..TILE_SIZE as usize {
                             for x in 0..TILE_SIZE as usize {
                                 let mirror_x = TILE_SIZE as usize - x - 1;
@@ -74,6 +86,29 @@ impl TilesetBuilder {
                                 let value = img.pixels[index];
                                 tile_candidate[(TILE_SIZE as usize * y) + x] = value;
                                 tile_candidate_flip_h[(TILE_SIZE as usize * y) + mirror_x] = value;
+
+                                // Subpalette handling
+                                if !sub_palette_hash.contains(&value) {
+                                    if sub_palette_hash.len() >= SUB_PALETTE_COLOR_COUNT {
+                                        panic!(
+                                            "Tile at position ({}, {}) exceeds the {} color limit",
+                                            abs_col, abs_row, SUB_PALETTE_COLOR_COUNT
+                                        );
+                                    }
+
+                                    sub_palette_hash.insert(value);
+                                    sub_palette_candidate.push(value);
+                                }
+                            }
+                        }
+
+                        if !self.sub_palette_hash.contains_key(&sub_palette_candidate) {
+                            let sum: u8 = sub_palette_candidate.iter().sum();
+                            if sum > 0 {
+                                let global_palette_index =
+                                    self.push_sub_palette(sub_palette_candidate.as_slice());
+                                self.sub_palette_hash
+                                    .insert(sub_palette_candidate, global_palette_index);
                             }
                         }
 

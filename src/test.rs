@@ -7,8 +7,6 @@ fn test_anim() {
     // TODO: Add check for duplicated names
     // Create new empty palettes
     let palette_fg = pipe.new_palette("palette_fg", 16);
-    let subpalette_spy = pipe.new_palette("palette_spy", 4);
-    let subpalette_font = pipe.new_palette("fpalette_font", 4);
 
     // New empty tilesets, will populate their own tile pixels
     // and the colors on one of the palettes

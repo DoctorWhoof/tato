@@ -1,5 +1,8 @@
 use crate::*;
 
+pub const SUB_PALETTE_COUNT: usize = 16;
+pub const SUB_PALETTE_COLOR_COUNT: usize = 4;
+
 pub struct Pipeline {
     palettes: Vec<PaletteBuilder>,
     tilesets: Vec<TilesetBuilder>,
@@ -28,17 +31,17 @@ impl Pipeline {
     }
 
     // TODO: Limit tileset entries to 256
-    // TODO: Limit palette count to an arbitrary number
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_palette(&mut self, name: impl Into<String>, capacity:u8) -> PaletteID {
+    pub fn new_palette(&mut self, name: impl Into<String>, capacity: u8) -> PaletteID {
         let id: u8 = self.palette_head;
         self.palette_head += 1;
         println!(
             "cargo:warning=Pipeline: initializing palette at index {}.",
             id
         );
-        self.palettes.push(PaletteBuilder::new(name.into(), capacity.into(), id));
+        self.palettes
+            .push(PaletteBuilder::new(name.into(), capacity.into(), id));
         PaletteID(id)
     }
 
@@ -72,9 +75,7 @@ impl Pipeline {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
 
-        let palette_id = palette_id.0 as usize;
-        let palette = self.palettes.get_mut(palette_id).unwrap();
-
+        let palette = self.palettes.get_mut(palette_id.0 as usize).unwrap();
         let img = PalettizedImg::from_image(path, frames_h, frames_v, palette);
         let tiles = tileset.add_tiles(&img); //, group, false);
         let tiles_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
@@ -104,44 +105,62 @@ impl Pipeline {
     // ****************************** Code Gen ******************************
 
     pub fn write_assets(&mut self, file_path: &str) {
-        let mut code = CodeWriter::new(file_path);
+        // The code writer is created, modified and dropped in this scope
+        {
+            let mut code = CodeWriter::new(file_path);
+            // Header
+            code.write_line("// Auto-generated code - do not edit manually");
+            code.write_line("#![allow(unused)]");
+            code.write_line("");
+            code.write_line("use tato::video::*;");
+            code.write_line("use tato::Anim;");
+            code.write_line("");
 
-        // Header
-        code.write_line("// Auto-generated code - do not edit manually");
-        code.write_line("#![allow(unused)]");
-        code.write_line("");
-        code.write_line("use tato::video::*;");
-        code.write_line("use tato::Anim;");
-        code.write_line("");
-
-        // Palettes
-        for palette in &self.palettes {
-            code.write_line(&format!(
-                "pub const {}: [Color9Bit; {}] = [",
-                palette.name.to_uppercase(),
-                palette.colors.len()
-            ));
-            code.indent();
-
-            for color in &palette.colors {
+            // Palettes
+            for palette in &self.palettes {
                 code.write_line(&format!(
-                    "Color9Bit::new({}, {}, {}),",
-                    color.r(),
-                    color.g(),
-                    color.b()
+                    "pub const {}: [Color9Bit; {}] = [",
+                    palette.name.to_uppercase(),
+                    palette.colors.len()
                 ));
+                code.indent();
+
+                for color in &palette.colors {
+                    code.write_line(&format!(
+                        "Color9Bit::new({}, {}, {}),",
+                        color.r(),
+                        color.g(),
+                        color.b()
+                    ));
+                }
+
+                code.dedent();
+                code.write_line("];");
+                code.write_line("");
             }
 
-            code.dedent();
-            code.write_line("];");
-            code.write_line("");
-        }
+            // Tilesets
+            for tileset in &self.tilesets {
+                // Sub-Palettes
+                for (i, sub_plt) in tileset.sub_palettes.iter().enumerate() {
+                    code.write_line(&format!(
+                        "pub const SUB_PALETTE_{}: [u8; {}] = [",
+                        i,
+                        sub_plt.len()
+                    ));
+                    code.indent();
+                    for color_index in sub_plt {
+                        code.write_line(&format!("{},", color_index));
+                    }
+                    code.dedent();
+                    code.write_line("];");
+                    code.write_line("");
+                }
 
-        // Anims
-        for tileset in &self.tilesets {
-            for anim in &tileset.anims {
-                // println!("Anim: {:#?}", anim);
-                code.write_line(&format!(
+                // Anims
+                for anim in &tileset.anims {
+                    // println!("Anim: {:#?}", anim);
+                    code.write_line(&format!(
                     "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
                     anim.name.to_uppercase(),
                     anim.frames.len(),
@@ -149,29 +168,50 @@ impl Pipeline {
                     anim.fps,
                     anim.columns
                 ));
-                code.indent();
-                for frame in &anim.frames {
-                    code.start_line("[");
-                    for tile in &frame.tiles {
-                        code.write(&format!("{}, ", tile.index.0));
+                    code.indent();
+                    for frame in &anim.frames {
+                        code.start_line("[");
+                        for tile in &frame.tiles {
+                            code.write(&format!("{}, ", tile.index.0));
+                        }
+                        code.finish_line("],\n");
                     }
-                    code.finish_line("],\n");
+                    code.dedent();
+                    code.write_line("]};");
+                }
+
+                code.write_line(&format!(
+                    "pub const TILESET_{}: [u8; {}] = [",
+                    tileset.name.to_uppercase(),
+                    tileset.pixels.len()
+                ));
+                code.indent();
+                for pixel in &tileset.pixels {
+                    code.write(&format!("{}, ", pixel));
                 }
                 code.dedent();
-                code.write_line("]};");
+                code.write_line("];");
             }
+        }
 
-            code.write_line(&format!(
-                "pub const TILESET_{}: [u8; {}] = [",
-                tileset.name.to_uppercase(),
-                tileset.pixels.len()
-            ));
-            code.indent();
-            for pixel in &tileset.pixels {
-                code.write(&format!("{}, ", pixel));
+        // Format the output file with rustfmt
+        let output = std::process::Command::new("rustfmt")
+            .arg(file_path)
+            .output();
+
+        match output {
+            Ok(output) => {
+                if !output.status.success() {
+                    let error = String::from_utf8_lossy(&output.stderr);
+                    println!("cargo:warning=Failed to format generated code: {}", error);
+                } else {
+                    println!("cargo:warning=Successfully formatted generated code");
+                }
             }
-            code.dedent();
-            code.write_line("];");
+            Err(e) => {
+                println!("cargo:warning=Failed to run rustfmt: {}", e);
+                println!("cargo:warning=Make sure rustfmt is installed (rustup component add rustfmt)");
+            }
         }
     }
 
