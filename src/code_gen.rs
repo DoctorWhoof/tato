@@ -29,4 +29,17 @@ impl CodeWriter {
         let indent = " ".repeat(self.indentation);
         writeln!(self.output_file, "{}{}", indent, line).expect("Failed to write to output file");
     }
+
+    pub fn write(&mut self, line: &str) {
+        write!(self.output_file, "{}", line).expect("Failed to write to output file");
+    }
+
+    pub fn start_line(&mut self, line: &str) {
+        let indent = " ".repeat(self.indentation);
+        write!(self.output_file, "{}{}", indent, line).expect("Failed to write to output file");
+    }
+
+    pub fn finish_line(&mut self, line: &str) {
+        write!(self.output_file, "{}", line).expect("Failed to write to output file");
+    }
 }

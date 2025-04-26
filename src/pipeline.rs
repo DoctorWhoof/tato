@@ -1,5 +1,3 @@
-use tato::video::*;
-
 use crate::*;
 
 pub struct Pipeline {
@@ -33,14 +31,14 @@ impl Pipeline {
     // TODO: Limit palette count to an arbitrary number
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_palette(&mut self, name: impl Into<String>) -> PaletteID {
+    pub fn new_palette(&mut self, name: impl Into<String>, capacity:u8) -> PaletteID {
         let id: u8 = self.palette_head;
         self.palette_head += 1;
         println!(
             "cargo:warning=Pipeline: initializing palette at index {}.",
             id
         );
-        self.palettes.push(PaletteBuilder::new(name.into(), 16, id));
+        self.palettes.push(PaletteBuilder::new(name.into(), capacity.into(), id));
         PaletteID(id)
     }
 
@@ -77,18 +75,10 @@ impl Pipeline {
         let palette_id = palette_id.0 as usize;
         let palette = self.palettes.get_mut(palette_id).unwrap();
 
-        // let frame_layout = Some((frames_h, frames_v));
-        let img = PalettizedImg::from_image(path, palette);
-        println!("cargo:warning= image: {:?}", img);
-
+        let img = PalettizedImg::from_image(path, frames_h, frames_v, palette);
         let tiles = tileset.add_tiles(&img); //, group, false);
-        let tiles_h = img.width / TILE_SIZE as usize;
-        let tiles_v = img.height / TILE_SIZE as usize;
-        let cols_per_frame = tiles_h / frames_h as usize;
-        let rows_per_frame = tiles_v / frames_v as usize;
-        let tiles_per_frame = cols_per_frame * rows_per_frame;
-        let frame_count = frames_h as usize * frames_v as usize;
-        println!("cargo:warning= frame count: {}", frame_count);
+        let tiles_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
+        let frame_count = img.frames_h as usize * img.frames_v as usize;
 
         assert!(frame_count > 0);
 
@@ -96,46 +86,18 @@ impl Pipeline {
             name: strip_path_name(path),
             // id: tileset.anims.len().try_into().unwrap(),
             fps,
-            columns: u8::try_from(cols_per_frame).unwrap(),
-            rows: u8::try_from(rows_per_frame).unwrap(),
+            columns: u8::try_from(img.cols_per_frame).unwrap(),
+            rows: u8::try_from(img.rows_per_frame).unwrap(),
             frames: (0..frame_count)
-                .map(|n| {
-                    let index = n * tiles_per_frame;
-                    FrameBuilder::from_slice(
-                        &tiles[index..index + tiles_per_frame],
-                        // img.cols_per_frame,
-                        // img.rows_per_frame,
-                    )
+                .map(|i| {
+                    let index = i * tiles_per_frame;
+                    FrameBuilder {
+                        tiles: tiles[index..index + tiles_per_frame].into(),
+                    }
                 })
                 .collect(),
         };
 
-        // let anim = AnimBuilder {
-        //     name: strip_path_name(path),
-        //     fps,
-        //     columns: u8::try_from(cols_per_frame).unwrap(),
-        //     frames: (0..frame_count)
-        //         // This filter removes any repeated index
-        //         .filter_map(|n| {
-        //             let index = n * tiles_per_frame;
-        //             let frame_tiles = &tiles[index..index + tiles_per_frame];
-
-        //             // Check if any tile in this frame has an index >= frames.len()
-        //             let highest_index = frame_tiles.iter()
-        //                 .map(|tile| tile.index)
-        //                 .max()
-        //                 .unwrap_or(TileID(0));
-
-        //             if highest_index.0 >= n as u8 {
-        //                 Some(FrameBuilder::from_slice(frame_tiles))
-        //             } else {
-        //                 None
-        //             }
-        //         })
-        //         .collect(),
-        // };
-
-        println!("cargo:warning={:?}", anim);
         tileset.anims.push(anim);
     }
 
@@ -157,13 +119,13 @@ impl Pipeline {
             code.write_line(&format!(
                 "pub const {}: [Color9Bit; {}] = [",
                 palette.name.to_uppercase(),
-                palette.colors().len()
+                palette.colors.len()
             ));
             code.indent();
 
-            for color in palette.colors() {
+            for color in &palette.colors {
                 code.write_line(&format!(
-                    "Color9Bit::new({},{},{}),",
+                    "Color9Bit::new({}, {}, {}),",
                     color.r(),
                     color.g(),
                     color.b()
@@ -178,6 +140,7 @@ impl Pipeline {
         // Anims
         for tileset in &self.tilesets {
             for anim in &tileset.anims {
+                // println!("Anim: {:#?}", anim);
                 code.write_line(&format!(
                     "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
                     anim.name.to_uppercase(),
@@ -187,10 +150,28 @@ impl Pipeline {
                     anim.columns
                 ));
                 code.indent();
-
+                for frame in &anim.frames {
+                    code.start_line("[");
+                    for tile in &frame.tiles {
+                        code.write(&format!("{}, ", tile.index.0));
+                    }
+                    code.finish_line("],\n");
+                }
                 code.dedent();
                 code.write_line("]};");
             }
+
+            code.write_line(&format!(
+                "pub const TILESET_{}: [u8; {}] = [",
+                tileset.name.to_uppercase(),
+                tileset.pixels.len()
+            ));
+            code.indent();
+            for pixel in &tileset.pixels {
+                code.write(&format!("{}, ", pixel));
+            }
+            code.dedent();
+            code.write_line("];");
         }
     }
 

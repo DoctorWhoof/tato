@@ -1,18 +1,19 @@
 use image::{DynamicImage, ImageReader};
-use tato::video::{color::Color9Bit, ColorRGB24, TILE_SIZE};
+use tato::video::{TILE_SIZE, color::Color9Bit};
+
+use crate::*;
 
 use super::*;
-
 
 /// Stores a palettized version of an image as well as layout data (frame count, columns and rows per frame).
 /// Uses an external palette and color map to ensure consistency accross many image sources.
 #[derive(Debug)]
 pub(crate) struct PalettizedImg {
     // pub asset_name: String,
-    // pub frames_h: u8,
-    // pub frames_v: u8,
-    // pub cols_per_frame: u8,
-    // pub rows_per_frame: u8,
+    pub frames_h: u8,
+    pub frames_v: u8,
+    pub cols_per_frame: u8,
+    pub rows_per_frame: u8,
     pub width: usize,
     pub height: usize,
     pub pixels: Vec<u8>,
@@ -22,8 +23,8 @@ impl PalettizedImg {
     pub fn from_image(
         file_name: &str,
         // frame_layout: Option<(u8, u8)>,
-        // cols_per_frame: u8,
-        // rows_per_frame: u8,
+        frames_h: u8,
+        frames_v: u8,
         palette: &mut PaletteBuilder,
     ) -> PalettizedImg {
         let split = file_name.split('/');
@@ -54,18 +55,14 @@ impl PalettizedImg {
             )
         }
 
+        let cols_per_frame = (img_rgba.width() / frames_h as u32) / TILE_SIZE as u32;
+        let rows_per_frame = (img_rgba.height() / frames_v as u32) / TILE_SIZE as u32;
         // let (cols_per_frame, rows_per_frame) = match frame_layout {
         //     Some(value) => (value.0, value.1),
         //     None => (1, 1),
         // };
-
-        // let frames_h = u8::try_from((width / cols_per_frame as usize) / TILE_SIZE as usize)
-        //     .ok()
-        //     .unwrap();
-
-        // let frames_v = u8::try_from((height / rows_per_frame as usize) / TILE_SIZE as usize)
-        //     .ok()
-        //     .unwrap();
+        // let frames_h = u8::try_from(width / cols_per_frame as usize).ok().unwrap();
+        // let frames_v = u8::try_from(height / rows_per_frame as usize).ok().unwrap();
 
         // println!(
         //     "cargo:warning=    Tilifying '{}' to {} frames with {}x{} tiles",
@@ -75,17 +72,16 @@ impl PalettizedImg {
         //     rows_per_frame
         // );
 
-        println!(
-            "cargo:warning=    Tilifying '{}'",
-            asset_name,
-        );
+        println!("cargo:warning=    Tilifying '{}'", asset_name);
+        println!("cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
+        println!("frames_h: {}, frames_v: {}", frames_h, frames_v);
 
         PalettizedImg {
             // asset_name,
-            // frames_h,
-            // frames_v,
-            // cols_per_frame,
-            // rows_per_frame,
+            frames_h,
+            frames_v,
+            cols_per_frame: u8::try_from(cols_per_frame).unwrap(),
+            rows_per_frame: u8::try_from(rows_per_frame).unwrap(),
             width,
             height,
             pixels: Self::palletize(img_rgba, palette),
@@ -93,10 +89,7 @@ impl PalettizedImg {
     }
 
     // Populates the palettized, 1 byte-per-pixel image from a source RGBA image.
-    pub fn palletize(
-        img: DynamicImage,
-        palette: &mut PaletteBuilder,
-    ) -> Vec<u8> {
+    pub fn palletize(img: DynamicImage, palette: &mut PaletteBuilder) -> Vec<u8> {
         let mut pixels = vec![];
         for y in 0..img.height() as usize {
             for x in 0..img.width() as usize {
@@ -110,10 +103,10 @@ impl PalettizedImg {
                     let a = buf[buf_index + 3];
 
                     let rgb_color = if a < 255 {
-                        Color9Bit::new(0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
+                        Color14Bit::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
                     } else {
-                        let color_rgb = ColorRGB24{r,g,b};
-                        Color9Bit::from(color_rgb)
+                        let color_rgb = ColorRGB32 { r, g, b, a };
+                        Color14Bit::from(color_rgb)
                     };
 
                     // Result
