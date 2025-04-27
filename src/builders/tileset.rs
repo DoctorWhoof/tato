@@ -11,6 +11,7 @@ use std::{vec, vec::Vec};
 pub struct TilesetID(pub u8);
 
 pub struct TilesetBuilder {
+    pub allow_tile_transforms: bool,
     pub name: String,
     pub pixels: Vec<u8>,
     // Stores the Tile (ID and Flags) for each unique set of pixels
@@ -28,6 +29,7 @@ pub struct TilesetBuilder {
 impl TilesetBuilder {
     pub fn new(name: String, palette_id:PaletteID) -> Self {
         Self {
+            allow_tile_transforms: true,
             name,
             pixels: vec![],
             tile_hash: HashMap::new(),
@@ -108,6 +110,7 @@ impl TilesetBuilder {
                             }
                         }
 
+
                         // Sort and Convert Vec to array
                         sub_palette_candidate.sort();
                         let offset = SUB_PALETTE_COLOR_COUNT - sub_palette_candidate.len();
@@ -141,10 +144,10 @@ impl TilesetBuilder {
                         if self.tile_hash.contains_key(&tile_candidate) {
                             // If tile is already in hashmap, reuse its index
                             let reused_tile = self.tile_hash.get(&tile_candidate).unwrap();
-                            // println!(
-                            //     "\tReusing tile {} from source tiles {},{}",
-                            //     reused_tile.index.0, abs_col, abs_row
-                            // );
+                            println!(
+                                "\tReusing tile {} from source tiles {},{}",
+                                reused_tile.index.0, abs_col, abs_row
+                            );
                             tiles.push((*reused_tile).clone());
                         } else {
                             // If hashmap doesn't contain tile, add it
@@ -162,14 +165,16 @@ impl TilesetBuilder {
                             self.tile_hash
                                 .insert(tile_candidate.clone(), new_tile.clone());
 
-                            // println!(
-                            //     "\tNew tile {} from source tiles {},{}",
-                            //     self.next_tile, abs_col, abs_row
-                            // );
+                            println!(
+                                "\tNew tile {} from source tiles {},{}",
+                                self.next_tile, abs_col, abs_row
+                            );
                             // Insert horizontally mirrored tile in hashmap
-                            let mut tile_flipped_h = new_tile.clone();
-                            tile_flipped_h.flags.set_flip_x(true);
-                            self.tile_hash.insert(tile_candidate_flip_h, tile_flipped_h);
+                            if self.allow_tile_transforms{
+                                let mut tile_flipped_h = new_tile.clone();
+                                tile_flipped_h.flags.set_flip_x(true);
+                                self.tile_hash.insert(tile_candidate_flip_h, tile_flipped_h);
+                            }
 
                             // Add tile pixels to tileset data
                             self.pixels.extend_from_slice(&tile_candidate);

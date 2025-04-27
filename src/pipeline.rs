@@ -105,6 +105,12 @@ impl Pipeline {
         tileset.anims.push(anim);
     }
 
+    pub fn disable_tile_transform_detection(&mut self, tileset_id:TilesetID) {
+        if let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize){
+            tileset.allow_tile_transforms = false;
+        }
+    }
+
     // ****************************** Code Gen ******************************
 
     pub fn write_assets(&mut self, file_path: &str) {

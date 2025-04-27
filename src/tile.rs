@@ -1,5 +1,12 @@
 use tato::video::{TileFlags, TileID};
 
+/// The smallest part of a BG Map, contains a tile index and its flags.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Tile {
+    pub index: TileID,
+    pub flags: TileFlags, //flip_h, flip_v, collider, debug_colliding
+    // pub group: u8,
+}
 
 // const SIZE_OF_TILE: usize = core::mem::size_of::<Tile>();
 
@@ -14,16 +21,7 @@ use tato::video::{TileFlags, TileID};
 //     }
 // }
 
-/// The smallest part of a Tilemap, contains a tile index and its flags.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Tile {
-    pub index: TileID,
-    pub flags: TileFlags, //flip_h, flip_v, collider, debug_colliding
-    // pub group: u8,
-}
-
-impl Tile {
-
+// impl Tile {
     // pub fn is_collider(&self) -> bool {
     //     get_bit(self.flags, 2)
     // }
@@ -39,5 +37,5 @@ impl Tile {
     //         flags: cursor.advance(),
     //     }
     // }
-}
+// }
 //
