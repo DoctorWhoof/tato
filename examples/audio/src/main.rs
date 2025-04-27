@@ -25,25 +25,46 @@ pub enum SoundType {
 fn main() {
     // Tato setup + initial scene
     let mut video = VideoChip::new(W as u32, H as u32);
-    for tile in tato::font::FONT.chunks(64) {
+    video.bg_color = DARK_BLUE;
+    let palette_default = video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
+    let palette_light = video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
+
+    video.new_tile(8, 8, &TILE_EMPTY);
+
+    for tile in tato::font::FONT_EX.chunks(64) {
         video.new_tile(8, 8, tile);
     }
-    let mut index = 0;
-    for row in 0..4 {
-        for col in 0..10 {
-            video.bg_map.set_tile(BgBundle {
-                col,
-                row,
-                tile_id: TileID(index),
-                flags: TileFlags::default(),
-            });
-            index += 1;
-        }
+
+    for ch in "ABCD 1234 :;<=>".chars() {
+        println!("{} => {}", ch, char_to_id_ex(ch));
     }
+
+    draw_text(
+        &mut video,
+        "SOUND TEST",
+        TextBundle {
+            initial_tile: 1,
+            col: 2,
+            row: 2,
+            width: 12,
+            palette: palette_default,
+        },
+    );
+
+    draw_text(
+        &mut video,
+        "Currently playing:",
+        TextBundle {
+            initial_tile: 1,
+            col: 2,
+            row: 6,
+            width: 20,
+            palette: palette_light,
+        },
+    );
 
     let mut audio = AudioChip::default();
     let mut pad = AnaloguePad::default();
-    // let mut sound = SoundType::WaveTable;
 
     // Raylib setup
     let target_fps = 60.0;
@@ -76,26 +97,20 @@ fn main() {
     audio_backend.init_audio(&mut audio);
     let note = Note::A3.midi_note();
     let time = Instant::now();
-    let mut frame_count = 0;
 
     // Main Loop
     while !ray.window_should_close() {
         update_gamepad(&ray, &mut pad);
 
         // Sound test
-        let elapsed = time.elapsed().as_secs_f32() % 2.0;
-        let tremolo = [15, 14, 13, 12, 13, 14];
         let env_len = 2.0;
+        let elapsed = time.elapsed().as_secs_f32() % env_len;
         let env = (env_len - elapsed).clamp(0.0, 1.0);
-        let volume = tremolo[frame_count % tremolo.len()] as f32 * env;
-        audio.channels[0].set_volume(volume as u8);
-
         let note_offset = ((elapsed * PI).sin()) * 24.0;
+        audio.channels[0].set_volume((env * 15.0) as u8);
         audio.channels[0].set_note(note + note_offset);
 
-        // let mix = ((((elapsed * TAU).sin() + 1.0) / 2.0) * 16.0).min(15.0) as u8;
-        // audio.channels[0].set_noise_mix(mix);
-
+        // Change sound depending on time
         let stage = time.elapsed().as_secs_f32() % 8.0;
         if stage < 2.0 {
             audio.channels[0].set_noise_mix(0);
@@ -109,6 +124,49 @@ fn main() {
             audio.channels[0].wave_mode = WaveMode::WaveTable;
         }
 
+        // Text info update
+        let text = if audio.channels[0].noise_mix() == 0 {
+            format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
+        } else {
+            format!("Wave Type: White Noise        ")
+        };
+
+        draw_text(
+            &mut video,
+            &text,
+            TextBundle {
+                initial_tile: 1,
+                col: 2,
+                row: 8,
+                width: 100,
+                palette: palette_light,
+            },
+        );
+
+        draw_text(
+            &mut video,
+            &format!("Volume: {}    ", audio.channels[0].volume()),
+            TextBundle {
+                initial_tile: 1,
+                col: 2,
+                row: 10,
+                width: 100,
+                palette: palette_light,
+            },
+        );
+
+        draw_text(
+            &mut video,
+            &format!("Midi note: {:.0}          ", audio.channels[0].midi_note()),
+            TextBundle {
+                initial_tile: 1,
+                col: 2,
+                row: 12,
+                width: 100,
+                palette: palette_light,
+            },
+        );
+
         // Update backends
         audio_backend.process_frame(&mut audio);
         copy_pixels_to_texture(
@@ -118,8 +176,6 @@ fn main() {
             &mut pixels,
             &mut render_texture,
         );
-
-        frame_count += 1;
     }
 
     audio_backend.write_wav_file();

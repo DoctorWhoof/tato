@@ -1,129 +1,35 @@
 use tato_video::{color::PaletteID, *};
 
 pub struct TextBundle {
-    col: u16,
-    row: u16,
-    palette: PaletteID,
+    pub initial_tile: u8,
+    pub col: u16,
+    pub row: u16,
+    pub width: u16,
+    pub palette: PaletteID,
 }
 
-pub fn draw_text_simple(vid: &mut VideoChip, bundle: TextBundle, text: &str) {
+pub fn draw_text(vid: &mut VideoChip, text: &str, bundle: TextBundle) {
     debug_assert!(text.is_ascii());
-    // Bug: The column position is not incremented, causing all characters
-    // to be drawn at the same position
+    let mut offset_x = 0;
+    let mut offset_y = 0;
     for ch in text.chars() {
         vid.bg_map.set_tile(BgBundle {
-            col: bundle.col,
-            row: bundle.row,
-            tile_id: TileID(char_to_id_simple(ch)),
+            col: bundle.col + offset_x,
+            row: bundle.row + offset_y,
+            tile_id: TileID(char_to_id_ex(ch) + bundle.initial_tile),
             flags: bundle.palette.into(),
         });
+        offset_x += 1;
+        if offset_x == bundle.width {
+            offset_x = 0;
+            offset_y += 1;
+        }
     }
 }
 
-/// Intended for extremely simple, early 80's arcade text containing
-/// only numbers and upper case letters.
-fn char_to_id_simple(ch: char) -> u8 {
-    match ch {
-        // Tightly packed ASCII chars in their original order can
-        // result in fast optimizations by the compiler
-        '0' => 0,
-        '1' => 1,
-        '2' => 2,
-        '3' => 3,
-        '4' => 4,
-        '5' => 5,
-        '6' => 6,
-        '7' => 7,
-        '8' => 8,
-        '9' => 9,
-        // These are also contiguous
-        'A' => 10,
-        'B' => 11,
-        'C' => 12,
-        'D' => 13,
-        'E' => 14,
-        'F' => 15,
-        'G' => 16,
-        'H' => 17,
-        'I' => 18,
-        'J' => 19,
-        'K' => 20,
-        'L' => 21,
-        'M' => 22,
-        'N' => 23,
-        'O' => 24,
-        'P' => 25,
-        'Q' => 26,
-        'R' => 27,
-        'S' => 28,
-        'T' => 29,
-        'U' => 30,
-        'V' => 31,
-        'W' => 32,
-        'X' => 33,
-        'Y' => 34,
-        'Z' => 35,
-        _ => 0,
-    }
-}
-/// Extended from the simple case to handle punctuation and
-/// additional characters with uppercase letters
-#[allow(dead_code)] // Function is defined but never used
-fn char_to_id(ch: char) -> u8 {
-    match ch {
-        // Tightly packed ASCII chars in their original order can
-        // result in fast optimizations by the compiler
-        '0' => 0,
-        '1' => 1,
-        '2' => 2,
-        '3' => 3,
-        '4' => 4,
-        '5' => 5,
-        '6' => 6,
-        '7' => 7,
-        '8' => 8,
-        '9' => 9,
-        // These are also contiguous
-        'A' => 10,
-        'B' => 11,
-        'C' => 12,
-        'D' => 13,
-        'E' => 14,
-        'F' => 15,
-        'G' => 16,
-        'H' => 17,
-        'I' => 18,
-        'J' => 19,
-        'K' => 20,
-        'L' => 21,
-        'M' => 22,
-        'N' => 23,
-        'O' => 24,
-        'P' => 25,
-        'Q' => 26,
-        'R' => 27,
-        'S' => 28,
-        'T' => 29,
-        'U' => 30,
-        'V' => 31,
-        'W' => 32,
-        'X' => 33,
-        'Y' => 34,
-        'Z' => 35,
-        // These aren't contiguous, but I want to keep it simple
-        '.' => 36,
-        '?' => 37,
-        ',' => 38,
-        '!' => 39,
-        ' ' => 40,
-        _ => 0,
-    }
-}
-
-/// Extended from the previous functions to include lowercase letters,
-/// offering a complete set of ASCII characters for more modern text rendering
+/// Extended from the previous functions to include lowercase letters and additional punctuation.
 #[allow(dead_code)]
-fn char_to_id_ex(ch: char) -> u8 {
+pub fn char_to_id_ex(ch: char) -> u8 {
     match ch {
         // Tightly packed ASCII chars in their original order can
         // result in fast optimizations by the compiler
@@ -215,6 +121,61 @@ fn char_to_id_ex(ch: char) -> u8 {
         '-' => 81,
         '.' => 82,
         '/' => 83,
+        _ => 0,
+    }
+}
+
+
+
+/// Intended for extremely simple, early 80's arcade text containing
+/// only numbers and upper case letters and basic punctuation.
+#[allow(dead_code)] // Function is defined but never used
+fn char_to_id(ch: char) -> u8 {
+    match ch {
+        // Tightly packed ASCII chars in their original order can
+        // result in fast optimizations by the compiler
+        '0' => 0,
+        '1' => 1,
+        '2' => 2,
+        '3' => 3,
+        '4' => 4,
+        '5' => 5,
+        '6' => 6,
+        '7' => 7,
+        '8' => 8,
+        '9' => 9,
+        // These are also contiguous
+        'A' => 10,
+        'B' => 11,
+        'C' => 12,
+        'D' => 13,
+        'E' => 14,
+        'F' => 15,
+        'G' => 16,
+        'H' => 17,
+        'I' => 18,
+        'J' => 19,
+        'K' => 20,
+        'L' => 21,
+        'M' => 22,
+        'N' => 23,
+        'O' => 24,
+        'P' => 25,
+        'Q' => 26,
+        'R' => 27,
+        'S' => 28,
+        'T' => 29,
+        'U' => 30,
+        'V' => 31,
+        'W' => 32,
+        'X' => 33,
+        'Y' => 34,
+        'Z' => 35,
+        // These aren't contiguous, but I want to keep it simple
+        '?' => 36,
+        ',' => 37,
+        '.' => 38,
+        ' ' => 39,
         _ => 0,
     }
 }

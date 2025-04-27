@@ -19,9 +19,9 @@ impl SceneB {
 
         // Colors
         vid.bg_color = DARK_GREEN;
-        let _palette_bg = vid.push_palette([BG_COLOR, GREEN, BLACK, BLACK]);
-        let palette_smiley = vid.push_palette([BG_COLOR, YELLOW, BLACK, BLACK]);
-        let palette_cycler = vid.push_palette([BG_COLOR, WHITE, BLACK, BLACK]);
+        let _palette_bg = vid.push_subpalette([BG_COLOR, GREEN, BLACK, BLACK]);
+        let palette_smiley = vid.push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
+        let palette_cycler = vid.push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
@@ -37,8 +37,8 @@ impl SceneB {
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
                 // using "wrap_width" and "wrap_height"
-                x: rand::random_range(0.0 .. 255.0), // - 32_000.0,
-                y: rand::random_range(0.0 .. 255.0), // + 32_000.0,
+                x: rand::random_range(0.0..255.0), // - 32_000.0,
+                y: rand::random_range(0.0..255.0), // + 32_000.0,
                 tile,
                 flags: palette_smiley.into(),
             }),

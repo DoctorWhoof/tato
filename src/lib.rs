@@ -14,6 +14,7 @@ pub mod prelude {
     pub use tato_audio::*;
     pub use tato_audio::waveform::*;
     pub use tato_video::*;
+    pub use tato_video::prelude::*;
     pub use tato_pad::*;
     pub use crate::text::*;
 }

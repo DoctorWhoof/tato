@@ -44,7 +44,7 @@ impl SceneA {
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
         for i in 0..vid.bg_palette.len() {
-            let _ = vid.push_palette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
+            let _ = vid.push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
         }
 
         // Define new tiles
