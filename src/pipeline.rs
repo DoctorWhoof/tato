@@ -105,75 +105,121 @@ impl Pipeline {
         tileset.anims.push(anim);
     }
 
-    pub fn disable_tile_transform_detection(&mut self, tileset_id:TilesetID) {
-        if let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize){
+    pub fn disable_tile_transform_detection(&mut self, tileset_id: TilesetID) {
+        if let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) {
             tileset.allow_tile_transforms = false;
         }
     }
 
-    // ****************************** Code Gen ******************************
-
-    pub fn write_assets(&mut self, file_path: &str) {
+    pub fn write_all_assets(&mut self, file_path: &str) {
         // The code writer is created, modified and dropped in this scope
+        // which means the file is ready to be formatted next.
         {
             let mut code = CodeWriter::new(file_path);
-            // Header
-            code.write_line("// Auto-generated code - do not edit manually");
-            code.write_line("#![allow(unused)]");
-            code.write_line("");
-            code.write_line("use tato::video::*;");
+            self.append_header(&mut code);
             code.write_line("use tato::Anim;");
             code.write_line("");
+            self.append_palettes(&mut code);
+            self.append_sub_palettes(&mut code);
+            self.append_anims(&mut code);
+            self.append_pixels(&mut code);
+        }
+        self.format_output(file_path);
+    }
 
-            // Palettes
-            for palette in &self.palettes {
+    pub fn write_palettes(&mut self, file_path: &str) {
+        {
+            let mut code = CodeWriter::new(file_path);
+            self.append_header(&mut code);
+            self.append_palettes(&mut code);
+        }
+        self.format_output(file_path);
+    }
+
+    pub fn write_tileset(&mut self, file_path: &str) {
+        {
+            let mut code = CodeWriter::new(file_path);
+            self.append_header(&mut code);
+            self.append_sub_palettes(&mut code);
+            self.append_anims(&mut code);
+            self.append_pixels(&mut code);
+        }
+        self.format_output(file_path);
+    }
+
+    pub fn write_tileset_pixels(&mut self, file_path: &str) {
+        {
+            let mut code = CodeWriter::new(file_path);
+            self.append_header(&mut code);
+            self.append_pixels(&mut code);
+        }
+        self.format_output(file_path);
+    }
+
+    pub fn write_tileset_sub_palettes(&mut self, file_path: &str) {
+        {
+            let mut code = CodeWriter::new(file_path);
+            self.append_header(&mut code);
+            self.append_sub_palettes(&mut code);
+        }
+        self.format_output(file_path);
+    }
+
+    pub fn write_tileset_anims(&mut self, file_path: &str) {
+        {
+            let mut code = CodeWriter::new(file_path);
+            self.append_header(&mut code);
+            code.write_line("use tato::Anim;");
+            code.write_line("");
+            self.append_anims(&mut code);
+        }
+        self.format_output(file_path);
+    }
+}
+
+// ****************************** Code Gen ******************************
+
+impl Pipeline {
+    fn append_header(&mut self, code: &mut CodeWriter) {
+        // Header
+        code.write_line("// Auto-generated code - do not edit manually");
+        code.write_line("#![allow(unused)]");
+        code.write_line("");
+        code.write_line("");
+    }
+
+    fn append_palettes(&mut self, code: &mut CodeWriter) {
+        // Palettes
+        for palette in &self.palettes {
+            code.write_line(&format!(
+                "pub const {}: [Color9Bit; {}] = [",
+                palette.name.to_uppercase(),
+                palette.colors.len()
+            ));
+            code.indent();
+
+            for color in &palette.colors {
                 code.write_line(&format!(
-                    "pub const {}: [Color9Bit; {}] = [",
-                    palette.name.to_uppercase(),
-                    palette.colors.len()
+                    "Color9Bit::new({}, {}, {}),",
+                    color.r(),
+                    color.g(),
+                    color.b()
                 ));
-                code.indent();
-
-                for color in &palette.colors {
-                    code.write_line(&format!(
-                        "Color9Bit::new({}, {}, {}),",
-                        color.r(),
-                        color.g(),
-                        color.b()
-                    ));
-                }
-
-                code.dedent();
-                code.write_line("];");
-                code.write_line("");
             }
 
-            // Tilesets
-            for tileset in &self.tilesets {
-                // Sub-Palettes
-                for sub_plt in &tileset.sub_palettes {
-                    code.write_line(&format!(
-                        "pub const {}: [u8; {}] = [",
-                        tileset
-                            .sub_palette_name_hash
-                            .get(sub_plt)
-                            .unwrap()
-                            .to_uppercase(),
-                        sub_plt.len()
-                    ));
-                    code.indent();
-                    for color_index in sub_plt {
-                        code.write_line(&format!("{},", color_index));
-                    }
-                    code.dedent();
-                    code.write_line("];");
-                    code.write_line("");
-                }
+            code.dedent();
+            code.write_line("];");
+            code.write_line("");
+        }
+    }
 
-                // Anims
-                for anim in &tileset.anims {
-                    // println!("Anim: {:#?}", anim);
-                    code.write_line(&format!(
+    fn append_anims(&mut self, code: &mut CodeWriter) {
+        // Tilesets
+        for tileset in &self.tilesets {
+            // Anims
+            for anim in &tileset.anims {
+                // println!("Anim: {:#?}", anim);
+                code.write_line(&format!(
                     "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
                     anim.name.to_uppercase(),
                     anim.frames.len(),
@@ -181,35 +227,65 @@ impl Pipeline {
                     anim.fps,
                     anim.columns
                 ));
-                    code.indent();
-                    for frame in &anim.frames {
-                        code.start_line("[");
-                        for tile in &frame.tiles {
-                            code.write(&format!("{}, ", tile.index.0));
-                        }
-                        code.finish_line("],\n");
+                code.indent();
+                for frame in &anim.frames {
+                    code.start_line("[");
+                    for tile in &frame.tiles {
+                        code.write(&format!("{}, ", tile.index.0));
                     }
-                    code.dedent();
-                    code.write_line("]};");
+                    code.finish_line("],\n");
                 }
+                code.dedent();
+                code.write_line("]};");
+                code.write_line("");
             }
+        }
+    }
 
-            // Write Pixels at the bottom of the file!
-            for tileset in &self.tilesets {
+    fn append_sub_palettes(&mut self, code: &mut CodeWriter) {
+        // Tilesets
+        for tileset in &self.tilesets {
+            // Sub-Palettes
+            for sub_plt in &tileset.sub_palettes {
                 code.write_line(&format!(
-                    "pub const TILESET_{}: [u8; {}] = [",
-                    tileset.name.to_uppercase(),
-                    tileset.pixels.len()
+                    "pub const {}: [u8; {}] = [",
+                    tileset
+                        .sub_palette_name_hash
+                        .get(sub_plt)
+                        .unwrap()
+                        .to_uppercase(),
+                    sub_plt.len()
                 ));
                 code.indent();
-                for pixel in &tileset.pixels {
-                    code.write(&format!("{}, ", pixel));
+                for color_index in sub_plt {
+                    code.write_line(&format!("{},", color_index));
                 }
                 code.dedent();
                 code.write_line("];");
+                code.write_line("");
             }
         }
+    }
 
+    fn append_pixels(&mut self, code: &mut CodeWriter) {
+        // Write Pixels at the bottom of the file!
+        for tileset in &self.tilesets {
+            code.write_line(&format!(
+                "pub const TILESET_{}: [u8; {}] = [",
+                tileset.name.to_uppercase(),
+                tileset.pixels.len()
+            ));
+            code.indent();
+            for pixel in &tileset.pixels {
+                code.write(&format!("{}, ", pixel));
+            }
+            code.dedent();
+            code.write_line("];");
+            code.write_line("");
+        }
+    }
+
+    fn format_output(&mut self, file_path: &str) {
         // Format the output file with rustfmt
         let output = std::process::Command::new("rustfmt")
             .arg(file_path)
@@ -232,45 +308,6 @@ impl Pipeline {
             }
         }
     }
-
-    // Methods for tileset generation
-    // pub fn generate_tileset(&mut self, name: &str, tileset: &TilesetBuilder) {
-    //     // Generate pixel data
-    //     code.write_line(&format!(
-    //         "pub const {}_PIXELS: [u8; {}] = [",
-    //         name.to_uppercase(),
-    //         tileset.pixels.len()
-    //     ));
-    //     code.indent();
-
-    //     // Format pixels in rows of 16 for readability
-    //     for chunk in tileset.pixels.chunks(16) {
-    //         let values = chunk
-    //             .iter()
-    //             .map(|p| format!("{}", p))
-    //             .collect::<Vec<_>>()
-    //             .join(", ");
-    //         code.write_line(&format!("{},", values));
-    //     }
-
-    //     code.dedent();
-    //     code.write_line("];");
-    //     code.write_line("");
-
-    //     // Generate tile definitions
-    //     code.generate_tiles(name, tileset);
-
-    //     // Generate animations
-    //     code.generate_animations(name, tileset);
-
-    //     // Generate fonts
-    //     code.generate_fonts(name, tileset);
-
-    //     // Generate tilemaps
-    //     code.generate_tilemaps(name, tileset);
-    // }
-
-    // ... more methods for specific asset types
 }
 
 fn strip_path_name(path: &str) -> String {

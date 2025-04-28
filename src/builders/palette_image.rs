@@ -1,5 +1,5 @@
 use image::{DynamicImage, ImageReader};
-use tato::video::*;
+use tato_video::*;
 
 use crate::*;
 

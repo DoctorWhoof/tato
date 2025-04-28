@@ -1,4 +1,4 @@
-use tato::video::*;
+use tato_video::*;
 
 /// Just like Color9Bit, but used as an intermediate format to allow
 /// creating correct hashes for tiles with transparent pixels (without this,

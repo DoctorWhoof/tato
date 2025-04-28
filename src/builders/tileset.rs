@@ -1,5 +1,5 @@
 use core::array::from_fn;
-use tato::video::{TILE_SIZE, TileFlags, TileID};
+use tato_video::{TILE_SIZE, TileFlags, TileID};
 
 use super::*;
 use crate::*;

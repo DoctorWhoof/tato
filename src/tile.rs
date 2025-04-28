@@ -1,4 +1,4 @@
-use tato::video::{TileFlags, TileID};
+use tato_video::{TileFlags, TileID};
 
 /// The smallest part of a BG Map, contains a tile index and its flags.
 #[derive(Clone, Debug, Default, PartialEq)]

@@ -15,16 +15,13 @@ fn test_anim() {
     // Tile transforms (flip, rotate) can mess up font indices, so
     // let's disable them in these tilesets.
     let tileset_font = pipe.new_tileset("font_simple", palette_bg);
-    let tileset_font_ex = pipe.new_tileset("font_ex", palette_bg);
     pipe.disable_tile_transform_detection(tileset_font);
-    pipe.disable_tile_transform_detection(tileset_font_ex);
 
     // A "font" is merely an animation where each frame is a letter!
     pipe.new_anim("test/spy_idle.png", 8, 4, 1, tileset_chars);
     pipe.new_anim("test/font_simple.png", 1, 10, 4, tileset_font);
-    pipe.new_anim("test/font_extended.png", 1, 10, 9, tileset_font_ex);
 
     // Write output file
     // TODO: Maybe separate output file per tileset?
-    pipe.write_assets("test/output.rs");
+    pipe.write_all_assets("test/output.rs");
 }
