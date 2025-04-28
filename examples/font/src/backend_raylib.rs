@@ -1,8 +1,7 @@
 #![allow(unused)]
+use crate::{W, H};
 use raylib::prelude::*;
 use tato::prelude::*;
-
-use crate::{W, H};
 
 pub fn config_raylib() {
     unsafe {
@@ -63,7 +62,8 @@ pub fn copy_pixels_to_texture(
 ) {
     // Copy from framebuffer to raylib texture
     for (color, coords) in vid.iter_pixels() {
-        let i = ((coords.y as usize * 240) + coords.x as usize) * 4;
+        let w = vid.width() as usize;
+        let i = ((coords.y as usize * w) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
         pixels[i + 2] = color.b;

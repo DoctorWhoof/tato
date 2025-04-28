@@ -6,11 +6,10 @@ pub use wave_writer::*;
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
 use std::{f32::consts::PI, time::Instant};
-use tato::prelude::*;
+use tato::{prelude::*, Tato};
 
 const W: usize = 240;
 const H: usize = 180;
-pub const PIXEL_COUNT: usize = W * H * 4;
 
 pub enum SoundType {
     WaveTable,
@@ -23,53 +22,18 @@ pub enum SoundType {
 // Can just use raylib to display text on the window
 
 fn main() {
-    // Tato setup + initial scene
-    let mut video = VideoChip::new(W as u32, H as u32);
-    video.bg_color = DARK_BLUE;
-    let palette_default = video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let palette_light = video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
+    let mut tato = Tato::new(W as u32, H as u32);
 
-    video.new_tile(8, 8, &TILE_EMPTY);
-
-    for tile in tato::font::FONT_EX.chunks(64) {
-        video.new_tile(8, 8, tile);
-    }
-
-    for ch in "ABCD 1234 :;<=>".chars() {
-        println!("{} => {}", ch, char_to_id_ex(ch));
-    }
-
-    draw_text(
-        &mut video,
-        "SOUND TEST",
-        TextBundle {
-            initial_tile: 1,
-            col: 2,
-            row: 2,
-            width: 12,
-            palette: palette_default,
-        },
-    );
-
-    draw_text(
-        &mut video,
-        "Currently playing:",
-        TextBundle {
-            initial_tile: 1,
-            col: 2,
-            row: 6,
-            width: 20,
-            palette: palette_light,
-        },
-    );
-
-    let mut audio = AudioChip::default();
-    let mut pad = AnaloguePad::default();
+    // Tato Video Setup
+    tato.video.bg_color = DARK_BLUE;
+    let palette_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
+    let palette_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
+    tato.video.new_tile(8, 8, &TILE_EMPTY);
 
     // Raylib setup
     let target_fps = 60.0;
-    let w = video.width() as i32;
-    let h = video.height() as i32;
+    let w = tato.video.width() as i32;
+    let h = tato.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
         .size(w * 3, h * 3)
         .title("Tato Demo")
@@ -80,14 +44,43 @@ fn main() {
     ray.set_target_fps(target_fps as u32);
 
     // Create texture for rendering
-    let mut pixels: [u8; PIXEL_COUNT] = core::array::from_fn(|_| 0);
+    let mut pixels: [u8; W * H * 4] = core::array::from_fn(|_| 0);
     let mut render_texture = {
         let render_image = Image::gen_image_color(w, h, Color::BLACK);
         ray.load_texture_from_image(&ray_thread, &render_image)
             .unwrap()
     };
 
+    // Load font. TODO: Streamline this.
+    for tile in tato::fonts::TILESET_FONT.chunks(64) {
+        tato.video.new_tile(8, 8, tile);
+    }
+
+    // Pre-draw fixed text (writes to BG Map)
+    tato.draw_text(
+        "SOUND TEST",
+        TextBundle {
+            initial_tile: 1,
+            col: 2,
+            row: 2,
+            width: 12,
+            palette: palette_default,
+        },
+    );
+
+    tato.draw_text(
+        "Currently playing:",
+        TextBundle {
+            initial_tile: 1,
+            col: 2,
+            row: 6,
+            width: 20,
+            palette: palette_light,
+        },
+    );
+
     // Audio setup
+    let mut audio = AudioChip::default();
     let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
     audio.sample_rate = audio_backend.sample_rate();
     audio.channels[0].set_volume(15);
@@ -100,9 +93,7 @@ fn main() {
 
     // Main Loop
     while !ray.window_should_close() {
-        update_gamepad(&ray, &mut pad);
-
-        // Sound test
+        // "Envelopes"
         let env_len = 2.0;
         let elapsed = time.elapsed().as_secs_f32() % env_len;
         let env = (env_len - elapsed).clamp(0.0, 1.0);
@@ -110,7 +101,7 @@ fn main() {
         audio.channels[0].set_volume((env * 15.0) as u8);
         audio.channels[0].set_note(note + note_offset);
 
-        // Change sound depending on time
+        // Change sound mode depending on time
         let stage = time.elapsed().as_secs_f32() % 8.0;
         if stage < 2.0 {
             audio.channels[0].set_noise_mix(0);
@@ -124,16 +115,15 @@ fn main() {
             audio.channels[0].wave_mode = WaveMode::WaveTable;
         }
 
-        // Text info update
-        let text = if audio.channels[0].noise_mix() == 0 {
-            format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
-        } else {
-            format!("Wave Type: White Noise        ")
-        };
-
-        draw_text(
-            &mut video,
-            &text,
+        // Text info
+        tato.draw_text(
+            &{
+                if audio.channels[0].noise_mix() == 0 {
+                    format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
+                } else {
+                    format!("Wave Type: White Noise        ")
+                }
+            },
             TextBundle {
                 initial_tile: 1,
                 col: 2,
@@ -143,8 +133,7 @@ fn main() {
             },
         );
 
-        draw_text(
-            &mut video,
+        tato.draw_text(
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextBundle {
                 initial_tile: 1,
@@ -155,9 +144,8 @@ fn main() {
             },
         );
 
-        draw_text(
-            &mut video,
-            &format!("Midi note: {:.0}          ", audio.channels[0].midi_note()),
+        tato.draw_text(
+            &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextBundle {
                 initial_tile: 1,
                 col: 2,
@@ -170,7 +158,7 @@ fn main() {
         // Update backends
         audio_backend.process_frame(&mut audio);
         copy_pixels_to_texture(
-            &video,
+            &tato.video,
             &ray_thread,
             &mut ray,
             &mut pixels,

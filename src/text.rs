@@ -1,3 +1,4 @@
+use crate::Tato;
 use tato_video::{color::PaletteID, *};
 
 pub struct TextBundle {
@@ -8,28 +9,45 @@ pub struct TextBundle {
     pub palette: PaletteID,
 }
 
-pub fn draw_text(vid: &mut VideoChip, text: &str, bundle: TextBundle) {
-    debug_assert!(text.is_ascii());
-    let mut offset_x = 0;
-    let mut offset_y = 0;
-    for ch in text.chars() {
-        vid.bg_map.set_tile(BgBundle {
-            col: bundle.col + offset_x,
-            row: bundle.row + offset_y,
-            tile_id: TileID(char_to_id_ex(ch) + bundle.initial_tile),
-            flags: bundle.palette.into(),
-        });
-        offset_x += 1;
-        if offset_x == bundle.width {
-            offset_x = 0;
-            offset_y += 1;
+impl Tato {
+    /// "Draws" a text string to the BG Map, returns the resulting height (in rows).
+    pub fn draw_text(&mut self, text: &str, bundle: TextBundle) -> u16 {
+        debug_assert!(text.is_ascii());
+
+        let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {
+            self.video.bg_map.set_tile(BgBundle {
+                col: bundle.col + cursor_x,
+                row: bundle.row + cursor_y,
+                tile_id: TileID(char_to_id_ex(ch) + bundle.initial_tile),
+                flags: bundle.palette.into(),
+            });
+        };
+        let mut cursor_x = 0;
+        let mut cursor_y = 0;
+        for word in text.split(' ') {
+            if cursor_x + (word.len() as u16) > bundle.width {
+                cursor_x = 0;
+                cursor_y += 1;
+            }
+            for ch in word.chars() {
+                set_tile(ch, cursor_x, cursor_y);
+                cursor_x += 1;
+            }
+            if cursor_x >= bundle.width {
+                cursor_x = 0;
+                cursor_y += 1;
+            } else {
+                set_tile(' ', cursor_x, cursor_y);
+                cursor_x += 1;
+            }
         }
+        cursor_y + 1
     }
 }
 
 /// Extended from the previous functions to include lowercase letters and additional punctuation.
 #[allow(dead_code)]
-pub fn char_to_id_ex(ch: char) -> u8 {
+fn char_to_id_ex(ch: char) -> u8 {
     match ch {
         // Tightly packed ASCII chars in their original order can
         // result in fast optimizations by the compiler
@@ -121,11 +139,11 @@ pub fn char_to_id_ex(ch: char) -> u8 {
         '-' => 81,
         '.' => 82,
         '/' => 83,
+        // But not these
+        '_' => 84,
         _ => 0,
     }
 }
-
-
 
 /// Intended for extremely simple, early 80's arcade text containing
 /// only numbers and upper case letters and basic punctuation.

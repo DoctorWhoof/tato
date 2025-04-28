@@ -8,10 +8,19 @@ repository = "https://github.com/DoctorWhoof/tato"
 categories = ["no-std"]
 
 [dependencies]
-tato_audio = { path = "../tato_audio" }
-tato_video = { path = "../tato_video" }
 tato_pad = "0.2.5"
 tato_layout = "0.3.21"
+tato_audio = { path = "../tato_audio" }
+tato_video = { path = "../tato_video" }
+tato_pipe = { path = "../tato_pipe" }
+
+[build-dependencies]
+tato_pipe = { path = "../tato_pipe" }
 
 [workspace]
-members = ["examples/scenes", "examples/audio", "examples/pipe"]
+members = [
+    "examples/scenes",
+    "examples/audio",
+    "examples/pipe",
+    "examples/font",
+]
