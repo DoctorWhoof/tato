@@ -56,10 +56,10 @@ pub const BG_COLUMNS: u8 = 64;
 /// Number of rows in BG Map
 pub const BG_ROWS: u8 = 64;
 
-/// Number of columns in BG Map times tile size, in pixels.
+/// Maximum number of columns in BG Map times tile size, in pixels.
 pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
 
-/// Number of rows in BG Map times tile size, in pixels.
+/// Maximum number of rows in BG Map times tile size, in pixels.
 pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
 
 /// Maximum sprite storage length (16 Kb with Cluster<2> used).
@@ -137,7 +137,7 @@ impl VideoChip {
         let mut result = Self {
             // fg_pixels: [0; FG_LEN],
             // sprite_grid: SpriteGrid::new(),
-            bg_map: BGMap::new(),
+            bg_map: BGMap::new(BG_WIDTH, BG_HEIGHT),
             tile_pixels: [Cluster::default(); TILE_MEM_LEN],
             bg_color: GRAY,
             wrap_sprites: true,
@@ -286,7 +286,7 @@ impl VideoChip {
     }
 
     pub fn reset_bgmap(&mut self) {
-        self.bg_map = BGMap::new();
+        self.bg_map = BGMap::new(BG_WIDTH, BG_HEIGHT);
     }
 
     pub fn reset_viewport(&mut self) {

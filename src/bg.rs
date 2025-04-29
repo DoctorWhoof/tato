@@ -9,6 +9,13 @@ const BGMAP_LEN: usize = BG_COLUMNS as usize * BG_ROWS as usize;
 pub struct BGMap {
     pub tiles: [TileID; BGMAP_LEN],
     pub flags: [TileFlags; BGMAP_LEN],
+    /// The effective width in pixels, must be smaller than BG_WIDTH.
+    /// Although the maximum number of tiles in a BG Map is determined by BG_WIDTH and BG_HEIGHT,
+    /// you can use a smaller number if you wish. This is useful when "wrapping" the BG, for instance.
+    /// Attempting to set this higher than BG_WIDTH will panic.
+    pub width: u16,
+    /// The effective height in pixels, must be smaller than BG_HEIGHT.
+    pub height: u16,
 }
 
 /// A simple packet of required data to fully set the attributes on a BG tile.
@@ -21,10 +28,14 @@ pub struct BgBundle {
 }
 
 impl BGMap {
-    pub fn new() -> Self {
+    pub fn new(width: u16, height: u16) -> Self {
+        assert!(width <= BG_WIDTH, "BG Map: width can't exceed {}", BG_WIDTH);
+        assert!(height <= BG_HEIGHT, "BG Map: height can't exceed {}", BG_HEIGHT);
         Self {
             tiles: core::array::from_fn(|_| TileID(0)),
             flags: core::array::from_fn(|_| TileFlags::default()),
+            width,
+            height,
         }
     }
 
