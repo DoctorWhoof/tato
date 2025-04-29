@@ -1,7 +1,7 @@
 use super::*;
 
 /// Unique identifier for a tile. Starts at zero when chip is reset.
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord, PartialEq, Hash, Default)]
 pub struct TileID(pub u8);
 
 /// Keeps track of a texture tile's dimensions and location in the tile pixel buffer.
@@ -17,7 +17,7 @@ pub struct TileEntry {
 
 /// A single byte struct that stores a tile's render state such as
 /// horizontal flip, vertical flip, rotation and local palette.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct TileFlags(pub u8);
 
 /// A convenient way to pass a palette where TileFlags are required.

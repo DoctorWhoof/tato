@@ -2,14 +2,16 @@
 use core::array::from_fn;
 
 pub mod prelude {
+    pub use crate::*;
     pub use crate::color::*;
     pub use crate::data::*;
 }
 
 pub mod color;
-pub mod data;
 use color::*;
-// Visible by default
+pub use color::{Color9Bit, ColorRGB24};
+
+mod data;
 
 mod error;
 
@@ -302,7 +304,7 @@ impl VideoChip {
         self.local_palettes[index.0 as usize] = colors;
     }
 
-    pub fn push_palette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
+    pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
         assert!(self.palette_head < 16, err!("PALETTE_COUNT exceeded"));
         let result = self.palette_head;
         self.local_palettes[self.palette_head as usize] = colors;

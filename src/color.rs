@@ -12,7 +12,6 @@ pub struct PaletteID(pub u8);
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub struct ColorID(pub u8);
 
-/// Unique identifier for a Local Palette that maps a tile to the global palette.
 impl PaletteID {
     pub fn id(self) -> usize {
         self.0 as usize
@@ -22,6 +21,18 @@ impl PaletteID {
 impl ColorID {
     pub fn id(self) -> usize {
         self.0 as usize
+    }
+}
+
+impl From<PaletteID> for u8 {
+    fn from(value: PaletteID) -> Self {
+        value.0
+    }
+}
+
+impl From<ColorID> for u8 {
+    fn from(value: ColorID) -> Self {
+        value.0
     }
 }
 

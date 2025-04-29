@@ -127,11 +127,11 @@ impl<'a> PixelIter<'a> {
             // Get pixel from current cluster
             let color = self.bg_cluster.get_subpixel(self.subpixel_index);
             // If transparent, use background color
-            if color == 0 {
+            let bg_palette = self.current_bg_flags.palette().0 as usize;
+            let global_idx = self.local_palettes[bg_palette][color as usize].0 as usize;
+            if global_idx == 0 {
                 self.bg_color
             } else {
-                let bg_palette = self.current_bg_flags.palette().0 as usize;
-                let global_idx = self.local_palettes[bg_palette][color as usize].0 as usize;
                 self.bg_palette[global_idx]
             }
         }
