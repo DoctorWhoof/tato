@@ -14,7 +14,7 @@ pub struct DrawBundle {
 #[derive(Debug, Clone)]
 pub struct VideoChip {
     /// Fixed BG Tilemap
-    pub bg_map: BGMap,
+    pub bg: BGMap,
     /// The color rendered if resulting pixel is transparent
     pub bg_color: ColorID,
     /// The main FG palette with 16 colors. Used by sprites.
@@ -33,7 +33,7 @@ pub struct VideoChip {
     pub scroll_y: i16,
 
     // ---------------------- Main Data ----------------------
-    // TODO: Make pub(Crate) after testing
+    // pub(crate) sprites: [SpriteGen; 8],
     pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
     pub(crate) crop_x: u8,
     pub(crate) crop_y: u8,
@@ -71,7 +71,7 @@ impl VideoChip {
         let mut result = Self {
             // fg_pixels: [0; FG_LEN],
             // sprite_grid: SpriteGrid::new(),
-            bg_map: BGMap::new(BG_WIDTH, BG_HEIGHT),
+            bg: BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS),
             tile_pixels: [Cluster::default(); TILE_MEM_LEN],
             bg_color: GRAY,
             wrap_sprites: true,
@@ -80,6 +80,7 @@ impl VideoChip {
             fg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+            // sprites: from_fn(|_| SpriteGen::default()),
             scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
             max_x: (w - 1) as u8,
             max_y: (h - 1) as u8,
@@ -220,7 +221,7 @@ impl VideoChip {
     }
 
     pub fn reset_bgmap(&mut self) {
-        self.bg_map = BGMap::new(BG_WIDTH, BG_HEIGHT);
+        self.bg = BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS);
     }
 
     pub fn reset_viewport(&mut self) {
@@ -263,13 +264,13 @@ impl VideoChip {
 
         // Assert tile dimensions
         assert!(
-            w % TILE_SIZE == 0 && h % TILE_SIZE == 0,
-            err!("Tile dimensions are not multiple of TILE_SIZE")
+            w % MIN_TILE_SIZE == 0 && h % MIN_TILE_SIZE == 0,
+            err!("Tile dimensions are not multiple of MIN_TILE_SIZE")
         );
 
         assert!(
-            w >= TILE_SIZE && h >= TILE_SIZE,
-            err!("Tile dimensions must be TILE_SIZE or larger")
+            w >= MIN_TILE_SIZE && h >= MIN_TILE_SIZE,
+            err!("Tile dimensions must be MIN_TILE_SIZE or larger")
         );
 
         // Assert that data length is correct
@@ -397,7 +398,7 @@ impl VideoChip {
     }
 
     #[inline(always)]
-    pub(crate) fn transform_tile_coords(x: u8, y: u8, w: u8, h: u8, flags: TileFlags) -> (u8, u8) {
+    fn transform_tile_coords(x: u8, y: u8, w: u8, h: u8, flags: TileFlags) -> (u8, u8) {
         // Handle both rotation and flipping
         if flags.is_rotated() {
             // For 90° clockwise rotation, swap x and y and flip the new x axis

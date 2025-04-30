@@ -23,6 +23,9 @@ pub use iter::*;
 mod cluster;
 pub use cluster::*;
 
+mod scanline;
+use scanline::*;
+
 mod tile;
 pub use tile::*;
 
@@ -31,13 +34,10 @@ pub use videochip::*;
 
 // -------------------------------- Constants --------------------------------
 
-/// FG Draw buffer height.
-pub const LINE_COUNT: usize = 196;
+/// Each tile dimension must be a multiple of MIN_TILE_SIZE.
+pub const MIN_TILE_SIZE:u8 = 8;
+pub const MAX_TILE_SIZE:u8 = 32;
 
-/// All tile dimensions must be a multiple of TILE_SIZE.
-pub const TILE_SIZE: u8 = 8;
-
-// Colors and bit depth
 /// Number of colors per tile (2 bits per pixel)
 pub const COLORS_PER_TILE: u8 = 4;
 
@@ -54,17 +54,14 @@ pub const SUBPIXELS_TILE: u8 = Cluster::<2>::PIXELS_PER_BYTE as u8;
 /// 2 pixels per byte (16 colors per pixel)
 pub const SUBPIXELS_FRAMEBUFFER: u8 = Cluster::<4>::PIXELS_PER_BYTE as u8;
 
+/// FG Draw buffer height.
+pub const LINE_COUNT: usize = 196;
+
 /// Number of columns in BG Map
-pub const BG_COLUMNS: u8 = 64;
+pub const BG_MAX_COLUMNS: u8 = 64;
 
 /// Number of rows in BG Map
-pub const BG_ROWS: u8 = 64;
-
-/// Maximum number of columns in BG Map times tile size, in pixels.
-pub const BG_WIDTH: u16 = BG_COLUMNS as u16 * TILE_SIZE as u16;
-
-/// Maximum number of rows in BG Map times tile size, in pixels.
-pub const BG_HEIGHT: u16 = BG_ROWS as u16 * TILE_SIZE as u16;
+pub const BG_MAX_ROWS: u8 = 64;
 
 /// Maximum sprite storage length (16 Kb with Cluster<2> used).
 const TILE_MEM_LEN: usize = 8182;

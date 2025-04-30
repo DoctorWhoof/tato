@@ -54,9 +54,9 @@ impl<'a> PixelIter<'a> {
             result.update_bg_cluster();
 
             let bg_x = (result.x as i16 + result.vid.scroll_x as i16 + vid.crop_x as i16)
-                .rem_euclid(vid.bg_map.width as i16) as u16;
+                .rem_euclid(vid.bg.width() as i16) as u16;
 
-            let tile_x = bg_x % TILE_SIZE as u16;
+            let tile_x = bg_x % MIN_TILE_SIZE as u16;
             let local_idx = tile_x as usize % SUBPIXELS_TILE as usize;
             result.subpixel_index = local_idx as u8;
         }
@@ -67,22 +67,22 @@ impl<'a> PixelIter<'a> {
     fn update_bg_cluster(&mut self) {
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
         let bg_x = (self.x as i16 + self.vid.scroll_x as i16 + self.vid.crop_x as i16)
-            .rem_euclid(self.vid.bg_map.width as i16) as u16;
+            .rem_euclid(self.vid.bg.width() as i16) as u16;
         let bg_y = (self.y as i16 + self.vid.scroll_y as i16 + self.vid.crop_y as i16)
-            .rem_euclid(self.vid.bg_map.height as i16) as u16;
+            .rem_euclid(self.vid.bg.height() as i16) as u16;
 
         // Calculate BG map coordinates
-        let bg_col = bg_x / TILE_SIZE as u16;
-        let bg_row = bg_y / TILE_SIZE as u16;
+        let bg_col = bg_x / MIN_TILE_SIZE as u16;
+        let bg_row = bg_y / MIN_TILE_SIZE as u16;
 
         // Get new tile info
-        let bg_map_index = (bg_row as usize * BG_COLUMNS as usize) + bg_col as usize;
-        let current_bg_tile_id = self.vid.bg_map.tiles[bg_map_index].0;
-        self.current_bg_flags = self.vid.bg_map.flags[bg_map_index];
+        let bg_map_index = (bg_row as usize * self.vid.bg.columns as usize) + bg_col as usize;
+        let current_bg_tile_id = self.vid.bg.tiles[bg_map_index].0;
+        self.current_bg_flags = self.vid.bg.flags[bg_map_index];
 
         // Calculate local tile coordinates
-        let tile_x = (bg_x % TILE_SIZE as u16) as u8;
-        let tile_y = (bg_y % TILE_SIZE as u16) as u8;
+        let tile_x = (bg_x % MIN_TILE_SIZE as u16) as u8;
+        let tile_y = (bg_y % MIN_TILE_SIZE as u16) as u8;
 
         // Get the tile
         let tile_entry = self.vid.tiles[current_bg_tile_id as usize];
@@ -90,7 +90,7 @@ impl<'a> PixelIter<'a> {
         let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + 8];
 
         // Get the correct cluster with transformations applied
-        self.bg_cluster = Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y);
+        self.bg_cluster = Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y, MIN_TILE_SIZE);
 
         // Calculate subpixel index within the cluster (0-7)
         self.subpixel_index = tile_x % PIXELS_PER_CLUSTER;
@@ -144,8 +144,8 @@ impl<'a> PixelIter<'a> {
         let raw_y = self.y as i16 + self.vid.scroll_y + self.vid.crop_y as i16;
 
         // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
-        let w = self.vid.bg_map.width as i16;
-        let h = self.vid.bg_map.height as i16;
+        let w = self.vid.bg.width() as i16;
+        let h = self.vid.bg.height() as i16;
         raw_x < 0 || raw_y < 0 || raw_x >= w || raw_y >= h
     }
 }

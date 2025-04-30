@@ -1,4 +1,4 @@
-use crate::{TILE_SIZE, TileFlags, err};
+use crate::{TileFlags, err};
 
 /// A cluster always contains 8 pixels, regardless of color depth.
 pub const PIXELS_PER_CLUSTER: u8 = 8;
@@ -114,13 +114,13 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
     }
 
     #[inline]
-    pub fn from_tile(tile_pixels: &[Cluster<BITS_PER_PIXEL>], flags: TileFlags, row: u8) -> Self {
+    pub fn from_tile(tile_pixels: &[Cluster<BITS_PER_PIXEL>], flags: TileFlags, row: u8, tile_size:u8) -> Self {
         debug_assert!(row < 8, "Row index out of bounds");
 
         if flags.is_rotated() {
             // For 90° clockwise rotation
             let mut rotated = Self::default();
-            const HIGH: u8 = TILE_SIZE - 1;
+            let high = tile_size - 1;
 
             // First, determine which column we need
             let col = if flags.is_flipped_y() {
@@ -128,13 +128,13 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
                 row
             } else {
                 // Normal rotation makes column = 7 - row
-                HIGH - row
+                high - row
             };
 
             // Now, determine the reading direction for the column
             let start_row = if flags.is_flipped_x() {
                 // If flipped_x is set after rotation, read column from bottom to top
-                HIGH
+                high
             } else {
                 // Otherwise, read column from top to bottom
                 0
@@ -143,7 +143,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
             let row_step = if flags.is_flipped_x() { -1_i8 } else { 1_i8 };
 
             // Fill the destination cluster with pixels from the column
-            for i in 0..TILE_SIZE {
+            for i in 0..tile_size {
                 // Calculate the source row
                 let src_row = (start_row as i8 + (i as i8 * row_step)) as u8 & 7;
 

@@ -1,6 +1,6 @@
 use crate::*;
 // TODO: Store using pixel clusters (fewer than 8bits per pixel)
-const SINGLE_TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize; // in bytes
+const SINGLE_TILE_LEN: usize = MIN_TILE_SIZE as usize * MIN_TILE_SIZE as usize; // in bytes
 
 pub const TILE_EMPTY: [u8; SINGLE_TILE_LEN] = [0; SINGLE_TILE_LEN];
 
