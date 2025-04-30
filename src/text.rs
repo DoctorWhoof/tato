@@ -3,19 +3,19 @@ use tato_video::{color::PaletteID, *};
 
 pub struct TextBundle {
     pub initial_tile: u8,
-    pub col: u16,
-    pub row: u16,
-    pub width: u16,
+    pub col: u8,
+    pub row: u8,
+    pub width: u8,
     pub palette: PaletteID,
 }
 
 impl Tato {
     /// "Draws" a text string to the BG Map, returns the resulting height (in rows).
-    pub fn draw_text(&mut self, text: &str, bundle: TextBundle) -> u16 {
+    pub fn draw_text(&mut self, text: &str, bundle: TextBundle) -> u8 {
         debug_assert!(text.is_ascii());
 
-        let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {
-            self.video.bg_map.set_tile(BgBundle {
+        let mut set_tile = |ch: char, cursor_x: u8, cursor_y: u8| {
+            self.video.bg.set_tile(BgBundle {
                 col: bundle.col + cursor_x,
                 row: bundle.row + cursor_y,
                 tile_id: TileID(char_to_id_ex(ch) + bundle.initial_tile),
@@ -25,7 +25,7 @@ impl Tato {
         let mut cursor_x = 0;
         let mut cursor_y = 0;
         for word in text.split(' ') {
-            if cursor_x + (word.len() as u16) > bundle.width {
+            if cursor_x + (word.len() as u8) > bundle.width {
                 cursor_x = 0;
                 cursor_y += 1;
             }

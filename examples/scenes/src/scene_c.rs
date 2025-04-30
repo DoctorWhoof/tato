@@ -13,16 +13,16 @@ impl SceneC {
         let tile = vid.new_tile(8, 8, &TILE_SOLID);
         let smiley = vid.new_tile(16, 16, &data::LARGE_SPRITE);
 
-        for row in 0..BG_ROWS as u16 {
-            for col in 0..BG_COLUMNS as u16 {
-                vid.bg_map
+        for row in 0..vid.bg.columns {
+            for col in 0..vid.bg.rows {
+                vid.bg
                     .set_flags(col, row, TileFlags::default().with_fg());
             }
         }
 
         for id in 0..16 as u8 {
-            vid.bg_map.set_tile(BgBundle {
-                col: id as u16,
+            vid.bg.set_tile(BgBundle {
+                col: id,
                 row: 0,
                 tile_id: tile,
                 flags: TileFlags::from(PaletteID(id % 16)).with_fg(),

@@ -11,11 +11,15 @@ fn main() {
     let mut tato = Tato::new(W as u32, H as u32);
 
     // Graphics setup
-    let plt_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
+    let plt_default = tato
+        .video
+        .push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
     tato.video.new_tile(8, 8, &TILE_EMPTY);
     tato.video.bg_color = DARK_BLUE;
+    tato.video.bg.columns = 32;
+    tato.video.bg.rows = 24;
 
     // Load font. TODO: Streamline this.
     for tile in tato::fonts::TILESET_FONT.chunks(64) {
@@ -26,8 +30,8 @@ fn main() {
     let mut line = 1;
     let col = 1;
     let height = tato.draw_text(
-        "\"draw_text\" simply sets BG Map tiles, so they will scroll with the \
-        rest of the map! Use the arrow keys to try it out.",
+        "\"draw_text\" simply sets BG Map tiles, so they will scroll with \
+        the rest of the map! Use the arrow keys to try it out.",
         TextBundle {
             initial_tile: 1,
             col,
@@ -115,15 +119,15 @@ fn main() {
         // Input
         update_gamepad(&ray, &mut tato.pad);
         if tato.pad.is_down(Button::Right) {
-            tato.video.scroll_x -= 1;
-        } else if tato.pad.is_down(Button::Left) {
             tato.video.scroll_x += 1;
+        } else if tato.pad.is_down(Button::Left) {
+            tato.video.scroll_x -= 1;
         }
 
         if tato.pad.is_down(Button::Down) {
-            tato.video.scroll_y -= 1;
-        } else if tato.pad.is_down(Button::Up) {
             tato.video.scroll_y += 1;
+        } else if tato.pad.is_down(Button::Up) {
+            tato.video.scroll_y -= 1;
         }
 
         // Draw

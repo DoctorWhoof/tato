@@ -3,7 +3,7 @@ use core::array::from_fn;
 use tato::pad::*;
 use tato::video::prelude::*;
 
-const SMILEY_COUNT: usize = 1000;
+const SMILEY_COUNT: usize = 100;
 
 #[derive(Debug)]
 pub struct SceneA {
@@ -18,6 +18,8 @@ impl SceneA {
         vid.bg_color = BLACK;
         vid.wrap_bg = false;
         vid.wrap_sprites = false;
+        vid.bg.columns = 32;
+        vid.bg.rows = 24;
         // vid.set_viewport(8, 8, 240, 176);
         vid.set_crop_x(16);
         vid.set_crop_y(16);
@@ -53,14 +55,14 @@ impl SceneA {
         let arrow = vid.new_tile(8, 8, &data::ARROW);
 
         // Set BG tiles
-        for col in 0..BG_COLUMNS as u16 {
-            for row in 0..BG_ROWS as u16 {
+        for col in 0..vid.bg.columns {
+            for row in 0..vid.bg.rows {
                 // Calculate palette ID based on coordinates, limits to 14 indices
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
 
-                vid.bg_map.set_tile(BgBundle {
+                vid.bg.set_tile(BgBundle {
                     col,
                     row,
                     tile_id: checker,
@@ -72,10 +74,10 @@ impl SceneA {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0 .. BG_WIDTH as i16 - TILE_SIZE as i16) as f32,
-                y: rand::random_range(0 .. BG_HEIGHT as i16 - TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..vid.bg.width() as i16 - MIN_TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..vid.bg.height() as i16 - MIN_TILE_SIZE as i16) as f32,
                 tile: smiley,
-                flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale
+                flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }
         });
 
@@ -156,15 +158,15 @@ impl SceneA {
 
         vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
 
-        for col in 0..BG_COLUMNS as u16 {
-            for row in 0..BG_ROWS as u16 {
-                let Some(mut flags) = vid.bg_map.get_flags(col, row) else {
+        for col in 0..vid.bg.columns {
+            for row in 0..vid.bg.rows {
+                let Some(mut flags) = vid.bg.get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                vid.bg_map.set_flags(col, row, flags);
+                vid.bg.set_flags(col, row, flags);
             }
         }
 
