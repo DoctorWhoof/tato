@@ -16,14 +16,14 @@ fn main() {
         .push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
-    tato.video.new_tile(8, 8, &TILE_EMPTY);
+    tato.video.new_tile(&TILE_EMPTY);
     tato.video.bg_color = DARK_BLUE;
     tato.video.bg.columns = 32;
     tato.video.bg.rows = 24;
 
     // Load font. TODO: Streamline this.
     for tile in tato::fonts::TILESET_FONT.chunks(64) {
-        tato.video.new_tile(8, 8, tile);
+        tato.video.new_tile(tile);
     }
 
     // Pre-draw fixed text (writes to BG Map)

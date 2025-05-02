@@ -28,7 +28,7 @@ fn main() {
     tato.video.bg_color = DARK_BLUE;
     let palette_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let palette_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
-    tato.video.new_tile(8, 8, &TILE_EMPTY);
+    tato.video.new_tile(&TILE_EMPTY);
 
     // Raylib setup
     let target_fps = 60.0;
@@ -53,7 +53,7 @@ fn main() {
 
     // Load font. TODO: Streamline this.
     for tile in tato::fonts::TILESET_FONT.chunks(64) {
-        tato.video.new_tile(8, 8, tile);
+        tato.video.new_tile(tile);
     }
 
     // Pre-draw fixed text (writes to BG Map)

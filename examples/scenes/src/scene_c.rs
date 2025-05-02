@@ -9,14 +9,13 @@ pub struct SceneC {
 
 impl SceneC {
     pub fn new(vid: &mut VideoChip) -> Self {
-        let _bg = vid.new_tile(8, 8, &TILE_CROSSHAIRS);
-        let tile = vid.new_tile(8, 8, &TILE_SOLID);
-        let smiley = vid.new_tile(16, 16, &data::LARGE_SPRITE);
+        let _bg = vid.new_tile(&TILE_CROSSHAIRS);
+        let tile = vid.new_tile(&TILE_SOLID);
+        let smiley = vid.new_sprite(2, &data::LARGE_SPRITE);
 
         for row in 0..vid.bg.columns {
             for col in 0..vid.bg.rows {
-                vid.bg
-                    .set_flags(col, row, TileFlags::default().with_fg());
+                vid.bg.set_flags(col, row, TileFlags::default().with_fg());
             }
         }
 
@@ -36,7 +35,7 @@ impl SceneC {
     pub fn update(&mut self, vid: &mut VideoChip, app: BackendState) -> Option<SceneChange> {
         vid.start_frame();
 
-        // Drawing the sprite directly, no Entity
+        // Draw the sprite directly, no Entity
         let mut offset = 0.0;
         for x in 0..16 {
             let time = (self.counter as f32 / 60.0) + offset;

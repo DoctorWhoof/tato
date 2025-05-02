@@ -25,7 +25,7 @@ impl SceneB {
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
-        let tile = vid.new_tile(8, 8, &data::SMILEY);
+        let tile = vid.new_tile(&data::SMILEY);
 
         Self {
             player: Entity {

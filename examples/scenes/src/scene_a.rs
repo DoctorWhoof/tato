@@ -50,9 +50,9 @@ impl SceneA {
         }
 
         // Define new tiles
-        let smiley = vid.new_tile(8, 8, &data::SMILEY);
-        let checker = vid.new_tile(8, 8, &data::ARROW);
-        let arrow = vid.new_tile(8, 8, &data::ARROW);
+        let smiley = vid.new_tile(&data::SMILEY);
+        let checker = vid.new_tile(&data::ARROW);
+        let arrow = vid.new_tile(&data::ARROW);
 
         // Set BG tiles
         for col in 0..vid.bg.columns {
@@ -74,8 +74,8 @@ impl SceneA {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0..vid.bg.width() as i16 - MIN_TILE_SIZE as i16) as f32,
-                y: rand::random_range(0..vid.bg.height() as i16 - MIN_TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..vid.bg.width() as i16 - TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..vid.bg.height() as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }

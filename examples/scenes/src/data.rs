@@ -1,5 +1,6 @@
+use tato::video::TILE_PIXEL_COUNT;
 
-pub const SMILEY: [u8; 64] = [
+pub const SMILEY: [u8; TILE_PIXEL_COUNT] = [
     0, 0, 1, 1, 1, 1, 0, 0, //
     0, 1, 1, 1, 1, 1, 1, 0, //
     1, 1, 3, 1, 1, 3, 1, 1, //
@@ -10,7 +11,7 @@ pub const SMILEY: [u8; 64] = [
     0, 0, 1, 1, 1, 1, 0, 0, //
 ];
 
-pub const ARROW: [u8; 64] = [
+pub const ARROW: [u8; TILE_PIXEL_COUNT] = [
     0, 0, 0, 1, 0, 0, 0, 0, //
     0, 0, 1, 1, 1, 0, 0, 0, //
     0, 1, 1, 1, 1, 1, 0, 0, //
@@ -21,7 +22,7 @@ pub const ARROW: [u8; 64] = [
     0, 0, 1, 1, 1, 0, 0, 0, //
 ];
 
-pub const LARGE_SPRITE: [u8; 256] = [
+pub const LARGE_SPRITE: [u8; TILE_PIXEL_COUNT * 4] = [
     0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, //
     0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, //
     0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, //
