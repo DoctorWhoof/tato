@@ -10,13 +10,6 @@ pub struct DrawBundle {
     pub flags: TileFlags,
 }
 
-/// A Collection of tiles with a start index. Can be drawn anywhere on the screen.
-pub struct Sprite {
-    start_tile: TileID,
-    cols: u8,
-    tile_count: u8,
-}
-
 /// Main drawing context that manages the screen, tiles, and palette.
 #[derive(Debug)]
 pub struct VideoChip {
@@ -105,26 +98,26 @@ impl VideoChip {
         };
         result.reset_all();
 
-        // println!(
-        //     "Total Size of VideoChip:\t{:.1} Kb",
-        //     size_of::<VideoChip>() as f32 / 1024.0
-        // );
-        // println!(
-        //     "   Tile Memory:\t\t\t{:.1} Kb",
-        //     (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
-        // );
+        println!(
+            "Total Size of VideoChip:\t{:.1} Kb",
+            size_of::<VideoChip>() as f32 / 1024.0
+        );
+        println!(
+            "   Tile Memory:\t\t\t{:.1} Kb",
+            (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
+        );
         // println!(
         //     "   Tile entries:\t\t{:.1} Kb",
         //     (result.tiles.len() * size_of::<TileEntry>()) as f32 / 1024.0
         // );
-        // println!(
-        //     "   BG Map:\t\t\t{:.1} Kb",
-        //     size_of::<BGMap>() as f32 / 1024.0
-        // );
-        // println!(
-        //     "Size of PixelIter:\t{:.1} Kb",
-        //     size_of::<PixelIter>() as f32 / 1024.0
-        // );
+        println!(
+            "   BG Map:\t\t\t{:.1} Kb",
+            size_of::<BGMap>() as f32 / 1024.0
+        );
+        println!(
+            "Size of PixelIter:\t{:.1} Kb",
+            size_of::<PixelIter>() as f32 / 1024.0
+        );
 
         result
     }
@@ -297,37 +290,6 @@ impl VideoChip {
         self.tile_pixel_head += TILE_PIXEL_COUNT as u16;
 
         TileID(tile_id)
-    }
-
-    pub fn new_sprite(&mut self, columns: u8, data: &[u8]) -> TileID {
-        // Assert that data length is correct
-        assert!(
-            data.len() % TILE_PIXEL_COUNT == 0,
-            err!("Data length is not multiple of TILE_PIXEL_COUNT ({})"),
-            TILE_PIXEL_COUNT
-        );
-
-        let w = columns as usize * TILE_SIZE as usize;
-        let h = data.len() / w;
-        let rows = h / TILE_SIZE as usize;
-
-        let mut first = None;
-        let mut offset = 0;
-        for _row in 0..rows {
-            for _col in 0..columns {
-                let start = offset * TILE_PIXEL_COUNT;
-                let end = start + TILE_PIXEL_COUNT;
-                let tile_id = self.new_tile(&data[start..end]);
-
-                println!("offset: {}, cols:{}, rows:{}", offset, columns, rows);
-                offset += 1;
-                if first.is_none() {
-                    first = Some(tile_id);
-                }
-            }
-        }
-
-        first.unwrap()
     }
 
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
