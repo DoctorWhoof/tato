@@ -5,15 +5,15 @@ use super::*;
 pub struct TileID(pub u8);
 
 /// Keeps track of a texture tile's dimensions and location in the tile pixel buffer.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct TileEntry {
-    /// Width of the tile.
-    pub w: u8,
-    /// Height of the tile.
-    pub h: u8,
-    /// Index to the first cluster of the tile in the tile buffer. Each cluster is 1 byte.
-    pub cluster_index: u16,
-}
+// #[derive(Debug, Clone, Copy, Default)]
+// pub struct TileEntry {
+//     /// Width of the tile.
+//     pub w: u8,
+//     /// Height of the tile.
+//     pub h: u8,
+//     /// Index to the first cluster of the tile in the tile buffer. Each cluster is 1 byte.
+//     pub cluster_index: u16,
+// }
 
 /// A single byte struct that stores a tile's render state such as
 /// horizontal flip, vertical flip, rotation and local palette.

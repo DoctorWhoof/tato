@@ -10,8 +10,15 @@ pub struct DrawBundle {
     pub flags: TileFlags,
 }
 
+/// A Collection of tiles with a start index. Can be drawn anywhere on the screen.
+pub struct Sprite {
+    start_tile: TileID,
+    cols: u8,
+    tile_count: u8,
+}
+
 /// Main drawing context that manages the screen, tiles, and palette.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct VideoChip {
     /// Fixed BG Tilemap
     pub bg: BGMap,
@@ -33,7 +40,7 @@ pub struct VideoChip {
     pub scroll_y: i16,
 
     // ---------------------- Main Data ----------------------
-    // pub(crate) sprites: [SpriteGen; 8],
+    // pub(crate) sprites: SpriteGenerator,
     pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
     pub(crate) crop_x: u8,
     pub(crate) crop_y: u8,
@@ -43,7 +50,7 @@ pub struct VideoChip {
     // Max 64Kb or 256 tiles, whichever runs out first!
     pub(crate) tile_pixels: [Cluster<2>; TILE_MEM_LEN], // 2 bits per pixel
     // Array of sprite definitions. Max 256 (1 byte indices)
-    pub(crate) tiles: [TileEntry; 256],
+    // pub(crate) tiles: [TileEntry; 256],
 
     // ---------------------- Bookkeeping ----------------------
     // view rect cache
@@ -76,11 +83,11 @@ impl VideoChip {
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
-            tiles: [TileEntry::default(); 256],
+            // tiles: [TileEntry::default(); 256],
             fg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-            // sprites: from_fn(|_| SpriteGen::default()),
+            // sprites: SpriteGenerator::new(),
             scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
             max_x: (w - 1) as u8,
             max_y: (h - 1) as u8,
@@ -130,17 +137,17 @@ impl VideoChip {
         self.max_y
     }
 
-    pub fn width(&self) -> u32 {
-        self.max_x as u32 + 1
+    pub fn width(&self) -> u16 {
+        self.max_x as u16 + 1
     }
 
-    pub fn height(&self) -> u32 {
-        self.max_y as u32 + 1
+    pub fn height(&self) -> u16 {
+        self.max_y as u16 + 1
     }
 
-    pub fn tile_entry(&self, tile_id: TileID) -> TileEntry {
-        self.tiles[tile_id.0 as usize]
-    }
+    // pub fn tile_entry(&self, tile_id: TileID) -> TileEntry {
+    //     self.tiles[tile_id.0 as usize]
+    // }
 
     pub fn crop_x(&self) -> u8 {
         self.crop_x
@@ -185,10 +192,12 @@ impl VideoChip {
         self.reset_bgmap();
         self.reset_crop();
         self.reset_viewport();
+        // self.reset_sprites();
     }
 
     pub fn reset_tiles(&mut self) {
         self.tile_id_head = 0;
+        self.tile_pixel_head = 0;
     }
 
     pub fn reset_palettes(&mut self) {
@@ -231,6 +240,10 @@ impl VideoChip {
         self.view_bottom = self.max_y;
     }
 
+    // pub fn reset_sprites(&mut self) {
+    //     self.sprites.reset();
+    // }
+
     pub fn set_palette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
         debug_assert!(
             index.0 < LOCAL_PALETTE_COUNT,
@@ -247,62 +260,74 @@ impl VideoChip {
         PaletteID(result)
     }
 
-    /// Creates a new tile from the provided pixel data, and returns a unique identifier.
-    /// Panics if there's not enough space for the new sprite or
-    /// if the length of data doesn't match w * h.
-    pub fn new_tile(&mut self, w: u8, h: u8, data: &[u8]) -> TileID {
+    pub fn new_tile(&mut self, data: &[u8]) -> TileID {
+        assert!(
+            data.len() == TILE_PIXEL_COUNT,
+            err!("Tile data length must match TILE_PIXEL_COUNT ({})"),
+            TILE_PIXEL_COUNT
+        );
+
         let tile_id = self.tile_id_head;
         let pixel_start = self.tile_pixel_head as usize;
 
-        // Each Cluster<2> holds 8 pixels, so divide by 8 to get cluster count
-        let len = (w as usize * h as usize + 7) / 8; // Ceiling division for required clusters
-
         // Check if we have enough space
-        if self.tile_id_head == 255 || pixel_start + len > TILE_MEM_LEN {
+        if self.tile_id_head == 255 || pixel_start + TILE_PIXEL_COUNT > TILE_MEM_LEN {
             panic!(err!("Not enough space for new tile"))
         }
 
-        // Assert tile dimensions
-        assert!(
-            w % MIN_TILE_SIZE == 0 && h % MIN_TILE_SIZE == 0,
-            err!("Tile dimensions are not multiple of MIN_TILE_SIZE")
-        );
-
-        assert!(
-            w >= MIN_TILE_SIZE && h >= MIN_TILE_SIZE,
-            err!("Tile dimensions must be MIN_TILE_SIZE or larger")
-        );
-
-        // Assert that data length is correct
-        assert!(
-            data.len() == w as usize * h as usize,
-            err!("Tile data length does not match w * h")
-        );
-
         // Pack 8 pixels (2 bits each) into each cluster
-        for i in 0..data.len() {
+        let mut cluster_index = self.tile_pixel_head as usize / PIXELS_PER_CLUSTER as usize;
+        let mut subpixel_index = 0;
+        for i in 0..TILE_PIXEL_COUNT {
             // Clamp color to maximum allowed
             let value = data[i].clamp(0, COLORS_PER_TILE as u8);
 
-            // Acquire indices - each cluster holds 8 pixels
-            let cluster_index = i / 8; // 8 pixels per cluster
-            let subpixel_index = (i % 8) as u8;
-
             // Set pixel data
-            let cluster = &mut self.tile_pixels[pixel_start + cluster_index];
-            cluster.set_subpixel(value, subpixel_index);
+            self.tile_pixels[cluster_index].set_subpixel(value, subpixel_index);
+
+            // Advance
+            subpixel_index += 1;
+            if subpixel_index >= PIXELS_PER_CLUSTER {
+                subpixel_index = 0;
+                cluster_index += 1;
+            }
         }
 
-        let cluster_index = self.tile_pixel_head;
-        self.tiles[tile_id as usize] = TileEntry {
-            w,
-            h,
-            cluster_index,
-        };
-
         self.tile_id_head += 1;
-        self.tile_pixel_head += len as u16;
+        self.tile_pixel_head += TILE_PIXEL_COUNT as u16;
+
         TileID(tile_id)
+    }
+
+    pub fn new_sprite(&mut self, columns: u8, data: &[u8]) -> TileID {
+        // Assert that data length is correct
+        assert!(
+            data.len() % TILE_PIXEL_COUNT == 0,
+            err!("Data length is not multiple of TILE_PIXEL_COUNT ({})"),
+            TILE_PIXEL_COUNT
+        );
+
+        let w = columns as usize * TILE_SIZE as usize;
+        let h = data.len() / w;
+        let rows = h / TILE_SIZE as usize;
+
+        let mut first = None;
+        let mut offset = 0;
+        for _row in 0..rows {
+            for _col in 0..columns {
+                let start = offset * TILE_PIXEL_COUNT;
+                let end = start + TILE_PIXEL_COUNT;
+                let tile_id = self.new_tile(&data[start..end]);
+
+                println!("offset: {}, cols:{}, rows:{}", offset, columns, rows);
+                offset += 1;
+                if first.is_none() {
+                    first = Some(tile_id);
+                }
+            }
+        }
+
+        first.unwrap()
     }
 
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
@@ -333,27 +358,44 @@ impl VideoChip {
             }
         }
 
-        // Get tile info
-        let tile = self.tiles[data.id.0 as usize];
+        // let entry = self.tiles[data.id.0 as usize];
 
-        // Calculate effective sprite dimensions based on rotation
-        let (width, height) = if data.flags.is_rotated() {
-            (tile.h, tile.w) // Swap width and height for rotated sprites
-        } else {
-            (tile.w, tile.h)
-        };
+        // let start = entry.cluster_index as usize;
+        // let end = start + (entry.w as usize * entry.h as usize) / PIXELS_PER_CLUSTER as usize;
+        // let tile = &self.tile_pixels[start..end];
+
+        // self.sprites.insert(
+        //     wrapped_x as u16,
+        //     wrapped_y as u16,
+        //     data.flags,
+        //     data.id,
+        //     entry,
+        //     tile,
+        //     self.width(),
+        //     self.height(),
+        // );
+
+        // Get tile info
+        // let tile = self.tiles[data.id.0 as usize];
+
+        // // Calculate effective sprite dimensions based on rotation
+        // let (width, height) = if data.flags.is_rotated() {
+        //     (tile.h, tile.w) // Swap width and height for rotated sprites
+        // } else {
+        //     (tile.w, tile.h)
+        // };
 
         // Calculate sprite boundaries in screen coordinates
-        let right_bound = if (wrapped_x as u16 + width as u16) > 255 {
+        let right_bound = if (wrapped_x as u16 + TILE_SIZE as u16) > 255 {
             255
         } else {
-            wrapped_x + width
+            wrapped_x + TILE_SIZE
         };
 
-        let bottom_bound = if (wrapped_y as u16 + height as u16) > LINE_COUNT as u16 {
+        let bottom_bound = if (wrapped_y as u16 + TILE_SIZE as u16) > LINE_COUNT as u16 {
             LINE_COUNT as u8
         } else {
-            wrapped_y + height
+            wrapped_y + TILE_SIZE
         };
 
         // Process each visible scanline
@@ -364,10 +406,10 @@ impl VideoChip {
                 let local_x = screen_x - wrapped_x;
 
                 let (tx, ty) =
-                    Self::transform_tile_coords(local_x, local_y, width, height, data.flags);
+                    Self::transform_tile_coords(local_x, local_y, TILE_SIZE, TILE_SIZE, data.flags);
 
                 // Calculate pixel position within the tile
-                let pixel_index = ty as usize * tile.w as usize + tx as usize;
+                let pixel_index = ty as usize * TILE_SIZE as usize + tx as usize;
 
                 // Calculate which cluster contains this pixel
                 let cluster_index = pixel_index / PIXELS_PER_CLUSTER as usize;
@@ -376,7 +418,8 @@ impl VideoChip {
                 let subpixel_index = (pixel_index % PIXELS_PER_CLUSTER as usize) as u8;
 
                 // Get the pixel color from the tile
-                let cluster = self.tile_pixels[(tile.cluster_index as usize) + cluster_index];
+                let tile_index = data.id.0 as usize * TILE_CLUSTER_COUNT;
+                let cluster = self.tile_pixels[tile_index + cluster_index];
                 let color_index = cluster.get_subpixel(subpixel_index);
 
                 // If not transparent, draw it to the scanline

@@ -40,11 +40,11 @@ impl BGMap {
     }
 
     pub fn width(&self) -> u16 {
-        self.columns as u16 * MIN_TILE_SIZE as u16
+        self.columns as u16 * TILE_SIZE as u16
     }
 
     pub fn height(&self) -> u16 {
-        self.rows as u16 * MIN_TILE_SIZE as u16
+        self.rows as u16 * TILE_SIZE as u16
     }
 
     // Returns None if coords are out of map. not sure if useful yet.

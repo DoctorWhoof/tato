@@ -1,29 +1,51 @@
 use core::array::from_fn;
 
 use crate::*;
-
-const MAX_TILE_LEN: usize = MAX_TILE_SIZE as usize * MAX_TILE_SIZE as usize;
-const CLUSTER_COUNT: usize = MAX_TILE_LEN / PIXELS_PER_CLUSTER as usize;
+const SPRITES_PER_LINE: usize = 16;
+const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
+const CLUSTER_COUNT: usize = TILE_LEN / PIXELS_PER_CLUSTER as usize;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Sprite {
     x: u16,
     w: u16,
     pixels: [Cluster<2>; CLUSTER_COUNT],
+    // Stored to provide lazy processing - if they don't change, don't update!
+    flags: TileFlags,
+    tile_id: TileID,
 }
 
+#[derive(Debug, Clone)]
 pub struct Scanline {
-    mask: u16,
-    map: [u8; 8], // each slot can refer to 8 sprite indices (1 bit per sprite)
+    pub(crate) mask: u8,
+    pub(crate) map: [u16; 8], // each slot can refer to 16 sprite indices (1 bit per sprite)
 }
 
+#[derive(Debug)]
 pub struct SpriteGenerator {
     sprite_head: u8,
-    scanlines: [Scanline; 256],
-    sprites: [Sprite; 8],
+    pub(crate) scanlines: [Scanline; 256],
+    pub(crate) sprites: [Sprite; SPRITES_PER_LINE],
 }
 
 impl SpriteGenerator {
+    pub fn new() -> Self {
+        Self {
+            sprite_head: 0,
+            scanlines: from_fn(|_| Scanline {
+                mask: 0,
+                map: [0; 8],
+            }),
+            sprites: from_fn(|_| Sprite {
+                x: 0,
+                w: 0,
+                pixels: from_fn(|_| Cluster::default()),
+                flags: TileFlags::default(),
+                tile_id: TileID(0),
+            }),
+        }
+    }
+
     pub fn reset(&mut self) {
         self.sprite_head = 0;
         for line in &mut self.scanlines {
@@ -31,26 +53,24 @@ impl SpriteGenerator {
         }
     }
 
-    pub fn insert_sprite(
+    pub fn insert(
         &mut self,
         x: u16,
         y: u16,
         flags: TileFlags,
         tile_id: TileID,
-        vid: &VideoChip,
+        entry: TileEntry,
+        tile: &[Cluster<2>],
+        screen_width: u16,
+        screen_height: u16
+        // vid: &VideoChip,
     ) {
-        let entry = vid.tiles[tile_id.0 as usize];
-
         // Calculate effective sprite dimensions based on rotation
         let (width, height) = if flags.is_rotated() {
             (entry.h as u16, entry.w as u16)
         } else {
             (entry.w as u16, entry.h as u16)
         };
-
-        let start = entry.cluster_index as usize;
-        let end = start + (entry.w as usize * entry.h as usize) / PIXELS_PER_CLUSTER as usize;
-        let tile = &vid.tile_pixels[start..end];
 
         let sprite = &mut self.sprites[self.sprite_head as usize];
         sprite.x = x;
@@ -75,21 +95,24 @@ impl SpriteGenerator {
 
                 // Write bit mask
                 let scanline = &mut self.scanlines[line_y as usize];
-                let slot = ((line_x as f32 / vid.width() as f32) * 16.0) as usize;
-                if slot < 16 {  // Ensure slot is in valid range
+                let slot = ((line_x as f32 / screen_width as f32) * 8.0) as usize;
+                if slot < 8 {
+                    // Ensure slot is in valid range
+                    // println!("{slot}");
                     scanline.mask |= 1 << slot;
                 }
 
                 // Advance
                 dest_subpixel += 1;
-                if dest_subpixel == PIXELS_PER_CLUSTER {
+                if dest_subpixel >= PIXELS_PER_CLUSTER {
+                    dest_subpixel = 0;
                     dest_cluster += 1;
                 }
                 line_x += 1;
                 if line_x == bound_x {
                     line_x = x;
                     line_y += 1;
-                    if line_y as u32 == vid.height() {
+                    if line_y == screen_height {
                         break;
                     }
                 }

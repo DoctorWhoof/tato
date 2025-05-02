@@ -15,7 +15,7 @@ pub struct PixelIter<'a> {
     bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
     local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     current_bg_flags: TileFlags, // Current background tile flags
-    bg_color: Color9Bit,          // Background color (cached)
+    bg_color: Color9Bit,         // Background color (cached)
     bg_cluster: Cluster<2>,      // Current pixel cluster
     scanline: &'a [Cluster<4>],  // Reference to current sprite scanline
     force_bg_color: bool,        // will reuse last bg color when out-of-bounds
@@ -56,7 +56,7 @@ impl<'a> PixelIter<'a> {
             let bg_x = (result.x as i16 + result.vid.scroll_x as i16 + vid.crop_x as i16)
                 .rem_euclid(vid.bg.width() as i16) as u16;
 
-            let tile_x = bg_x % MIN_TILE_SIZE as u16;
+            let tile_x = bg_x % TILE_SIZE as u16;
             let local_idx = tile_x as usize % SUBPIXELS_TILE as usize;
             result.subpixel_index = local_idx as u8;
         }
@@ -72,8 +72,8 @@ impl<'a> PixelIter<'a> {
             .rem_euclid(self.vid.bg.height() as i16) as u16;
 
         // Calculate BG map coordinates
-        let bg_col = bg_x / MIN_TILE_SIZE as u16;
-        let bg_row = bg_y / MIN_TILE_SIZE as u16;
+        let bg_col = bg_x / TILE_SIZE as u16;
+        let bg_row = bg_y / TILE_SIZE as u16;
 
         // Get new tile info
         let bg_map_index = (bg_row as usize * self.vid.bg.columns as usize) + bg_col as usize;
@@ -81,16 +81,18 @@ impl<'a> PixelIter<'a> {
         self.current_bg_flags = self.vid.bg.flags[bg_map_index];
 
         // Calculate local tile coordinates
-        let tile_x = (bg_x % MIN_TILE_SIZE as u16) as u8;
-        let tile_y = (bg_y % MIN_TILE_SIZE as u16) as u8;
+        let tile_x = (bg_x % TILE_SIZE as u16) as u8;
+        let tile_y = (bg_y % TILE_SIZE as u16) as u8;
 
         // Get the tile
-        let tile_entry = self.vid.tiles[current_bg_tile_id as usize];
-        let tile_start = tile_entry.cluster_index as usize;
-        let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + 8];
+        // let tile_entry = self.vid.tiles[current_bg_tile_id as usize];
+        // let tile_start = tile_entry.cluster_index as usize;
+        let tile_start = current_bg_tile_id as usize * TILE_CLUSTER_COUNT;
+        let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + TILE_CLUSTER_COUNT];
 
         // Get the correct cluster with transformations applied
-        self.bg_cluster = Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y, MIN_TILE_SIZE);
+        self.bg_cluster =
+            Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y, TILE_SIZE);
 
         // Calculate subpixel index within the cluster (0-7)
         self.subpixel_index = tile_x % PIXELS_PER_CLUSTER;
@@ -115,6 +117,20 @@ impl<'a> PixelIter<'a> {
         let fg_pixel = {
             let fg_cluster = self.scanline[x_cluster];
             fg_cluster.get_subpixel(sub_index)
+
+            // let line = &self.vid.sprites.scanlines[self.y as usize];
+            // if line.mask > 0 {
+            //     let slot_width = self.vid.width() / 8; // TODO: Pre-calculate
+            //     let slot = self.x / slot_width;
+            //     if line.mask & (1 << slot) != 0 {
+            //         // Will add more here
+            //         0
+            //     } else {
+            //         0
+            //     }
+            // } else {
+            //     0
+            // }
         };
 
         // Get color - FG has priority if not transparent

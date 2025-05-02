@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 pub mod prelude {
     pub use crate::color::*;
@@ -23,8 +23,8 @@ pub use iter::*;
 mod cluster;
 pub use cluster::*;
 
-mod scanline;
-use scanline::*;
+// mod sprite;
+// use sprite::*;
 
 mod tile;
 pub use tile::*;
@@ -34,9 +34,11 @@ pub use videochip::*;
 
 // -------------------------------- Constants --------------------------------
 
-/// Each tile dimension must be a multiple of MIN_TILE_SIZE.
-pub const MIN_TILE_SIZE:u8 = 8;
-pub const MAX_TILE_SIZE:u8 = 32;
+/// Maximum sprite storage length (16 Kb with Cluster<2> used).
+pub const TILE_MEM_LEN: usize = 8182;
+pub const TILE_SIZE: u8 = 8;
+pub const TILE_PIXEL_COUNT: usize = TILE_SIZE as usize * TILE_SIZE as usize;
+pub const TILE_CLUSTER_COUNT: usize = TILE_PIXEL_COUNT / PIXELS_PER_CLUSTER as usize;
 
 /// Number of colors per tile (2 bits per pixel)
 pub const COLORS_PER_TILE: u8 = 4;
@@ -62,6 +64,3 @@ pub const BG_MAX_COLUMNS: u8 = 64;
 
 /// Number of rows in BG Map
 pub const BG_MAX_ROWS: u8 = 64;
-
-/// Maximum sprite storage length (16 Kb with Cluster<2> used).
-const TILE_MEM_LEN: usize = 8182;
