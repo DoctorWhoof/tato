@@ -63,7 +63,7 @@ pub const BG_MAX_COLUMNS: u8 = 64;
 pub const BG_MAX_ROWS: u8 = 64;
 
 /// Maximum number of video scanlines
-pub const LINE_COUNT: usize = 240;
+pub const LINE_COUNT: usize = 256;
 
 /// Limits how many sprites can be visible in a single video scanline. Also affects
 /// the memory amount used by the videochip, since more sprites per line need more buffer space.

@@ -60,6 +60,10 @@ impl SpriteGenerator {
         let w = TILE_SIZE as u16;
         let h = TILE_SIZE as u16;
 
+        if x >= screen_width || y >= screen_height {
+            return;
+        }
+
         let max_local_w = if x + w <= screen_width {
             w
         } else {
@@ -71,6 +75,9 @@ impl SpriteGenerator {
         } else {
             screen_height.saturating_sub(y)
         };
+
+        // Further limit based on scanlines array bounds
+        let max_local_h = std::cmp::min(max_local_h, (LINE_COUNT as u16).saturating_sub(y));
 
         // Copy transformed tile data to scanline buffers
         // TODO: calculate min and max index, iterate only those instead of testing every coordinate

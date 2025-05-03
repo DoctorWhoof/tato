@@ -61,7 +61,10 @@ pub struct VideoChip {
 impl VideoChip {
     /// Creates a new drawing context with default settings.
     pub fn new(w: u16, h: u16) -> Self {
-        assert!(h > 7 && h < 257, err!("Screen height range is 8 to 240"));
+        assert!(
+            h > 7 && h <= LINE_COUNT as u16,
+            err!("Screen height range is 8 to LINE_COUNT")
+        );
         // assert!(LINE_COUNT < 256, err!("LINE_COUNT must be less than 256"));
 
         let mut result = Self {

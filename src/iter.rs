@@ -19,7 +19,7 @@ pub struct PixelIter<'a> {
     bg_cluster: Cluster<2>,      // Current pixel cluster
     scanline: Scanline,          // current sprite scanline
     force_bg_color: bool,        // will reuse last bg color when out-of-bounds
-    slot_width: u16,             // screen width divided into 16 slots
+    slot_width: f32,             // screen width divided into 16 slots
 }
 
 pub struct ScreenCoords {
@@ -29,14 +29,14 @@ pub struct ScreenCoords {
 
 impl<'a> PixelIter<'a> {
     pub fn new(vid: &'a VideoChip) -> Self {
-        // let relative_y = vid.crop_y as usize;
+        let relative_y = vid.crop_y as usize;
         let mut result = Self {
             vid,
             x: 0,
             y: 0,
             slot_width: {
                 let full_width = vid.width() + vid.crop_x as u16;
-                full_width / SLOTS_PER_LINE as u16
+                full_width as f32 / SLOTS_PER_LINE as f32
             },
 
             wrap_bg: vid.wrap_bg,
@@ -48,7 +48,7 @@ impl<'a> PixelIter<'a> {
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
             force_bg_color: false,
-            scanline: vid.sprites.scanlines[0].clone(),
+            scanline: vid.sprites.scanlines[relative_y].clone(),
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -118,7 +118,7 @@ impl<'a> PixelIter<'a> {
             let mut result = 0;
             if self.scanline.mask > 0 {
                 let fg_x = self.x + self.vid.crop_x as u16;
-                let slot = fg_x / self.slot_width;
+                let slot = (fg_x as f32 / self.slot_width).floor() as u16;
                 // Test slot mask
                 if self.scanline.mask & (1 << slot) != 0 {
                     // Iterate sprites in line
@@ -219,11 +219,16 @@ impl<'a> Iterator for PixelIter<'a> {
             self.y += 1;
             // Cache scanline, compensating for crop_y
             let fg_y = self.y + self.vid.crop_y;
-            self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
-            // Force BG cluster reload on new lines
-            if self.y < self.vid.max_y() {
+            if (fg_y as usize) < LINE_COUNT {
+                self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+                // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+            }
+            // Force BG cluster reload on new lines, cache scanline
+            if self.y < self.vid.height() {
+                // self.scanline = self.vid.sprites.scanlines[(self.y + self.vid.crop_y) as usize].clone();
                 reload_cluster = true;
             }
+
         }
 
         // This will only run every few pixels, and once every new line
