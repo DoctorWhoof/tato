@@ -5,7 +5,7 @@ use crate::*;
 /// The part of a sprite that goes into a single scanline
 #[derive(Debug, Clone, Default)]
 pub struct SpriteSegment {
-    pub x: u16,
+    pub x: i16,
     pub pixels: Cluster<2>,
     pub palette: PaletteID,
 }
@@ -50,34 +50,22 @@ impl SpriteGenerator {
 
     pub fn insert(
         &mut self,
-        x: u16,
-        y: u16,
+        x: i16,
+        y: i16,
         screen_width: u16,
         screen_height: u16,
         flags: TileFlags,
         tile: &[Cluster<2>],
     ) {
-        let w = TILE_SIZE as u16;
-        let h = TILE_SIZE as u16;
+        let w = TILE_SIZE as i16;
+        let h = TILE_SIZE as i16;
 
-        if x >= screen_width || y >= screen_height {
+        if x >= screen_width as i16 || y >= screen_height as i16 {
             return;
         }
 
-        let max_local_w = if x + w <= screen_width {
-            w
-        } else {
-            screen_width.saturating_sub(x)
-        };
-
-        let max_local_h = if y + h <= screen_height {
-            h
-        } else {
-            screen_height.saturating_sub(y)
-        };
-
-        // Further limit based on scanlines array bounds
-        let max_local_h = std::cmp::min(max_local_h, (LINE_COUNT as u16).saturating_sub(y));
+        let max_local_w = (screen_width as i16 - x).clamp(0, w);
+        let max_local_h = (screen_height as i16 - y).clamp(0, h);
 
         // Copy transformed tile data to scanline buffers
         // TODO: calculate min and max index, iterate only those instead of testing every coordinate
@@ -127,7 +115,7 @@ impl SpriteGenerator {
 }
 
 #[inline(always)]
-fn transform_tile_coords(x: u16, y: u16, w: u16, h: u16, flags: TileFlags) -> (u16, u16) {
+fn transform_tile_coords(x: i16, y: i16, w: i16, h: i16, flags: TileFlags) -> (i16, i16) {
     // Handle both rotation and flipping
     if flags.is_rotated() {
         // For 90° clockwise rotation, swap x and y and flip the new x axis

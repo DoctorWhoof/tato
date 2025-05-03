@@ -35,8 +35,6 @@ pub struct VideoChip {
     // ---------------------- Main Data ----------------------
     pub(crate) sprites: SpriteGenerator,
     // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
-    pub(crate) crop_x: u16,
-    pub(crate) crop_y: u16,
     pub(crate) w: u16,
     pub(crate) h: u16,
     // Pixel data for all tiles, stored as palette indices.
@@ -56,8 +54,6 @@ pub struct VideoChip {
     palette_head: u8,
 }
 
-// TODO: change width and height into max_x and max_y
-
 impl VideoChip {
     /// Creates a new drawing context with default settings.
     pub fn new(w: u16, h: u16) -> Self {
@@ -65,22 +61,17 @@ impl VideoChip {
             h > 7 && h <= LINE_COUNT as u16,
             err!("Screen height range is 8 to LINE_COUNT")
         );
-        // assert!(LINE_COUNT < 256, err!("LINE_COUNT must be less than 256"));
 
         let mut result = Self {
-            // fg_pixels: [0; FG_LEN],
-            // sprite_grid: SpriteGrid::new(),
             bg: BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS),
             tile_pixels: [Cluster::default(); TILE_MEM_LEN],
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
-            // tiles: [TileEntry::default(); 256],
             fg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprites: SpriteGenerator::new(),
-            // scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
             tile_id_head: 0,
             tile_pixel_head: 0,
             palette_head: 0,
@@ -88,8 +79,6 @@ impl VideoChip {
             view_top: 0,
             view_right: w - 1,
             view_bottom: h - 1,
-            crop_x: 0,
-            crop_y: 0,
             w,
             h,
             scroll_x: 0,
@@ -102,20 +91,16 @@ impl VideoChip {
             size_of::<VideoChip>() as f32 / 1024.0
         );
         println!(
+            "   Sprite buffers (scanlines):\t{:.1} Kb",
+            size_of::<SpriteGenerator>() as f32 / 1024.0
+        );
+        println!(
             "   Tile Memory:\t\t\t{:.1} Kb",
             (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
         );
-        // println!(
-        //     "   Tile entries:\t\t{:.1} Kb",
-        //     (result.tiles.len() * size_of::<TileEntry>()) as f32 / 1024.0
-        // );
         println!(
             "   BG Map:\t\t\t{:.1} Kb",
             size_of::<BGMap>() as f32 / 1024.0
-        );
-        println!(
-            "Size of PixelIter:\t{:.1} Kb",
-            size_of::<PixelIter>() as f32 / 1024.0
         );
 
         result
@@ -137,34 +122,6 @@ impl VideoChip {
         self.h
     }
 
-    // pub fn tile_entry(&self, tile_id: TileID) -> TileEntry {
-    //     self.tiles[tile_id.0 as usize]
-    // }
-
-    pub fn crop_x(&self) -> u16 {
-        self.crop_x
-    }
-
-    pub fn set_crop_x(&mut self, value: u16) {
-        assert!(
-            value < self.width(),
-            err!("crop_x must be lower than width")
-        );
-        self.crop_x = value;
-    }
-
-    pub fn crop_y(&self) -> u16 {
-        self.crop_y
-    }
-
-    pub fn set_crop_y(&mut self, value: u16) {
-        assert!(
-            value < self.height(),
-            err!("crop_x must be lower than height")
-        );
-        self.crop_y = value;
-    }
-
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter pixels outside
     /// this rectangular area with the BG Color
     pub fn set_viewport(&mut self, left: u16, top: u16, w: u16, h: u16) {
@@ -182,7 +139,6 @@ impl VideoChip {
         self.reset_tiles();
         self.reset_palettes();
         self.reset_bgmap();
-        self.reset_crop();
         self.reset_viewport();
         self.reset_sprites();
     }
@@ -214,11 +170,6 @@ impl VideoChip {
     pub fn reset_scroll(&mut self) {
         self.scroll_x = 0;
         self.scroll_y = 0;
-    }
-
-    pub fn reset_crop(&mut self) {
-        self.crop_x = 0;
-        self.crop_y = 0;
     }
 
     pub fn reset_bgmap(&mut self) {
@@ -298,27 +249,24 @@ impl VideoChip {
             return;
         }
 
-        let full_width = self.width() + self.crop_x;
-        let full_height = self.height() + self.crop_y;
-
         // Handle wrapping
-        let wrapped_x: u16;
-        let wrapped_y: u16;
+        let wrapped_x: i16;
+        let wrapped_y: i16;
         if self.wrap_sprites {
-            wrapped_x = (data.x - self.scroll_x).rem_euclid(full_width as i16) as u16;
-            wrapped_y = (data.y - self.scroll_y).rem_euclid(full_height as i16) as u16;
+            wrapped_x = (data.x - self.scroll_x).rem_euclid(self.w as i16);
+            wrapped_y = (data.y - self.scroll_y).rem_euclid(self.h as i16);
         } else {
-            let max_x = self.scroll_x + self.max_x() as i16 + self.crop_x as i16;
+            let max_x = self.scroll_x + self.max_x() as i16;
             if data.x < self.scroll_x || data.x > max_x {
                 return;
             } else {
-                wrapped_x = (data.x - self.scroll_x) as u16;
+                wrapped_x = data.x - self.scroll_x;
             }
-            let max_y = self.scroll_y + self.max_y() as i16 + self.crop_y as i16;
+            let max_y = self.scroll_y + self.max_y() as i16;
             if data.y < self.scroll_y || data.y > max_y {
                 return;
             } else {
-                wrapped_y = (data.y - self.scroll_y) as u16;
+                wrapped_y = data.y - self.scroll_y;
             }
         }
 
@@ -327,14 +275,8 @@ impl VideoChip {
         let end = start + TILE_CLUSTER_COUNT;
         let tile = &self.tile_pixels[start..end];
 
-        self.sprites.insert(
-            wrapped_x,
-            wrapped_y,
-            full_width,
-            full_height,
-            data.flags,
-            tile,
-        );
+        self.sprites
+            .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, tile);
     }
 
     /// Increments or decrements an index in a local palette so that its value

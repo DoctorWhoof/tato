@@ -29,15 +29,11 @@ pub struct ScreenCoords {
 
 impl<'a> PixelIter<'a> {
     pub fn new(vid: &'a VideoChip) -> Self {
-        let relative_y = vid.crop_y as usize;
         let mut result = Self {
             vid,
             x: 0,
             y: 0,
-            slot_width: {
-                let full_width = vid.width() + vid.crop_x as u16;
-                full_width as f32 / SLOTS_PER_LINE as f32
-            },
+            slot_width: vid.width() as f32 / SLOTS_PER_LINE as f32,
 
             wrap_bg: vid.wrap_bg,
             current_bg_flags: TileFlags::default(),
@@ -48,7 +44,7 @@ impl<'a> PixelIter<'a> {
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
             force_bg_color: false,
-            scanline: vid.sprites.scanlines[relative_y].clone(),
+            scanline: vid.sprites.scanlines[0].clone(),
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -58,7 +54,7 @@ impl<'a> PixelIter<'a> {
             // First update the cluster
             result.update_bg_cluster();
 
-            let bg_x = (result.x as i16 + result.vid.scroll_x as i16 + vid.crop_x as i16)
+            let bg_x = (result.x as i16 + result.vid.scroll_x as i16)
                 .rem_euclid(vid.bg.width() as i16) as u16;
 
             let tile_x = bg_x % TILE_SIZE as u16;
@@ -71,9 +67,9 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn update_bg_cluster(&mut self) {
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
-        let bg_x = (self.x as i16 + self.vid.scroll_x as i16 + self.vid.crop_x as i16)
-            .rem_euclid(self.vid.bg.width() as i16) as u16;
-        let bg_y = (self.y as i16 + self.vid.scroll_y as i16 + self.vid.crop_y as i16)
+        let bg_x = (self.x as i16 + self.vid.scroll_x as i16).rem_euclid(self.vid.bg.width() as i16)
+            as u16;
+        let bg_y = (self.y as i16 + self.vid.scroll_y as i16)
             .rem_euclid(self.vid.bg.height() as i16) as u16;
 
         // Calculate BG map coordinates
@@ -117,14 +113,14 @@ impl<'a> PixelIter<'a> {
         let fg_pixel = {
             let mut result = 0;
             if self.scanline.mask > 0 {
-                let fg_x = self.x + self.vid.crop_x as u16;
+                let fg_x = self.x as i16;
                 let slot = (fg_x as f32 / self.slot_width).floor() as u16;
                 // Test slot mask
                 if self.scanline.mask & (1 << slot) != 0 {
                     // Iterate sprites in line
                     'sprite_loop: for n in (0..self.scanline.sprite_count as usize).rev() {
                         let sprite = &self.scanline.sprites[n];
-                        if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as u16 {
+                        if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as i16 {
                             continue;
                         }
                         let color_index =
@@ -163,8 +159,8 @@ impl<'a> PixelIter<'a> {
     #[inline(always)]
     fn is_outside(&self) -> bool {
         // Calculate raw screen position for bounds check
-        let raw_x = self.x as i16 + self.vid.scroll_x + self.vid.crop_x as i16;
-        let raw_y = self.y as i16 + self.vid.scroll_y + self.vid.crop_y as i16;
+        let raw_x = self.x as i16 + self.vid.scroll_x;
+        let raw_y = self.y as i16 + self.vid.scroll_y;
 
         // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
         let w = self.vid.bg.width() as i16;
@@ -218,8 +214,8 @@ impl<'a> Iterator for PixelIter<'a> {
             self.x = 0;
             self.y += 1;
             // Cache scanline, compensating for crop_y
-            let fg_y = self.y + self.vid.crop_y;
-            if (fg_y as usize) < LINE_COUNT {
+            let fg_y = self.y as usize;
+            if fg_y < LINE_COUNT {
                 self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
                 // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
             }
@@ -228,7 +224,6 @@ impl<'a> Iterator for PixelIter<'a> {
                 // self.scanline = self.vid.sprites.scanlines[(self.y + self.vid.crop_y) as usize].clone();
                 reload_cluster = true;
             }
-
         }
 
         // This will only run every few pixels, and once every new line
