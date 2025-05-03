@@ -1,55 +1,50 @@
 use core::array::from_fn;
 
 use crate::*;
-const SPRITES_PER_LINE: usize = 16;
-const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
-const CLUSTER_COUNT: usize = TILE_LEN / PIXELS_PER_CLUSTER as usize;
 
-#[derive(Debug, Clone)]
-pub(crate) struct Sprite {
-    x: u16,
-    w: u16,
-    pixels: [Cluster<2>; CLUSTER_COUNT],
-    // Stored to provide lazy processing - if they don't change, don't update!
-    flags: TileFlags,
-    tile_id: TileID,
+/// The part of a sprite that goes into a single scanline
+#[derive(Debug, Clone, Default)]
+pub struct SpriteSegment {
+    pub x: u16,
+    pub pixels: Cluster<2>,
+    pub palette: PaletteID,
 }
 
+/// Holds the sprite segments for a single line, as well as a "presence" mask
+/// that helps the iterator figure out if any given slot is occupied by a sprite
 #[derive(Debug, Clone)]
 pub struct Scanline {
-    pub(crate) mask: u8,
-    pub(crate) map: [u16; 8], // each slot can refer to 16 sprite indices (1 bit per sprite)
+    pub sprite_count: u8,
+    // Tracks Which slots contain sprites
+    pub mask: u16,
+    pub sprites: [SpriteSegment; SPRITES_PER_LINE],
 }
 
+/// Facilitates adding a single transformed sprite to multiple scanlines.
 #[derive(Debug)]
 pub struct SpriteGenerator {
-    sprite_head: u8,
-    pub(crate) scanlines: [Scanline; 256],
-    pub(crate) sprites: [Sprite; SPRITES_PER_LINE],
+    pub scanlines: [Scanline; LINE_COUNT],
 }
 
 impl SpriteGenerator {
     pub fn new() -> Self {
         Self {
-            sprite_head: 0,
             scanlines: from_fn(|_| Scanline {
                 mask: 0,
-                map: [0; 8],
-            }),
-            sprites: from_fn(|_| Sprite {
-                x: 0,
-                w: 0,
-                pixels: from_fn(|_| Cluster::default()),
-                flags: TileFlags::default(),
-                tile_id: TileID(0),
+                sprite_count: 0,
+                sprites: Default::default(),
             }),
         }
     }
 
     pub fn reset(&mut self) {
-        self.sprite_head = 0;
         for line in &mut self.scanlines {
             line.mask = 0;
+            line.sprite_count = 0;
+            // Resetting actual pixels does not seem necessary. Restore if garbage is visible
+            // for sprite in &mut line.sprites {
+            //     sprite.pixels = Cluster::default();
+            // }
         }
     }
 
@@ -57,66 +52,69 @@ impl SpriteGenerator {
         &mut self,
         x: u16,
         y: u16,
-        flags: TileFlags,
-        tile_id: TileID,
-        entry: TileEntry,
-        tile: &[Cluster<2>],
         screen_width: u16,
-        screen_height: u16
-        // vid: &VideoChip,
+        screen_height: u16,
+        flags: TileFlags,
+        tile: &[Cluster<2>],
     ) {
-        // Calculate effective sprite dimensions based on rotation
-        let (width, height) = if flags.is_rotated() {
-            (entry.h as u16, entry.w as u16)
+        let w = TILE_SIZE as u16;
+        let h = TILE_SIZE as u16;
+
+        let max_local_w = if x + w <= screen_width {
+            w
         } else {
-            (entry.w as u16, entry.h as u16)
+            screen_width.saturating_sub(x)
         };
 
-        let sprite = &mut self.sprites[self.sprite_head as usize];
-        sprite.x = x;
-        sprite.w = width;
+        let max_local_h = if y + h <= screen_height {
+            h
+        } else {
+            screen_height.saturating_sub(y)
+        };
 
-        let mut dest_cluster = 0;
-        let mut dest_subpixel = 0;
-        let mut line_x = x;
-        let mut line_y = y;
-        let bound_x = x + width;
-        for local_y in 0..height {
-            for local_x in 0..width {
+        // Copy transformed tile data to scanline buffers
+        // TODO: calculate min and max index, iterate only those instead of testing every coordinate
+        for local_y in 0..max_local_h {
+            let screen_y = y + local_y;
+
+            // Acquire scanline ref
+            let line = &mut self.scanlines[screen_y as usize];
+            if line.sprite_count as usize >= SPRITES_PER_LINE {
+                return;
+            }
+
+            // Iterate X pixels
+            for local_x in 0..max_local_w {
+                let screen_x = x + local_x;
+
                 // Copy source pixel
-                let (tx, ty) = transform_tile_coords(local_x, local_y, width, height, flags);
-                let source_index = ((ty * width) + tx) as usize;
+                let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, flags);
+                let source_index = ((ty * w) + tx) as usize;
                 let source_cluster = source_index / PIXELS_PER_CLUSTER as usize;
                 let source_subpixel = source_index % PIXELS_PER_CLUSTER as usize;
                 let source_pixel = tile[source_cluster].get_subpixel(source_subpixel as u8);
 
                 // Write to destination pixel
-                sprite.pixels[dest_cluster].set_subpixel(source_pixel, dest_subpixel as u8);
+                let sprite_index = line.sprite_count as usize;
+                let sprite = &mut line.sprites[sprite_index];
+                let dest_subpixel = local_x as usize; // max local_x matches cluster size
+                sprite
+                    .pixels
+                    .set_subpixel(source_pixel, dest_subpixel as u8);
 
-                // Write bit mask
-                let scanline = &mut self.scanlines[line_y as usize];
-                let slot = ((line_x as f32 / screen_width as f32) * 8.0) as usize;
-                if slot < 8 {
-                    // Ensure slot is in valid range
-                    // println!("{slot}");
-                    scanline.mask |= 1 << slot;
-                }
+                // Set bit mask to help iterator skip unused slots
+                let slot =
+                    ((screen_x as f32 / screen_width as f32) * SLOTS_PER_LINE as f32) as usize;
+                debug_assert!(slot < SLOTS_PER_LINE, err!("Invalid slot index"));
+                line.mask |= 1 << slot;
 
-                // Advance
-                dest_subpixel += 1;
-                if dest_subpixel >= PIXELS_PER_CLUSTER {
-                    dest_subpixel = 0;
-                    dest_cluster += 1;
-                }
-                line_x += 1;
-                if line_x == bound_x {
-                    line_x = x;
-                    line_y += 1;
-                    if line_y == screen_height {
-                        break;
-                    }
-                }
+                // This is a little redundant - every new pixel does it!
+                // But trying to avoid it creates complexity and is not worth it...
+                sprite.palette = flags.palette();
+                sprite.x = x;
             }
+
+            line.sprite_count += 1;
         }
     }
 }

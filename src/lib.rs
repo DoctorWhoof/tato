@@ -23,8 +23,8 @@ pub use iter::*;
 mod cluster;
 pub use cluster::*;
 
-// mod sprite;
-// use sprite::*;
+mod sprite;
+use sprite::*;
 
 mod tile;
 pub use tile::*;
@@ -56,11 +56,19 @@ pub const SUBPIXELS_TILE: u8 = Cluster::<2>::PIXELS_PER_BYTE as u8;
 /// 2 pixels per byte (16 colors per pixel)
 pub const SUBPIXELS_FRAMEBUFFER: u8 = Cluster::<4>::PIXELS_PER_BYTE as u8;
 
-/// FG Draw buffer height.
-pub const LINE_COUNT: usize = 196;
-
 /// Number of columns in BG Map
 pub const BG_MAX_COLUMNS: u8 = 64;
 
 /// Number of rows in BG Map
 pub const BG_MAX_ROWS: u8 = 64;
+
+/// Maximum number of video scanlines
+pub const LINE_COUNT: usize = 240;
+
+/// Limits how many sprites can be visible in a single video scanline. Also affects
+/// the memory amount used by the videochip, since more sprites per line need more buffer space.
+pub const SPRITES_PER_LINE: usize = 16;
+
+/// A "slot" is a way to divide each scanline in a way the pixel iterator can use to
+/// quickly determine if any sprite is present in that section.
+pub const SLOTS_PER_LINE:usize = 16;

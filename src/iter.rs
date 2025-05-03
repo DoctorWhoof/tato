@@ -17,8 +17,9 @@ pub struct PixelIter<'a> {
     current_bg_flags: TileFlags, // Current background tile flags
     bg_color: Color9Bit,         // Background color (cached)
     bg_cluster: Cluster<2>,      // Current pixel cluster
-    scanline: &'a [Cluster<4>],  // Reference to current sprite scanline
+    scanline: Scanline,          // current sprite scanline
     force_bg_color: bool,        // will reuse last bg color when out-of-bounds
+    slot_width: u16,             // screen width divided into 16 slots
 }
 
 pub struct ScreenCoords {
@@ -28,11 +29,15 @@ pub struct ScreenCoords {
 
 impl<'a> PixelIter<'a> {
     pub fn new(vid: &'a VideoChip) -> Self {
-        let relative_y = vid.crop_y as usize;
+        // let relative_y = vid.crop_y as usize;
         let mut result = Self {
             vid,
             x: 0,
             y: 0,
+            slot_width: {
+                let full_width = vid.width() + vid.crop_x as u16;
+                full_width / SLOTS_PER_LINE as u16
+            },
 
             wrap_bg: vid.wrap_bg,
             current_bg_flags: TileFlags::default(),
@@ -43,7 +48,7 @@ impl<'a> PixelIter<'a> {
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
             force_bg_color: false,
-            scanline: &vid.scanlines[relative_y],
+            scanline: vid.sprites.scanlines[0].clone(),
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -85,8 +90,6 @@ impl<'a> PixelIter<'a> {
         let tile_y = (bg_y % TILE_SIZE as u16) as u8;
 
         // Get the tile
-        // let tile_entry = self.vid.tiles[current_bg_tile_id as usize];
-        // let tile_start = tile_entry.cluster_index as usize;
         let tile_start = current_bg_tile_id as usize * TILE_CLUSTER_COUNT;
         let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + TILE_CLUSTER_COUNT];
 
@@ -111,26 +114,30 @@ impl<'a> PixelIter<'a> {
         }
 
         // Render sprite, fall back to BG if sprite is zero
-        let relative_x = (self.x as usize).saturating_add(self.vid.crop_x as usize);
-        let x_cluster = relative_x / PIXELS_PER_CLUSTER as usize;
-        let sub_index = (relative_x % PIXELS_PER_CLUSTER as usize) as u8;
         let fg_pixel = {
-            let fg_cluster = self.scanline[x_cluster];
-            fg_cluster.get_subpixel(sub_index)
-
-            // let line = &self.vid.sprites.scanlines[self.y as usize];
-            // if line.mask > 0 {
-            //     let slot_width = self.vid.width() / 8; // TODO: Pre-calculate
-            //     let slot = self.x / slot_width;
-            //     if line.mask & (1 << slot) != 0 {
-            //         // Will add more here
-            //         0
-            //     } else {
-            //         0
-            //     }
-            // } else {
-            //     0
-            // }
+            let mut result = 0;
+            if self.scanline.mask > 0 {
+                let fg_x = self.x + self.vid.crop_x as u16;
+                let slot = fg_x / self.slot_width;
+                // Test slot mask
+                if self.scanline.mask & (1 << slot) != 0 {
+                    // Iterate sprites in line
+                    'sprite_loop: for n in (0..self.scanline.sprite_count as usize).rev() {
+                        let sprite = &self.scanline.sprites[n];
+                        if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as u16 {
+                            continue;
+                        }
+                        let color_index =
+                            sprite.pixels.get_subpixel((fg_x - sprite.x) as u8) as usize;
+                        let pixel = self.vid.local_palettes[sprite.palette.id()][color_index].0;
+                        if pixel > 0 {
+                            result = pixel;
+                            break 'sprite_loop;
+                        }
+                    }
+                }
+            }
+            result
         };
 
         // Get color - FG has priority if not transparent
@@ -171,7 +178,7 @@ impl<'a> Iterator for PixelIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
-        if self.y == self.vid.max_y as u16 {
+        if self.y == self.vid.max_y() as u16 {
             return None;
         }
 
@@ -207,13 +214,14 @@ impl<'a> Iterator for PixelIter<'a> {
         }
 
         // Check if we need to go to the next line
-        if self.x == self.vid.max_x as u16 {
+        if self.x == self.vid.width() {
             self.x = 0;
             self.y += 1;
-            if self.y < self.vid.max_y as u16 {
-                // Cache scanline, compensating for crop_y
-                let relative_y = (self.y as usize).saturating_add(self.vid.crop_y as usize);
-                self.scanline = &self.vid.scanlines[relative_y];
+            // Cache scanline, compensating for crop_y
+            let fg_y = self.y + self.vid.crop_y;
+            self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+            // Force BG cluster reload on new lines
+            if self.y < self.vid.max_y() {
                 reload_cluster = true;
             }
         }
