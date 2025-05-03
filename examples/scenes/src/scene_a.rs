@@ -3,7 +3,7 @@ use core::array::from_fn;
 use tato::pad::*;
 use tato::video::prelude::*;
 
-const SMILEY_COUNT: usize = 64;
+const SMILEY_COUNT: usize = 32;
 
 #[derive(Debug)]
 pub struct SceneA {
@@ -20,9 +20,6 @@ impl SceneA {
         vid.wrap_sprites = false;
         vid.bg.columns = 32;
         vid.bg.rows = 24;
-        // vid.set_viewport(8, 8, 240, 176);
-        vid.set_crop_x(16);
-        vid.set_crop_y(16);
 
         // Palette test - defines BG palette with a golden tint!
         vid.bg_palette = [
@@ -87,8 +84,8 @@ impl SceneA {
         // Store initial state and return
         Self {
             player: Entity {
-                x: (vid.max_x() / 2) as f32,
-                y: (vid.max_y() / 2) as f32,
+                x: (vid.width() / 2) as f32,
+                y: (vid.height() / 2) as f32,
                 tile: arrow,
                 flags: PaletteID(0).into(),
             },
@@ -151,8 +148,8 @@ impl SceneA {
         // ------------------------------ Draw ------------------------------
 
         // Adjust scroll and palette before drawing characters! (immediate mode)
-        let target_x = (self.player.x - 16.0 - (vid.width() as f32 / 2.0)).floor() as i16;
-        let target_y = (self.player.y - 16.0 - (vid.height() as f32 / 2.0)).floor() as i16;
+        let target_x = (self.player.x - (vid.width() as f32 / 2.0)).floor() as i16;
+        let target_y = (self.player.y - (vid.height() as f32 / 2.0)).floor() as i16;
         vid.scroll_x = target_x;
         vid.scroll_y = target_y;
 
@@ -190,8 +187,8 @@ impl SceneA {
         let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = ((phase * speed).sin() + 1.0) * height;
             vid.draw_sprite(DrawBundle {
-                x: (entity.x - 1.0).floor() as i16,
-                y: (entity.y - 1.0 - hover).floor() as i16,
+                x: (entity.x - 1.0) as i16,
+                y: (entity.y - 1.0 - hover) as i16,
                 id: entity.tile,
                 flags: entity.flags,
             });
@@ -209,11 +206,12 @@ impl SceneA {
         let hover_height = if is_walking { 2.0 } else { 1.5 };
         sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
 
+        // Flashing Smiley at the origin
         vid.draw_sprite(DrawBundle {
             x: 0,
             y: 0,
             id: TileID(0),
-            flags: TileFlags::default(),
+            flags: TileFlags::default(), // Player palette is zero
         });
 
         // ------------------- Return mode switch request -------------------
