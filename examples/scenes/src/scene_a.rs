@@ -3,7 +3,7 @@ use core::array::from_fn;
 use tato::pad::*;
 use tato::video::prelude::*;
 
-const SMILEY_COUNT: usize = 100;
+const SMILEY_COUNT: usize = 32;
 
 #[derive(Debug)]
 pub struct SceneA {

@@ -11,7 +11,7 @@ impl SceneC {
     pub fn new(vid: &mut VideoChip) -> Self {
         let _bg = vid.new_tile(&TILE_CROSSHAIRS);
         let tile = vid.new_tile(&TILE_SOLID);
-        let smiley = vid.new_sprite(2, &data::LARGE_SPRITE);
+        let smiley = vid.new_tile(&data::SMILEY);
 
         for row in 0..vid.bg.columns {
             for col in 0..vid.bg.rows {
@@ -39,11 +39,11 @@ impl SceneC {
         let mut offset = 0.0;
         for x in 0..16 {
             let time = (self.counter as f32 / 60.0) + offset;
-            let wave = (time.sin() + 1.0) / 2.0;
-            let y = (wave * 180.0) as i16;
+            let wave = ((time *4.0).sin() + 1.0) / 2.0;
+            let y = (wave * 8.0) as i16 + 60;
             offset += 0.1;
             vid.draw_sprite(DrawBundle {
-                x: x * 16,
+                x: x * 8,
                 y,
                 id: self.smiley,
                 flags: PaletteID(x as u8).into(),

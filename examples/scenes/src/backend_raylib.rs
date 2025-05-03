@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 // use raylib::{ffi::KeyboardKey, prelude::RaylibDraw, RaylibHandle, RaylibThread, core::texture::Texture2D};
 use crate::PIXEL_COUNT;
 use raylib::prelude::*;
@@ -61,6 +63,7 @@ pub fn copy_pixels_to_texture(
     texture: &mut Texture2D,
 ) {
     // Copy from framebuffer to raylib texture
+    // let time = Instant::now();
     for (color, coords) in vid.iter_pixels() {
         let i = ((coords.y as usize * 240) + coords.x as usize) * 4;
         pixels[i] = color.r;
@@ -68,6 +71,7 @@ pub fn copy_pixels_to_texture(
         pixels[i + 2] = color.b;
         pixels[i + 3] = 255;
     }
+    // println!("time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
     texture.update_texture(pixels).unwrap();
 
     // Calculate rect with correct aspect ratio with integer scaling
