@@ -34,6 +34,9 @@ pub use videochip::*;
 
 // -------------------------------- Constants --------------------------------
 
+/// Maximum number of video scanlines
+pub const MAX_LINES: usize = 256;
+
 /// Maximum sprite storage length (16 Kb with Cluster<2> used).
 pub const TILE_MEM_LEN: usize = 8182;
 pub const TILE_SIZE: u8 = 8;
@@ -61,9 +64,6 @@ pub const BG_MAX_COLUMNS: u8 = 64;
 
 /// Number of rows in BG Map
 pub const BG_MAX_ROWS: u8 = 64;
-
-/// Maximum number of video scanlines
-pub const LINE_COUNT: usize = 128;
 
 /// Limits how many sprites can be visible in a single video scanline. Also affects
 /// the memory amount used by the videochip, since more sprites per line need more buffer space.

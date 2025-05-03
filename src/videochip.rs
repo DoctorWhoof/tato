@@ -34,7 +34,7 @@ pub struct VideoChip {
 
     // ---------------------- Main Data ----------------------
     pub(crate) sprites: SpriteGenerator,
-    // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
+    // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; MAX_LINES],
     pub(crate) w: u16,
     pub(crate) h: u16,
     // Pixel data for all tiles, stored as palette indices.
@@ -58,8 +58,8 @@ impl VideoChip {
     /// Creates a new drawing context with default settings.
     pub fn new(w: u16, h: u16) -> Self {
         assert!(
-            h > 7 && h <= LINE_COUNT as u16,
-            err!("Screen height range is 8 to LINE_COUNT")
+            h > 7 && h <= MAX_LINES as u16,
+            err!("Screen height range is 8 to MAX_LINES")
         );
 
         let mut result = Self {
@@ -248,29 +248,45 @@ impl VideoChip {
         if data.id.0 >= self.tile_id_head {
             return;
         }
+        let size = TILE_SIZE as i16;
 
         // Handle wrapping
         let wrapped_x: i16;
         let wrapped_y: i16;
         if self.wrap_sprites {
-            wrapped_x = (data.x - self.scroll_x).rem_euclid(self.w as i16);
-            wrapped_y = (data.y - self.scroll_y).rem_euclid(self.h as i16);
+            let screen_x = data.x - self.scroll_x;
+            let screen_y = data.y - self.scroll_y;
+
+            wrapped_x = if screen_x < -size {
+                screen_x + self.w as i16 + size
+            } else if screen_x >= self.w as i16 {
+                screen_x - self.w as i16 - size
+            } else {
+                screen_x
+            };
+
+            wrapped_y = if screen_y < -size {
+                screen_y + self.h as i16 + size
+            } else if screen_y >= self.h as i16 {
+                screen_y - self.h as i16 - size
+            } else {
+                screen_y
+            };
         } else {
             let max_x = self.scroll_x + self.max_x() as i16;
-            if data.x < self.scroll_x || data.x > max_x {
+            if data.x + size < self.scroll_x || data.x > max_x {
                 return;
             } else {
                 wrapped_x = data.x - self.scroll_x;
             }
             let max_y = self.scroll_y + self.max_y() as i16;
-            if data.y < self.scroll_y || data.y > max_y {
+            if data.y + size < self.scroll_y || data.y > max_y {
                 return;
             } else {
                 wrapped_y = data.y - self.scroll_y;
             }
         }
 
-        // let start = entry.cluster_index as usize;
         let start = data.id.0 as usize * TILE_CLUSTER_COUNT;
         let end = start + TILE_CLUSTER_COUNT;
         let tile = &self.tile_pixels[start..end];

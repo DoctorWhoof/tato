@@ -23,7 +23,7 @@ pub struct Scanline {
 /// Facilitates adding a single transformed sprite to multiple scanlines.
 #[derive(Debug)]
 pub struct SpriteGenerator {
-    pub scanlines: [Scanline; LINE_COUNT],
+    pub scanlines: [Scanline; MAX_LINES],
 }
 
 impl SpriteGenerator {
@@ -64,12 +64,17 @@ impl SpriteGenerator {
             return;
         }
 
-        let max_local_w = (screen_width as i16 - x).clamp(0, w);
-        let max_local_h = (screen_height as i16 - y).clamp(0, h);
+        if x <= -w || y <= -h {
+            return;
+        }
+
+        let min_x = (-x).max(0);
+        let min_y = (-y).max(0);
+        let max_x = (screen_width as i16 - x).clamp(0, w);
+        let max_y = (screen_height as i16 - y).clamp(0, h);
 
         // Copy transformed tile data to scanline buffers
-        // TODO: calculate min and max index, iterate only those instead of testing every coordinate
-        for local_y in 0..max_local_h {
+        for local_y in min_y..max_y {
             let screen_y = y + local_y;
 
             // Acquire scanline ref
@@ -79,7 +84,7 @@ impl SpriteGenerator {
             }
 
             // Iterate X pixels
-            for local_x in 0..max_local_w {
+            for local_x in min_x..max_x {
                 let screen_x = x + local_x;
 
                 // Copy source pixel

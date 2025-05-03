@@ -215,7 +215,7 @@ impl<'a> Iterator for PixelIter<'a> {
             self.y += 1;
             // Cache scanline, compensating for crop_y
             let fg_y = self.y as usize;
-            if fg_y < LINE_COUNT {
+            if fg_y < MAX_LINES {
                 self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
                 // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
             }
