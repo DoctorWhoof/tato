@@ -257,21 +257,22 @@ impl VideoChip {
             let screen_x = data.x - self.scroll_x;
             let screen_y = data.y - self.scroll_y;
 
-            wrapped_x = if screen_x < -size {
-                screen_x + self.w as i16 + size
-            } else if screen_x >= self.w as i16 {
-                screen_x - self.w as i16 - size
-            } else {
-                screen_x
-            };
+            let w = self.w as i16;
+            let h = self.h as i16;
+            let size = TILE_SIZE as i16;
 
-            wrapped_y = if screen_y < -size {
-                screen_y + self.h as i16 + size
-            } else if screen_y >= self.h as i16 {
-                screen_y - self.h as i16 - size
-            } else {
-                screen_y
-            };
+            let adjusted_x = screen_x + size;
+            let adjusted_y = screen_y + size;
+
+            // Apply proper modulo wrapping
+            let wrapped_adjusted_x =
+                ((adjusted_x % (w + size * 2)) + (w + size * 2)) % (w + size * 2);
+            let wrapped_adjusted_y =
+                ((adjusted_y % (h + size * 2)) + (h + size * 2)) % (h + size * 2);
+
+            // Adjust back to get the final coordinates
+            wrapped_x = wrapped_adjusted_x - size;
+            wrapped_y = wrapped_adjusted_y - size;
         } else {
             let max_x = self.scroll_x + self.max_x() as i16;
             if data.x + size < self.scroll_x || data.x > max_x {
