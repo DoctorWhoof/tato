@@ -5,6 +5,7 @@ pub struct PixelIter<'a> {
     vid: &'a VideoChip,
     x: u16, // Current screen x position
     y: u16, // Current screen y position
+    slot_width: u16,
 
     // Current indices
     wrap_bg: bool,
@@ -33,6 +34,10 @@ impl<'a> PixelIter<'a> {
             vid,
             x: 0,
             y: 0,
+            slot_width: {
+                let full_width = vid.width() + vid.crop_x as u16;
+                full_width / SLOTS_PER_LINE as u16
+            },
 
             wrap_bg: vid.wrap_bg,
             current_bg_flags: TileFlags::default(),
@@ -113,23 +118,23 @@ impl<'a> PixelIter<'a> {
         // Render sprite, fall back to BG if sprite is zero
         let fg_pixel = {
             let mut result = 0;
-            let line = &self.vid.sprites.scanlines[self.y as usize];
+            let fg_y = self.y + self.vid.crop_y as u16;
+            let line = &self.vid.sprites.scanlines[fg_y as usize];
             if line.mask > 0 {
-                let slot_width = self.vid.width() / 8; // TODO: Pre-calculate
-                let slot = self.x / slot_width;
+                let fg_x = self.x + self.vid.crop_x as u16;
+                let slot = fg_x / self.slot_width;
                 // Test slot mask
                 if line.mask & (1 << slot) != 0 {
                     // Iterate sprites in line
-                    'sprite_loop: for n in 0..SPRITES_PER_LINE as usize {
+                    'sprite_loop: for n in (0..line.sprite_count as usize).rev() {
                         let sprite = &line.sprites[n];
-                        if self.x < sprite.x || self.x >= sprite.x + TILE_SIZE as u16 {
+                        if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as u16 {
                             continue;
                         }
                         // Calculate subpixel index the same way it was stored
-                        // let screen_pos = ((self.y * self.vid.width()) + self.x) as usize;
-                        // let subpixel_idx = screen_pos % PIXELS_PER_CLUSTER as usize;
-                        // let pixel = sprite.pixels.get_subpixel(subpixel_idx as u8);
-                        let pixel = sprite.pixels.get_subpixel((self.x - sprite.x) as u8);
+                        let pixel_index =
+                            sprite.pixels.get_subpixel((fg_x - sprite.x) as u8) as usize;
+                        let pixel = self.vid.local_palettes[sprite.palette.id()][pixel_index].0;
                         if pixel > 0 {
                             result = pixel;
                             break 'sprite_loop;

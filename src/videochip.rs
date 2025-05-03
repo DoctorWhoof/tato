@@ -35,19 +35,19 @@ pub struct VideoChip {
     // ---------------------- Main Data ----------------------
     pub(crate) sprites: SpriteGenerator,
     // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
-    pub(crate) crop_x: u8,
-    pub(crate) crop_y: u8,
-    pub(crate) max_x: u8,
-    pub(crate) max_y: u8,
+    pub(crate) crop_x: u16,
+    pub(crate) crop_y: u16,
+    pub(crate) max_x: u16,
+    pub(crate) max_y: u16,
     // Pixel data for all tiles, stored as palette indices.
     // Max 64Kb or 256 tiles, whichever runs out first!
     pub(crate) tile_pixels: [Cluster<2>; TILE_MEM_LEN], // 2 bits per pixel
     // ---------------------- Bookkeeping ----------------------
     // view rect cache
-    pub(crate) view_left: u8,
-    pub(crate) view_top: u8,
-    pub(crate) view_right: u8,
-    pub(crate) view_bottom: u8,
+    pub(crate) view_left: u16,
+    pub(crate) view_top: u16,
+    pub(crate) view_right: u16,
+    pub(crate) view_bottom: u16,
     // Next available sprite ID.
     tile_id_head: u8,
     // Next available pixel position in the sprite buffer.
@@ -63,7 +63,7 @@ impl VideoChip {
     pub fn new(w: u32, h: u32) -> Self {
         assert!(w > 7 && w < 257, err!("Screen width range is 8 to 256"));
         assert!(h > 7 && h < 257, err!("Screen height range is 8 to 256"));
-        assert!(LINE_COUNT < 256, err!("LINE_COUNT must be less than 256"));
+        // assert!(LINE_COUNT < 256, err!("LINE_COUNT must be less than 256"));
 
         let mut result = Self {
             // fg_pixels: [0; FG_LEN],
@@ -79,15 +79,15 @@ impl VideoChip {
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprites: SpriteGenerator::new(),
             // scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
-            max_x: (w - 1) as u8,
-            max_y: (h - 1) as u8,
+            max_x: (w - 1) as u16,
+            max_y: (h - 1) as u16,
             tile_id_head: 0,
             tile_pixel_head: 0,
             palette_head: 0,
             view_left: 0,
             view_top: 0,
-            view_right: (w - 1) as u8,
-            view_bottom: (h - 1) as u8,
+            view_right: (w - 1) as u16,
+            view_bottom: (h - 1) as u16,
             crop_x: 0,
             crop_y: 0,
             scroll_x: 0,
@@ -119,11 +119,11 @@ impl VideoChip {
         result
     }
 
-    pub fn max_x(&self) -> u8 {
+    pub fn max_x(&self) -> u16 {
         self.max_x
     }
 
-    pub fn max_y(&self) -> u8 {
+    pub fn max_y(&self) -> u16 {
         self.max_y
     }
 
@@ -139,11 +139,11 @@ impl VideoChip {
     //     self.tiles[tile_id.0 as usize]
     // }
 
-    pub fn crop_x(&self) -> u8 {
+    pub fn crop_x(&self) -> u16 {
         self.crop_x
     }
 
-    pub fn set_crop_x(&mut self, value: u8) {
+    pub fn set_crop_x(&mut self, value: u16) {
         assert!(
             value < 255 - self.max_x + 1,
             err!("crop_x must be lower than 255 - width")
@@ -151,11 +151,11 @@ impl VideoChip {
         self.crop_x = value;
     }
 
-    pub fn crop_y(&self) -> u8 {
+    pub fn crop_y(&self) -> u16 {
         self.crop_y
     }
 
-    pub fn set_crop_y(&mut self, value: u8) {
+    pub fn set_crop_y(&mut self, value: u16) {
         assert!(
             value < 255 - self.max_y + 1,
             err!("crop_y must be lower than 255 - height")
@@ -165,7 +165,7 @@ impl VideoChip {
 
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter pixels outside
     /// this rectangular area with the BG Color
-    pub fn set_viewport(&mut self, left: u8, top: u8, w: u8, h: u8) {
+    pub fn set_viewport(&mut self, left: u16, top: u16, w: u16, h: u16) {
         self.view_left = left;
         self.view_top = top;
         self.view_right = left.saturating_add(w);
@@ -296,131 +296,43 @@ impl VideoChip {
             return;
         }
 
+        let full_width = self.width() + self.crop_x;
+        let full_height = self.width() + self.crop_x;
+
         // Handle wrapping
-        let wrapped_x: u8;
-        let wrapped_y: u8;
+        let wrapped_x: u16;
+        let wrapped_y: u16;
         if self.wrap_sprites {
-            wrapped_x = (data.x - self.scroll_x).rem_euclid(256) as u8;
-            wrapped_y = (data.y - self.scroll_y).rem_euclid(LINE_COUNT as i16) as u8;
+            wrapped_x = (data.x - self.scroll_x).rem_euclid(full_width as i16) as u16;
+            wrapped_y = (data.y - self.scroll_y).rem_euclid(full_height as i16) as u16;
         } else {
             let max_x = self.scroll_x + self.max_x as i16 + self.crop_x as i16;
             if data.x < self.scroll_x || data.x > max_x {
                 return;
             } else {
-                wrapped_x = (data.x - self.scroll_x) as u8;
+                wrapped_x = (data.x - self.scroll_x) as u16;
             }
             let max_y = self.scroll_y + self.max_y as i16 + self.crop_y as i16;
             if data.y < self.scroll_y || data.y > max_y {
                 return;
             } else {
-                wrapped_y = (data.y - self.scroll_y).clamp(0, LINE_COUNT as i16 - 1) as u8;
+                wrapped_y = (data.y - self.scroll_y) as u16;
             }
         }
 
-        // let entry = self.tiles[data.id.0 as usize];
         // let start = entry.cluster_index as usize;
-        let start = data.id.0 as usize;
-        let end = start + (TILE_PIXEL_COUNT / PIXELS_PER_CLUSTER as usize);
+        let start = data.id.0 as usize * TILE_CLUSTER_COUNT;
+        let end = start + TILE_CLUSTER_COUNT;
         let tile = &self.tile_pixels[start..end];
 
         self.sprites.insert(
-            wrapped_x as u16,
-            wrapped_y as u16,
+            wrapped_x,
+            wrapped_y,
+            full_width,
+            full_height,
             data.flags,
             tile,
-            self.width(),
-            self.height(),
         );
-
-        // Get tile info
-        // let tile = self.tiles[data.id.0 as usize];
-
-        // Calculate effective sprite dimensions based on rotation
-        // let (width, height) = if data.flags.is_rotated() {
-        //     (tile.h, tile.w) // Swap width and height for rotated sprites
-        // } else {
-        //     (tile.w, tile.h)
-        // };
-
-        // // Calculate sprite boundaries in screen coordinates
-        // let right_bound = if (wrapped_x as u16 + TILE_SIZE as u16) > 255 {
-        //     255
-        // } else {
-        //     wrapped_x + TILE_SIZE
-        // };
-
-        // let bottom_bound = if (wrapped_y as u16 + TILE_SIZE as u16) > LINE_COUNT as u16 {
-        //     LINE_COUNT as u8
-        // } else {
-        //     wrapped_y + TILE_SIZE
-        // };
-
-        // // Process each visible scanline
-        // for screen_y in wrapped_y..bottom_bound {
-        //     let local_y = screen_y - wrapped_y;
-
-        //     for screen_x in wrapped_x..right_bound {
-        //         let local_x = screen_x - wrapped_x;
-
-        //         let (tx, ty) =
-        //             Self::transform_tile_coords(local_x, local_y, TILE_SIZE, TILE_SIZE, data.flags);
-
-        //         // Calculate pixel position within the tile
-        //         let pixel_index = ty as usize * TILE_SIZE as usize + tx as usize;
-
-        //         // Calculate which cluster contains this pixel
-        //         let cluster_index = pixel_index / PIXELS_PER_CLUSTER as usize;
-
-        //         // Calculate the subpixel index within the cluster
-        //         let subpixel_index = (pixel_index % PIXELS_PER_CLUSTER as usize) as u8;
-
-        //         // Get the pixel color from the tile
-        //         let tile_index = data.id.0 as usize * TILE_CLUSTER_COUNT;
-        //         let cluster = self.tile_pixels[tile_index + cluster_index];
-        //         let color_index = cluster.get_subpixel(subpixel_index);
-
-        //         // If not transparent, draw it to the scanline
-        //         if color_index > 0 {
-        //             // Translate to global palette color
-        //             let palette_index = data.flags.palette().0 as usize;
-        //             let color_id = self.local_palettes[palette_index][color_index as usize];
-
-        //             // Calculate scanline cluster index and position
-        //             let scanline_cluster = screen_x as usize / PIXELS_PER_CLUSTER as usize;
-        //             let scanline_subpixel = (screen_x % PIXELS_PER_CLUSTER) as u8;
-
-        //             // Set the pixel in the scanline
-        //             self.scanlines[screen_y as usize][scanline_cluster]
-        //                 .set_subpixel(color_id.0, scanline_subpixel);
-        //         }
-        //     }
-        // }
-    }
-
-    #[inline(always)]
-    fn transform_tile_coords(x: u8, y: u8, w: u8, h: u8, flags: TileFlags) -> (u8, u8) {
-        // Handle both rotation and flipping
-        if flags.is_rotated() {
-            // For 90° clockwise rotation, swap x and y and flip the new x axis
-            let rotated_x = h - 1 - y;
-            let rotated_y = x;
-
-            // Apply additional flipping if needed
-            if flags.is_flipped_x() {
-                // Flipping X after 90° rotation is equivalent to flipping the new Y
-                (rotated_x, w - 1 - rotated_y)
-            } else if flags.is_flipped_y() {
-                // Flipping Y after 90° rotation is equivalent to flipping the new X
-                (h - 1 - rotated_x, rotated_y)
-            } else {
-                (rotated_x, rotated_y)
-            }
-        } else {
-            // Handle just flipping without rotation
-            let flipped_x = if flags.is_flipped_x() { w - 1 - x } else { x };
-            let flipped_y = if flags.is_flipped_y() { h - 1 - y } else { y };
-            (flipped_x, flipped_y)
-        }
     }
 
     /// Increments or decrements an index in a local palette so that its value
@@ -441,10 +353,6 @@ impl VideoChip {
     }
 
     pub fn start_frame(&mut self) {
-        // Clear the sprite grid for the new frame
-        // for line in &mut self.scanlines {
-        //     *line = from_fn(|_| Cluster::default());
-        // }
         self.reset_sprites();
     }
 
