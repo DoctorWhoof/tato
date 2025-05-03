@@ -33,8 +33,8 @@ pub struct VideoChip {
     pub scroll_y: i16,
 
     // ---------------------- Main Data ----------------------
-    // pub(crate) sprites: SpriteGenerator,
-    pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
+    pub(crate) sprites: SpriteGenerator,
+    // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
     pub(crate) crop_x: u8,
     pub(crate) crop_y: u8,
     pub(crate) max_x: u8,
@@ -42,9 +42,6 @@ pub struct VideoChip {
     // Pixel data for all tiles, stored as palette indices.
     // Max 64Kb or 256 tiles, whichever runs out first!
     pub(crate) tile_pixels: [Cluster<2>; TILE_MEM_LEN], // 2 bits per pixel
-    // Array of sprite definitions. Max 256 (1 byte indices)
-    // pub(crate) tiles: [TileEntry; 256],
-
     // ---------------------- Bookkeeping ----------------------
     // view rect cache
     pub(crate) view_left: u8,
@@ -80,8 +77,8 @@ impl VideoChip {
             fg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-            // sprites: SpriteGenerator::new(),
-            scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
+            sprites: SpriteGenerator::new(),
+            // scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
             max_x: (w - 1) as u8,
             max_y: (h - 1) as u8,
             tile_id_head: 0,
@@ -185,7 +182,7 @@ impl VideoChip {
         self.reset_bgmap();
         self.reset_crop();
         self.reset_viewport();
-        // self.reset_sprites();
+        self.reset_sprites();
     }
 
     pub fn reset_tiles(&mut self) {
@@ -233,9 +230,9 @@ impl VideoChip {
         self.view_bottom = self.max_y;
     }
 
-    // pub fn reset_sprites(&mut self) {
-    //     self.sprites.reset();
-    // }
+    pub fn reset_sprites(&mut self) {
+        self.sprites.reset();
+    }
 
     pub fn set_palette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
         debug_assert!(
@@ -321,85 +318,83 @@ impl VideoChip {
         }
 
         // let entry = self.tiles[data.id.0 as usize];
-
         // let start = entry.cluster_index as usize;
-        // let end = start + (entry.w as usize * entry.h as usize) / PIXELS_PER_CLUSTER as usize;
-        // let tile = &self.tile_pixels[start..end];
+        let start = data.id.0 as usize;
+        let end = start + (TILE_PIXEL_COUNT / PIXELS_PER_CLUSTER as usize);
+        let tile = &self.tile_pixels[start..end];
 
-        // self.sprites.insert(
-        //     wrapped_x as u16,
-        //     wrapped_y as u16,
-        //     data.flags,
-        //     data.id,
-        //     entry,
-        //     tile,
-        //     self.width(),
-        //     self.height(),
-        // );
+        self.sprites.insert(
+            wrapped_x as u16,
+            wrapped_y as u16,
+            data.flags,
+            tile,
+            self.width(),
+            self.height(),
+        );
 
         // Get tile info
         // let tile = self.tiles[data.id.0 as usize];
 
-        // // Calculate effective sprite dimensions based on rotation
+        // Calculate effective sprite dimensions based on rotation
         // let (width, height) = if data.flags.is_rotated() {
         //     (tile.h, tile.w) // Swap width and height for rotated sprites
         // } else {
         //     (tile.w, tile.h)
         // };
 
-        // Calculate sprite boundaries in screen coordinates
-        let right_bound = if (wrapped_x as u16 + TILE_SIZE as u16) > 255 {
-            255
-        } else {
-            wrapped_x + TILE_SIZE
-        };
+        // // Calculate sprite boundaries in screen coordinates
+        // let right_bound = if (wrapped_x as u16 + TILE_SIZE as u16) > 255 {
+        //     255
+        // } else {
+        //     wrapped_x + TILE_SIZE
+        // };
 
-        let bottom_bound = if (wrapped_y as u16 + TILE_SIZE as u16) > LINE_COUNT as u16 {
-            LINE_COUNT as u8
-        } else {
-            wrapped_y + TILE_SIZE
-        };
+        // let bottom_bound = if (wrapped_y as u16 + TILE_SIZE as u16) > LINE_COUNT as u16 {
+        //     LINE_COUNT as u8
+        // } else {
+        //     wrapped_y + TILE_SIZE
+        // };
 
-        // Process each visible scanline
-        for screen_y in wrapped_y..bottom_bound {
-            let local_y = screen_y - wrapped_y;
+        // // Process each visible scanline
+        // for screen_y in wrapped_y..bottom_bound {
+        //     let local_y = screen_y - wrapped_y;
 
-            for screen_x in wrapped_x..right_bound {
-                let local_x = screen_x - wrapped_x;
+        //     for screen_x in wrapped_x..right_bound {
+        //         let local_x = screen_x - wrapped_x;
 
-                let (tx, ty) =
-                    Self::transform_tile_coords(local_x, local_y, TILE_SIZE, TILE_SIZE, data.flags);
+        //         let (tx, ty) =
+        //             Self::transform_tile_coords(local_x, local_y, TILE_SIZE, TILE_SIZE, data.flags);
 
-                // Calculate pixel position within the tile
-                let pixel_index = ty as usize * TILE_SIZE as usize + tx as usize;
+        //         // Calculate pixel position within the tile
+        //         let pixel_index = ty as usize * TILE_SIZE as usize + tx as usize;
 
-                // Calculate which cluster contains this pixel
-                let cluster_index = pixel_index / PIXELS_PER_CLUSTER as usize;
+        //         // Calculate which cluster contains this pixel
+        //         let cluster_index = pixel_index / PIXELS_PER_CLUSTER as usize;
 
-                // Calculate the subpixel index within the cluster
-                let subpixel_index = (pixel_index % PIXELS_PER_CLUSTER as usize) as u8;
+        //         // Calculate the subpixel index within the cluster
+        //         let subpixel_index = (pixel_index % PIXELS_PER_CLUSTER as usize) as u8;
 
-                // Get the pixel color from the tile
-                let tile_index = data.id.0 as usize * TILE_CLUSTER_COUNT;
-                let cluster = self.tile_pixels[tile_index + cluster_index];
-                let color_index = cluster.get_subpixel(subpixel_index);
+        //         // Get the pixel color from the tile
+        //         let tile_index = data.id.0 as usize * TILE_CLUSTER_COUNT;
+        //         let cluster = self.tile_pixels[tile_index + cluster_index];
+        //         let color_index = cluster.get_subpixel(subpixel_index);
 
-                // If not transparent, draw it to the scanline
-                if color_index > 0 {
-                    // Translate to global palette color
-                    let palette_index = data.flags.palette().0 as usize;
-                    let color_id = self.local_palettes[palette_index][color_index as usize];
+        //         // If not transparent, draw it to the scanline
+        //         if color_index > 0 {
+        //             // Translate to global palette color
+        //             let palette_index = data.flags.palette().0 as usize;
+        //             let color_id = self.local_palettes[palette_index][color_index as usize];
 
-                    // Calculate scanline cluster index and position
-                    let scanline_cluster = screen_x as usize / PIXELS_PER_CLUSTER as usize;
-                    let scanline_subpixel = (screen_x % PIXELS_PER_CLUSTER) as u8;
+        //             // Calculate scanline cluster index and position
+        //             let scanline_cluster = screen_x as usize / PIXELS_PER_CLUSTER as usize;
+        //             let scanline_subpixel = (screen_x % PIXELS_PER_CLUSTER) as u8;
 
-                    // Set the pixel in the scanline
-                    self.scanlines[screen_y as usize][scanline_cluster]
-                        .set_subpixel(color_id.0, scanline_subpixel);
-                }
-            }
-        }
+        //             // Set the pixel in the scanline
+        //             self.scanlines[screen_y as usize][scanline_cluster]
+        //                 .set_subpixel(color_id.0, scanline_subpixel);
+        //         }
+        //     }
+        // }
     }
 
     #[inline(always)]
@@ -447,9 +442,10 @@ impl VideoChip {
 
     pub fn start_frame(&mut self) {
         // Clear the sprite grid for the new frame
-        for line in &mut self.scanlines {
-            *line = from_fn(|_| Cluster::default());
-        }
+        // for line in &mut self.scanlines {
+        //     *line = from_fn(|_| Cluster::default());
+        // }
+        self.reset_sprites();
     }
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.

@@ -23,8 +23,8 @@ pub use iter::*;
 mod cluster;
 pub use cluster::*;
 
-// mod sprite;
-// use sprite::*;
+mod sprite;
+use sprite::*;
 
 mod tile;
 pub use tile::*;

@@ -1,31 +1,32 @@
 use core::array::from_fn;
 
 use crate::*;
-const SPRITES_PER_LINE: usize = 16;
-const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
-const CLUSTER_COUNT: usize = TILE_LEN / PIXELS_PER_CLUSTER as usize;
+pub const SPRITES_PER_LINE: usize = 16;
+// const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
+// const CLUSTER_COUNT: usize = TILE_LEN / PIXELS_PER_CLUSTER as usize;
 
-#[derive(Debug, Clone)]
-pub(crate) struct Sprite {
-    x: u16,
-    w: u16,
-    pixels: [Cluster<2>; CLUSTER_COUNT],
-    // Stored to provide lazy processing - if they don't change, don't update!
-    flags: TileFlags,
-    tile_id: TileID,
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SpriteLine {
+    pub x: u16,
+    pub pixels: Cluster<2>,
+    pub palette: PaletteID,
 }
 
 #[derive(Debug, Clone)]
 pub struct Scanline {
-    pub(crate) mask: u8,
-    pub(crate) map: [u16; 8], // each slot can refer to 16 sprite indices (1 bit per sprite)
+    pub sprite_count: u8,
+    // Tracks Which slots contain sprites
+    pub mask: u8,
+    // Tracks which sprite "slots" available to this scanline have been used.
+    pub sprite_registry: u16,
+    pub sprites: [SpriteLine; SPRITES_PER_LINE],
 }
 
 #[derive(Debug)]
 pub struct SpriteGenerator {
     sprite_head: u8,
-    pub(crate) scanlines: [Scanline; 256],
-    pub(crate) sprites: [Sprite; SPRITES_PER_LINE],
+    pub(crate) scanlines: [Scanline; 240],
+    // pub(crate) generators: [Sprite; SPRITES_PER_LINE],
 }
 
 impl SpriteGenerator {
@@ -34,14 +35,9 @@ impl SpriteGenerator {
             sprite_head: 0,
             scanlines: from_fn(|_| Scanline {
                 mask: 0,
-                map: [0; 8],
-            }),
-            sprites: from_fn(|_| Sprite {
-                x: 0,
-                w: 0,
-                pixels: from_fn(|_| Cluster::default()),
-                flags: TileFlags::default(),
-                tile_id: TileID(0),
+                sprite_count: 0,
+                sprite_registry: 0,
+                sprites: Default::default(),
             }),
         }
     }
@@ -50,6 +46,8 @@ impl SpriteGenerator {
         self.sprite_head = 0;
         for line in &mut self.scanlines {
             line.mask = 0;
+            line.sprite_count = 0;
+            line.sprite_registry = 0;
         }
     }
 
@@ -58,31 +56,35 @@ impl SpriteGenerator {
         x: u16,
         y: u16,
         flags: TileFlags,
-        tile_id: TileID,
-        entry: TileEntry,
         tile: &[Cluster<2>],
         screen_width: u16,
-        screen_height: u16
-        // vid: &VideoChip,
+        screen_height: u16,
     ) {
-        // Calculate effective sprite dimensions based on rotation
-        let (width, height) = if flags.is_rotated() {
-            (entry.h as u16, entry.w as u16)
-        } else {
-            (entry.w as u16, entry.h as u16)
-        };
+        if self.sprite_head as usize == SPRITES_PER_LINE {
+            return;
+        }
+        let width = TILE_SIZE as u16;
+        let height = TILE_SIZE as u16;
 
-        let sprite = &mut self.sprites[self.sprite_head as usize];
-        sprite.x = x;
-        sprite.w = width;
-
-        let mut dest_cluster = 0;
-        let mut dest_subpixel = 0;
-        let mut line_x = x;
-        let mut line_y = y;
-        let bound_x = x + width;
+        // Copy transformed tile data to scanline buffers
         for local_y in 0..height {
             for local_x in 0..width {
+                let screen_x = x + local_x;
+                if screen_x >= screen_width {
+                    continue;
+                }
+
+                let screen_y = y + local_y;
+                if screen_y >= screen_height {
+                    break;
+                }
+
+                // Acquire scanline
+                let line = &mut self.scanlines[(y + local_y) as usize];
+                if line.sprite_count as usize >= SPRITES_PER_LINE {
+                    return;
+                }
+
                 // Copy source pixel
                 let (tx, ty) = transform_tile_coords(local_x, local_y, width, height, flags);
                 let source_index = ((ty * width) + tx) as usize;
@@ -91,33 +93,33 @@ impl SpriteGenerator {
                 let source_pixel = tile[source_cluster].get_subpixel(source_subpixel as u8);
 
                 // Write to destination pixel
-                sprite.pixels[dest_cluster].set_subpixel(source_pixel, dest_subpixel as u8);
+                let dest_subpixel = local_x as usize; // max tile size is same as cluster size
+                let sprite_index = line.sprite_count as usize;
+                let sprite = &mut line.sprites[sprite_index];
+                sprite
+                    .pixels
+                    .set_subpixel(source_pixel, dest_subpixel as u8);
 
-                // Write bit mask
-                let scanline = &mut self.scanlines[line_y as usize];
-                let slot = ((line_x as f32 / screen_width as f32) * 8.0) as usize;
-                if slot < 8 {
-                    // Ensure slot is in valid range
-                    // println!("{slot}");
-                    scanline.mask |= 1 << slot;
-                }
+                // Bit mask
+                let slot = ((screen_x as f32 / screen_width as f32) * 8.0).floor() as usize;
+                // Ensure slot is in valid range
+                debug_assert!(slot < 8, err!("Invalid slot index"));
+                // "tell" the scanline which slot we're using
+                line.mask |= 1 << slot;
 
-                // Advance
-                dest_subpixel += 1;
-                if dest_subpixel >= PIXELS_PER_CLUSTER {
-                    dest_subpixel = 0;
-                    dest_cluster += 1;
-                }
-                line_x += 1;
-                if line_x == bound_x {
-                    line_x = x;
-                    line_y += 1;
-                    if line_y == screen_height {
-                        break;
-                    }
+                // Registry
+                let sprite_bit = 1u16 << line.sprite_count;
+                if line.sprite_registry & sprite_bit == 0 {
+                    // Sprite hasn't been registered yet, register it
+                    line.sprite_registry |= sprite_bit;
+                    sprite.palette = flags.palette();
+                    sprite.x = x;
+                    line.sprite_count += 1;
                 }
             }
         }
+
+        self.sprite_head += 1;
     }
 }
 
