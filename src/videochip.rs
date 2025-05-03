@@ -37,8 +37,8 @@ pub struct VideoChip {
     // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; LINE_COUNT],
     pub(crate) crop_x: u16,
     pub(crate) crop_y: u16,
-    pub(crate) max_x: u16,
-    pub(crate) max_y: u16,
+    pub(crate) w: u16,
+    pub(crate) h: u16,
     // Pixel data for all tiles, stored as palette indices.
     // Max 64Kb or 256 tiles, whichever runs out first!
     pub(crate) tile_pixels: [Cluster<2>; TILE_MEM_LEN], // 2 bits per pixel
@@ -49,7 +49,7 @@ pub struct VideoChip {
     pub(crate) view_right: u16,
     pub(crate) view_bottom: u16,
     // Next available sprite ID.
-    tile_id_head: u8,
+    tile_id_head: u16,
     // Next available pixel position in the sprite buffer.
     tile_pixel_head: u16,
     // Next available palette.
@@ -60,9 +60,8 @@ pub struct VideoChip {
 
 impl VideoChip {
     /// Creates a new drawing context with default settings.
-    pub fn new(w: u32, h: u32) -> Self {
-        assert!(w > 7 && w < 257, err!("Screen width range is 8 to 256"));
-        assert!(h > 7 && h < 257, err!("Screen height range is 8 to 256"));
+    pub fn new(w: u16, h: u16) -> Self {
+        assert!(h > 7 && h < 257, err!("Screen height range is 8 to 240"));
         // assert!(LINE_COUNT < 256, err!("LINE_COUNT must be less than 256"));
 
         let mut result = Self {
@@ -79,17 +78,17 @@ impl VideoChip {
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprites: SpriteGenerator::new(),
             // scanlines: from_fn(|_| from_fn(|_| Cluster::default())),
-            max_x: (w - 1) as u16,
-            max_y: (h - 1) as u16,
             tile_id_head: 0,
             tile_pixel_head: 0,
             palette_head: 0,
             view_left: 0,
             view_top: 0,
-            view_right: (w - 1) as u16,
-            view_bottom: (h - 1) as u16,
+            view_right: w - 1,
+            view_bottom: h - 1,
             crop_x: 0,
             crop_y: 0,
+            w,
+            h,
             scroll_x: 0,
             scroll_y: 0,
         };
@@ -120,19 +119,19 @@ impl VideoChip {
     }
 
     pub fn max_x(&self) -> u16 {
-        self.max_x
+        self.w - 1
     }
 
     pub fn max_y(&self) -> u16 {
-        self.max_y
+        self.h - 1
     }
 
     pub fn width(&self) -> u16 {
-        self.max_x as u16 + 1
+        self.w
     }
 
     pub fn height(&self) -> u16 {
-        self.max_y as u16 + 1
+        self.h
     }
 
     // pub fn tile_entry(&self, tile_id: TileID) -> TileEntry {
@@ -145,8 +144,8 @@ impl VideoChip {
 
     pub fn set_crop_x(&mut self, value: u16) {
         assert!(
-            value < 255 - self.max_x + 1,
-            err!("crop_x must be lower than 255 - width")
+            value < self.width(),
+            err!("crop_x must be lower than width")
         );
         self.crop_x = value;
     }
@@ -157,8 +156,8 @@ impl VideoChip {
 
     pub fn set_crop_y(&mut self, value: u16) {
         assert!(
-            value < 255 - self.max_y + 1,
-            err!("crop_y must be lower than 255 - height")
+            value < self.height(),
+            err!("crop_x must be lower than height")
         );
         self.crop_y = value;
     }
@@ -226,8 +225,8 @@ impl VideoChip {
     pub fn reset_viewport(&mut self) {
         self.view_left = 0;
         self.view_top = 0;
-        self.view_right = self.max_x;
-        self.view_bottom = self.max_y;
+        self.view_right = self.max_x();
+        self.view_bottom = self.max_y();
     }
 
     pub fn reset_sprites(&mut self) {
@@ -297,7 +296,7 @@ impl VideoChip {
         }
 
         let full_width = self.width() + self.crop_x;
-        let full_height = self.width() + self.crop_x;
+        let full_height = self.height() + self.crop_y;
 
         // Handle wrapping
         let wrapped_x: u16;
@@ -306,13 +305,13 @@ impl VideoChip {
             wrapped_x = (data.x - self.scroll_x).rem_euclid(full_width as i16) as u16;
             wrapped_y = (data.y - self.scroll_y).rem_euclid(full_height as i16) as u16;
         } else {
-            let max_x = self.scroll_x + self.max_x as i16 + self.crop_x as i16;
+            let max_x = self.scroll_x + self.max_x() as i16 + self.crop_x as i16;
             if data.x < self.scroll_x || data.x > max_x {
                 return;
             } else {
                 wrapped_x = (data.x - self.scroll_x) as u16;
             }
-            let max_y = self.scroll_y + self.max_y as i16 + self.crop_y as i16;
+            let max_y = self.scroll_y + self.max_y() as i16 + self.crop_y as i16;
             if data.y < self.scroll_y || data.y > max_y {
                 return;
             } else {
