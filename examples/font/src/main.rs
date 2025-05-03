@@ -8,7 +8,7 @@ const W: usize = 240;
 const H: usize = 180;
 
 fn main() {
-    let mut tato = Tato::new(W as u32, H as u32);
+    let mut tato = Tato::new(W as u16, H as u16);
 
     // Graphics setup
     let plt_default = tato

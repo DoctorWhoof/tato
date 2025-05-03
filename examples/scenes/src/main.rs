@@ -48,7 +48,7 @@ pub enum Scene {
 
 fn main() {
     // Tato setup + initial scene
-    let mut video = VideoChip::new(W as u32, H as u32);
+    let mut video = VideoChip::new(W as u16, H as u16);
     let mut pad = AnaloguePad::default();
     let mut scene = Scene::A(SceneA::new(&mut video));
 

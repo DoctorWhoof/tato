@@ -2,7 +2,7 @@ use crate::Tato;
 use tato_video::{color::PaletteID, *};
 
 pub struct TextBundle {
-    pub initial_tile: u8,
+    pub initial_tile: u16,
     pub col: u8,
     pub row: u8,
     pub width: u8,
@@ -47,7 +47,7 @@ impl Tato {
 
 /// Extended from the previous functions to include lowercase letters and additional punctuation.
 #[allow(dead_code)]
-fn char_to_id_ex(ch: char) -> u8 {
+fn char_to_id_ex(ch: char) -> u16 {
     match ch {
         // Tightly packed ASCII chars in their original order can
         // result in fast optimizations by the compiler

@@ -22,7 +22,7 @@ pub enum SoundType {
 // Can just use raylib to display text on the window
 
 fn main() {
-    let mut tato = Tato::new(W as u32, H as u32);
+    let mut tato = Tato::new(W as u16, H as u16);
 
     // Tato Video Setup
     tato.video.bg_color = DARK_BLUE;

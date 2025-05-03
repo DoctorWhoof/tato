@@ -27,7 +27,7 @@ pub struct Tato {
 }
 
 impl Tato {
-    pub fn new(w:u32, h:u32) -> Self {
+    pub fn new(w:u16, h:u16) -> Self {
         Self {
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
