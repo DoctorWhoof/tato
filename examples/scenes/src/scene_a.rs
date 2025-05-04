@@ -52,6 +52,8 @@ impl SceneA {
         let arrow = vid.new_tile(&data::ARROW);
 
         // Set BG tiles
+        vid.bg.columns = 14 * 4;
+        vid.bg.rows = 14 * 4;
         for col in 0..vid.bg.columns {
             for row in 0..vid.bg.rows {
                 // Calculate palette ID based on coordinates, limits to 14 indices
@@ -107,10 +109,11 @@ impl SceneA {
         }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
-        let speed = if app.pad.is_any_down(AnyButton::Face) {
+        // let speed = if app.pad.is_any_down(AnyButton::Face) {
+        let speed = if app.pad.is_down(Button::A) {
             30.0 * app.elapsed as f32
         } else {
-            60.0 * app.elapsed as f32
+            120.0 * app.elapsed as f32
         };
 
         // Ensures animation always starts from phase = 0.0;

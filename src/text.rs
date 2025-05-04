@@ -2,7 +2,7 @@ use crate::Tato;
 use tato_video::{color::PaletteID, *};
 
 pub struct TextBundle {
-    pub initial_tile: u16,
+    pub initial_font_tile: u16,
     pub col: u8,
     pub row: u8,
     pub width: u8,
@@ -18,7 +18,7 @@ impl Tato {
             self.video.bg.set_tile(BgBundle {
                 col: bundle.col + cursor_x,
                 row: bundle.row + cursor_y,
-                tile_id: TileID(char_to_id_ex(ch) + bundle.initial_tile),
+                tile_id: TileID(char_to_id_ex(ch) + bundle.initial_font_tile),
                 flags: bundle.palette.into(),
             });
         };

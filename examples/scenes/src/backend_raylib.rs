@@ -50,6 +50,12 @@ pub fn update_gamepad(ray: &RaylibHandle, pad: &mut AnaloguePad) {
     } else {
         pad.set_button(Button::Start, false);
     }
+
+    if ray.is_key_down(KeyboardKey::KEY_Z) {
+        pad.set_button(Button::A, true);
+    } else {
+        pad.set_button(Button::A, false);
+    }
 }
 
 pub fn copy_pixels_to_texture(
@@ -61,7 +67,15 @@ pub fn copy_pixels_to_texture(
 ) {
     // Copy from framebuffer to raylib texture
     // let time = std::time::Instant::now();
-    for (color, coords) in vid.iter_pixels() {
+
+    let mut pixel_iter = vid.iter_pixels();
+    pixel_iter.horizontal_irq = Some(|iter, vid, line|{
+        let line_time = (line as f32 + vid.scroll_y as f32) / 16.0;
+        let time = (vid.frame_count() as f32 / 30.0) + line_time;
+        iter.scroll_x = (vid.scroll_x as f32 - time.sin() * 8.0) as i16;
+    });
+
+    for (color, coords) in pixel_iter {
         let i = ((coords.y as usize * W) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;

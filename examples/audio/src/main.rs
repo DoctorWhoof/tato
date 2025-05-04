@@ -60,7 +60,7 @@ fn main() {
     tato.draw_text(
         "SOUND TEST",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col: 2,
             row: 2,
             width: 12,
@@ -71,7 +71,7 @@ fn main() {
     tato.draw_text(
         "Currently playing:",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col: 2,
             row: 6,
             width: 20,
@@ -125,7 +125,7 @@ fn main() {
                 }
             },
             TextBundle {
-                initial_tile: 1,
+                initial_font_tile: 1,
                 col: 2,
                 row: 8,
                 width: 100,
@@ -136,7 +136,7 @@ fn main() {
         tato.draw_text(
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextBundle {
-                initial_tile: 1,
+                initial_font_tile: 1,
                 col: 2,
                 row: 10,
                 width: 100,
@@ -147,7 +147,7 @@ fn main() {
         tato.draw_text(
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextBundle {
-                initial_tile: 1,
+                initial_font_tile: 1,
                 col: 2,
                 row: 12,
                 width: 100,

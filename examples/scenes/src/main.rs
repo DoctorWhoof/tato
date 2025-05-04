@@ -76,7 +76,6 @@ fn main() {
     // Main Loop
     while !ray.window_should_close() {
         update_gamepad(&ray, &mut pad);
-
         let state = BackendState {
             pad,
             time: ray.get_time(),

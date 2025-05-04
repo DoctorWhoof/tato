@@ -1,4 +1,4 @@
-use raylib::{color::Color, texture::Image};
+use raylib::{color::Color, texture::Image, ffi::TraceLogLevel};
 use tato::{Tato, prelude::*};
 
 mod backend_raylib;
@@ -33,7 +33,7 @@ fn main() {
         "\"draw_text\" simply sets BG Map tiles, so they will scroll with \
         the rest of the map! Use the arrow keys to try it out.",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col,
             row: line,
             width: 27,
@@ -45,7 +45,7 @@ fn main() {
     tato.draw_text(
         "0123456789",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col,
             row: line,
             width: 26,
@@ -57,7 +57,7 @@ fn main() {
     tato.draw_text(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col,
             row: line,
             width: 26,
@@ -69,7 +69,7 @@ fn main() {
     tato.draw_text(
         "abcdefghijklmnopqrstuvwxyz",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col,
             row: line,
             width: 26,
@@ -81,7 +81,7 @@ fn main() {
     tato.draw_text(
         ":;<=>? !\"#$%&\'()*+,-./",
         TextBundle {
-            initial_tile: 1,
+            initial_font_tile: 1,
             col,
             row: line,
             width: 26,
@@ -94,6 +94,7 @@ fn main() {
     let w = tato.video.width() as i32;
     let h = tato.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
+        .log_level(TraceLogLevel::LOG_WARNING)
         .size(w * 3, h * 3)
         .title("Tato Demo")
         .vsync()
@@ -141,7 +142,7 @@ fn main() {
         tato.draw_text(
             "Animated palette",
             TextBundle {
-                initial_tile: 1,
+                initial_font_tile: 1,
                 col,
                 row: line,
                 width: 26,
