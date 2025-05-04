@@ -19,13 +19,13 @@ impl Rng {
         let bit_count = bit_count.clamp(3, 32);
         let mask = ((1u64 << bit_count) - 1) as u32;
         let state = if (initial_state & mask) == 0 {
-            print!("Overriding Inital State: ");
+            // print!("Overriding Inital State: ");
             DEFAULT_VALUE & mask
         } else {
-            print!("Inital State: ");
+            // print!("Inital State: ");
             initial_state & mask
         };
-        println!(" 0x{:X}", state);
+        // println!(" 0x{:X}", state);
         Self {
             state,
             mask,

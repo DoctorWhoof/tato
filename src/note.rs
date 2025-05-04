@@ -42,3 +42,19 @@ impl Into<f32> for Note {
         (self as u8) as f32
     }
 }
+
+impl From<f32> for Note {
+    fn from(value: f32) -> Self {
+        let note_number = value as u8;
+        // Ensure the note is within valid range
+        if note_number <= Note::LowerBound as u8 {
+            Note::LowerBound
+        } else if note_number >= Note::UpperBound as u8 {
+            Note::UpperBound
+        } else {
+            // This should be safe? We've verified the value is within range
+            // and the enum is repr(u8) with contiguous values
+            unsafe { core::mem::transmute(note_number) }
+        }
+    }
+}

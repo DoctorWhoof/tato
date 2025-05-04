@@ -194,7 +194,7 @@ impl Channel {
 
             // Fetch wave sample
             let sample = match self.wave_mode {
-                WaveMode::WaveTable => self.wavetable[sample_index].min(MAX_SAMPLE),
+                WaveMode::WaveTable => self.wavetable[sample_index].min(MAX_U4),
                 WaveMode::Random1Bit => {
                     let lfsr_noise = self.lfsr.next_f32();
                     if lfsr_noise < 0.5 { 0 } else { MAX_U4 }

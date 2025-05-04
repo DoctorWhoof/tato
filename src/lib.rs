@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 mod channel;
 mod math;
 mod note;
@@ -28,16 +28,16 @@ const MAX_I16: f32 = (i16::MAX - 1) as f32; // Technically we don't need to subt
 const MAX_U4: u8 = SIZE_U4 - 1;
 const MAX_I4: i8 = SIZE_I4 - 1;
 
-const MAX_SAMPLE: u8 = 15;
 const CHANNEL_COUNT: usize = 4;
 const TONE_FREQ_STEPS: u16 = 4096;
-// const NOISE_FREQ_STEPS: u16 = 4096;
-// const NOISE_PITCH_MULTIPLIER: f32 = 16.0;
+
+// VOlume specs
 const VOLUME_ATTENUATION: f32 = 0.0025;
 const VOLUME_EXPONENT: f32 = 2.5;
-const FREQ_C4: f32 = 261.63;
+
 // C0 to C10 in "scientific pitch"", roughly the human hearing range
 pub const FREQ_RANGE: RangeInclusive<f32> = 16.0..=16384.0;
+const FREQ_C4: f32 = 261.63;
 
 /// A very simple stereo sample with left and right values.
 pub struct Sample<T> {
