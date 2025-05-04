@@ -31,6 +31,21 @@ impl Color9Bit {
     pub fn b(&self) -> u8 {
         (self.data & 0b_0111) as u8
     }
+
+    pub fn set_r(&mut self, r: u8) {
+        assert!(r < 8, err!("Exceeded maximum value for Red channel"));
+        self.data = (self.data & !(0b_0111 << 6)) | ((r as u16) << 6);
+    }
+
+    pub fn set_g(&mut self, g: u8) {
+        assert!(g < 8, err!("Exceeded maximum value for Green channel"));
+        self.data = (self.data & !(0b_0111 << 3)) | ((g as u16) << 3);
+    }
+
+    pub fn set_b(&mut self, b: u8) {
+        assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
+        self.data = (self.data & !(0b_0111)) | (b as u16);
+    }
 }
 
 impl From<Color9Bit> for ColorRGB24 {
