@@ -2,6 +2,9 @@ use crate::*;
 
 /// Renders every pixel as it iterates the entire screen.
 pub struct PixelIter<'a> {
+    pub horizontal_irq_position: u16, // value in pixels
+    pub horizontal_irq: Option<fn(&mut Self, &VideoChip, u16)>,
+
     vid: &'a VideoChip,
     x: u16, // Current screen x position
     y: u16, // Current screen y position
@@ -10,14 +13,16 @@ pub struct PixelIter<'a> {
     wrap_bg: bool,
     subpixel_index: u8, // Primary counter for background position
 
-    // Caching
-    fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
-    bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
-    local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-    current_bg_flags: TileFlags, // Current background tile flags
-    bg_color: Color9Bit,         // Background color (cached)
-    bg_cluster: Cluster<2>,      // Current pixel cluster
-    scanline: Scanline,          // current sprite scanline
+    // Caching & Stuff that can be maniplated via H_IRQ
+    pub scroll_x: i16,
+    pub scroll_y: i16,
+    pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+    pub current_bg_flags: TileFlags, // Current background tile flags
+    pub bg_color: Color9Bit,         // Background color (cached)
+    pub bg_cluster: Cluster<2>,      // Current pixel cluster
+    pub scanline: Scanline,          // current sprite scanline
     force_bg_color: bool,        // will reuse last bg color when out-of-bounds
     slot_width: f32,             // screen width divided into 16 slots
 }
@@ -37,6 +42,9 @@ impl<'a> PixelIter<'a> {
 
             wrap_bg: vid.wrap_bg,
             current_bg_flags: TileFlags::default(),
+
+            scroll_x: vid.scroll_x,
+            scroll_y: vid.scroll_y,
             bg_cluster: Cluster::default(),
             subpixel_index: 0,
             bg_color: vid.bg_palette[vid.bg_color.id()],
@@ -45,6 +53,9 @@ impl<'a> PixelIter<'a> {
             local_palettes: vid.local_palettes.clone(),
             force_bg_color: false,
             scanline: vid.sprites.scanlines[0].clone(),
+
+            horizontal_irq_position: 0,
+            horizontal_irq: None,
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -67,9 +78,9 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn update_bg_cluster(&mut self) {
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
-        let bg_x = (self.x as i16 + self.vid.scroll_x as i16).rem_euclid(self.vid.bg.width() as i16)
+        let bg_x = (self.x as i16 + self.scroll_x).rem_euclid(self.vid.bg.width() as i16)
             as u16;
-        let bg_y = (self.y as i16 + self.vid.scroll_y as i16)
+        let bg_y = (self.y as i16 + self.scroll_y)
             .rem_euclid(self.vid.bg.height() as i16) as u16;
 
         // Calculate BG map coordinates
@@ -114,7 +125,7 @@ impl<'a> PixelIter<'a> {
             let mut result = 0;
             if self.scanline.mask > 0 {
                 let fg_x = self.x as i16;
-                let slot = (fg_x as f32 / self.slot_width).floor() as u16;
+                let slot = (fg_x as f32 / self.slot_width) as u16;
                 // Test slot mask
                 if self.scanline.mask & (1 << slot) != 0 {
                     // Iterate sprites in line
@@ -159,8 +170,8 @@ impl<'a> PixelIter<'a> {
     #[inline(always)]
     fn is_outside(&self) -> bool {
         // Calculate raw screen position for bounds check
-        let raw_x = self.x as i16 + self.vid.scroll_x;
-        let raw_y = self.y as i16 + self.vid.scroll_y;
+        let raw_x = self.x as i16 + self.scroll_x;
+        let raw_y = self.y as i16 + self.scroll_y;
 
         // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
         let w = self.vid.bg.width() as i16;
@@ -176,6 +187,12 @@ impl<'a> Iterator for PixelIter<'a> {
         // End line reached
         if self.y == self.vid.max_y() as u16 {
             return None;
+        }
+
+        if self.x == self.horizontal_irq_position {
+            if let Some(func) = self.horizontal_irq {
+                func(self, self.vid, self.y);
+            }
         }
 
         let is_outside_viewport = self.x < self.vid.view_left as u16

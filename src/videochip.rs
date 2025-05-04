@@ -46,6 +46,8 @@ pub struct VideoChip {
     pub(crate) view_top: u16,
     pub(crate) view_right: u16,
     pub(crate) view_bottom: u16,
+    // Internal timer. Useful for IRQ manipulation
+    frame_count: usize,
     // Next available sprite ID.
     tile_id_head: u16,
     // Next available pixel position in the sprite buffer.
@@ -83,25 +85,26 @@ impl VideoChip {
             h,
             scroll_x: 0,
             scroll_y: 0,
+            frame_count: 0,
         };
         result.reset_all();
 
-        println!(
-            "Total Size of VideoChip:\t{:.1} Kb",
-            size_of::<VideoChip>() as f32 / 1024.0
-        );
-        println!(
-            "   Sprite buffers (scanlines):\t{:.1} Kb",
-            size_of::<SpriteGenerator>() as f32 / 1024.0
-        );
-        println!(
-            "   Tile Memory:\t\t\t{:.1} Kb",
-            (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
-        );
-        println!(
-            "   BG Map:\t\t\t{:.1} Kb",
-            size_of::<BGMap>() as f32 / 1024.0
-        );
+        // println!(
+        //     "Total Size of VideoChip:\t{:.1} Kb",
+        //     size_of::<VideoChip>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "   Sprite buffers (scanlines):\t{:.1} Kb",
+        //     size_of::<SpriteGenerator>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "   Tile Memory:\t\t\t{:.1} Kb",
+        //     (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
+        // );
+        // println!(
+        //     "   BG Map:\t\t\t{:.1} Kb",
+        //     size_of::<BGMap>() as f32 / 1024.0
+        // );
 
         result
     }
@@ -122,6 +125,10 @@ impl VideoChip {
         self.h
     }
 
+    pub fn frame_count(&self) -> usize {
+        self.frame_count
+    }
+
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter pixels outside
     /// this rectangular area with the BG Color
     pub fn set_viewport(&mut self, left: u16, top: u16, w: u16, h: u16) {
@@ -135,6 +142,7 @@ impl VideoChip {
     pub fn reset_all(&mut self) {
         self.bg_color = GRAY;
         self.wrap_sprites = true;
+        self.frame_count = 0;
         self.reset_scroll();
         self.reset_tiles();
         self.reset_palettes();
@@ -314,6 +322,7 @@ impl VideoChip {
     }
 
     pub fn start_frame(&mut self) {
+        self.frame_count += 1;
         self.reset_sprites();
     }
 
