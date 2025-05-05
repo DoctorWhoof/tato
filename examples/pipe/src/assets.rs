@@ -1,7 +1,7 @@
 // Auto-generated code - do not edit manually
 #![allow(unused)]
 
-use tato::video::*;
+use tato::video::prelude::*;
 use tato::Anim;
 
 pub const FG_PALETTE: [Color9Bit; 16] = [
