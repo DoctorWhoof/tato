@@ -6,7 +6,7 @@ pub const PIXELS_PER_CLUSTER: u8 = 8;
 /// A Cluster always stores 8 pixels, and simply gets larger the more colors you store in it.
 /// At 2 bits per pixel (4 colors) it is 2 bytes.
 /// Since we always have 8 bits per pixel, BITS_PER_PIXEL is also the number of bytes!
-#[derive(Clone, Copy)]
+#[derive(Clone, Hash, PartialEq)]
 pub struct Cluster<const BITS_PER_PIXEL: usize> {
     data: [u8; BITS_PER_PIXEL],
 }
@@ -26,6 +26,7 @@ impl<const BITS_PER_PIXEL: usize> Default for Cluster<BITS_PER_PIXEL> {
 impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
     // How many pixels fit in each byte
     pub const PIXELS_PER_BYTE: usize = PIXELS_PER_CLUSTER as usize / BITS_PER_PIXEL;
+    pub const BYTES_PER_CLUSTER: usize = BITS_PER_PIXEL; // works out this way for 8 pixel clusters
     // Mask for extracting a single pixel value
     pub const MASK: u8 = (1 << BITS_PER_PIXEL) - 1;
 
@@ -114,7 +115,12 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
     }
 
     #[inline]
-    pub fn from_tile(tile_pixels: &[Cluster<BITS_PER_PIXEL>], flags: TileFlags, row: u8, tile_size:u8) -> Self {
+    pub fn from_tile(
+        tile_pixels: &[Cluster<BITS_PER_PIXEL>],
+        flags: TileFlags,
+        row: u8,
+        tile_size: u8,
+    ) -> Self {
         debug_assert!(row < 8, "Row index out of bounds");
 
         if flags.is_rotated() {
@@ -148,7 +154,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
                 let src_row = (start_row as i8 + (i as i8 * row_step)) as u8 & 7;
 
                 // Get the pixel from the column in the source tile
-                let src_cluster = tile_pixels[src_row as usize];
+                let src_cluster = &tile_pixels[src_row as usize];
                 let pixel_value = src_cluster.get_subpixel(col);
 
                 // Set in our output cluster
@@ -159,15 +165,15 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
         } else {
             // No transformations - return the source cluster directly
             if !flags.is_flipped_x() && !flags.is_flipped_y() {
-                return tile_pixels[row as usize];
+                return tile_pixels[row as usize].clone();
             }
             // No rotation, just handle flipping
             let source_row = if flags.is_flipped_y() { 7 - row } else { row };
-            let source_cluster = tile_pixels[source_row as usize];
+            let source_cluster = &tile_pixels[source_row as usize];
             if flags.is_flipped_x() {
                 source_cluster.flip()
             } else {
-                source_cluster
+                source_cluster.clone()
             }
         }
     }

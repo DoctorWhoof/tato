@@ -55,7 +55,7 @@ impl SpriteGenerator {
         screen_width: u16,
         screen_height: u16,
         flags: TileFlags,
-        tile: &[Cluster<2>],
+        tile: &Tile,
     ) {
         let w = TILE_SIZE as i16;
         let h = TILE_SIZE as i16;
@@ -89,10 +89,7 @@ impl SpriteGenerator {
 
                 // Copy source pixel
                 let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, flags);
-                let source_index = ((ty * w) + tx) as usize;
-                let source_cluster = source_index / PIXELS_PER_CLUSTER as usize;
-                let source_subpixel = source_index % PIXELS_PER_CLUSTER as usize;
-                let source_pixel = tile[source_cluster].get_subpixel(source_subpixel as u8);
+                let source_pixel = tile.get_pixel(tx as u8, ty as u8);
 
                 // Write to destination pixel
                 let sprite_index = line.sprite_count as usize;

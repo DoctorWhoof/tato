@@ -58,18 +58,8 @@ impl<'a> PixelIter<'a> {
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
-
-        // Calculate the starting subpixel_index based on scroll position
         if !result.force_bg_color {
-            // First update the cluster
             result.update_bg_cluster();
-
-            let bg_x = (result.x as i16 + result.vid.scroll_x as i16)
-                .rem_euclid(vid.bg.width() as i16) as u16;
-
-            let tile_x = bg_x % TILE_SIZE as u16;
-            let local_idx = tile_x as usize % SUBPIXELS_TILE as usize;
-            result.subpixel_index = local_idx as u8;
         }
         result
     }
@@ -94,10 +84,11 @@ impl<'a> PixelIter<'a> {
         let tile_y = (bg_y % TILE_SIZE as u16) as u8;
 
         // Get the tile
-        let tile_start = current_bg_tile_id as usize * TILE_CLUSTER_COUNT;
-        let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + TILE_CLUSTER_COUNT];
+        let tile_index = current_bg_tile_id as usize;
+        let tile_clusters = &self.vid.tiles[tile_index].clusters;
 
         // Get the correct cluster with transformations applied
+        // TODO: Update to latest Tile struct, get rid of "from_tile"?
         self.bg_cluster = Cluster::from_tile(tile_clusters, self.bg_flags, tile_y, TILE_SIZE);
 
         // Calculate subpixel index within the cluster (0-7)

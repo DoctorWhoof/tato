@@ -6,22 +6,21 @@ pub mod prelude {
     pub use crate::*;
 }
 
+mod bg;
+pub use bg::*;
+
+mod cluster;
+pub use cluster::*;
+
 pub mod color;
 use color::*;
-// pub use color::{Color9Bit, ColorRGB24};
 
 mod data;
 
 mod error;
 
-mod bg;
-pub use bg::*;
-
 mod iter;
 pub use iter::*;
-
-mod cluster;
-pub use cluster::*;
 
 mod sprite;
 use sprite::*;
@@ -29,11 +28,14 @@ use sprite::*;
 mod tile;
 pub use tile::*;
 
+mod tile_flags;
+pub use tile_flags::*;
+
 mod videochip;
 pub use videochip::*;
 
-/// A callback used to modify the iterator, called once on every line.
-/// The X position where it's called is determined by VideoChip::horizontal_irq_position.
+/// A callback used to modify the iterator, called once on every line at
+/// an X position determined by [VideoChip::horizontal_irq_position].
 /// The parameters are a mutable reference to the iterator, a read-only reference to
 /// the VideoChip and a u16 value with the current line number.
 pub type HorizontalIRQ = fn(&mut PixelIter, &VideoChip, u16);
@@ -44,7 +46,7 @@ pub type HorizontalIRQ = fn(&mut PixelIter, &VideoChip, u16);
 pub const MAX_LINES: usize = 256;
 
 /// Maximum sprite storage length (16 Kb with Cluster<2> used).
-pub const TILE_MEM_LEN: usize = 8182;
+pub const TILE_COUNT: usize = 1024;
 
 /// Determines the X and Y size used by every tile.
 pub const TILE_SIZE: u8 = 8;
@@ -64,12 +66,6 @@ pub const COLORS_PER_PALETTE: u8 = 16;
 /// How many "local" palettes
 /// (palettes of 4 colors that map each index to the main FG and BG palettes)
 pub const LOCAL_PALETTE_COUNT: u8 = 16;
-
-/// 4 pixels per byte (4 colors per pixel)
-pub const SUBPIXELS_TILE: u8 = Cluster::<2>::PIXELS_PER_BYTE as u8;
-
-/// 2 pixels per byte (16 colors per pixel)
-pub const SUBPIXELS_FRAMEBUFFER: u8 = Cluster::<4>::PIXELS_PER_BYTE as u8;
 
 /// Number of columns in BG Map
 pub const BG_MAX_COLUMNS: u8 = 64;

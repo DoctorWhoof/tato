@@ -43,8 +43,7 @@ pub struct VideoChip {
     pub(crate) w: u16,
     pub(crate) h: u16,
     // Pixel data for all tiles, stored as palette indices.
-    // Max 64Kb or 256 tiles, whichever runs out first!
-    pub(crate) tile_pixels: [Cluster<2>; TILE_MEM_LEN], // 2 bits per pixel
+    pub(crate) tiles: [Tile; TILE_COUNT],
     // ---------------------- Bookkeeping ----------------------
     // view rect cache
     pub(crate) view_left: u16,
@@ -54,9 +53,9 @@ pub struct VideoChip {
     // Internal timer. Useful for IRQ manipulation
     frame_count: usize,
     // Next available sprite ID.
-    tile_id_head: u16,
+    tile_id_head: usize,
     // Next available pixel position in the sprite buffer.
-    tile_pixel_head: u16,
+    tile_pixel_head: usize,
     // Next available palette.
     palette_head: u8,
 }
@@ -71,7 +70,7 @@ impl VideoChip {
 
         let mut result = Self {
             bg: BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS),
-            tile_pixels: [Cluster::default(); TILE_MEM_LEN],
+            tiles: from_fn(|_| Tile::default()),
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
@@ -220,29 +219,32 @@ impl VideoChip {
     }
 
     pub fn new_tile(&mut self, data: &[u8]) -> TileID {
+        // Check if number of pixels is correct
         assert!(
             data.len() == TILE_PIXEL_COUNT,
             err!("Tile data length must match TILE_PIXEL_COUNT ({})"),
             TILE_PIXEL_COUNT
         );
 
-        let tile_id = self.tile_id_head;
-        let pixel_start = self.tile_pixel_head as usize;
-
         // Check if we have enough space
-        if self.tile_id_head == 255 || pixel_start + TILE_PIXEL_COUNT > TILE_MEM_LEN {
+        if self.tile_id_head >= TILE_COUNT{
             panic!(err!("Not enough space for new tile"))
         }
 
+        let tile_id = u16::try_from(self.tile_id_head).unwrap();
+
         // Pack 8 pixels (2 bits each) into each cluster
-        let mut cluster_index = self.tile_pixel_head as usize / PIXELS_PER_CLUSTER as usize;
+        // TODO: REPLACE WITH TILE.SET_PIXEL
+        let mut cluster_index = 0;
         let mut subpixel_index = 0;
         for i in 0..TILE_PIXEL_COUNT {
             // Clamp color to maximum allowed
             let value = data[i].clamp(0, COLORS_PER_TILE as u8);
 
             // Set pixel data
-            self.tile_pixels[cluster_index].set_subpixel(value, subpixel_index);
+            self.tiles[self.tile_id_head] //
+                .clusters[cluster_index]
+                .set_subpixel(value, subpixel_index);
 
             // Advance
             subpixel_index += 1;
@@ -253,7 +255,7 @@ impl VideoChip {
         }
 
         self.tile_id_head += 1;
-        self.tile_pixel_head += TILE_PIXEL_COUNT as u16;
+        self.tile_pixel_head += TILE_PIXEL_COUNT;
 
         TileID(tile_id)
     }
@@ -261,7 +263,7 @@ impl VideoChip {
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
     /// also provide various tile flags, like flipping, and specify a palette id.
     pub fn draw_sprite(&mut self, data: DrawBundle) {
-        if data.id.0 >= self.tile_id_head {
+        if data.id.0 as usize >= self.tile_id_head {
             return;
         }
         let size = TILE_SIZE as i16;
@@ -304,9 +306,7 @@ impl VideoChip {
             }
         }
 
-        let start = data.id.0 as usize * TILE_CLUSTER_COUNT;
-        let end = start + TILE_CLUSTER_COUNT;
-        let tile = &self.tile_pixels[start..end];
+        let tile = &self.tiles[data.id.0 as usize];
 
         self.sprites
             .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, tile);
