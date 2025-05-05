@@ -48,9 +48,15 @@ pub enum Scene {
 
 fn main() {
     // Tato setup + initial scene
-    let mut video = VideoChip::new(W as u16, H as u16);
     let mut pad = AnaloguePad::default();
+    let mut video = VideoChip::new(W as u16, H as u16);
     let mut scene = Scene::A(SceneA::new(&mut video));
+    // Line scrolling effect, adjusts scroll on every line
+    video.horizontal_irq_callback = Some(|iter, video, line| {
+        let line_offset = (line as f32 + video.scroll_y as f32) / 16.0;
+        let phase = ((video.frame_count() as f32 / 30.0) + line_offset).sin();
+        iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
+    });
 
     // Raylib setup
     let target_fps = 60.0;
@@ -65,7 +71,7 @@ fn main() {
     config_raylib();
     ray.set_target_fps(target_fps as u32);
 
-    // Create texture for rendering
+    // Create pixel buffer for rendering
     let mut pixels: [u8; PIXEL_COUNT] = core::array::from_fn(|_| 0);
     let mut render_texture = {
         let render_image = Image::gen_image_color(w, h, Color::BLACK);
