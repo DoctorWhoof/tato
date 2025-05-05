@@ -1,30 +1,30 @@
 use crate::*;
 
 /// Renders every pixel as it iterates the entire screen.
+/// All public fields can be manipulated per line with HorizontalIRQ!
 pub struct PixelIter<'a> {
-    pub horizontal_irq_position: u16, // value in pixels
-    pub horizontal_irq: Option<fn(&mut Self, &VideoChip, u16)>,
-
     vid: &'a VideoChip,
     x: u16, // Current screen x position
     y: u16, // Current screen y position
+    horizontal_irq_position: u16,
+    horizontal_irq: Option<HorizontalIRQ>,
 
     // Current indices
     wrap_bg: bool,
-    subpixel_index: u8, // Primary counter for background position
+    subpixel_index: u8,     // Primary counter for background position
+    force_bg_color: bool,   // will reuse last bg color when out-of-bounds
+    slot_width: f32,        // screen width divided into 16 slots
+    bg_cluster: Cluster<2>, // Current pixel cluster
+    bg_flags: TileFlags,    // Current background tile flags
 
-    // Caching & Stuff that can be maniplated via H_IRQ
+    // Stuff that can be maniplated via H_IRQ
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
     pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
     pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-    pub current_bg_flags: TileFlags, // Current background tile flags
-    pub bg_color: Color9Bit,         // Background color (cached)
-    pub bg_cluster: Cluster<2>,      // Current pixel cluster
-    pub scanline: Scanline,          // current sprite scanline
-    force_bg_color: bool,        // will reuse last bg color when out-of-bounds
-    slot_width: f32,             // screen width divided into 16 slots
+    pub bg_color: Color9Bit, // Background color (cached)
+    pub scanline: Scanline,  // current sprite scanline
 }
 
 pub struct ScreenCoords {
@@ -38,24 +38,23 @@ impl<'a> PixelIter<'a> {
             vid,
             x: 0,
             y: 0,
-            slot_width: vid.width() as f32 / SLOTS_PER_LINE as f32,
+            horizontal_irq_position: vid.horizontal_irq_position,
+            horizontal_irq: vid.horizontal_irq_callback,
 
             wrap_bg: vid.wrap_bg,
-            current_bg_flags: TileFlags::default(),
+            force_bg_color: false,
+            slot_width: vid.width() as f32 / SLOTS_PER_LINE as f32,
+            bg_cluster: Cluster::default(),
+            bg_flags: TileFlags::default(),
 
             scroll_x: vid.scroll_x,
             scroll_y: vid.scroll_y,
-            bg_cluster: Cluster::default(),
             subpixel_index: 0,
             bg_color: vid.bg_palette[vid.bg_color.id()],
             fg_palette: vid.fg_palette.clone(),
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
-            force_bg_color: false,
             scanline: vid.sprites.scanlines[0].clone(),
-
-            horizontal_irq_position: 0,
-            horizontal_irq: None,
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -78,10 +77,8 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn update_bg_cluster(&mut self) {
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
-        let bg_x = (self.x as i16 + self.scroll_x).rem_euclid(self.vid.bg.width() as i16)
-            as u16;
-        let bg_y = (self.y as i16 + self.scroll_y)
-            .rem_euclid(self.vid.bg.height() as i16) as u16;
+        let bg_x = (self.x as i16 + self.scroll_x).rem_euclid(self.vid.bg.width() as i16) as u16;
+        let bg_y = (self.y as i16 + self.scroll_y).rem_euclid(self.vid.bg.height() as i16) as u16;
 
         // Calculate BG map coordinates
         let bg_col = bg_x / TILE_SIZE as u16;
@@ -90,7 +87,7 @@ impl<'a> PixelIter<'a> {
         // Get new tile info
         let bg_map_index = (bg_row as usize * self.vid.bg.columns as usize) + bg_col as usize;
         let current_bg_tile_id = self.vid.bg.tiles[bg_map_index].0;
-        self.current_bg_flags = self.vid.bg.flags[bg_map_index];
+        self.bg_flags = self.vid.bg.flags[bg_map_index];
 
         // Calculate local tile coordinates
         let tile_x = (bg_x % TILE_SIZE as u16) as u8;
@@ -101,8 +98,7 @@ impl<'a> PixelIter<'a> {
         let tile_clusters = &self.vid.tile_pixels[tile_start..tile_start + TILE_CLUSTER_COUNT];
 
         // Get the correct cluster with transformations applied
-        self.bg_cluster =
-            Cluster::from_tile(tile_clusters, self.current_bg_flags, tile_y, TILE_SIZE);
+        self.bg_cluster = Cluster::from_tile(tile_clusters, self.bg_flags, tile_y, TILE_SIZE);
 
         // Calculate subpixel index within the cluster (0-7)
         self.subpixel_index = tile_x % PIXELS_PER_CLUSTER;
@@ -111,8 +107,8 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn get_pixel_color(&self) -> Color9Bit {
         // If BG Tile is set to FG and is not zero, return early
-        if self.current_bg_flags.is_fg() && !self.force_bg_color {
-            let bg_palette = self.current_bg_flags.palette().0 as usize;
+        if self.bg_flags.is_fg() && !self.force_bg_color {
+            let bg_palette = self.bg_flags.palette().0 as usize;
             let color = self.bg_cluster.get_subpixel(self.subpixel_index);
             if color > 0 {
                 let global_idx = self.local_palettes[bg_palette][color as usize].0 as usize;
@@ -157,7 +153,7 @@ impl<'a> PixelIter<'a> {
             // Get pixel from current cluster
             let color = self.bg_cluster.get_subpixel(self.subpixel_index);
             // If transparent, use background color
-            let bg_palette = self.current_bg_flags.palette().0 as usize;
+            let bg_palette = self.bg_flags.palette().0 as usize;
             let global_idx = self.local_palettes[bg_palette][color as usize].0 as usize;
             if global_idx == 0 {
                 self.bg_color

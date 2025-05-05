@@ -8,7 +8,7 @@ pub mod prelude {
 
 pub mod color;
 use color::*;
-pub use color::{Color9Bit, ColorRGB24};
+// pub use color::{Color9Bit, ColorRGB24};
 
 mod data;
 
@@ -32,6 +32,12 @@ pub use tile::*;
 mod videochip;
 pub use videochip::*;
 
+/// A callback used to modify the iterator, called once on every line.
+/// The X position where it's called is determined by VideoChip::horizontal_irq_position.
+/// The parameters are a mutable reference to the iterator, a read-only reference to
+/// the VideoChip and a u16 value with the current line number.
+pub type HorizontalIRQ = fn(&mut PixelIter, &VideoChip, u16);
+
 // -------------------------------- Constants --------------------------------
 
 /// Maximum number of video scanlines
@@ -39,8 +45,14 @@ pub const MAX_LINES: usize = 256;
 
 /// Maximum sprite storage length (16 Kb with Cluster<2> used).
 pub const TILE_MEM_LEN: usize = 8182;
+
+/// Determines the X and Y size used by every tile.
 pub const TILE_SIZE: u8 = 8;
+
+/// The number of pixels in a tile
 pub const TILE_PIXEL_COUNT: usize = TILE_SIZE as usize * TILE_SIZE as usize;
+
+/// The number of pixel clusters in a tile.
 pub const TILE_CLUSTER_COUNT: usize = TILE_PIXEL_COUNT / PIXELS_PER_CLUSTER as usize;
 
 /// Number of colors per tile (2 bits per pixel)
@@ -71,4 +83,4 @@ pub const SPRITES_PER_LINE: usize = 16;
 
 /// A "slot" is a way to divide each scanline in a way the pixel iterator can use to
 /// quickly determine if any sprite is present in that section.
-pub const SLOTS_PER_LINE:usize = 16;
+pub const SLOTS_PER_LINE: usize = 16;

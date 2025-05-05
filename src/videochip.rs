@@ -31,6 +31,11 @@ pub struct VideoChip {
     pub scroll_x: i16,
     /// Offsets the BG Map and Sprite tiles vertically
     pub scroll_y: i16,
+    /// Determines which X coordinate triggers the horizontal IRQ callback
+    pub horizontal_irq_position: u16,
+    /// A callback that can modify the iterator, called once per line.
+    /// It is automatically passed to the PixelIterator.
+    pub horizontal_irq_callback: Option<HorizontalIRQ>,
 
     // ---------------------- Main Data ----------------------
     pub(crate) sprites: SpriteGenerator,
@@ -86,6 +91,9 @@ impl VideoChip {
             scroll_x: 0,
             scroll_y: 0,
             frame_count: 0,
+            // irq: None,
+            horizontal_irq_position: 0,
+            horizontal_irq_callback: None,
         };
         result.reset_all();
 
