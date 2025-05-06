@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 pub mod prelude {
     pub use crate::color::*;
@@ -45,8 +45,9 @@ pub type HorizontalIRQ = fn(&mut PixelIter, &VideoChip, u16);
 /// Maximum number of video scanlines
 pub const MAX_LINES: usize = 256;
 
-/// Maximum sprite storage length (16 Kb with Cluster<2> used).
-pub const TILE_COUNT: usize = 1024;
+/// Maximum sprite storage length (8 Kb with Cluster<2> used).
+/// TODO: May be increased to 1024?
+pub const TILE_COUNT: usize = 512;
 
 /// Determines the X and Y size used by every tile.
 pub const TILE_SIZE: u8 = 8;

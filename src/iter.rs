@@ -17,19 +17,100 @@ pub struct PixelIter<'a> {
     bg_cluster: Cluster<2>, // Current pixel cluster
     bg_flags: TileFlags,    // Current background tile flags
 
-    // Stuff that can be maniplated via H_IRQ
+    // Stuff that can be manipulated via Horizontal IRQ
     pub scroll_x: i16,
     pub scroll_y: i16,
+    pub scanline: Scanline,  // current sprite scanline
+    pub bg_color: Color9Bit, // Background color (cached)
     pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
     pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
     pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-    pub bg_color: Color9Bit, // Background color (cached)
-    pub scanline: Scanline,  // current sprite scanline
 }
 
 pub struct ScreenCoords {
     pub x: i32,
     pub y: i32,
+}
+
+impl<'a> Iterator for PixelIter<'a> {
+    type Item = (ColorRGB24, ScreenCoords);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // End line reached
+        if self.y == self.vid.max_y() as u16 {
+            return None;
+        }
+
+        if self.x == self.horizontal_irq_position {
+            if let Some(func) = self.horizontal_irq {
+                func(self, self.vid, self.y);
+            }
+        }
+
+        let is_outside_viewport = self.x < self.vid.view_left as u16
+            || self.x >= self.vid.view_right as u16
+            || self.y < self.vid.view_top as u16
+            || self.y >= self.vid.view_bottom as u16;
+
+        let color = if is_outside_viewport {
+            ColorRGB24::from(self.bg_color)
+        } else {
+            // Check for foreground pixel, compensating for crop_x
+            ColorRGB24::from(self.get_pixel_color())
+        };
+
+        // // Cache result coordinates
+        let result_coords = ScreenCoords {
+            x: self.x as i32,
+            y: self.y as i32,
+        };
+
+        // Increment screen position
+        self.x += 1;
+
+        // Increment subpixel index - this is our primary counter
+        self.subpixel_index += 1;
+
+        // Check if we need a new cluster (crossed cluster boundary)
+        let mut reload_cluster = false;
+        if self.subpixel_index >= PIXELS_PER_CLUSTER {
+            reload_cluster = true;
+            self.subpixel_index = 0;
+        }
+
+        // Check if we need to go to the next line
+        if self.x == self.vid.width() {
+            self.x = 0;
+            self.y += 1;
+            // Cache scanline, compensating for crop_y
+            let fg_y = self.y as usize;
+            if fg_y < MAX_LINES {
+                self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+                // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+            }
+            // Force BG cluster reload on new lines, cache scanline
+            if self.y < self.vid.height() {
+                // self.scanline = self.vid.sprites.scanlines[(self.y + self.vid.crop_y) as usize].clone();
+                reload_cluster = true;
+            }
+        }
+
+        // This will be true every few pixels, and once every new line
+        if reload_cluster {
+            // Previous state - were we outside before?
+            let was_outside = self.force_bg_color || self.x == 0;
+
+            self.force_bg_color = !self.wrap_bg && self.is_outside();
+
+            // Only do tile calculations if we're using the actual background
+            if !self.force_bg_color || was_outside {
+                self.update_bg_cluster();
+            }
+        }
+
+        // Return the pixel color
+        Some((color, result_coords))
+    }
 }
 
 impl<'a> PixelIter<'a> {
@@ -164,86 +245,5 @@ impl<'a> PixelIter<'a> {
         let w = self.vid.bg.width() as i16;
         let h = self.vid.bg.height() as i16;
         raw_x < 0 || raw_y < 0 || raw_x >= w || raw_y >= h
-    }
-}
-
-impl<'a> Iterator for PixelIter<'a> {
-    type Item = (ColorRGB24, ScreenCoords);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // End line reached
-        if self.y == self.vid.max_y() as u16 {
-            return None;
-        }
-
-        if self.x == self.horizontal_irq_position {
-            if let Some(func) = self.horizontal_irq {
-                func(self, self.vid, self.y);
-            }
-        }
-
-        let is_outside_viewport = self.x < self.vid.view_left as u16
-            || self.x >= self.vid.view_right as u16
-            || self.y < self.vid.view_top as u16
-            || self.y >= self.vid.view_bottom as u16;
-
-        let color = if is_outside_viewport {
-            ColorRGB24::from(self.bg_color)
-        } else {
-            // Check for foreground pixel, compensating for crop_x
-            ColorRGB24::from(self.get_pixel_color())
-        };
-
-        // // Cache result coordinates
-        let result_coords = ScreenCoords {
-            x: self.x as i32,
-            y: self.y as i32,
-        };
-
-        // Increment screen position
-        self.x += 1;
-
-        // Increment subpixel index - this is our primary counter
-        self.subpixel_index += 1;
-
-        // Check if we need a new cluster (crossed cluster boundary)
-        let mut reload_cluster = false;
-        if self.subpixel_index >= PIXELS_PER_CLUSTER {
-            reload_cluster = true;
-            self.subpixel_index = 0;
-        }
-
-        // Check if we need to go to the next line
-        if self.x == self.vid.width() {
-            self.x = 0;
-            self.y += 1;
-            // Cache scanline, compensating for crop_y
-            let fg_y = self.y as usize;
-            if fg_y < MAX_LINES {
-                self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
-                // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
-            }
-            // Force BG cluster reload on new lines, cache scanline
-            if self.y < self.vid.height() {
-                // self.scanline = self.vid.sprites.scanlines[(self.y + self.vid.crop_y) as usize].clone();
-                reload_cluster = true;
-            }
-        }
-
-        // This will only run every few pixels, and once every new line
-        if reload_cluster {
-            // Previous state - were we outside before?
-            let was_outside = self.force_bg_color || self.x == 0;
-
-            self.force_bg_color = !self.wrap_bg && self.is_outside();
-
-            // Only do tile calculations if we're using the actual background
-            if !self.force_bg_color || was_outside {
-                self.update_bg_cluster();
-            }
-        }
-
-        // Return the pixel color
-        Some((color, result_coords))
     }
 }

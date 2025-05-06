@@ -55,7 +55,7 @@ impl SpriteGenerator {
         screen_width: u16,
         screen_height: u16,
         flags: TileFlags,
-        tile: &Tile,
+        tile: &Tile<2>,
     ) {
         let w = TILE_SIZE as i16;
         let h = TILE_SIZE as i16;

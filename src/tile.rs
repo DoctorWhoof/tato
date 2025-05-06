@@ -4,12 +4,13 @@ use super::*;
 #[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord, PartialEq, Hash, Default)]
 pub struct TileID(pub u16);
 
+/// An array of clusters, each holding 8 pixels
 #[derive(Debug, Clone, Hash, PartialEq, Default)]
-pub struct Tile {
-    pub clusters: [Cluster<2>; TILE_CLUSTER_COUNT],
+pub struct Tile<const BITS_PER_PIXEL: usize>  {
+    pub clusters: [Cluster<BITS_PER_PIXEL>; TILE_CLUSTER_COUNT],
 }
 
-impl Tile {
+impl<const BITS_PER_PIXEL: usize> Tile<BITS_PER_PIXEL> {
     pub fn get_pixel(&self, x: u8, y: u8) -> u8 {
         self.clusters[y as usize].get_subpixel(x)
     }

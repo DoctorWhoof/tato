@@ -43,7 +43,7 @@ pub struct VideoChip {
     pub(crate) w: u16,
     pub(crate) h: u16,
     // Pixel data for all tiles, stored as palette indices.
-    pub(crate) tiles: [Tile; TILE_COUNT],
+    pub(crate) tiles: [Tile<2>; TILE_COUNT],
     // ---------------------- Bookkeeping ----------------------
     // view rect cache
     pub(crate) view_left: u16,
@@ -96,22 +96,22 @@ impl VideoChip {
         };
         result.reset_all();
 
-        // println!(
-        //     "Total Size of VideoChip:\t{:.1} Kb",
-        //     size_of::<VideoChip>() as f32 / 1024.0
-        // );
-        // println!(
-        //     "   Sprite buffers (scanlines):\t{:.1} Kb",
-        //     size_of::<SpriteGenerator>() as f32 / 1024.0
-        // );
-        // println!(
-        //     "   Tile Memory:\t\t\t{:.1} Kb",
-        //     (result.tile_pixels.len() * size_of::<Cluster<2>>()) as f32 / 1024.0
-        // );
-        // println!(
-        //     "   BG Map:\t\t\t{:.1} Kb",
-        //     size_of::<BGMap>() as f32 / 1024.0
-        // );
+        println!(
+            "Total Size of VideoChip:\t{:.1} Kb",
+            size_of::<VideoChip>() as f32 / 1024.0
+        );
+        println!(
+            "   Sprite buffers (scanlines):\t{:.1} Kb",
+            size_of::<SpriteGenerator>() as f32 / 1024.0
+        );
+        println!(
+            "   Tile Memory:\t\t\t{:.1} Kb",
+            (result.tiles.len() * size_of::<Tile<2>>()) as f32 / 1024.0
+        );
+        println!(
+            "   BG Map:\t\t\t{:.1} Kb",
+            size_of::<BGMap>() as f32 / 1024.0
+        );
 
         result
     }
