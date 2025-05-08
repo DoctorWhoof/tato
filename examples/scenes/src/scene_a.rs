@@ -175,16 +175,13 @@ impl SceneA {
 
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
-            t.video.draw_sprite(
-                DrawBundle {
-                    x: entity.x as i16,
-                    y: entity.y as i16,
-                    id: entity.tile,
-                    // Remember, we generated palettes that match the color indices
-                    flags: entity.flags.with_palette(PaletteID(BLACK.0)),
-                },
-                &t.tiles.tiles,
-            );
+            t.video.draw_sprite(DrawBundle {
+                x: entity.x as i16,
+                y: entity.y as i16,
+                id: entity.tile,
+                // Remember, we generated palettes that match the color indices
+                flags: entity.flags.with_palette(PaletteID(BLACK.0)),
+            });
         };
 
         for entity in &self.smileys {
@@ -195,15 +192,12 @@ impl SceneA {
         // Draw Sprites with hover animation
         let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = ((phase * speed).sin() + 1.0) * height;
-            t.video.draw_sprite(
-                DrawBundle {
-                    x: (entity.x - 1.0) as i16,
-                    y: (entity.y - 1.0 - hover) as i16,
-                    id: entity.tile,
-                    flags: entity.flags,
-                },
-                &t.tiles.tiles,
-            );
+            t.video.draw_sprite(DrawBundle {
+                x: (entity.x - 1.0) as i16,
+                y: (entity.y - 1.0 - hover) as i16,
+                id: entity.tile,
+                flags: entity.flags,
+            });
         };
 
         for entity in &self.smileys {
@@ -219,15 +213,12 @@ impl SceneA {
         sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
 
         // Flashing Smiley at the origin
-        t.video.draw_sprite(
-            DrawBundle {
-                x: 0,
-                y: 0,
-                id: TileID(0),
-                flags: TileFlags::default(), // Player palette is zero
-            },
-            &t.tiles.tiles,
-        );
+        t.video.draw_sprite(DrawBundle {
+            x: 0,
+            y: 0,
+            id: TileID(0),
+            flags: TileFlags::default(), // Player palette is zero
+        });
 
         // ------------------- Return mode switch request -------------------
 

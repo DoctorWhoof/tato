@@ -66,26 +66,20 @@ impl SceneB {
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
             entity.x -= speed;
             entity.y += speed;
-            t.video.draw_sprite(
-                DrawBundle {
-                    x: entity.x as i16,
-                    y: entity.y as i16,
-                    id: entity.tile,
-                    flags: entity.flags,
-                },
-                &t.tiles.tiles,
-            );
+            t.video.draw_sprite(DrawBundle {
+                x: entity.x as i16,
+                y: entity.y as i16,
+                id: entity.tile,
+                flags: entity.flags,
+            });
         }
 
-        t.video.draw_sprite(
-            DrawBundle {
-                x: self.player.x as i16,
-                y: self.player.y as i16,
-                id: self.player.tile,
-                flags: self.player.flags,
-            },
-            &t.tiles.tiles,
-        );
+        t.video.draw_sprite(DrawBundle {
+            x: self.player.x as i16,
+            y: self.player.y as i16,
+            id: self.player.tile,
+            flags: self.player.flags,
+        });
 
         if app.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;

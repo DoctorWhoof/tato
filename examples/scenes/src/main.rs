@@ -88,6 +88,8 @@ fn main() {
             elapsed: 1.0 / target_fps,
         };
 
+        // If scene is None, immediately switch to A.
+        // Otherwise process it to get scene_change.
         let scene_change = match &mut scene {
             Scene::None => Some(SceneChange::A),
             Scene::A(scn) => scn.update(&mut t, state),
@@ -97,8 +99,7 @@ fn main() {
 
         // Update backend
         copy_pixels_to_texture(
-            &t.video,
-            &t.tiles.tiles,
+            &mut t,
             &ray_thread,
             &mut ray,
             &mut pixels,

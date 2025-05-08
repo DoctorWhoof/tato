@@ -1,6 +1,6 @@
 use crate::{PIXEL_COUNT, W};
 use raylib::prelude::*;
-use tato::prelude::*;
+use tato::{Tato, prelude::*};
 
 pub fn config_raylib() {
     unsafe {
@@ -59,8 +59,7 @@ pub fn update_gamepad(ray: &RaylibHandle, pad: &mut AnaloguePad) {
 }
 
 pub fn copy_pixels_to_texture(
-    vid: &VideoChip,
-    tiles: &[Tile<2>],
+    t: &mut Tato,
     thread: &RaylibThread,
     ray: &mut RaylibHandle,
     pixels: &mut [u8; PIXEL_COUNT],
@@ -69,7 +68,7 @@ pub fn copy_pixels_to_texture(
     // Copy from framebuffer to raylib texture
     let time = std::time::Instant::now();
 
-    for (color, coords) in vid.iter_pixels(tiles) {
+    for (color, coords) in t.video.iter_pixels(&t.tiles.tiles) {
         let i = ((coords.y as usize * W) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
@@ -83,9 +82,9 @@ pub fn copy_pixels_to_texture(
     let screen_width = ray.get_screen_width();
     let screen_height = ray.get_screen_height();
 
-    let scale = (screen_height as f32 / vid.height() as f32).floor() as i32;
-    let w = vid.width() as i32 * scale;
-    let h = vid.height() as i32 * scale;
+    let scale = (screen_height as f32 / t.video.height() as f32).floor() as i32;
+    let w = t.video.width() as i32 * scale;
+    let h = t.video.height() as i32 * scale;
     let draw_rect_x = (screen_width - w) / 2;
     let draw_rect_y = (screen_height - h) / 2;
 
