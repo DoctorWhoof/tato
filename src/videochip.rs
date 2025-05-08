@@ -40,7 +40,7 @@ pub struct VideoChip {
     // Pixel data for all tiles, stored as palette indices.
     // pub tiles: &'a [Tile<2>; TILE_COUNT],
     // ---------------------- Main Data ----------------------
-    pub(crate) sprites: SpriteGenerator,
+    pub(crate) sprite_gen: SpriteGenerator,
     // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; MAX_LINES],
     pub(crate) w: u16,
     pub(crate) h: u16,
@@ -77,7 +77,7 @@ impl VideoChip {
             fg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             bg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
-            sprites: SpriteGenerator::new(),
+            sprite_gen: SpriteGenerator::new(),
             tile_id_head: 0,
             tile_pixel_head: 0,
             palette_head: 0,
@@ -199,7 +199,7 @@ impl VideoChip {
     }
 
     pub fn reset_sprites(&mut self) {
-        self.sprites.reset();
+        self.sprite_gen.reset();
     }
 
     pub fn set_palette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
@@ -261,7 +261,7 @@ impl VideoChip {
             }
         }
 
-        self.sprites
+        self.sprite_gen
             .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id);
     }
 

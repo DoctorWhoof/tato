@@ -48,6 +48,9 @@ pub type HorizontalIRQ = fn(&mut PixelIter, &VideoChip, u16);
 /// Maximum number of video scanlines
 pub const MAX_LINES: usize = 256;
 
+/// Maximum number of simultaneous sprites on a single frame
+pub const MAX_SPRITES: usize = 256;
+
 /// Maximum sprite storage length (8 Kb with Cluster<2> used).
 /// TODO: May be increased to 1024?
 pub const TILE_COUNT: usize = 512;

@@ -2,7 +2,8 @@ use core::array::from_fn;
 
 use crate::*;
 
-/// The part of a sprite that goes into a single scanline
+/// A sprite represents a tile's position on the screen and the palette
+/// used to draw it.
 #[derive(Debug, Clone, Default)]
 pub struct Sprite {
     pub y: i16,
@@ -18,27 +19,33 @@ pub struct Scanline {
     pub sprite_count: u8,
     // Tracks Which slots contain sprites
     pub mask: u16,
-    pub sprites: [Sprite; SPRITES_PER_LINE],
+    // Tracks which sprites are visible in this line
+    pub sprites: [u8; SPRITES_PER_LINE],
 }
 
-/// Facilitates adding a single transformed sprite to multiple scanlines.
+/// Manages sprites inserted in a single frame
 #[derive(Debug)]
 pub struct SpriteGenerator {
+    pub sprites: [Sprite; MAX_SPRITES],
     pub scanlines: [Scanline; MAX_LINES],
+    sprite_count: u8,
 }
 
 impl SpriteGenerator {
     pub fn new() -> Self {
         Self {
+            sprites: from_fn(|_| Sprite::default()),
             scanlines: from_fn(|_| Scanline {
                 mask: 0,
                 sprite_count: 0,
                 sprites: Default::default(),
             }),
+            sprite_count: 0,
         }
     }
 
     pub fn reset(&mut self) {
+        self.sprite_count = 0;
         for line in &mut self.scanlines {
             line.mask = 0;
             line.sprite_count = 0;
@@ -56,10 +63,14 @@ impl SpriteGenerator {
         screen_width: u16,
         screen_height: u16,
         flags: TileFlags,
-        id: TileID, // tile: &Tile<2>,
+        id: TileID,
     ) {
         let w = TILE_SIZE as i16;
         let h = TILE_SIZE as i16;
+
+        if self.sprite_count == u8::MAX {
+            return;
+        }
 
         if x >= screen_width as i16 || y >= screen_height as i16 {
             return;
@@ -69,12 +80,18 @@ impl SpriteGenerator {
             return;
         }
 
+        // Write sprite to sprite bank
+        let sprite = &mut self.sprites[self.sprite_count as usize];
+        sprite.x = x;
+        sprite.y = y;
+        sprite.id = id;
+        sprite.flags = flags;
+
+        // Write sprite index and mask info to scanline
         let min_x = (-x).max(0);
         let min_y = (-y).max(0);
         let max_x = (screen_width as i16 - x).clamp(0, w);
         let max_y = (screen_height as i16 - y).clamp(0, h);
-
-        // Copy transformed tile data to scanline buffers
         for local_y in min_y..max_y {
             let screen_y = y + local_y;
 
@@ -83,27 +100,21 @@ impl SpriteGenerator {
             if line.sprite_count as usize >= SPRITES_PER_LINE {
                 return;
             }
-            let sprite_index = line.sprite_count as usize;
-            let sprite = &mut line.sprites[sprite_index];
+            let local_sprite = line.sprite_count as usize;
+            line.sprites[local_sprite] = self.sprite_count;
+            line.sprite_count += 1;
 
-            // Iterate X pixels
+            // Iterate X pixels to set mask
             for local_x in min_x..max_x {
                 let screen_x = x + local_x;
-                // Write to destination pixel
-
                 // Set bit mask to help iterator skip unused slots
                 let slot =
                     ((screen_x as f32 / screen_width as f32) * SLOTS_PER_LINE as f32) as usize;
                 debug_assert!(slot < SLOTS_PER_LINE, err!("Invalid slot index"));
                 line.mask |= 1 << slot;
             }
-            sprite.flags = flags;
-            sprite.x = x;
-            sprite.y = y;
-            sprite.id = id;
-
-            line.sprite_count += 1;
         }
+        self.sprite_count += 1;
     }
 }
 

@@ -86,7 +86,7 @@ impl<'a> Iterator for PixelIter<'a> {
             // Cache scanline, compensating for crop_y
             let fg_y = self.y as usize;
             if fg_y < MAX_LINES {
-                self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+                self.scanline = self.vid.sprite_gen.scanlines[fg_y as usize].clone();
                 // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
             }
             // Force BG cluster reload on new lines, cache scanline
@@ -137,7 +137,7 @@ impl<'a> PixelIter<'a> {
             fg_palette: vid.fg_palette.clone(),
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
-            scanline: vid.sprites.scanlines[0].clone(),
+            scanline: vid.sprite_gen.scanlines[0].clone(),
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -202,19 +202,20 @@ impl<'a> PixelIter<'a> {
                     'sprite_loop: for n in (0..self.scanline.sprite_count as usize).rev() {
                         let w = TILE_SIZE as i16;
                         let h = TILE_SIZE as i16;
-                        let sprite = &self.scanline.sprites[n];
+                        let sprite_id = self.scanline.sprites[n] as usize;
+                        let sprite = &self.vid.sprite_gen.sprites[sprite_id];
 
                         if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as i16 {
                             continue;
                         }
 
                         let local_x = fg_x - sprite.x;
-                        if local_x >= w {
+                        if local_x >= w || local_x < 0 {
                             continue;
                         }
 
                         let local_y = self.y as i16 - sprite.y;
-                        if local_y >= h {
+                        if local_y >= h || local_y < 0 {
                             continue;
                         }
 
