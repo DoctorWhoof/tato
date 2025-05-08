@@ -220,7 +220,7 @@ impl VideoChip {
 
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
     /// also provide various tile flags, like flipping, and specify a palette id.
-    pub fn draw_sprite(&mut self, data: DrawBundle, tiles:&[Tile<2>]) {
+    pub fn draw_sprite(&mut self, data: DrawBundle) {
         let size = TILE_SIZE as i16;
 
         // Handle wrapping
@@ -261,10 +261,8 @@ impl VideoChip {
             }
         }
 
-        let tile = &tiles[data.id.0 as usize];
-
         self.sprites
-            .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, tile);
+            .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id);
     }
 
     /// Increments or decrements an index in a local palette so that its value
@@ -290,6 +288,7 @@ impl VideoChip {
     }
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
+    /// Requires a reference to the Tile array.
     pub fn iter_pixels<'a>(&'a self, tiles: &'a [Tile<2>]) -> PixelIter<'a> {
         PixelIter::new(self, tiles)
     }

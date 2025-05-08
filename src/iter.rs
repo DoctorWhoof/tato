@@ -115,7 +115,7 @@ impl<'a> Iterator for PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new(vid: &'a VideoChip, tiles:&'a [Tile<2>]) -> Self {
+    pub fn new(vid: &'a VideoChip, tiles: &'a [Tile<2>]) -> Self {
         let mut result = Self {
             tiles,
             vid,
@@ -200,17 +200,29 @@ impl<'a> PixelIter<'a> {
                 if self.scanline.mask & (1 << slot) != 0 {
                     // Iterate sprites in line
                     'sprite_loop: for n in (0..self.scanline.sprite_count as usize).rev() {
+                        let w = TILE_SIZE as i16;
+                        let h = TILE_SIZE as i16;
                         let sprite = &self.scanline.sprites[n];
+
                         if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as i16 {
                             continue;
                         }
 
-                        // let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, flags);
-                        // let source_pixel = tile.get_pixel(tx as u8, ty as u8);
+                        let local_x = fg_x - sprite.x;
+                        if local_x >= w {
+                            continue;
+                        }
 
-                        let color_index =
-                            sprite.pixels.get_subpixel((fg_x - sprite.x) as u8) as usize;
-                        let pixel = self.vid.local_palettes[sprite.palette.id()][color_index].0;
+                        let local_y = self.y as i16 - sprite.y;
+                        if local_y >= h {
+                            continue;
+                        }
+
+                        let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, sprite.flags);
+                        let tile = &self.tiles[sprite.id.0 as usize];
+                        let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
+                        let palette = sprite.flags.palette().id();
+                        let pixel = self.vid.local_palettes[palette][pixel].0;
                         if pixel > 0 {
                             result = pixel;
                             break 'sprite_loop;

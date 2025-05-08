@@ -4,10 +4,11 @@ use crate::*;
 
 /// The part of a sprite that goes into a single scanline
 #[derive(Debug, Clone, Default)]
-pub struct SpriteSegment {
+pub struct Sprite {
+    pub y: i16,
     pub x: i16,
-    pub pixels: Cluster<2>,
-    pub palette: PaletteID,
+    pub id: TileID,
+    pub flags: TileFlags,
 }
 
 /// Holds the sprite segments for a single line, as well as a "presence" mask
@@ -17,7 +18,7 @@ pub struct Scanline {
     pub sprite_count: u8,
     // Tracks Which slots contain sprites
     pub mask: u16,
-    pub sprites: [SpriteSegment; SPRITES_PER_LINE],
+    pub sprites: [Sprite; SPRITES_PER_LINE],
 }
 
 /// Facilitates adding a single transformed sprite to multiple scanlines.
@@ -55,7 +56,7 @@ impl SpriteGenerator {
         screen_width: u16,
         screen_height: u16,
         flags: TileFlags,
-        tile: &Tile<2>,
+        id: TileID, // tile: &Tile<2>,
     ) {
         let w = TILE_SIZE as i16;
         let h = TILE_SIZE as i16;
@@ -82,34 +83,24 @@ impl SpriteGenerator {
             if line.sprite_count as usize >= SPRITES_PER_LINE {
                 return;
             }
+            let sprite_index = line.sprite_count as usize;
+            let sprite = &mut line.sprites[sprite_index];
 
             // Iterate X pixels
             for local_x in min_x..max_x {
                 let screen_x = x + local_x;
-
-                // Copy source pixel
-                let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, flags);
-                let source_pixel = tile.get_pixel(tx as u8, ty as u8);
-
                 // Write to destination pixel
-                let sprite_index = line.sprite_count as usize;
-                let sprite = &mut line.sprites[sprite_index];
-                let dest_subpixel = local_x as usize; // max local_x matches cluster size
-                sprite
-                    .pixels
-                    .set_subpixel(source_pixel, dest_subpixel as u8);
 
                 // Set bit mask to help iterator skip unused slots
                 let slot =
                     ((screen_x as f32 / screen_width as f32) * SLOTS_PER_LINE as f32) as usize;
                 debug_assert!(slot < SLOTS_PER_LINE, err!("Invalid slot index"));
                 line.mask |= 1 << slot;
-
-                // This is a little redundant - every new pixel does it!
-                // But trying to avoid it creates complexity and is not worth it...
-                sprite.palette = flags.palette();
-                sprite.x = x;
             }
+            sprite.flags = flags;
+            sprite.x = x;
+            sprite.y = y;
+            sprite.id = id;
 
             line.sprite_count += 1;
         }
@@ -117,7 +108,13 @@ impl SpriteGenerator {
 }
 
 #[inline(always)]
-fn transform_tile_coords(x: i16, y: i16, w: i16, h: i16, flags: TileFlags) -> (i16, i16) {
+pub(crate) fn transform_tile_coords(
+    x: i16,
+    y: i16,
+    w: i16,
+    h: i16,
+    flags: TileFlags,
+) -> (i16, i16) {
     // Handle both rotation and flipping
     if flags.is_rotated() {
         // For 90° clockwise rotation, swap x and y and flip the new x axis
