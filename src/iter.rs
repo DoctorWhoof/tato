@@ -3,6 +3,7 @@ use crate::*;
 /// Renders every pixel as it iterates the entire screen.
 /// All public fields can be manipulated per line with HorizontalIRQ!
 pub struct PixelIter<'a> {
+    tiles: &'a [Tile<2>],
     vid: &'a VideoChip,
     x: u16, // Current screen x position
     y: u16, // Current screen y position
@@ -114,8 +115,9 @@ impl<'a> Iterator for PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new(vid: &'a VideoChip) -> Self {
+    pub fn new(vid: &'a VideoChip, tiles:&'a [Tile<2>]) -> Self {
         let mut result = Self {
+            tiles,
             vid,
             x: 0,
             y: 0,
@@ -166,7 +168,7 @@ impl<'a> PixelIter<'a> {
 
         // Get the tile
         let tile_index = current_bg_tile_id as usize;
-        let tile_clusters = &self.vid.tiles[tile_index].clusters;
+        let tile_clusters = &self.tiles[tile_index].clusters;
 
         // Get the correct cluster with transformations applied
         // TODO: Update to latest Tile struct, get rid of "from_tile"?
@@ -202,6 +204,10 @@ impl<'a> PixelIter<'a> {
                         if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as i16 {
                             continue;
                         }
+
+                        // let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, flags);
+                        // let source_pixel = tile.get_pixel(tx as u8, ty as u8);
+
                         let color_index =
                             sprite.pixels.get_subpixel((fg_x - sprite.x) as u8) as usize;
                         let pixel = self.vid.local_palettes[sprite.palette.id()][color_index].0;

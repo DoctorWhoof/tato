@@ -37,13 +37,13 @@ pub struct VideoChip {
     /// It is automatically passed to the PixelIterator.
     pub horizontal_irq_callback: Option<HorizontalIRQ>,
 
+    // Pixel data for all tiles, stored as palette indices.
+    // pub tiles: &'a [Tile<2>; TILE_COUNT],
     // ---------------------- Main Data ----------------------
     pub(crate) sprites: SpriteGenerator,
     // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; MAX_LINES],
     pub(crate) w: u16,
     pub(crate) h: u16,
-    // Pixel data for all tiles, stored as palette indices.
-    pub(crate) tiles: [Tile<2>; TILE_COUNT],
     // ---------------------- Bookkeeping ----------------------
     // view rect cache
     pub(crate) view_left: u16,
@@ -70,7 +70,7 @@ impl VideoChip {
 
         let mut result = Self {
             bg: BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS),
-            tiles: from_fn(|_| Tile::default()),
+            // tiles,
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
@@ -104,10 +104,10 @@ impl VideoChip {
             "   Sprite buffers (scanlines):\t{:.1} Kb",
             size_of::<SpriteGenerator>() as f32 / 1024.0
         );
-        println!(
-            "   Tile Memory:\t\t\t{:.1} Kb",
-            (result.tiles.len() * size_of::<Tile<2>>()) as f32 / 1024.0
-        );
+        // println!(
+        //     "   Tile Memory:\t\t\t{:.1} Kb",
+        //     (result.tiles.len() * size_of::<Tile<2>>()) as f32 / 1024.0
+        // );
         println!(
             "   BG Map:\t\t\t{:.1} Kb",
             size_of::<BGMap>() as f32 / 1024.0
@@ -218,54 +218,9 @@ impl VideoChip {
         PaletteID(result)
     }
 
-    pub fn new_tile(&mut self, data: &[u8]) -> TileID {
-        // Check if number of pixels is correct
-        assert!(
-            data.len() == TILE_PIXEL_COUNT,
-            err!("Tile data length must match TILE_PIXEL_COUNT ({})"),
-            TILE_PIXEL_COUNT
-        );
-
-        // Check if we have enough space
-        if self.tile_id_head >= TILE_COUNT{
-            panic!(err!("Not enough space for new tile"))
-        }
-
-        let tile_id = u16::try_from(self.tile_id_head).unwrap();
-
-        // Pack 8 pixels (2 bits each) into each cluster
-        // TODO: REPLACE WITH TILE.SET_PIXEL
-        let mut cluster_index = 0;
-        let mut subpixel_index = 0;
-        for i in 0..TILE_PIXEL_COUNT {
-            // Clamp color to maximum allowed
-            let value = data[i].clamp(0, COLORS_PER_TILE as u8);
-
-            // Set pixel data
-            self.tiles[self.tile_id_head] //
-                .clusters[cluster_index]
-                .set_subpixel(value, subpixel_index);
-
-            // Advance
-            subpixel_index += 1;
-            if subpixel_index >= PIXELS_PER_CLUSTER {
-                subpixel_index = 0;
-                cluster_index += 1;
-            }
-        }
-
-        self.tile_id_head += 1;
-        self.tile_pixel_head += TILE_PIXEL_COUNT;
-
-        TileID(tile_id)
-    }
-
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
     /// also provide various tile flags, like flipping, and specify a palette id.
-    pub fn draw_sprite(&mut self, data: DrawBundle) {
-        if data.id.0 as usize >= self.tile_id_head {
-            return;
-        }
+    pub fn draw_sprite(&mut self, data: DrawBundle, tiles:&[Tile<2>]) {
         let size = TILE_SIZE as i16;
 
         // Handle wrapping
@@ -306,7 +261,7 @@ impl VideoChip {
             }
         }
 
-        let tile = &self.tiles[data.id.0 as usize];
+        let tile = &tiles[data.id.0 as usize];
 
         self.sprites
             .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, tile);
@@ -335,7 +290,7 @@ impl VideoChip {
     }
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
-    pub fn iter_pixels(&self) -> PixelIter {
-        PixelIter::new(self)
+    pub fn iter_pixels<'a>(&'a self, tiles: &'a [Tile<2>]) -> PixelIter<'a> {
+        PixelIter::new(self, tiles)
     }
 }
