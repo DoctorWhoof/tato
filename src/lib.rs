@@ -28,6 +28,9 @@ use sprite::*;
 mod tile;
 pub use tile::*;
 
+mod tile_bank;
+pub use tile_bank::*;
+
 mod tile_flags;
 pub use tile_flags::*;
 
