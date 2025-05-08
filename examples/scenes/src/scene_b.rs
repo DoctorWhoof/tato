@@ -8,24 +8,24 @@ pub struct SceneB {
 }
 
 impl SceneB {
-    pub fn new(vid: &mut VideoChip) -> Self {
+    pub fn new(t: &mut Tato) -> Self {
         // Center view
-        let x = vid.max_x() / 2;
-        let y = vid.max_y() / 2;
+        let x = t.video.max_x() / 2;
+        let y = t.video.max_y() / 2;
         // Shrinks the viewport by 8 pixels on each edge, creating the
         // illusion that sprites go outside the border - in reality they are
         // culled as soon as they hit the left or top border
-        vid.set_viewport(8, 8, 224, 164);
+        t.video.set_viewport(8, 8, 224, 164);
 
         // Colors
-        vid.bg_color = DARK_GREEN;
-        let _palette_bg = vid.push_subpalette([BG_COLOR, GREEN, BLACK, BLACK]);
-        let palette_smiley = vid.push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
-        let palette_cycler = vid.push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
+        t.video.bg_color = DARK_GREEN;
+        let _palette_bg = t.video.push_subpalette([BG_COLOR, GREEN, BLACK, BLACK]);
+        let palette_smiley = t.video.push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
+        let palette_cycler = t.video.push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
-        let tile = vid.new_tile(&data::SMILEY);
+        let tile = t.tiles.new_tile(&data::SMILEY);
 
         Self {
             player: Entity {
@@ -45,8 +45,8 @@ impl SceneB {
         }
     }
 
-    pub fn update(&mut self, vid: &mut VideoChip, app: BackendState) -> Option<SceneChange> {
-        vid.start_frame();
+    pub fn update(&mut self, t: &mut Tato, app: BackendState) -> Option<SceneChange> {
+        t.video.start_frame();
         let speed = 1.0;
         if app.pad.is_down(Button::Left) {
             self.player.x -= speed;
@@ -60,30 +60,36 @@ impl SceneB {
         }
 
         // Draw!
-        vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
+        t.video.color_cycle(self.player.flags.palette(), 1, 1, 15);
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
             entity.x -= speed;
             entity.y += speed;
-            vid.draw_sprite(DrawBundle {
-                x: entity.x as i16,
-                y: entity.y as i16,
-                id: entity.tile,
-                flags: entity.flags,
-            });
+            t.video.draw_sprite(
+                DrawBundle {
+                    x: entity.x as i16,
+                    y: entity.y as i16,
+                    id: entity.tile,
+                    flags: entity.flags,
+                },
+                &t.tiles.tiles,
+            );
         }
 
-        vid.draw_sprite(DrawBundle {
-            x: self.player.x as i16,
-            y: self.player.y as i16,
-            id: self.player.tile,
-            flags: self.player.flags,
-        });
+        t.video.draw_sprite(
+            DrawBundle {
+                x: self.player.x as i16,
+                y: self.player.y as i16,
+                id: self.player.tile,
+                flags: self.player.flags,
+            },
+            &t.tiles.tiles,
+        );
 
         if app.pad.is_just_pressed(Button::Start) {
-            vid.wrap_sprites = !vid.wrap_sprites;
-            // println!("Wrap: {}", vid.wrap_sprites);
+            t.video.wrap_sprites = !t.video.wrap_sprites;
+            // println!("Wrap: {}", t.video.wrap_sprites);
         }
 
         if app.pad.is_just_pressed(Button::Menu) {

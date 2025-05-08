@@ -9,7 +9,7 @@ use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use tato::prelude::*;
+use tato::{Tato, prelude::*};
 
 const W: usize = 240;
 const H: usize = 180;
@@ -41,6 +41,7 @@ pub enum SceneChange {
 // Contains the actual scene payload
 #[derive(Debug)]
 pub enum Scene {
+    None,
     A(SceneA),
     B(SceneB),
     C(SceneC),
@@ -48,11 +49,10 @@ pub enum Scene {
 
 fn main() {
     // Tato setup + initial scene
-    let mut pad = AnaloguePad::default();
-    let mut video = VideoChip::new(W as u16, H as u16);
-    let mut scene = Scene::A(SceneA::new(&mut video));
+    let mut t = Tato::new(W as u16, H as u16);
+    let mut scene = Scene::None;
     // Line scrolling effect, adjusts scroll on every line
-    video.horizontal_irq_callback = Some(|iter, video, line| {
+    t.video.horizontal_irq_callback = Some(|iter, video, line| {
         let line_offset = (line as f32 + video.scroll_y as f32) / 16.0;
         let phase = ((video.frame_count() as f32 / 30.0) + line_offset).sin();
         iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
@@ -60,8 +60,8 @@ fn main() {
 
     // Raylib setup
     let target_fps = 60.0;
-    let w = video.width() as i32;
-    let h = video.height() as i32;
+    let w = t.video.width() as i32;
+    let h = t.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
         .size(w * 3, h * 3)
         .title("Tato Demo")
@@ -81,35 +81,37 @@ fn main() {
 
     // Main Loop
     while !ray.window_should_close() {
-        update_gamepad(&ray, &mut pad);
+        update_gamepad(&ray, &mut t.pad);
         let state = BackendState {
-            pad,
+            pad: t.pad,
             time: ray.get_time(),
             elapsed: 1.0 / target_fps,
         };
 
         let scene_change = match &mut scene {
-            Scene::A(scn) => scn.update(&mut video, state),
-            Scene::B(scn) => scn.update(&mut video, state),
-            Scene::C(scn) => scn.update(&mut video, state),
+            Scene::None => Some(SceneChange::A),
+            Scene::A(scn) => scn.update(&mut t, state),
+            Scene::B(scn) => scn.update(&mut t, state),
+            Scene::C(scn) => scn.update(&mut t, state),
         };
-
-        if let Some(choice) = scene_change {
-            video.reset_all();
-            match choice {
-                SceneChange::A => scene = Scene::A(SceneA::new(&mut video)),
-                SceneChange::B => scene = Scene::B(SceneB::new(&mut video)),
-                SceneChange::C => scene = Scene::C(SceneC::new(&mut video)),
-            }
-        }
 
         // Update backend
         copy_pixels_to_texture(
-            &video,
+            &t.video,
+            &t.tiles.tiles,
             &ray_thread,
             &mut ray,
             &mut pixels,
             &mut render_texture,
         );
+
+        if let Some(choice) = scene_change {
+            t.video.reset_all();
+            match choice {
+                SceneChange::A => scene = Scene::A(SceneA::new(&mut t)),
+                SceneChange::B => scene = Scene::B(SceneB::new(&mut t)),
+                SceneChange::C => scene = Scene::C(SceneC::new(&mut t)),
+            }
+        }
     }
 }

@@ -14,15 +14,16 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(vid: &mut VideoChip) -> Self {
-        vid.bg_color = BLACK;
-        vid.wrap_bg = false;
-        vid.wrap_sprites = false;
-        vid.bg.columns = 32;
-        vid.bg.rows = 24;
+    // pub fn new(video: &mut VideoChip, tiles: &mut TileBank) -> Self {
+    pub fn new(t: &mut Tato) -> Self {
+        t.video.bg_color = BLACK;
+        t.video.wrap_bg = false;
+        t.video.wrap_sprites = false;
+        t.video.bg.columns = 32;
+        t.video.bg.rows = 24;
 
         // Palette test - defines BG palette with a golden tint!
-        vid.bg_palette = [
+        t.video.bg_palette = [
             Color9Bit::new(1, 1, 1),
             Color9Bit::new(2, 1, 1),
             Color9Bit::new(3, 1, 1),
@@ -42,26 +43,28 @@ impl SceneA {
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
-        for i in 0..vid.bg_palette.len() {
-            let _ = vid.push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
+        for i in 0..t.video.bg_palette.len() {
+            let _ = t
+                .video
+                .push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
         }
 
         // Define new tiles
-        let smiley = vid.new_tile(&data::SMILEY);
-        let checker = vid.new_tile(&data::ARROW);
-        let arrow = vid.new_tile(&data::ARROW);
+        let smiley = t.tiles.new_tile(&data::SMILEY);
+        let checker = t.tiles.new_tile(&data::ARROW);
+        let arrow = t.tiles.new_tile(&data::ARROW);
 
         // Set BG tiles
-        vid.bg.columns = 14 * 4;
-        vid.bg.rows = 14 * 4;
-        for col in 0..vid.bg.columns {
-            for row in 0..vid.bg.rows {
+        t.video.bg.columns = 14 * 4;
+        t.video.bg.rows = 14 * 4;
+        for col in 0..t.video.bg.columns {
+            for row in 0..t.video.bg.rows {
                 // Calculate palette ID based on coordinates, limits to 14 indices
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
 
-                vid.bg.set_tile(BgBundle {
+                t.video.bg.set_tile(BgBundle {
                     col,
                     row,
                     tile_id: checker,
@@ -73,8 +76,8 @@ impl SceneA {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0..vid.bg.width() as i16 - TILE_SIZE as i16) as f32,
-                y: rand::random_range(0..vid.bg.height() as i16 - TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..t.video.bg.width() as i16 - TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..t.video.bg.height() as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }
@@ -86,8 +89,8 @@ impl SceneA {
         // Store initial state and return
         Self {
             player: Entity {
-                x: (vid.width() / 2) as f32,
-                y: (vid.height() / 2) as f32,
+                x: (t.video.width() / 2) as f32,
+                y: (t.video.height() / 2) as f32,
                 tile: arrow,
                 flags: PaletteID(0).into(),
             },
@@ -97,15 +100,15 @@ impl SceneA {
     }
 
     // Process the scene on each frame
-    pub fn update(&mut self, vid: &mut VideoChip, app: BackendState) -> Option<SceneChange> {
-        vid.start_frame();
+    pub fn update(&mut self, t: &mut Tato, app: BackendState) -> Option<SceneChange> {
+        t.video.start_frame();
 
         // ------------------------------ Input ------------------------------
 
         if app.pad.is_just_pressed(Button::Start) {
-            vid.wrap_sprites = !vid.wrap_sprites;
-            vid.wrap_bg = !vid.wrap_bg;
-            // println!("Sprites wrap: {}, BG wrap: {}", vid.wrap_sprites, vid.wrap_bg);
+            t.video.wrap_sprites = !t.video.wrap_sprites;
+            t.video.wrap_bg = !t.video.wrap_bg;
+            // println!("Sprites wrap: {}, BG wrap: {}", t.video.wrap_sprites, t.video.wrap_bg);
         }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
@@ -151,34 +154,37 @@ impl SceneA {
         // ------------------------------ Draw ------------------------------
 
         // Adjust scroll and palette before drawing characters! (immediate mode)
-        let target_x = (self.player.x - (vid.width() as f32 / 2.0)).floor() as i16;
-        let target_y = (self.player.y - (vid.height() as f32 / 2.0)).floor() as i16;
-        vid.scroll_x = target_x;
-        vid.scroll_y = target_y;
+        let target_x = (self.player.x - (t.video.width() as f32 / 2.0)).floor() as i16;
+        let target_y = (self.player.y - (t.video.height() as f32 / 2.0)).floor() as i16;
+        t.video.scroll_x = target_x;
+        t.video.scroll_y = target_y;
 
-        vid.color_cycle(self.player.flags.palette(), 1, 1, 15);
+        t.video.color_cycle(self.player.flags.palette(), 1, 1, 15);
 
-        for col in 0..vid.bg.columns {
-            for row in 0..vid.bg.rows {
-                let Some(mut flags) = vid.bg.get_flags(col, row) else {
+        for col in 0..t.video.bg.columns {
+            for row in 0..t.video.bg.rows {
+                let Some(mut flags) = t.video.bg.get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                vid.bg.set_flags(col, row, flags);
+                t.video.bg.set_flags(col, row, flags);
             }
         }
 
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
-            vid.draw_sprite(DrawBundle {
-                x: entity.x as i16,
-                y: entity.y as i16,
-                id: entity.tile,
-                // Remember, we generated palettes that match the color indices
-                flags: entity.flags.with_palette(PaletteID(BLACK.0)),
-            });
+            t.video.draw_sprite(
+                DrawBundle {
+                    x: entity.x as i16,
+                    y: entity.y as i16,
+                    id: entity.tile,
+                    // Remember, we generated palettes that match the color indices
+                    flags: entity.flags.with_palette(PaletteID(BLACK.0)),
+                },
+                &t.tiles.tiles,
+            );
         };
 
         for entity in &self.smileys {
@@ -189,12 +195,15 @@ impl SceneA {
         // Draw Sprites with hover animation
         let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = ((phase * speed).sin() + 1.0) * height;
-            vid.draw_sprite(DrawBundle {
-                x: (entity.x - 1.0) as i16,
-                y: (entity.y - 1.0 - hover) as i16,
-                id: entity.tile,
-                flags: entity.flags,
-            });
+            t.video.draw_sprite(
+                DrawBundle {
+                    x: (entity.x - 1.0) as i16,
+                    y: (entity.y - 1.0 - hover) as i16,
+                    id: entity.tile,
+                    flags: entity.flags,
+                },
+                &t.tiles.tiles,
+            );
         };
 
         for entity in &self.smileys {
@@ -210,12 +219,15 @@ impl SceneA {
         sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
 
         // Flashing Smiley at the origin
-        vid.draw_sprite(DrawBundle {
-            x: 0,
-            y: 0,
-            id: TileID(0),
-            flags: TileFlags::default(), // Player palette is zero
-        });
+        t.video.draw_sprite(
+            DrawBundle {
+                x: 0,
+                y: 0,
+                id: TileID(0),
+                flags: TileFlags::default(), // Player palette is zero
+            },
+            &t.tiles.tiles,
+        );
 
         // ------------------- Return mode switch request -------------------
 

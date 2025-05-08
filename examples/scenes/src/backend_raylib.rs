@@ -60,22 +60,23 @@ pub fn update_gamepad(ray: &RaylibHandle, pad: &mut AnaloguePad) {
 
 pub fn copy_pixels_to_texture(
     vid: &VideoChip,
+    tiles: &[Tile<2>],
     thread: &RaylibThread,
     ray: &mut RaylibHandle,
     pixels: &mut [u8; PIXEL_COUNT],
     texture: &mut Texture2D,
 ) {
     // Copy from framebuffer to raylib texture
-    // let time = std::time::Instant::now();
+    let time = std::time::Instant::now();
 
-    for (color, coords) in vid.iter_pixels() {
+    for (color, coords) in vid.iter_pixels(tiles) {
         let i = ((coords.y as usize * W) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
         pixels[i + 2] = color.b;
         pixels[i + 3] = 255;
     }
-    // println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
+    println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
     texture.update_texture(pixels).unwrap();
 
     // Calculate rect with correct aspect ratio with integer scaling
