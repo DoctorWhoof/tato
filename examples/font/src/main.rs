@@ -6,6 +6,7 @@ use backend_raylib::*;
 
 const W: usize = 240;
 const H: usize = 180;
+pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(W as u16, H as u16);
@@ -16,14 +17,14 @@ fn main() {
         .push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
-    tato.video.new_tile(&TILE_EMPTY);
+    tato.tiles.new_tile(&TILE_EMPTY);
     tato.video.bg_color = DARK_BLUE;
     tato.video.bg.columns = 32;
     tato.video.bg.rows = 24;
 
     // Load font. TODO: Streamline this.
     for tile in tato::fonts::TILESET_FONT.chunks(64) {
-        tato.video.new_tile(tile);
+        tato.tiles.new_tile(tile);
     }
 
     // Pre-draw fixed text (writes to BG Map)
@@ -152,7 +153,7 @@ fn main() {
 
         // Update backends
         copy_pixels_to_texture(
-            &mut tato.video,
+            &mut tato,
             &ray_thread,
             &mut ray,
             &mut pixels,

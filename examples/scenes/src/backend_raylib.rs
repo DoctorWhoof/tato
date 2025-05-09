@@ -73,7 +73,7 @@ pub fn copy_pixels_to_texture(
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
         pixels[i + 2] = color.b;
-        pixels[i + 3] = 255;
+        pixels[i + 3] = color.a;
     }
     println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
     texture.update_texture(pixels).unwrap();
@@ -90,7 +90,7 @@ pub fn copy_pixels_to_texture(
 
     // Present frame
     let mut canvas = ray.begin_drawing(thread);
-    canvas.clear_background(Color::BLACK);
+    canvas.clear_background(Color::new(48,32,24,255));
     canvas.draw_texture_ex(
         &texture,
         Vector2::new(draw_rect_x as f32, draw_rect_y as f32),

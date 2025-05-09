@@ -10,6 +10,7 @@ use tato::{prelude::*, Tato};
 
 const W: usize = 240;
 const H: usize = 180;
+pub const PIXEL_COUNT: usize = W * H * 4;
 
 pub enum SoundType {
     WaveTable,
@@ -28,7 +29,7 @@ fn main() {
     tato.video.bg_color = DARK_BLUE;
     let palette_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let palette_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
-    tato.video.new_tile(&TILE_EMPTY);
+    tato.tiles.new_tile(&TILE_EMPTY);
 
     // Raylib setup
     let target_fps = 60.0;
@@ -53,7 +54,7 @@ fn main() {
 
     // Load font. TODO: Streamline this.
     for tile in tato::fonts::TILESET_FONT.chunks(64) {
-        tato.video.new_tile(tile);
+        tato.tiles.new_tile(tile);
     }
 
     // Pre-draw fixed text (writes to BG Map)
@@ -158,7 +159,7 @@ fn main() {
         // Update backends
         audio_backend.process_frame(&mut audio);
         copy_pixels_to_texture(
-            &tato.video,
+            &mut tato,
             &ray_thread,
             &mut ray,
             &mut pixels,

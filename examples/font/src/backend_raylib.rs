@@ -1,7 +1,6 @@
-#![allow(unused)]
-use crate::{W, H};
+use crate::{PIXEL_COUNT, W};
 use raylib::prelude::*;
-use tato::prelude::*;
+use tato::{Tato, prelude::*};
 
 pub fn config_raylib() {
     unsafe {
@@ -51,39 +50,47 @@ pub fn update_gamepad(ray: &RaylibHandle, pad: &mut AnaloguePad) {
     } else {
         pad.set_button(Button::Start, false);
     }
+
+    if ray.is_key_down(KeyboardKey::KEY_Z) {
+        pad.set_button(Button::A, true);
+    } else {
+        pad.set_button(Button::A, false);
+    }
 }
 
 pub fn copy_pixels_to_texture(
-    vid: &VideoChip,
+    t: &mut Tato,
     thread: &RaylibThread,
     ray: &mut RaylibHandle,
-    pixels: &mut [u8; W * H * 4],
+    pixels: &mut [u8; PIXEL_COUNT],
     texture: &mut Texture2D,
 ) {
     // Copy from framebuffer to raylib texture
-    for (color, coords) in vid.iter_pixels() {
-        let w = vid.width() as usize;
-        let i = ((coords.y as usize * w) + coords.x as usize) * 4;
+    let time = std::time::Instant::now();
+
+    for (color, coords) in t.video.iter_pixels(&t.tiles.tiles) {
+        let i = ((coords.y as usize * W) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
         pixels[i + 2] = color.b;
-        pixels[i + 3] = 255;
+        pixels[i + 3] = color.a;
     }
+    println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
     texture.update_texture(pixels).unwrap();
 
     // Calculate rect with correct aspect ratio with integer scaling
     let screen_width = ray.get_screen_width();
     let screen_height = ray.get_screen_height();
 
-    let scale = (screen_height as f32 / vid.height() as f32).floor() as i32;
-    let w = vid.width() as i32 * scale;
-    let h = vid.height() as i32 * scale;
+    let scale = (screen_height as f32 / t.video.height() as f32).floor() as i32;
+    let w = t.video.width() as i32 * scale;
+    let h = t.video.height() as i32 * scale;
     let draw_rect_x = (screen_width - w) / 2;
     let draw_rect_y = (screen_height - h) / 2;
 
     // Present frame
     let mut canvas = ray.begin_drawing(thread);
-    canvas.clear_background(Color::BLACK);
+    canvas.clear_background(Color::new(64,64,64,255));
     canvas.draw_texture_ex(
         &texture,
         Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
