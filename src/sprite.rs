@@ -5,15 +5,16 @@ use crate::*;
 /// A sprite represents a tile's position on the screen and the palette
 /// used to draw it.
 #[derive(Debug, Clone, Default)]
-pub struct Sprite {
+pub struct SpriteEntry {
     pub y: i16,
     pub x: i16,
     pub id: TileID,
     pub flags: TileFlags,
 }
 
-/// Holds the sprite segments for a single line, as well as a "presence" mask
-/// that helps the iterator figure out if any given slot is occupied by a sprite
+/// Holds a "presence" mask that helps the iterator figure out if any given slot
+/// is occupied by a sprite, and an array containing which sprite entries are visible
+/// in this scanline.
 #[derive(Debug, Clone)]
 pub struct Scanline {
     pub sprite_count: u8,
@@ -26,7 +27,7 @@ pub struct Scanline {
 /// Manages sprites inserted in a single frame
 #[derive(Debug)]
 pub struct SpriteGenerator {
-    pub sprites: [Sprite; MAX_SPRITES],
+    pub sprites: [SpriteEntry; MAX_SPRITES],
     pub scanlines: [Scanline; MAX_LINES],
     sprite_count: u8,
 }
@@ -34,7 +35,7 @@ pub struct SpriteGenerator {
 impl SpriteGenerator {
     pub fn new() -> Self {
         Self {
-            sprites: from_fn(|_| Sprite::default()),
+            sprites: from_fn(|_| SpriteEntry::default()),
             scanlines: from_fn(|_| Scanline {
                 mask: 0,
                 sprite_count: 0,
@@ -104,7 +105,9 @@ impl SpriteGenerator {
             line.sprites[local_sprite] = self.sprite_count;
             line.sprite_count += 1;
 
-            // Iterate X pixels to set mask
+            // TODO: No need to iterate all x pixels. Simply determine
+            // the range of slots based on min_x and max_x in advance
+            // Iterate X pixels to set mask.
             for local_x in min_x..max_x {
                 let screen_x = x + local_x;
                 // Set bit mask to help iterator skip unused slots

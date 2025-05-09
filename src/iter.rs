@@ -22,9 +22,9 @@ pub struct PixelIter<'a> {
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline,  // current sprite scanline
-    pub bg_color: Color9Bit, // Background color (cached)
-    pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
-    pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    pub bg_color: Color12Bit, // Background color
+    pub fg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
+    pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
 }
 
@@ -34,7 +34,7 @@ pub struct ScreenCoords {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (ColorRGB24, ScreenCoords);
+    type Item = (ColorRGB32, ScreenCoords);
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -54,10 +54,10 @@ impl<'a> Iterator for PixelIter<'a> {
             || self.y >= self.vid.view_bottom as u16;
 
         let color = if is_outside_viewport {
-            ColorRGB24::from(self.bg_color)
+            ColorRGB32::from(self.bg_color)
         } else {
             // Check for foreground pixel, compensating for crop_x
-            ColorRGB24::from(self.get_pixel_color())
+            ColorRGB32::from(self.get_pixel_color())
         };
 
         // // Cache result coordinates
@@ -179,7 +179,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline]
-    fn get_pixel_color(&self) -> Color9Bit {
+    fn get_pixel_color(&self) -> Color12Bit {
         // If BG Tile is set to FG and is not zero, return early
         if self.bg_flags.is_fg() && !self.force_bg_color {
             let bg_palette = self.bg_flags.palette().0 as usize;

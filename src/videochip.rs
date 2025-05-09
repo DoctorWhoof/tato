@@ -18,9 +18,9 @@ pub struct VideoChip {
     /// The color rendered if resulting pixel is transparent
     pub bg_color: ColorID,
     /// The main FG palette with 16 colors. Used by sprites.
-    pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    pub fg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     /// The main BG palette with 16 colors. Used by BG tiles.
-    pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
     pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     /// Maps i16 coordinates into the u8 range, bringing sprites "outside the screen" into view.
@@ -74,8 +74,8 @@ impl VideoChip {
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
-            fg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
-            bg_palette: [Color9Bit::default(); COLORS_PER_PALETTE as usize],
+            fg_palette: [Color12Bit::default(); COLORS_PER_PALETTE as usize],
+            bg_palette: [Color12Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprite_gen: SpriteGenerator::new(),
             tile_id_head: 0,
@@ -168,14 +168,14 @@ impl VideoChip {
             if i < PALETTE_DEFAULT.len() {
                 PALETTE_DEFAULT[i]
             } else {
-                Color9Bit::default()
+                Color12Bit::default()
             }
         });
         self.bg_palette = from_fn(|i| {
             if i < PALETTE_DEFAULT.len() {
                 PALETTE_DEFAULT[i]
             } else {
-                Color9Bit::default()
+                Color12Bit::default()
             }
         });
         self.local_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));

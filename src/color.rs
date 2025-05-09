@@ -1,8 +1,8 @@
-mod color_9_bit;
-pub use color_9_bit::*;
+mod color_12bit;
+pub use color_12bit::*;
 
-mod color_24bit;
-pub use color_24bit::*;
+mod color_32bit;
+pub use color_32bit::*;
 
 /// Local Palette index. Each Local palette defines 4 colors out of the 16 "Main" palettes, FG and BG.
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]
@@ -54,44 +54,44 @@ pub const LIGHT_BLUE: ColorID = ColorID(14);
 pub const PINK: ColorID = ColorID(15);
 
 /// Adjusted from the "pure" 512 color palette to be less saturated and less contrasty.
-pub(crate) const PALETTE_DEFAULT: [Color9Bit; 16] = [
-    Color9Bit::new(0, 0, 0), // BG, 0
-    Color9Bit::new(0, 0, 0), // Black, 1
-    Color9Bit::new(4, 4, 4), // Gray, 2
-    Color9Bit::new(7, 7, 7), // White, 3
-    Color9Bit::new(3, 0, 0), // Dark Red, 4
-    Color9Bit::new(5, 2, 2), // Red, 5
-    Color9Bit::new(7, 5, 5), // Light Red, 6
-    Color9Bit::new(6, 4, 1), // Orange, 7
-    Color9Bit::new(7, 6, 3), // Yellow, 8
-    Color9Bit::new(0, 2, 1), // Dark Green, 9
-    Color9Bit::new(2, 4, 2), // Green, 10
-    Color9Bit::new(4, 6, 3), // Green Light, 11
-    Color9Bit::new(0, 1, 3), // Dark Blue, 12
-    Color9Bit::new(1, 2, 6), // Blue, 13
-    Color9Bit::new(4, 6, 7), // Light Blue, 14
-    Color9Bit::new(6, 3, 6), // Pink, 15
+pub(crate) const PALETTE_DEFAULT: [Color12Bit; 16] = [
+    Color12Bit::new(0, 0, 0, 0), // BG, 0
+    Color12Bit::new(0, 0, 0, 7), // Black, 1
+    Color12Bit::new(4, 4, 4, 7), // Gray, 2
+    Color12Bit::new(7, 7, 7, 7), // White, 3
+    Color12Bit::new(3, 0, 0, 7), // Dark Red, 4
+    Color12Bit::new(5, 2, 2, 7), // Red, 5
+    Color12Bit::new(7, 5, 5, 7), // Light Red, 6
+    Color12Bit::new(6, 4, 1, 7), // Orange, 7
+    Color12Bit::new(7, 6, 3, 7), // Yellow, 8
+    Color12Bit::new(0, 2, 1, 7), // Dark Green, 9
+    Color12Bit::new(2, 4, 2, 7), // Green, 10
+    Color12Bit::new(4, 6, 3, 7), // Green Light, 11
+    Color12Bit::new(0, 1, 3, 7), // Dark Blue, 12
+    Color12Bit::new(1, 2, 6, 7), // Blue, 13
+    Color12Bit::new(4, 6, 7, 7), // Light Blue, 14
+    Color12Bit::new(6, 3, 6, 7), // Pink, 15
 ];
 
 
 // /// "Pure" 3 bits per channel palette. Very bright and saturated.
-// pub const PALETTE_DEFAULT: [Color9Bit; 16] = [
-//     Color9Bit::new(0, 0, 0), // BG, 0
-//     Color9Bit::new(0, 0, 0), // Black, 1
-//     Color9Bit::new(3, 3, 3), // Gray, 2
-//     Color9Bit::new(7, 7, 7), // White, 3
-//     Color9Bit::new(3, 1, 1), // Dark Red, 4
-//     Color9Bit::new(5, 1, 1), // Red, 5
-//     Color9Bit::new(6, 4, 3), // Light Red, 6
-//     Color9Bit::new(5, 3, 0), // Orange, 7
-//     Color9Bit::new(6, 6, 1), // Yellow, 8
-//     Color9Bit::new(1, 2, 1), // Dark Green, 9
-//     Color9Bit::new(1, 4, 1), // Green, 10
-//     Color9Bit::new(3, 6, 3), // Green Light, 11
-//     Color9Bit::new(1, 1, 3), // Dark Blue, 12
-//     Color9Bit::new(1, 2, 6), // Blue, 13
-//     Color9Bit::new(3, 6, 6), // Light Blue, 14
-//     Color9Bit::new(6, 2, 6), // Pink, 15
+// pub const PALETTE_DEFAULT: [Color12Bit; 16] = [
+//     Color12Bit::new(0, 0, 0, 7), // BG, 0
+//     Color12Bit::new(0, 0, 0, 7), // Black, 1
+//     Color12Bit::new(3, 3, 3, 7), // Gray, 2
+//     Color12Bit::new(7, 7, 7, 7), // White, 3
+//     Color12Bit::new(3, 1, 1, 7), // Dark Red, 4
+//     Color12Bit::new(5, 1, 1, 7), // Red, 5
+//     Color12Bit::new(6, 4, 3, 7), // Light Red, 6
+//     Color12Bit::new(5, 3, 0, 7), // Orange, 7
+//     Color12Bit::new(6, 6, 1, 7), // Yellow, 8
+//     Color12Bit::new(1, 2, 1, 7), // Dark Green, 9
+//     Color12Bit::new(1, 4, 1, 7), // Green, 10
+//     Color12Bit::new(3, 6, 3, 7), // Green Light, 11
+//     Color12Bit::new(1, 1, 3, 7), // Dark Blue, 12
+//     Color12Bit::new(1, 2, 6, 7), // Blue, 13
+//     Color12Bit::new(3, 6, 6, 7), // Light Blue, 14
+//     Color12Bit::new(6, 2, 6, 7), // Pink, 15
 // ];
 
 // pub const PALETTE_ORIGINAL: [ColorRGB24; 16] = [
