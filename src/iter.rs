@@ -3,6 +3,7 @@ use crate::*;
 /// Renders every pixel as it iterates the entire screen.
 /// All public fields can be manipulated per line with HorizontalIRQ!
 pub struct PixelIter<'a> {
+    tiles: &'a [Tile<2>],
     vid: &'a VideoChip,
     x: u16, // Current screen x position
     y: u16, // Current screen y position
@@ -21,9 +22,9 @@ pub struct PixelIter<'a> {
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline,  // current sprite scanline
-    pub bg_color: Color9Bit, // Background color (cached)
-    pub fg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
-    pub bg_palette: [Color9Bit; COLORS_PER_PALETTE as usize],
+    pub bg_color: Color12Bit, // Background color
+    pub fg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
+    pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
 }
 
@@ -33,7 +34,7 @@ pub struct ScreenCoords {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (ColorRGB24, ScreenCoords);
+    type Item = (ColorRGB32, ScreenCoords);
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -53,10 +54,10 @@ impl<'a> Iterator for PixelIter<'a> {
             || self.y >= self.vid.view_bottom as u16;
 
         let color = if is_outside_viewport {
-            ColorRGB24::from(self.bg_color)
+            ColorRGB32::from(self.bg_color)
         } else {
             // Check for foreground pixel, compensating for crop_x
-            ColorRGB24::from(self.get_pixel_color())
+            ColorRGB32::from(self.get_pixel_color())
         };
 
         // // Cache result coordinates
@@ -85,7 +86,7 @@ impl<'a> Iterator for PixelIter<'a> {
             // Cache scanline, compensating for crop_y
             let fg_y = self.y as usize;
             if fg_y < MAX_LINES {
-                self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
+                self.scanline = self.vid.sprite_gen.scanlines[fg_y as usize].clone();
                 // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
             }
             // Force BG cluster reload on new lines, cache scanline
@@ -114,8 +115,9 @@ impl<'a> Iterator for PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new(vid: &'a VideoChip) -> Self {
+    pub fn new(vid: &'a VideoChip, tiles: &'a [Tile<2>]) -> Self {
         let mut result = Self {
+            tiles,
             vid,
             x: 0,
             y: 0,
@@ -135,7 +137,7 @@ impl<'a> PixelIter<'a> {
             fg_palette: vid.fg_palette.clone(),
             bg_palette: vid.bg_palette.clone(),
             local_palettes: vid.local_palettes.clone(),
-            scanline: vid.sprites.scanlines[0].clone(),
+            scanline: vid.sprite_gen.scanlines[0].clone(),
         };
         // Check if we're outside the BG map at initialization
         result.force_bg_color = !result.wrap_bg && result.is_outside();
@@ -166,7 +168,7 @@ impl<'a> PixelIter<'a> {
 
         // Get the tile
         let tile_index = current_bg_tile_id as usize;
-        let tile_clusters = &self.vid.tiles[tile_index].clusters;
+        let tile_clusters = &self.tiles[tile_index].clusters;
 
         // Get the correct cluster with transformations applied
         // TODO: Update to latest Tile struct, get rid of "from_tile"?
@@ -177,7 +179,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline]
-    fn get_pixel_color(&self) -> Color9Bit {
+    fn get_pixel_color(&self) -> Color12Bit {
         // If BG Tile is set to FG and is not zero, return early
         if self.bg_flags.is_fg() && !self.force_bg_color {
             let bg_palette = self.bg_flags.palette().0 as usize;
@@ -198,13 +200,30 @@ impl<'a> PixelIter<'a> {
                 if self.scanline.mask & (1 << slot) != 0 {
                     // Iterate sprites in line
                     'sprite_loop: for n in (0..self.scanline.sprite_count as usize).rev() {
-                        let sprite = &self.scanline.sprites[n];
+                        let w = TILE_SIZE as i16;
+                        let h = TILE_SIZE as i16;
+                        let sprite_id = self.scanline.sprites[n] as usize;
+                        let sprite = &self.vid.sprite_gen.sprites[sprite_id];
+
                         if fg_x < sprite.x || fg_x >= sprite.x + TILE_SIZE as i16 {
                             continue;
                         }
-                        let color_index =
-                            sprite.pixels.get_subpixel((fg_x - sprite.x) as u8) as usize;
-                        let pixel = self.vid.local_palettes[sprite.palette.id()][color_index].0;
+
+                        let local_x = fg_x - sprite.x;
+                        if local_x >= w || local_x < 0 {
+                            continue;
+                        }
+
+                        let local_y = self.y as i16 - sprite.y;
+                        if local_y >= h || local_y < 0 {
+                            continue;
+                        }
+
+                        let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, sprite.flags);
+                        let tile = &self.tiles[sprite.id.0 as usize];
+                        let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
+                        let palette = sprite.flags.palette().id();
+                        let pixel = self.vid.local_palettes[palette][pixel].0;
                         if pixel > 0 {
                             result = pixel;
                             break 'sprite_loop;

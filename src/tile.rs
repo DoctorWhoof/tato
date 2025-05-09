@@ -6,7 +6,7 @@ pub struct TileID(pub u16);
 
 /// An array of clusters, each holding 8 pixels
 #[derive(Debug, Clone, Hash, PartialEq, Default)]
-pub struct Tile<const BITS_PER_PIXEL: usize>  {
+pub struct Tile<const BITS_PER_PIXEL: usize> {
     pub clusters: [Cluster<BITS_PER_PIXEL>; TILE_CLUSTER_COUNT],
 }
 
