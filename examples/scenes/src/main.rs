@@ -1,4 +1,3 @@
-mod backend_raylib;
 mod data;
 mod scene_a;
 mod scene_b;
@@ -48,6 +47,10 @@ pub enum Scene {
 }
 
 fn main() {
+    // Print working directory
+    let current_dir = std::env::current_dir().unwrap();
+    println!("Current directory: {:?}", current_dir);
+
     // Tato setup + initial scene
     let mut t = Tato::new(W as u16, H as u16);
     let mut scene = Scene::None;

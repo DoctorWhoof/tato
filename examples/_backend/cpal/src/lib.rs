@@ -2,7 +2,9 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Receiver, Sender};
 use tato::audio::AudioChip;
-use crate::WaveWriter;
+
+mod wave_writer;
+use wave_writer::WaveWriter;
 
 pub struct AudioBackend {
     pub tx: Sender<Vec<i16>>,

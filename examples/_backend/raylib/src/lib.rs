@@ -1,4 +1,4 @@
-use crate::{PIXEL_COUNT, W};
+pub use raylib;
 use raylib::prelude::*;
 use tato::{Tato, prelude::*};
 
@@ -62,14 +62,14 @@ pub fn copy_pixels_to_texture(
     t: &mut Tato,
     thread: &RaylibThread,
     ray: &mut RaylibHandle,
-    pixels: &mut [u8; PIXEL_COUNT],
+    pixels: &mut [u8],
     texture: &mut Texture2D,
 ) {
     // Copy from framebuffer to raylib texture
     let time = std::time::Instant::now();
 
     for (color, coords) in t.video.iter_pixels(&t.tiles.tiles) {
-        let i = ((coords.y as usize * W) + coords.x as usize) * 4;
+        let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
         pixels[i + 2] = color.b;

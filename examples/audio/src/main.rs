@@ -1,8 +1,3 @@
-mod backend_cpal;
-mod backend_raylib;
-mod wave_writer;
-pub use wave_writer::*;
-
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
 use std::{f32::consts::PI, time::Instant};
@@ -83,6 +78,7 @@ fn main() {
     // Audio setup
     let mut audio = AudioChip::default();
     let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
+
     audio.sample_rate = audio_backend.sample_rate();
     audio.channels[0].set_volume(15);
     audio.channels[0].set_note(Note::C4);

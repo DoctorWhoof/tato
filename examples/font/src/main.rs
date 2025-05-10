@@ -1,8 +1,8 @@
-use raylib::{color::Color, texture::Image, ffi::TraceLogLevel};
+use backend_raylib::{
+    raylib::{color::Color, ffi::TraceLogLevel, texture::Image},
+    *,
+};
 use tato::{Tato, prelude::*};
-
-mod backend_raylib;
-use backend_raylib::*;
 
 const W: usize = 240;
 const H: usize = 180;

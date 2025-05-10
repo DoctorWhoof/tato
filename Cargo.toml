@@ -21,6 +21,7 @@ tato_video = { path = "../tato_video" }
 members = [
     "examples/scenes",
     "examples/audio",
-    "examples/pipe",
-    "examples/font", "examples/layers",
+    "examples/font",
+    # "examples/pipe",
+    # "examples/layers",
 ]
