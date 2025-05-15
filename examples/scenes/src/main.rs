@@ -1,4 +1,3 @@
-mod data;
 mod scene_a;
 mod scene_b;
 mod scene_c;
@@ -55,8 +54,8 @@ fn main() {
     let mut t = Tato::new(W as u16, H as u16);
     let mut scene = Scene::None;
     // Line scrolling effect, adjusts scroll on every line
-    t.video.horizontal_irq_callback = Some(|iter, video, line| {
-        let line_offset = (line as f32 + video.scroll_y as f32) / 16.0;
+    t.video.irq_x_callback = Some(|iter, video, _bg, _tiles| {
+        let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;
         let phase = ((video.frame_count() as f32 / 30.0) + line_offset).sin();
         iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
     });
@@ -111,6 +110,7 @@ fn main() {
 
         if let Some(choice) = scene_change {
             t.video.reset_all();
+            t.tiles.reset();
             match choice {
                 SceneChange::A => scene = Scene::A(SceneA::new(&mut t)),
                 SceneChange::B => scene = Scene::B(SceneB::new(&mut t)),

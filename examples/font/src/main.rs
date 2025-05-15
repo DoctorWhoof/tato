@@ -2,7 +2,7 @@ use backend_raylib::{
     raylib::{color::Color, ffi::TraceLogLevel, texture::Image},
     *,
 };
-use tato::{Tato, prelude::*};
+use tato::{tilesets::TILESET_FONT, prelude::*, Tato};
 
 const W: usize = 240;
 const H: usize = 180;
@@ -10,6 +10,7 @@ pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(W as u16, H as u16);
+    tato.maps[0].set_size(32, 24);
 
     // Graphics setup
     let plt_default = tato
@@ -17,15 +18,10 @@ fn main() {
         .push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
-    tato.tiles.new_tile(&TILE_EMPTY);
-    tato.video.bg_color = DARK_BLUE;
-    tato.video.bg.columns = 32;
-    tato.video.bg.rows = 24;
 
-    // Load font. TODO: Streamline this.
-    for tile in tato::fonts::TILESET_FONT.chunks(64) {
-        tato.tiles.new_tile(tile);
-    }
+    let _empty_tile = tato.tiles.new_tileset(0, &[TILE_EMPTY]); // Our tile zero
+    let font = tato.tiles.new_tileset(0, &TILESET_FONT);
+    tato.video.bg_color = DARK_BLUE;
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
@@ -34,7 +30,8 @@ fn main() {
         "\"draw_text\" simply sets BG Map tiles, so they will scroll with \
         the rest of the map! Use the arrow keys to try it out.",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col,
             row: line,
             width: 27,
@@ -46,7 +43,8 @@ fn main() {
     tato.draw_text(
         "0123456789",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col,
             row: line,
             width: 26,
@@ -58,7 +56,8 @@ fn main() {
     tato.draw_text(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col,
             row: line,
             width: 26,
@@ -70,7 +69,8 @@ fn main() {
     tato.draw_text(
         "abcdefghijklmnopqrstuvwxyz",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col,
             row: line,
             width: 26,
@@ -82,7 +82,8 @@ fn main() {
     tato.draw_text(
         ":;<=>? !\"#$%&\'()*+,-./",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col,
             row: line,
             width: 26,
@@ -140,10 +141,12 @@ fn main() {
             cycle = 1.0
         }
 
+        // Animated text, drawn every frame
         tato.draw_text(
             "Animated palette",
             TextBundle {
-                initial_font_tile: 1,
+                map: 0,
+                tileset: font,
                 col,
                 row: line,
                 width: 26,

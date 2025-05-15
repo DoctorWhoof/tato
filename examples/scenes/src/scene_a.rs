@@ -1,6 +1,7 @@
 use crate::*;
 use core::array::from_fn;
 use tato::pad::*;
+use tato::tilesets::{TILESET_DEFAULT, TILE_ARROW, TILE_SMILEY};
 use tato::video::prelude::*;
 
 const SMILEY_COUNT: usize = 32;
@@ -16,11 +17,10 @@ impl SceneA {
     // Initialize and retuns a new scene
     // pub fn new(video: &mut VideoChip, tiles: &mut TileBank) -> Self {
     pub fn new(t: &mut Tato) -> Self {
+        t.maps[0] = Tilemap::new(32, 24);
         t.video.bg_color = ColorID(0);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
-        t.video.bg.columns = 32;
-        t.video.bg.rows = 24;
 
         // Palette test - defines BG palette with a golden tint!
         t.video.bg_palette = [
@@ -46,28 +46,27 @@ impl SceneA {
         for i in 0..t.video.bg_palette.len() {
             let _ = t
                 .video
-                .push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
+                .push_subpalette([BG_COLOR, BLACK, BLACK, ColorID(i as u8)]);
         }
 
         // Define new tiles
-        let smiley = t.tiles.new_tile(&data::SMILEY);
-        let checker = t.tiles.new_tile(&data::ARROW);
-        let arrow = t.tiles.new_tile(&data::ARROW);
+        let _tileset = t.tiles.new_tileset(0, &TILESET_DEFAULT);
+        let smiley = TILE_SMILEY;
+        let arrow = TILE_ARROW;
 
         // Set BG tiles
-        t.video.bg.columns = 14 * 4;
-        t.video.bg.rows = 14 * 4;
-        for col in 0..t.video.bg.columns {
-            for row in 0..t.video.bg.rows {
+        t.maps[0].set_size(14 * 4, 14 * 4);
+        for col in 0..t.maps[0].columns() {
+            for row in 0..t.maps[0].rows() {
                 // Calculate palette ID based on coordinates, limits to 14 indices
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
 
-                t.video.bg.set_tile(BgBundle {
+                t.maps[0].set_tile(BgBundle {
                     col,
                     row,
-                    tile_id: checker,
+                    tile_id: arrow,
                     flags: TileFlags::from(adjusted_palette).with_rotation(),
                 });
             }
@@ -76,8 +75,8 @@ impl SceneA {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0..t.video.bg.width() as i16 - TILE_SIZE as i16) as f32,
-                y: rand::random_range(0..t.video.bg.height() as i16 - TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..t.maps[0].width() as i16 - TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..t.maps[0].height() as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }
@@ -159,17 +158,17 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        t.video.color_cycle(self.player.flags.palette(), 1, 1, 15);
+        t.video.color_cycle(self.player.flags.palette(), 3, 1, 15);
 
-        for col in 0..t.video.bg.columns {
-            for row in 0..t.video.bg.rows {
-                let Some(mut flags) = t.video.bg.get_flags(col, row) else {
+        for col in 0..t.maps[0].columns() {
+            for row in 0..t.maps[0].rows() {
+                let Some(mut flags) = t.maps[0].get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                t.video.bg.set_flags(col, row, flags);
+                t.maps[0].set_flags(col, row, flags);
             }
         }
 
@@ -216,7 +215,7 @@ impl SceneA {
         t.video.draw_sprite(DrawBundle {
             x: 0,
             y: 0,
-            id: TileID(0),
+            id: TILE_SMILEY,
             flags: TileFlags::default(), // Player palette is zero
         });
 

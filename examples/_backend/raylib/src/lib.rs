@@ -68,7 +68,9 @@ pub fn copy_pixels_to_texture(
     // Copy from framebuffer to raylib texture
     let time = std::time::Instant::now();
 
-    for (color, coords) in t.video.iter_pixels(&t.tiles.tiles) {
+    let tiles = &t.tiles.get_all();
+    let tilemaps = &t.map_refs();
+    for (color, coords) in t.video.iter_pixels(tiles, tilemaps) {
         let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;

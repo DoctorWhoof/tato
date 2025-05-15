@@ -1,5 +1,5 @@
 use crate::*;
-use tato::video::prelude::*;
+use tato::{tilesets::{TILESET_DEFAULT, TILE_CROSSHAIRS, TILE_SMILEY, TILE_SOLID}, video::prelude::*};
 
 #[derive(Debug)]
 pub struct SceneC {
@@ -9,27 +9,33 @@ pub struct SceneC {
 
 impl SceneC {
     pub fn new(t: &mut Tato) -> Self {
-        let _bg = t.tiles.new_tile(&TILE_CROSSHAIRS);
-        let tile = t.tiles.new_tile(&TILE_SOLID);
-        let smiley = t.tiles.new_tile(&data::SMILEY);
+        t.maps[0] = Tilemap::new(32, 24);
 
-        for row in 0..t.video.bg.columns {
-            for col in 0..t.video.bg.rows {
-                t.video
-                    .bg
-                    .set_flags(col, row, TileFlags::default().with_fg());
+        let _tileset = t.tiles.new_tileset(0, &TILESET_DEFAULT);
+        let solid = TILE_SOLID;
+        let cross = TILE_CROSSHAIRS;
+        let smiley = TILE_SMILEY;
+
+        for col in 0..t.maps[0].columns() {
+            for row in 0..t.maps[0].rows() {
+                t.maps[0].set_tile(BgBundle {
+                    col,
+                    row,
+                    tile_id: cross,
+                    flags: TileFlags::from(PaletteID(1)).with_fg(),
+                });
             }
         }
 
         for id in 0..16 as u8 {
-            t.video.bg.set_tile(BgBundle {
-                col: id,
+            t.maps[0].set_tile(BgBundle {
+                col: id as u16,
                 row: 0,
-                tile_id: tile,
+                tile_id: solid,
                 flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
             });
             t.video
-                .set_palette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
+                .set_palette(PaletteID(id), [BG_COLOR, BG_COLOR, BG_COLOR, ColorID(id)]);
         }
 
         SceneC { smiley, counter: 0 }

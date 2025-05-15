@@ -1,5 +1,5 @@
 use crate::*;
-use tato::video::prelude::*;
+use tato::{tilesets::{TILESET_DEFAULT, TILE_SMILEY}, video::prelude::*};
 
 #[derive(Debug)]
 pub struct SceneB {
@@ -9,23 +9,28 @@ pub struct SceneB {
 
 impl SceneB {
     pub fn new(t: &mut Tato) -> Self {
+        t.maps[0] = Tilemap::new(32, 24);
+
         // Center view
         let x = t.video.max_x() / 2;
         let y = t.video.max_y() / 2;
-        // Shrinks the viewport by 8 pixels on each edge, creating the
-        // illusion that sprites go outside the border - in reality they are
-        // culled as soon as they hit the left or top border
+        // Shrinks the viewport by 8 pixels on each edge
         t.video.set_viewport(8, 8, 224, 164);
 
         // Colors
         t.video.bg_color = DARK_GREEN;
-        let _palette_bg = t.video.push_subpalette([BG_COLOR, GREEN, BLACK, BLACK]);
-        let palette_smiley = t.video.push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
-        let palette_cycler = t.video.push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
+        let _palette_bg = t.video.push_subpalette([BG_COLOR, BG_COLOR, BG_COLOR, GREEN]);
+        let palette_smiley = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, YELLOW]);
+        let palette_cycler = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, WHITE]);
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
-        let tile = t.tiles.new_tile(&data::SMILEY);
+        let _tileset = t.tiles.new_tileset(0, &TILESET_DEFAULT);
+        let tile = TILE_SMILEY;
+
+        for entry in &mut t.maps[0].data {
+            entry.id = tile;
+        }
 
         Self {
             player: Entity {
@@ -60,7 +65,7 @@ impl SceneB {
         }
 
         // Draw!
-        t.video.color_cycle(self.player.flags.palette(), 1, 1, 15);
+        t.video.color_cycle(self.player.flags.palette(), 3, 1, 15);
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {

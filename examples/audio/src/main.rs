@@ -1,7 +1,7 @@
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
 use std::{f32::consts::PI, time::Instant};
-use tato::{prelude::*, Tato};
+use tato::{tilesets::TILESET_FONT, prelude::*, Tato};
 
 const W: usize = 240;
 const H: usize = 180;
@@ -24,7 +24,6 @@ fn main() {
     tato.video.bg_color = DARK_BLUE;
     let palette_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let palette_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
-    tato.tiles.new_tile(&TILE_EMPTY);
 
     // Raylib setup
     let target_fps = 60.0;
@@ -47,16 +46,19 @@ fn main() {
             .unwrap()
     };
 
-    // Load font. TODO: Streamline this.
-    for tile in tato::fonts::TILESET_FONT.chunks(64) {
-        tato.tiles.new_tile(tile);
-    }
+    let empty = tato.tiles.new_tileset(0, &[TILE_EMPTY]);
+    println!("{:?}", empty);
+    println!("{:?}", tato.tiles.sets[empty.0 as usize]);
+    let font = tato.tiles.new_tileset(0, &TILESET_FONT);
+    println!("{:?}", font);
+    println!("{:?}", tato.tiles.sets[font.0 as usize]);
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
         "SOUND TEST",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col: 2,
             row: 2,
             width: 12,
@@ -67,7 +69,8 @@ fn main() {
     tato.draw_text(
         "Currently playing:",
         TextBundle {
-            initial_font_tile: 1,
+            map: 0,
+            tileset: font,
             col: 2,
             row: 6,
             width: 20,
@@ -122,7 +125,8 @@ fn main() {
                 }
             },
             TextBundle {
-                initial_font_tile: 1,
+                map: 0,
+                tileset: font,
                 col: 2,
                 row: 8,
                 width: 100,
@@ -133,7 +137,8 @@ fn main() {
         tato.draw_text(
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextBundle {
-                initial_font_tile: 1,
+                map: 0,
+                tileset: font,
                 col: 2,
                 row: 10,
                 width: 100,
@@ -144,7 +149,8 @@ fn main() {
         tato.draw_text(
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextBundle {
-                initial_font_tile: 1,
+                map: 0,
+                tileset: font,
                 col: 2,
                 row: 12,
                 width: 100,

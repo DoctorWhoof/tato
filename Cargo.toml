@@ -15,7 +15,7 @@ tato_video = { path = "../tato_video" }
 # tato_pipe = { path = "../tato_pipe" }
 
 [build-dependencies]
-# tato_pipe = { path = "../tato_pipe" }
+tato_pipe = { path = "../tato_pipe" }
 
 [workspace]
 members = [

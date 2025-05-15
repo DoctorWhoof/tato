@@ -1,31 +1,33 @@
-use crate::Tato;
+use crate::{Tato, TilesetID};
 use tato_video::{color::PaletteID, *};
 
 pub struct TextBundle {
-    pub initial_font_tile: u16,
-    pub col: u8,
-    pub row: u8,
-    pub width: u8,
+    pub map: u8,
+    pub tileset: TilesetID, // TODO: Use TilesetID
+    pub col: u16,
+    pub row: u16,
+    pub width: u16,
     pub palette: PaletteID,
 }
 
 impl Tato {
     /// "Draws" a text string to the BG Map, returns the resulting height (in rows).
-    pub fn draw_text(&mut self, text: &str, bundle: TextBundle) -> u8 {
+    pub fn draw_text(&mut self, text: &str, bundle: TextBundle) -> u16 {
         debug_assert!(text.is_ascii());
 
-        let mut set_tile = |ch: char, cursor_x: u8, cursor_y: u8| {
-            self.video.bg.set_tile(BgBundle {
+        let tileset = &self.tiles.sets[bundle.tileset.0 as usize];
+        let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {
+            self.maps[bundle.map as usize].set_tile(BgBundle {
                 col: bundle.col + cursor_x,
                 row: bundle.row + cursor_y,
-                tile_id: TileID(char_to_id_ex(ch) + bundle.initial_font_tile),
+                tile_id: TileID(char_to_id_ex(ch) + tileset.start),
                 flags: bundle.palette.into(),
             });
         };
         let mut cursor_x = 0;
         let mut cursor_y = 0;
         for word in text.split(' ') {
-            if cursor_x + (word.len() as u8) > bundle.width {
+            if cursor_x + (word.len() as u16) > bundle.width {
                 cursor_x = 0;
                 cursor_y += 1;
             }
