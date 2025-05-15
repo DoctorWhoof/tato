@@ -1,5 +1,8 @@
 use crate::*;
-use tato::{tilesets::{TILESET_DEFAULT, TILE_SMILEY}, video::prelude::*};
+use tato::{
+    tilesets::{TILE_SMILEY, TILESET_DEFAULT},
+    video::*,
+};
 
 #[derive(Debug)]
 pub struct SceneB {
@@ -19,7 +22,9 @@ impl SceneB {
 
         // Colors
         t.video.bg_color = DARK_GREEN;
-        let _palette_bg = t.video.push_subpalette([BG_COLOR, BG_COLOR, BG_COLOR, GREEN]);
+        let _palette_bg = t
+            .video
+            .push_subpalette([BG_COLOR, BG_COLOR, BG_COLOR, GREEN]);
         let palette_smiley = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, YELLOW]);
         let palette_cycler = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, WHITE]);
 

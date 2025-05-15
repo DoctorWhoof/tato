@@ -1,5 +1,8 @@
 use crate::*;
-use tato::{tilesets::{TILESET_DEFAULT, TILE_CROSSHAIRS, TILE_SMILEY, TILE_SOLID}, video::prelude::*};
+use tato::{
+    tilesets::{TILE_CROSSHAIRS, TILE_SMILEY, TILE_SOLID, TILESET_DEFAULT},
+    video::*,
+};
 
 #[derive(Debug)]
 pub struct SceneC {

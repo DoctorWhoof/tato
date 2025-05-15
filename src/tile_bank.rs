@@ -1,9 +1,8 @@
 use crate::{Tileset, TilesetID};
 use core::array::from_fn;
-use tato_video::{Tile, prelude::err};
+use tato_video::*;
 
 const TILE_BANK_LEN: u16 = 512;
-
 
 /// Stores multiple tilesets. The const generic BANKS determines how many tilesets
 /// it contains, and "costs" about 8Kb per tileset (max 512 tiles per tileset).
@@ -36,12 +35,26 @@ impl<const BANKS: usize> Default for TileBank<BANKS> {
 }
 
 impl<const BANKS: usize> TileBank<BANKS> {
-
     pub fn reset(&mut self) {
-        for head in &mut self.tile_head{
+        for head in &mut self.tile_head {
             *head = 0;
-        };
+        }
         self.set_head = 0
+    }
+
+    pub fn new_tile(&mut self, bank: u8, tile: &Tile<2>) -> TileID {
+        assert!((bank as usize) < BANKS, err!("Invalid bank index {}"), bank);
+        assert!(
+            (self.set_head as usize) < BANKS,
+            err!("Tileset capacity reached")
+        );
+        let tile_head = self.tile_head[bank as usize];
+        let result = TileID(tile_head);
+        // Copy tile data to bank
+        let dest_index = tile_head as usize;
+        self.tiles[bank as usize][dest_index] = tile.clone();
+        self.tile_head[bank as usize] += 1;
+        result
     }
 
     pub fn new_tileset(&mut self, bank: u8, data: &[Tile<2>]) -> TilesetID {
@@ -78,9 +91,7 @@ impl<const BANKS: usize> TileBank<BANKS> {
     }
 
     pub fn get_all(&self) -> [&[Tile<2>]; BANKS] {
-        core::array::from_fn(|i| {
-            &self.tiles[i][..]
-        })
+        core::array::from_fn(|i| &self.tiles[i][..])
     }
 
     // pub fn get_tileset_mut(&mut self, id: TilesetID) -> Option<&mut Tileset<TILESET_LEN>> {

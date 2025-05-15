@@ -1,7 +1,7 @@
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
 use std::{f32::consts::PI, time::Instant};
-use tato::{tilesets::TILESET_FONT, prelude::*, Tato};
+use tato::{prelude::*, tilesets::{TILESET_DEFAULT, TILESET_FONT, TILE_EMPTY}, Tato};
 
 const W: usize = 240;
 const H: usize = 180;
@@ -46,7 +46,7 @@ fn main() {
             .unwrap()
     };
 
-    let empty = tato.tiles.new_tileset(0, &[TILE_EMPTY]);
+    let empty = tato.tiles.new_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
     println!("{:?}", empty);
     println!("{:?}", tato.tiles.sets[empty.0 as usize]);
     let font = tato.tiles.new_tileset(0, &TILESET_FONT);

@@ -2,7 +2,7 @@ use crate::*;
 use core::array::from_fn;
 use tato::pad::*;
 use tato::tilesets::{TILESET_DEFAULT, TILE_ARROW, TILE_SMILEY};
-use tato::video::prelude::*;
+use tato::video::*;
 
 const SMILEY_COUNT: usize = 32;
 

@@ -2,7 +2,11 @@ use backend_raylib::{
     raylib::{color::Color, ffi::TraceLogLevel, texture::Image},
     *,
 };
-use tato::{tilesets::TILESET_FONT, prelude::*, Tato};
+use tato::{
+    Tato,
+    prelude::*,
+    tilesets::{TILE_EMPTY, TILESET_DEFAULT, TILESET_FONT},
+};
 
 const W: usize = 240;
 const H: usize = 180;
@@ -19,7 +23,7 @@ fn main() {
     let plt_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
 
-    let _empty_tile = tato.tiles.new_tileset(0, &[TILE_EMPTY]); // Our tile zero
+    let _empty_tile = tato.tiles.new_tile(0, &TILESET_DEFAULT[TILE_EMPTY]); // Our tile zero
     let font = tato.tiles.new_tileset(0, &TILESET_FONT);
     tato.video.bg_color = DARK_BLUE;
 
