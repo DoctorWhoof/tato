@@ -1,8 +1,8 @@
 use crate::Color14Bit;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy)]
-pub struct PaletteID(pub u8);
+// #[derive(Debug, Clone, Copy)]
+// pub struct PaletteID(pub u8);
 
 #[derive(Debug, Clone)]
 pub(crate) struct PaletteBuilder {
