@@ -1,4 +1,5 @@
 use crate::*;
+use tato_video::*;
 
 pub const SUB_PALETTE_COUNT: usize = 16;
 pub const SUB_PALETTE_COLOR_COUNT: usize = 4;
@@ -58,6 +59,36 @@ impl Pipeline {
         TilesetID(id)
     }
 
+    /// Initializes a new single tile from a .png file:
+    pub fn new_tile(
+        &mut self,
+        path: &str,
+        tileset_id: TilesetID,
+        // group_id: impl GroupEnum,
+    ) {
+        let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
+            panic!("Invalid tileset id: {:?}", tileset_id);
+        };
+
+        let palette = self
+            .palettes
+            .get_mut(tileset.palette_id.0 as usize)
+            .unwrap();
+        let img = PalettizedImg::from_image(path, 1, 1, palette);
+        assert!(
+            img.width == TILE_SIZE as usize,
+            "Single tile width must be {}",
+            TILE_SIZE
+        );
+
+        let tile = tileset.add_tiles(&img, palette); //, group, false);
+
+        tileset.single_tiles.push(SingleTileBuilder {
+            name: strip_path_name(path),
+            entry: tile[0],
+        });
+    }
+
     /// Initializes a new animation sequence from a .png file. It will:
     /// - "Palettize" the image, adding its colors to the palette if needed
     /// - Divide the animation into tiles, added to the tileset
@@ -111,68 +142,59 @@ impl Pipeline {
         }
     }
 
-    pub fn write_all_assets(&mut self, file_path: &str) {
+    pub fn write_all_assets(&mut self, tileset_id: TilesetID, file_path: &str) {
         // The code writer is created, modified and dropped in this scope
         // which means the file is ready to be formatted next.
-        {
-            let mut code = CodeWriter::new(file_path);
-            self.append_header(&mut code);
-            code.write_line("use tato::Anim;");
-            code.write_line("");
-            self.append_palettes(&mut code);
-            self.append_sub_palettes(&mut code);
-            self.append_anims(&mut code);
-            self.append_pixels(&mut code);
-        }
+        let mut code = CodeWriter::new(file_path);
+        self.append_header(&mut code);
+        // code.write_line("use tato::Anim;");
+        code.write_line("");
+        self.append_palettes(tileset_id, &mut code);
+        self.append_sub_palettes(tileset_id, &mut code);
+        self.append_anims(tileset_id, &mut code);
+        self.append_single_tile_ids(tileset_id, &mut code);
+        self.append_tiles(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_palettes(&mut self, file_path: &str) {
-        {
-            let mut code = CodeWriter::new(file_path);
-            self.append_header(&mut code);
-            self.append_palettes(&mut code);
-        }
+    pub fn write_palettes(&mut self, tileset_id: TilesetID, file_path: &str) {
+        let mut code = CodeWriter::new(file_path);
+        self.append_header(&mut code);
+        self.append_palettes(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_tileset(&mut self, file_path: &str) {
-        {
-            let mut code = CodeWriter::new(file_path);
-            self.append_header(&mut code);
-            self.append_sub_palettes(&mut code);
-            self.append_anims(&mut code);
-            self.append_pixels(&mut code);
-        }
+    pub fn write_tileset(&mut self, tileset_id: TilesetID, file_path: &str) {
+        let mut code = CodeWriter::new(file_path);
+        self.append_header(&mut code);
+        self.append_sub_palettes(tileset_id, &mut code);
+        self.append_anims(tileset_id, &mut code);
+        self.append_single_tile_ids(tileset_id, &mut code);
+        self.append_tiles(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_tileset_pixels(&mut self, file_path: &str) {
-        {
-            let mut code = CodeWriter::new(file_path);
-            self.append_header(&mut code);
-            self.append_pixels(&mut code);
-        }
+    pub fn write_pixels(&mut self, tileset_id: TilesetID, file_path: &str) {
+        let mut code = CodeWriter::new(file_path);
+        self.append_header(&mut code);
+        self.append_single_tile_ids(tileset_id, &mut code);
+        self.append_tiles(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_tileset_sub_palettes(&mut self, file_path: &str) {
-        {
-            let mut code = CodeWriter::new(file_path);
-            self.append_header(&mut code);
-            self.append_sub_palettes(&mut code);
-        }
+    pub fn write_tileset_sub_palettes(&mut self, tileset_id: TilesetID, file_path: &str) {
+        let mut code = CodeWriter::new(file_path);
+        self.append_header(&mut code);
+        self.append_sub_palettes(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_tileset_anims(&mut self, file_path: &str) {
-        {
-            let mut code = CodeWriter::new(file_path);
-            self.append_header(&mut code);
-            code.write_line("use tato::Anim;");
-            code.write_line("");
-            self.append_anims(&mut code);
-        }
+    pub fn write_tileset_anims(&mut self, tileset_id: TilesetID, file_path: &str) {
+        let mut code = CodeWriter::new(file_path);
+        self.append_header(&mut code);
+        code.write_line("use tato::Anim;");
+        code.write_line("");
+        self.append_anims(tileset_id, &mut code);
         self.format_output(file_path);
     }
 }
@@ -184,105 +206,129 @@ impl Pipeline {
         // Header
         code.write_line("// Auto-generated code - do not edit manually");
         code.write_line("#![allow(unused)]");
+        code.write_line("use tato_video::*;");
         code.write_line("");
         code.write_line("");
     }
 
-    fn append_palettes(&mut self, code: &mut CodeWriter) {
-        // Palettes
-        for palette in &self.palettes {
+    fn append_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
+        let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
+        code.write_line(&format!(
+            "pub const PALETTE_{}: [Color9Bit; {}] = [",
+            palette.name.to_uppercase(),
+            palette.colors.len()
+        ));
+        code.indent();
+
+        for color in &palette.colors {
             code.write_line(&format!(
-                "pub const {}: [Color9Bit; {}] = [",
-                palette.name.to_uppercase(),
-                palette.colors.len()
+                "Color9Bit::new({}, {}, {}),",
+                color.r(),
+                color.g(),
+                color.b()
+            ));
+        }
+
+        code.dedent();
+        code.write_line("];");
+        code.write_line("");
+    }
+
+
+    fn append_sub_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
+        // Sub-Palettes
+        for sub_plt in &tileset.sub_palettes {
+            code.write_line(&format!(
+                "pub const SUBPALETTE_{}: [u8; {}] = [",
+                tileset
+                    .sub_palette_name_hash
+                    .get(sub_plt)
+                    .unwrap()
+                    .to_uppercase(),
+                sub_plt.len()
             ));
             code.indent();
-
-            for color in &palette.colors {
-                code.write_line(&format!(
-                    "Color9Bit::new({}, {}, {}),",
-                    color.r(),
-                    color.g(),
-                    color.b()
-                ));
+            for color_index in sub_plt {
+                code.write_line(&format!("{},", color_index));
             }
-
             code.dedent();
             code.write_line("];");
             code.write_line("");
         }
     }
 
-    fn append_anims(&mut self, code: &mut CodeWriter) {
+
+    fn append_anims(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
         // Tilesets
-        for tileset in &self.tilesets {
-            // Anims
-            for anim in &tileset.anims {
-                // println!("Anim: {:#?}", anim);
-                code.write_line(&format!(
-                    "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
-                    anim.name.to_uppercase(),
-                    anim.frames.len(),
-                    anim.columns as usize * anim.rows as usize,
-                    anim.fps,
-                    anim.columns
-                ));
-                code.indent();
-                for frame in &anim.frames {
-                    code.start_line("[");
-                    for tile in &frame.tiles {
-                        code.write(&format!("{}, ", tile.index.0));
-                    }
-                    code.finish_line("],\n");
+        let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
+        for anim in &tileset.anims {
+            // println!("Anim: {:#?}", anim);
+            code.write_line(&format!(
+                "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
+                anim.name.to_uppercase(),
+                anim.frames.len(),
+                anim.columns as usize * anim.rows as usize,
+                anim.fps,
+                anim.columns
+            ));
+            code.indent();
+            for frame in &anim.frames {
+                code.start_line("[");
+                for tile in &frame.tiles {
+                    code.write(&format!("{}, ", tile.id.0));
                 }
-                code.dedent();
-                code.write_line("]};");
-                code.write_line("");
+                code.finish_line("],\n");
             }
+            code.dedent();
+            code.write_line("]};");
+            code.write_line("");
         }
     }
 
-    fn append_sub_palettes(&mut self, code: &mut CodeWriter) {
-        // Tilesets
-        for tileset in &self.tilesets {
-            // Sub-Palettes
-            for sub_plt in &tileset.sub_palettes {
-                code.write_line(&format!(
-                    "pub const {}: [u8; {}] = [",
-                    tileset
-                        .sub_palette_name_hash
-                        .get(sub_plt)
-                        .unwrap()
-                        .to_uppercase(),
-                    sub_plt.len()
-                ));
-                code.indent();
-                for color_index in sub_plt {
-                    code.write_line(&format!("{},", color_index));
-                }
-                code.dedent();
-                code.write_line("];");
-                code.write_line("");
-            }
+    fn append_single_tile_ids(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
+        for tile_builder in &tileset.single_tiles {
+            code.write_line(&format!(
+                "pub const {}: TileID = {:?};",
+                tile_builder.name.to_uppercase(),
+                tile_builder.entry.id,
+            ));
         }
     }
 
-    fn append_pixels(&mut self, code: &mut CodeWriter) {
+    fn append_tiles(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         // Write Pixels at the bottom of the file!
-        for tileset in &self.tilesets {
-            code.write_line(&format!(
-                "pub const TILESET_{}: [u8; {}] = [",
-                tileset.name.to_uppercase(),
-                tileset.pixels.len()
-            ));
+        code.write_line("");
+        code.write_line(&format!(
+            "pub const TILESET_{}: [Tile<2>; {}] = [",
+            tileset.name.to_uppercase(),
+            tileset.pixels.len() / 64
+        ));
+        code.indent();
+        for tile in tileset.pixels.chunks(64) {
             code.indent();
-            for pixel in &tileset.pixels {
-                code.write(&format!("{}, ", pixel));
+            code.write_line("Tile {");
+            code.indent();
+            code.write_line("clusters:[");
+            code.indent();
+            for pixels in tile.chunks(8) {
+                let cluster = Cluster::<2>::from(pixels);
+                // code.write("Cluster {");
+                code.write(&format!("{:?},", cluster));
+                // code.write_line("},");
             }
             code.dedent();
-            code.write_line("];");
-            code.write_line("");
+            code.write_line("],");
+            code.dedent();
+            code.write_line("},");
+            code.dedent();
         }
+        code.dedent();
+        code.write_line("];");
+        code.write_line("");
     }
 
     fn format_output(&mut self, file_path: &str) {

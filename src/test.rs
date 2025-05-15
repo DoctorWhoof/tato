@@ -23,5 +23,5 @@ fn test_anim() {
 
     // Write output file
     // TODO: Maybe separate output file per tileset?
-    pipe.write_all_assets("test/output.rs");
+    pipe.write_all_assets(tileset_chars, "test/output.rs");
 }

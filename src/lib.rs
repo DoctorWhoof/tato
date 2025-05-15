@@ -10,8 +10,8 @@ pub(crate) use code_gen::*;
 mod pipeline;
 pub use pipeline::*;
 
-mod tile;
-pub(crate) use tile::*;
+// mod tile;
+// pub(crate) use tile::*;
 
 #[cfg(test)]
 mod test;

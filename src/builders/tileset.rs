@@ -1,5 +1,5 @@
 use core::array::from_fn;
-use tato_video::{TILE_SIZE, TileFlags, TileID};
+use tato_video::*;
 
 use super::*;
 use crate::*;
@@ -15,12 +15,13 @@ pub struct TilesetBuilder {
     pub name: String,
     pub pixels: Vec<u8>,
     // Stores the Tile (ID and Flags) for each unique set of pixels
-    pub tile_hash: HashMap<Vec<u8>, Tile>,
+    pub tile_hash: HashMap<Vec<u8>, TileEntry>,
     // Stores the names of each unique palette
     pub sub_palette_name_hash: HashMap<[u8; SUB_PALETTE_COLOR_COUNT], String>,
     // The actual color indices for the sub-palettes
     pub sub_palettes: Vec<[u8; SUB_PALETTE_COLOR_COUNT]>,
     pub anims: Vec<AnimBuilder>,
+    pub single_tiles: Vec<SingleTileBuilder>,
     pub palette_id: PaletteID,
     next_tile: u16,
     sub_palette_head: usize,
@@ -36,6 +37,7 @@ impl TilesetBuilder {
             sub_palette_name_hash: HashMap::new(),
             next_tile: 0,
             anims: vec![],
+            single_tiles: vec![],
             palette_id,
             sub_palettes: Vec::new(),
             sub_palette_head: 0,
@@ -69,7 +71,7 @@ impl TilesetBuilder {
         palette: &PaletteBuilder,
         // group: u8,
         // is_collider: bool,
-    ) -> Vec<Tile> {
+    ) -> Vec<TileEntry> {
         let mut tiles = vec![];
         let tile_length = TILE_SIZE as usize * TILE_SIZE as usize;
 
@@ -146,7 +148,7 @@ impl TilesetBuilder {
                             let reused_tile = self.tile_hash.get(&tile_candidate).unwrap();
                             println!(
                                 "\tReusing tile {} from source tiles {},{}",
-                                reused_tile.index.0, abs_col, abs_row
+                                reused_tile.id.0, abs_col, abs_row
                             );
                             tiles.push((*reused_tile).clone());
                         } else {
@@ -156,9 +158,10 @@ impl TilesetBuilder {
                             };
 
                             // Insert normal tile in hashmap
-                            let new_tile = Tile {
-                                index: TileID(self.next_tile as u8),
+                            let new_tile = TileEntry {
+                                id: TileID(self.next_tile),
                                 flags: TileFlags::default(),
+                                custom_data: 0,
                                 // group,
                             };
                             // new_tile.set_collider(is_collider);

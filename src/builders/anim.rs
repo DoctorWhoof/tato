@@ -1,4 +1,4 @@
-use crate::Tile;
+use tato_video::*;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AnimBuilder {
@@ -15,7 +15,7 @@ pub(crate) struct AnimBuilder {
 pub struct FrameBuilder {
     // pub cols: u8,
     // pub rows: u8,
-    pub tiles: Vec<Tile>,
+    pub tiles: Vec<TileEntry>,
 }
 
 // impl FrameBuilder {
