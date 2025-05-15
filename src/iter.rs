@@ -1,14 +1,16 @@
+use core::array::from_fn;
+
 use crate::*;
 
 /// Renders every pixel as it iterates the entire screen.
-/// All public fields can be manipulated per line with HorizontalIRQ!
+/// All public fields can be manipulated per line with VideoIRQ!
+#[derive(Debug, Clone)]
 pub struct PixelIter<'a> {
-    tiles: &'a [Tile<2>],
     vid: &'a VideoChip,
-    x: u16, // Current screen x position
-    y: u16, // Current screen y position
-    horizontal_irq_position: u16,
-    horizontal_irq: Option<HorizontalIRQ>,
+    x: u16,
+    y: u16,
+    irq_x: Option<VideoIRQ>,
+    irq_y: Option<VideoIRQ>,
 
     // Current indices
     wrap_bg: bool,
@@ -19,9 +21,15 @@ pub struct PixelIter<'a> {
     bg_flags: TileFlags,    // Current background tile flags
 
     // Stuff that can be manipulated via Horizontal IRQ
+    pub current_tile_bank: usize,
+    pub current_bg_bank: usize,
+    pub tile_banks: [&'a [Tile<2>]; 16],
+    pub bg_banks: [&'a Tilemap<BG_LEN>; 16],
+    // pub tiles: &'a [Tile<2>],
+    // pub bg: &'a Tilemap<BG_LEN>,
     pub scroll_x: i16,
     pub scroll_y: i16,
-    pub scanline: Scanline,  // current sprite scanline
+    pub scanline: Scanline,   // current sprite scanline
     pub bg_color: Color12Bit, // Background color
     pub fg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
@@ -42,10 +50,14 @@ impl<'a> Iterator for PixelIter<'a> {
             return None;
         }
 
-        if self.x == self.horizontal_irq_position {
-            if let Some(func) = self.horizontal_irq {
-                func(self, self.vid, self.y);
-            }
+        // Run X IRQ on every pixel
+        if let Some(func) = self.irq_x {
+            func(
+                self,
+                self.vid,
+                self.bg_banks[self.current_bg_bank],
+                self.tile_banks[self.current_tile_bank],
+            );
         }
 
         let is_outside_viewport = self.x < self.vid.view_left as u16
@@ -94,14 +106,23 @@ impl<'a> Iterator for PixelIter<'a> {
                 // self.scanline = self.vid.sprites.scanlines[(self.y + self.vid.crop_y) as usize].clone();
                 reload_cluster = true;
             }
+            // Run Y IRQ on every new line
+            if let Some(func) = self.irq_y {
+                func(
+                    self,
+                    self.vid,
+                    self.bg_banks[self.current_bg_bank],
+                    self.tile_banks[self.current_tile_bank],
+                );
+            }
         }
 
         // This will be true every few pixels, and once every new line
         if reload_cluster {
             // Previous state - were we outside before?
             let was_outside = self.force_bg_color || self.x == 0;
-
-            self.force_bg_color = !self.wrap_bg && self.is_outside();
+            let bg = self.bg_banks[self.current_bg_bank];
+            self.force_bg_color = !self.wrap_bg && self.is_outside(bg);
 
             // Only do tile calculations if we're using the actual background
             if !self.force_bg_color || was_outside {
@@ -115,14 +136,17 @@ impl<'a> Iterator for PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new(vid: &'a VideoChip, tiles: &'a [Tile<2>]) -> Self {
+    pub fn new(vid: &'a VideoChip, tiles: &[&'a [Tile<2>]], bgs: &[&'a Tilemap<BG_LEN>]) -> Self {
         let mut result = Self {
-            tiles,
             vid,
+            tile_banks: from_fn(|i| if i < tiles.len() { tiles[i] } else { tiles[0] }),
+            bg_banks: from_fn(|i| if i < bgs.len() { bgs[i] } else { bgs[0] }),
+            current_bg_bank: 0,
+            current_tile_bank: 0,
             x: 0,
             y: 0,
-            horizontal_irq_position: vid.horizontal_irq_position,
-            horizontal_irq: vid.horizontal_irq_callback,
+            irq_x: vid.irq_x_callback,
+            irq_y: vid.irq_y_callback,
 
             wrap_bg: vid.wrap_bg,
             force_bg_color: false,
@@ -140,27 +164,38 @@ impl<'a> PixelIter<'a> {
             scanline: vid.sprite_gen.scanlines[0].clone(),
         };
         // Check if we're outside the BG map at initialization
-        result.force_bg_color = !result.wrap_bg && result.is_outside();
+        let bg = result.bg_banks[result.current_bg_bank];
+        result.force_bg_color = !result.wrap_bg && result.is_outside(bg);
         if !result.force_bg_color {
             result.update_bg_cluster();
         }
         result
     }
 
+    pub fn x(&self) -> u16 {
+        self.x
+    }
+
+    pub fn y(&self) -> u16 {
+        self.y
+    }
+
     #[inline]
     fn update_bg_cluster(&mut self) {
+        let bg = self.bg_banks[self.current_bg_bank];
+
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
-        let bg_x = (self.x as i16 + self.scroll_x).rem_euclid(self.vid.bg.width() as i16) as u16;
-        let bg_y = (self.y as i16 + self.scroll_y).rem_euclid(self.vid.bg.height() as i16) as u16;
+        let bg_x = (self.x as i16 + self.scroll_x).rem_euclid(bg.width() as i16) as u16;
+        let bg_y = (self.y as i16 + self.scroll_y).rem_euclid(bg.height() as i16) as u16;
 
         // Calculate BG map coordinates
         let bg_col = bg_x / TILE_SIZE as u16;
         let bg_row = bg_y / TILE_SIZE as u16;
 
         // Get new tile info
-        let bg_map_index = (bg_row as usize * self.vid.bg.columns as usize) + bg_col as usize;
-        let current_bg_tile_id = self.vid.bg.tiles[bg_map_index].0;
-        self.bg_flags = self.vid.bg.flags[bg_map_index];
+        let bg_map_index = (bg_row as usize * bg.columns() as usize) + bg_col as usize;
+        let current_bg_tile_id = bg.data[bg_map_index].id.0;
+        self.bg_flags = bg.data[bg_map_index].flags;
 
         // Calculate local tile coordinates
         let tile_x = (bg_x % TILE_SIZE as u16) as u8;
@@ -168,7 +203,8 @@ impl<'a> PixelIter<'a> {
 
         // Get the tile
         let tile_index = current_bg_tile_id as usize;
-        let tile_clusters = &self.tiles[tile_index].clusters;
+        let tiles = self.tile_banks[self.current_tile_bank];
+        let tile_clusters = &tiles[tile_index].clusters;
 
         // Get the correct cluster with transformations applied
         // TODO: Update to latest Tile struct, get rid of "from_tile"?
@@ -220,7 +256,8 @@ impl<'a> PixelIter<'a> {
                         }
 
                         let (tx, ty) = transform_tile_coords(local_x, local_y, w, h, sprite.flags);
-                        let tile = &self.tiles[sprite.id.0 as usize];
+                        let tiles = self.tile_banks[self.current_tile_bank];
+                        let tile = &tiles[sprite.id.0 as usize];
                         let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
                         let palette = sprite.flags.palette().id();
                         let pixel = self.vid.local_palettes[palette][pixel].0;
@@ -255,14 +292,14 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline(always)]
-    fn is_outside(&self) -> bool {
+    fn is_outside(&self, bg:&Tilemap<BG_LEN>) -> bool {
         // Calculate raw screen position for bounds check
         let raw_x = self.x as i16 + self.scroll_x;
         let raw_y = self.y as i16 + self.scroll_y;
 
         // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
-        let w = self.vid.bg.width() as i16;
-        let h = self.vid.bg.height() as i16;
+        let w = bg.width() as i16;
+        let h = bg.height() as i16;
         raw_x < 0 || raw_y < 0 || raw_x >= w || raw_y >= h
     }
 }

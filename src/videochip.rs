@@ -13,8 +13,6 @@ pub struct DrawBundle {
 /// Main drawing context that manages the screen, tiles, and palette.
 #[derive(Debug)]
 pub struct VideoChip {
-    /// Fixed BG Tilemap
-    pub bg: BGMap,
     /// The color rendered if resulting pixel is transparent
     pub bg_color: ColorID,
     /// The main FG palette with 16 colors. Used by sprites.
@@ -31,11 +29,10 @@ pub struct VideoChip {
     pub scroll_x: i16,
     /// Offsets the BG Map and Sprite tiles vertically
     pub scroll_y: i16,
-    /// Determines which X coordinate triggers the horizontal IRQ callback
-    pub horizontal_irq_position: u16,
     /// A callback that can modify the iterator, called once per line.
     /// It is automatically passed to the PixelIterator.
-    pub horizontal_irq_callback: Option<HorizontalIRQ>,
+    pub irq_x_callback: Option<VideoIRQ>,
+    pub irq_y_callback: Option<VideoIRQ>,
 
     // Pixel data for all tiles, stored as palette indices.
     // pub tiles: &'a [Tile<2>; TILE_COUNT],
@@ -52,10 +49,6 @@ pub struct VideoChip {
     pub(crate) view_bottom: u16,
     // Internal timer. Useful for IRQ manipulation
     frame_count: usize,
-    // Next available sprite ID.
-    tile_id_head: usize,
-    // Next available pixel position in the sprite buffer.
-    tile_pixel_head: usize,
     // Next available palette.
     palette_head: u8,
 }
@@ -69,7 +62,8 @@ impl VideoChip {
         );
 
         let mut result = Self {
-            bg: BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS),
+            // map_world: Tilemap::new(64, 48),
+            // map_gui: Tilemap::new(32, 32),
             // tiles,
             bg_color: GRAY,
             wrap_sprites: true,
@@ -78,8 +72,6 @@ impl VideoChip {
             bg_palette: [Color12Bit::default(); COLORS_PER_PALETTE as usize],
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprite_gen: SpriteGenerator::new(),
-            tile_id_head: 0,
-            tile_pixel_head: 0,
             palette_head: 0,
             view_left: 0,
             view_top: 0,
@@ -90,28 +82,20 @@ impl VideoChip {
             scroll_x: 0,
             scroll_y: 0,
             frame_count: 0,
-            // irq: None,
-            horizontal_irq_position: 0,
-            horizontal_irq_callback: None,
+            // Video IRQs
+            irq_x_callback: None,
+            irq_y_callback: None,
         };
         result.reset_all();
 
-        println!(
-            "Total Size of VideoChip:\t{:.1} Kb",
-            size_of::<VideoChip>() as f32 / 1024.0
-        );
-        println!(
-            "   Sprite buffers (scanlines):\t{:.1} Kb",
-            size_of::<SpriteGenerator>() as f32 / 1024.0
-        );
         // println!(
-        //     "   Tile Memory:\t\t\t{:.1} Kb",
-        //     (result.tiles.len() * size_of::<Tile<2>>()) as f32 / 1024.0
+        //     "Total Size of VideoChip:\t{:.1} Kb",
+        //     size_of::<VideoChip>() as f32 / 1024.0
         // );
-        println!(
-            "   BG Map:\t\t\t{:.1} Kb",
-            size_of::<BGMap>() as f32 / 1024.0
-        );
+        // println!(
+        //     "   Sprite buffers (scanlines):\t{:.1} Kb",
+        //     size_of::<SpriteGenerator>() as f32 / 1024.0
+        // );
 
         result
     }
@@ -151,16 +135,9 @@ impl VideoChip {
         self.wrap_sprites = true;
         self.frame_count = 0;
         self.reset_scroll();
-        self.reset_tiles();
         self.reset_palettes();
-        self.reset_bgmap();
         self.reset_viewport();
         self.reset_sprites();
-    }
-
-    pub fn reset_tiles(&mut self) {
-        self.tile_id_head = 0;
-        self.tile_pixel_head = 0;
     }
 
     pub fn reset_palettes(&mut self) {
@@ -185,10 +162,6 @@ impl VideoChip {
     pub fn reset_scroll(&mut self) {
         self.scroll_x = 0;
         self.scroll_y = 0;
-    }
-
-    pub fn reset_bgmap(&mut self) {
-        self.bg = BGMap::new(BG_MAX_COLUMNS, BG_MAX_ROWS);
     }
 
     pub fn reset_viewport(&mut self) {
@@ -289,7 +262,11 @@ impl VideoChip {
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
     /// Requires a reference to the Tile array.
-    pub fn iter_pixels<'a>(&'a self, tiles: &'a [Tile<2>]) -> PixelIter<'a> {
-        PixelIter::new(self, tiles)
+    pub fn iter_pixels<'a>(
+        &'a self,
+        tiles: &[&'a [Tile<2>]],
+        bg: &[&'a Tilemap<BG_LEN>],
+    ) -> PixelIter<'a> {
+        PixelIter::new(self, tiles, bg)
     }
 }

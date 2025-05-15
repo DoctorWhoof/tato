@@ -6,9 +6,9 @@ pub const PIXELS_PER_CLUSTER: u8 = 8;
 /// A Cluster always stores 8 pixels, and simply gets larger the more colors you store in it.
 /// At 2 bits per pixel (4 colors) it is 2 bytes.
 /// Since we always have 8 bits per pixel, BITS_PER_PIXEL is also the number of bytes!
-#[derive(Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Cluster<const BITS_PER_PIXEL: usize> {
-    data: [u8; BITS_PER_PIXEL],
+    pub data: [u8; BITS_PER_PIXEL],
 }
 
 impl<const BITS_PER_PIXEL: usize> Default for Cluster<BITS_PER_PIXEL> {
@@ -177,16 +177,35 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
             }
         }
     }
-}
 
-impl<const BYTES: usize> core::fmt::Debug for Cluster<BYTES> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:?}", self.data)
+    pub fn from_pixels(pixels: &[u8]) -> Self {
+        assert!(
+            pixels.len() == 8,
+            err!("Length of pixels array must be 8 to convert to Cluster")
+        );
+        let mut cluster = Self::default();
+        for (i, &pixel) in pixels.iter().enumerate() {
+            cluster.set_subpixel(pixel, i as u8);
+        }
+        cluster
     }
 }
 
-impl<const BYTES: usize> core::fmt::Display for Cluster<BYTES> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:?}", self.data)
+impl<const BITS_PER_PIXEL: usize> From<&[u8]> for Cluster<BITS_PER_PIXEL> {
+    fn from(pixels: &[u8]) -> Self {
+        Self::from_pixels(pixels)
     }
 }
+
+// impl<const BITS_PER_PIXEL: usize> TryFrom<&[u8]> for Cluster<BITS_PER_PIXEL> {
+//     type Error = &'static str;
+
+//     fn try_from(slice: &[u8]) -> Result<Self, Self::Error> {
+//         if slice.len() != 8 {
+//             return Err("Input slice must be exactly 8 pixels long");
+//         }
+
+//         let pixels: [u8; 8] = slice.try_into().unwrap();
+//         Ok(Self::from_pixels(pixels))
+//     }
+// }

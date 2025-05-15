@@ -2,7 +2,7 @@ use crate::*;
 
 /// A single byte struct that stores a tile's render state such as
 /// horizontal flip, vertical flip, rotation and local palette.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Hash)]
 pub struct TileFlags(pub u8);
 
 /// A convenient way to pass a palette where TileFlags are required.
