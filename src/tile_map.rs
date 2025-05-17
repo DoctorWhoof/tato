@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tilemap<const LEN: usize> {
     pub data: [TileEntry; LEN],
     columns: u16,

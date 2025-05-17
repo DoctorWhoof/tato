@@ -9,7 +9,7 @@ pub struct PixelIter<'a> {
     vid: &'a VideoChip,
     x: u16,
     y: u16,
-    irq_x: Option<VideoIRQ>,
+    // irq_x: Option<VideoIRQ>, // TODO: Temporarily disabled for performance reasons
     irq_y: Option<VideoIRQ>,
 
     // Current indices
@@ -51,14 +51,17 @@ impl<'a> Iterator for PixelIter<'a> {
         }
 
         // Run X IRQ on every pixel
-        if let Some(func) = self.irq_x {
-            func(
-                self,
-                self.vid,
-                self.bg_banks[self.current_bg_bank],
-                self.tile_banks[self.current_tile_bank],
-            );
-        }
+        // TODO: This hits performance hard! Disabling for now,
+        // think of stategies. Maybe per "new bg cluster", instead of
+        // every pixel?
+        // if let Some(func) = self.irq_x {
+        //     func(
+        //         self,
+        //         self.vid,
+        //         self.bg_banks[self.current_bg_bank],
+        //         self.tile_banks[self.current_tile_bank],
+        //     );
+        // }
 
         let is_outside_viewport = self.x < self.vid.view_left as u16
             || self.x >= self.vid.view_right as u16
@@ -99,7 +102,6 @@ impl<'a> Iterator for PixelIter<'a> {
             let fg_y = self.y as usize;
             if fg_y < MAX_LINES {
                 self.scanline = self.vid.sprite_gen.scanlines[fg_y as usize].clone();
-                // self.scanline = self.vid.sprites.scanlines[fg_y as usize].clone();
             }
             // Force BG cluster reload on new lines, cache scanline
             if self.y < self.vid.height() {
@@ -145,8 +147,8 @@ impl<'a> PixelIter<'a> {
             current_tile_bank: 0,
             x: 0,
             y: 0,
-            irq_x: vid.irq_x_callback,
-            irq_y: vid.irq_y_callback,
+            // irq_x: vid.irq_x_callback,
+            irq_y: vid.irq_line,
 
             wrap_bg: vid.wrap_bg,
             force_bg_color: false,

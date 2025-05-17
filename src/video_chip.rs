@@ -31,8 +31,8 @@ pub struct VideoChip {
     pub scroll_y: i16,
     /// A callback that can modify the iterator, called once per line.
     /// It is automatically passed to the PixelIterator.
-    pub irq_x_callback: Option<VideoIRQ>,
-    pub irq_y_callback: Option<VideoIRQ>,
+    // pub irq_x_callback: Option<VideoIRQ>,
+    pub irq_line: Option<VideoIRQ>,
 
     // Pixel data for all tiles, stored as palette indices.
     // pub tiles: &'a [Tile<2>; TILE_COUNT],
@@ -83,8 +83,8 @@ impl VideoChip {
             scroll_y: 0,
             frame_count: 0,
             // Video IRQs
-            irq_x_callback: None,
-            irq_y_callback: None,
+            // irq_x_callback: None,
+            irq_line: None,
         };
         result.reset_all();
 
@@ -264,8 +264,8 @@ impl VideoChip {
     /// Requires a reference to the Tile array.
     pub fn iter_pixels<'a>(
         &'a self,
-        tiles: &[&'a [Tile<2>]],
-        bg: &[&'a Tilemap<BG_LEN>],
+        tiles: &[&'a [Tile<2>]],    // Reference to an external Tile array
+        bg: &[&'a Tilemap<BG_LEN>], // Reference to an external Tilemap
     ) -> PixelIter<'a> {
         PixelIter::new(self, tiles, bg)
     }

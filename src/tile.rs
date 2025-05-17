@@ -1,8 +1,6 @@
 use super::*;
 use core::ops::{Index, IndexMut};
 
-// pub type TileBank = [Tile<2>];
-
 /// Unique identifier for a tile. Starts at zero when chip is reset.
 #[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord, PartialEq, Hash, Default)]
 pub struct TileID(pub u16);
