@@ -14,5 +14,5 @@
 
 ### Pipeline:
 
-[ ] Load individual named tiles into a tileset, each will be exported as a const
+[x] Load individual named tiles into a tileset, each will be exported as a const
     . On the other end, insert single tiles into TileBank (returns TileID)

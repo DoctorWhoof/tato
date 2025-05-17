@@ -13,8 +13,8 @@ pub mod text;
 mod anim;
 pub use anim::Anim;
 
-mod tileset;
-pub use tileset::*;
+mod tile_set;
+pub use tile_set::*;
 
 mod tile_bank;
 pub use tile_bank::*;

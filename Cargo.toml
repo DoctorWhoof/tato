@@ -22,6 +22,6 @@ members = [
     "examples/scenes",
     "examples/audio",
     "examples/font",
+    "examples/tilemap",
     # "examples/pipe",
-    # "examples/layers",
 ]
