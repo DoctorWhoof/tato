@@ -3,8 +3,8 @@ use crate::*;
 #[derive(Debug, Clone)]
 pub struct Tilemap<const LEN: usize> {
     pub data: [TileEntry; LEN],
-    columns: u16,
-    rows: u16,
+    pub columns: u16,
+    pub rows: u16,
 }
 
 /// A simple packet of required data to fully set the attributes on a BG tile.
@@ -31,14 +31,6 @@ impl<const LEN: usize> Tilemap<LEN> {
             columns,
             rows,
         }
-    }
-
-    pub fn columns(&self) -> u16 {
-        self.columns
-    }
-
-    pub fn rows(&self) -> u16 {
-        self.rows
     }
 
     pub fn width(&self) -> u16 {

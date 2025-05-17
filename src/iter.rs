@@ -195,7 +195,7 @@ impl<'a> PixelIter<'a> {
         let bg_row = bg_y / TILE_SIZE as u16;
 
         // Get new tile info
-        let bg_map_index = (bg_row as usize * bg.columns() as usize) + bg_col as usize;
+        let bg_map_index = (bg_row as usize * bg.columns as usize) + bg_col as usize;
         let current_bg_tile_id = bg.data[bg_map_index].id.0;
         self.bg_flags = bg.data[bg_map_index].flags;
 

@@ -25,7 +25,7 @@ impl<const BITS_PER_PIXEL: usize> Tile<BITS_PER_PIXEL> {
 pub struct TileEntry {
     pub id: TileID,
     pub flags: TileFlags,
-    pub custom_data: u8, // Unused for now
+    // pub custom_data: u8, // Unused for now
 }
 
 
