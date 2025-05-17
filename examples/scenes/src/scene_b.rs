@@ -1,6 +1,6 @@
 use crate::*;
 use tato::{
-    tilesets::{TILE_SMILEY, TILESET_DEFAULT},
+    {TILE_SMILEY, TILESET_DEFAULT},
     video::*,
 };
 

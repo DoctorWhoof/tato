@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tato = { path = "../../"}
+tato = { path = "../../" }
 backend_raylib = { path = "../_backend/raylib"}
+
+[build-dependencies]
+tato = { path = "../../" }

@@ -2,7 +2,14 @@ use backend_raylib::{
     raylib::{self, color::Color, texture::Image},
     *,
 };
-use tato::Tato;
+use tato::{
+    Tato,
+    video::*,
+    {TILE_EMPTY, TILESET_DEFAULT},
+};
+
+mod patch;
+use patch::*;
 
 const W: usize = 240;
 const H: usize = 180;
@@ -10,6 +17,10 @@ pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
+    let _empty = tato.tiles.new_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
+    let tileset = tato.tiles.new_tileset(0, &TILESET_PATCH);
+    let colors = [BG_COLOR, BLACK, DARK_BLUE, BLUE];
+    tato.draw_patch(0, 4, 4, 8, 5, tileset);
 
     // Raylib setup
     let target_fps = 60.0;

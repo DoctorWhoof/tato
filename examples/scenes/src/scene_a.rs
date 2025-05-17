@@ -1,7 +1,7 @@
 use crate::*;
 use core::array::from_fn;
 use tato::pad::*;
-use tato::tilesets::{TILESET_DEFAULT, TILE_ARROW, TILE_SMILEY};
+use tato::{TILESET_DEFAULT, TILE_ARROW, TILE_SMILEY};
 use tato::video::*;
 
 const SMILEY_COUNT: usize = 32;
@@ -56,8 +56,8 @@ impl SceneA {
 
         // Set BG tiles
         t.maps[0].set_size(14 * 4, 14 * 4);
-        for col in 0..t.maps[0].columns() {
-            for row in 0..t.maps[0].rows() {
+        for col in 0..t.maps[0].columns {
+            for row in 0..t.maps[0].rows {
                 // Calculate palette ID based on coordinates, limits to 14 indices
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
@@ -160,8 +160,8 @@ impl SceneA {
 
         t.video.color_cycle(self.player.flags.palette(), 3, 1, 15);
 
-        for col in 0..t.maps[0].columns() {
-            for row in 0..t.maps[0].rows() {
+        for col in 0..t.maps[0].columns {
+            for row in 0..t.maps[0].rows {
                 let Some(mut flags) = t.maps[0].get_flags(col, row) else {
                     continue;
                 };

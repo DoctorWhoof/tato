@@ -4,17 +4,21 @@ pub use tato_audio as audio;
 pub use tato_layout as layout;
 pub use tato_pad as pad;
 pub use tato_video as video;
+pub use tato_pipe as pipe;
 
 use tato_video::*;
-
-pub mod tilesets;
-pub mod text;
 
 mod anim;
 pub use anim::Anim;
 
+mod graphics;
+pub use graphics::*;
+
 mod tile_set;
 pub use tile_set::*;
+
+mod tilesets;
+pub use tilesets::*;
 
 mod tile_bank;
 pub use tile_bank::*;
@@ -23,7 +27,7 @@ mod rect;
 pub use rect::*;
 
 pub mod prelude {
-    pub use crate::text::*;
+    pub use crate::graphics::*;
     pub use tato_audio::waveform::*;
     pub use tato_audio::*;
     pub use tato_pad::*;

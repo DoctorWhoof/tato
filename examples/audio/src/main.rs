@@ -1,7 +1,7 @@
 use backend_raylib::*;
 use raylib::{color::Color, texture::Image};
 use std::{f32::consts::PI, time::Instant};
-use tato::{prelude::*, tilesets::{TILESET_DEFAULT, TILESET_FONT, TILE_EMPTY}, Tato};
+use tato::{prelude::*, {TILESET_DEFAULT, TILESET_FONT, TILE_EMPTY}, Tato};
 
 const W: usize = 240;
 const H: usize = 180;

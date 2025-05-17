@@ -1,6 +1,6 @@
 use crate::*;
 use tato::{
-    tilesets::{TILE_CROSSHAIRS, TILE_SMILEY, TILE_SOLID, TILESET_DEFAULT},
+    {TILE_CROSSHAIRS, TILE_SMILEY, TILE_SOLID, TILESET_DEFAULT},
     video::*,
 };
 
@@ -19,8 +19,8 @@ impl SceneC {
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
-        for col in 0..t.maps[0].columns() {
-            for row in 0..t.maps[0].rows() {
+        for col in 0..t.maps[0].columns {
+            for row in 0..t.maps[0].rows {
                 t.maps[0].set_tile(BgBundle {
                     col,
                     row,
