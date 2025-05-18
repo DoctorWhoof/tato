@@ -109,14 +109,7 @@ impl<'a> Iterator for PixelIter<'a> {
                 reload_cluster = true;
             }
             // Run Y IRQ on every new line
-            if let Some(func) = self.irq_y {
-                func(
-                    self,
-                    self.vid,
-                    self.bg_banks[self.current_bg_bank],
-                    self.tile_banks[self.current_tile_bank],
-                );
-            }
+            self.call_line_irq();
         }
 
         // This will be true every few pixels, and once every new line
@@ -165,12 +158,13 @@ impl<'a> PixelIter<'a> {
             local_palettes: vid.local_palettes.clone(),
             scanline: vid.sprite_gen.scanlines[0].clone(),
         };
+        // Run Y IRQ on first line before anything else
+        result.call_line_irq();
         // Check if we're outside the BG map at initialization
         let bg = result.bg_banks[result.current_bg_bank];
         result.force_bg_color = !result.wrap_bg && result.is_outside(bg);
-        if !result.force_bg_color {
-            result.update_bg_cluster();
-        }
+        // Update bg data before first pixel is rendered
+        result.update_bg_cluster();
         result
     }
 
@@ -180,6 +174,18 @@ impl<'a> PixelIter<'a> {
 
     pub fn y(&self) -> u16 {
         self.y
+    }
+
+    #[inline]
+    fn call_line_irq(&mut self){
+        if let Some(func) = self.irq_y {
+            func(
+                self,
+                self.vid,
+                self.bg_banks[self.current_bg_bank],
+                self.tile_banks[self.current_tile_bank],
+            );
+        }
     }
 
     #[inline]
@@ -294,7 +300,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline(always)]
-    fn is_outside(&self, bg:&Tilemap<BG_LEN>) -> bool {
+    fn is_outside(&self, bg: &Tilemap<BG_LEN>) -> bool {
         // Calculate raw screen position for bounds check
         let raw_x = self.x as i16 + self.scroll_x;
         let raw_y = self.y as i16 + self.scroll_y;
