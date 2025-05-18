@@ -1,8 +1,5 @@
 use crate::*;
-use tato::{
-    {TILE_SMILEY, TILESET_DEFAULT},
-    video::*,
-};
+use tato::prelude::*;
 
 #[derive(Debug)]
 pub struct SceneB {

@@ -4,9 +4,8 @@ use tato_video::Tilemap;
 pub struct Anim<const FRAME_COUNT: usize, const FRAME_LEN: usize> {
     pub fps: u8,
     pub cols_per_frame: u8,
-    pub frames: [Tilemap<FRAME_LEN>; FRAME_COUNT]
-    // pub frames: [[u8; FRAME_LEN]; FRAME_COUNT],
-    // pub flags: [[u8; FRAME_LEN]; LEN],
+    pub frames: [Tilemap<FRAME_LEN>; FRAME_COUNT], // pub frames: [[u8; FRAME_LEN]; FRAME_COUNT],
+                                                   // pub flags: [[u8; FRAME_LEN]; LEN],
 }
 
 // TODO: Maybe an "AnimPlus" format where the flags are also stored,

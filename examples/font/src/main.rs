@@ -5,7 +5,6 @@ use backend_raylib::{
 use tato::{
     Tato,
     prelude::*,
-    {TILE_EMPTY, TILESET_DEFAULT, TILESET_FONT},
 };
 
 const W: usize = 240;

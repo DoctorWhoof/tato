@@ -1,8 +1,7 @@
-
 /// A Tileset contains metadata about the location of a group of tiles in a tile bank.
 #[derive(Debug, Clone, Default)]
 pub struct Tileset {
-    pub start:u16,
+    pub start: u16,
     pub len: u16,
     pub bank: u8,
     // anims

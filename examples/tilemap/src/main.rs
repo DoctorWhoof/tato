@@ -1,12 +1,8 @@
 use backend_raylib::{
-    raylib::{self, color::Color, texture::Image},
+    raylib::{self, color::Color, ffi::TraceLogLevel, texture::Image},
     *,
 };
-use tato::{
-    Tato,
-    video::*,
-    {TILE_EMPTY, TILESET_DEFAULT},
-};
+use tato::prelude::*;
 
 mod patch;
 use patch::*;
@@ -19,15 +15,24 @@ fn main() {
     let mut tato = Tato::new(240, 180);
     let _empty = tato.tiles.new_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
     let tileset = tato.tiles.new_tileset(0, &TILESET_PATCH);
-    let colors = [BG_COLOR, BLACK, DARK_BLUE, BLUE];
-    tato.draw_patch(0, 4, 4, 8, 5, tileset);
+    // let colors = [BG_COLOR, BLACK, DARK_BLUE, BLUE];
+    tato.draw_patch(
+        0,
+        Rect {
+            x: 4,
+            y: 4,
+            w: 8,
+            h: 5,
+        },
+        tileset,
+    );
 
     // Raylib setup
     let target_fps = 60.0;
     let w = tato.video.width() as i32;
     let h = tato.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
-        // .log_level(TraceLogLevel::LOG_WARNING)
+        .log_level(TraceLogLevel::LOG_WARNING)
         .size(w * 3, h * 3)
         .title("Tato Demo")
         .vsync()

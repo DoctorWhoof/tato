@@ -1,12 +1,8 @@
 // Auto-generated code - do not edit manually
 #![allow(unused)]
-use tato::{video::*, *};
+use tato::prelude::*;
 
-pub const SUBPALETTE_PATCH_0: [u8; 4] = [0, 2, 0, 0];
-
-pub const SUBPALETTE_PATCH_1: [u8; 4] = [0, 1, 2, 3];
-
-pub const SUBPALETTE_PATCH_2: [u8; 4] = [0, 3, 0, 0];
+pub const SUBPALETTE_PATCH_0: [u8; 4] = [1, 2, 3, 0];
 
 pub const ANIM_PATCH: Anim<1, 9> = Anim {
     fps: 1,
@@ -15,42 +11,15 @@ pub const ANIM_PATCH: Anim<1, 9> = Anim {
         columns: 3,
         rows: 3,
         data: [
-            TileEntry {
-                id: TileID(0),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(1),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(2),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(3),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(4),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(5),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(6),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(7),
-                flags: TileFlags(0),
-            },
-            TileEntry {
-                id: TileID(8),
-                flags: TileFlags(0),
-            },
+            TileEntry { id: TileID(0), flags: TileFlags(0) },
+            TileEntry { id: TileID(1), flags: TileFlags(0) },
+            TileEntry { id: TileID(2), flags: TileFlags(0) },
+            TileEntry { id: TileID(3), flags: TileFlags(0) },
+            TileEntry { id: TileID(4), flags: TileFlags(0) },
+            TileEntry { id: TileID(5), flags: TileFlags(0) },
+            TileEntry { id: TileID(6), flags: TileFlags(0) },
+            TileEntry { id: TileID(7), flags: TileFlags(0) },
+            TileEntry { id: TileID(8), flags: TileFlags(0) },
         ],
     }],
 };

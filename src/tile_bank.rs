@@ -20,11 +20,7 @@ pub struct TileBank<const BANKS: usize> {
 
 impl<const BANKS: usize> Default for TileBank<BANKS> {
     fn default() -> Self {
-        assert!(
-            BANKS <= u8::MAX as usize,
-            err!("Tile Banks capacity of {} exceeded"),
-            u8::MAX
-        );
+        assert!(BANKS <= u8::MAX as usize, err!("Tile Banks capacity of {} exceeded"), u8::MAX);
         Self {
             tiles: from_fn(|_| from_fn(|_| Tile::<2>::default())),
             sets: from_fn(|_| Tileset::default()),
@@ -44,10 +40,7 @@ impl<const BANKS: usize> TileBank<BANKS> {
 
     pub fn new_tile(&mut self, bank: u8, tile: &Tile<2>) -> TileID {
         assert!((bank as usize) < BANKS, err!("Invalid bank index {}"), bank);
-        assert!(
-            (self.set_head as usize) < BANKS,
-            err!("Tileset capacity reached")
-        );
+        assert!((self.set_head as usize) < BANKS, err!("Tileset capacity reached"));
         let tile_head = self.tile_head[bank as usize];
         let result = TileID(tile_head);
         // Copy tile data to bank
@@ -59,10 +52,7 @@ impl<const BANKS: usize> TileBank<BANKS> {
 
     pub fn new_tileset(&mut self, bank: u8, data: &[Tile<2>]) -> TilesetID {
         assert!((bank as usize) < BANKS, err!("Invalid bank index {}"), bank);
-        assert!(
-            (self.set_head as usize) < BANKS,
-            err!("Tileset capacity reached")
-        );
+        assert!((self.set_head as usize) < BANKS, err!("Tileset capacity reached"));
         let tiles_start = self.tile_head[bank as usize];
         let result = TilesetID(self.set_head);
         let set_len = u16::try_from(data.len()).unwrap();
@@ -79,11 +69,7 @@ impl<const BANKS: usize> TileBank<BANKS> {
             self.tiles[bank as usize][dest_index] = tile.clone();
         }
         // Create tileset entry
-        self.sets[self.set_head as usize] = Tileset {
-            start: tiles_start,
-            len: set_len,
-            bank,
-        };
+        self.sets[self.set_head as usize] = Tileset { start: tiles_start, len: set_len, bank };
         // Advance and return
         self.set_head += 1;
         self.tile_head[bank as usize] += set_len;

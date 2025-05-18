@@ -1,10 +1,8 @@
+use tato_pipe::*;
 
 fn main() {
-    use tato::pipe::*;
-    // Print working directory
-    println!("Current working directory: {:?}", std::env::current_dir().unwrap());
-
     let mut pipe = Pipeline::new();
+    pipe.allow_unused = true;
 
     // Tile Patch example
     let palette_patch = pipe.new_palette("patch", 16);

@@ -1,27 +1,18 @@
+use tato_layout::Rect;
+
 use crate::*;
 
 impl Tato {
-    pub fn draw_patch(
-        &mut self,
-        map: u8,
-        col: u16,
-        row: u16,
-        w: u16,
-        h: u16,
-        tileset_id: TilesetID,
-    ) {
+    pub fn draw_patch(&mut self, map: u8, rect: Rect<u16>, tileset_id: TilesetID) {
         let tileset = &self.tiles.sets[tileset_id.0 as usize];
-        assert!(
-            tileset.len == 9,
-            err!("Tile patch tilesets must be 9 tiles long.")
-        );
+        assert!(tileset.len == 9, err!("Tile patch tilesets must be 9 tiles long."));
 
         let map = &mut self.maps[map as usize];
         let tile_index = TileID(tileset.start);
 
         map.set_tile(BgBundle {
-            col,
-            row,
+            col: rect.x,
+            row: rect.y,
             tile_id: tile_index,
             flags: TileFlags::default(),
         });
@@ -34,14 +25,14 @@ impl Tato {
     pub fn copy_tile_rect<const S_LEN: usize, const D_LEN: usize>(
         source: &Tilemap<S_LEN>,
         dest: &mut Tilemap<D_LEN>,
-        src_rect: Option<&Rect>,
-        dst_rect: Option<&Rect>,
+        src_rect: Option<&Rect<u16>>,
+        dst_rect: Option<&Rect<u16>>,
     ) {
         // Determine source rectangle
         let src_x = src_rect.map_or(0, |r| r.x) as i16;
         let src_y = src_rect.map_or(0, |r| r.y) as i16;
-        let src_w = src_rect.map_or(source.columns, |r| r.w()) as i16;
-        let src_h = src_rect.map_or(source.rows, |r| r.h()) as i16;
+        let src_w = src_rect.map_or(source.columns, |r| r.w) as i16;
+        let src_h = src_rect.map_or(source.rows, |r| r.h) as i16;
 
         // Make sure source rectangle is within bounds
         let src_w = i16::min(src_w, source.columns as i16 - src_x);
@@ -62,14 +53,8 @@ impl Tato {
         let effective_dst_y = i16::max(0, dst_y);
 
         // Calculate effective width and height after clipping
-        let effective_width = i16::max(
-            0,
-            i16::min(src_w - clip_x, dest.columns as i16 - effective_dst_x),
-        );
-        let effective_height = i16::max(
-            0,
-            i16::min(src_h - clip_y, dest.rows as i16 - effective_dst_y),
-        );
+        let effective_width = i16::max(0, i16::min(src_w - clip_x, dest.columns as i16 - effective_dst_x));
+        let effective_height = i16::max(0, i16::min(src_h - clip_y, dest.rows as i16 - effective_dst_y));
 
         // If there's nothing to copy (zero width or height), return early
         if effective_width <= 0 || effective_height <= 0 {
@@ -79,10 +64,8 @@ impl Tato {
         // Copy the tiles row by row
         for y in 0..effective_height {
             for x in 0..effective_width {
-                let src_index = (effective_src_y + y) as usize * source.columns as usize
-                    + (effective_src_x + x) as usize;
-                let dst_index = (effective_dst_y + y) as usize * dest.columns as usize
-                    + (effective_dst_x + x) as usize;
+                let src_index = (effective_src_y + y) as usize * source.columns as usize + (effective_src_x + x) as usize;
+                let dst_index = (effective_dst_y + y) as usize * dest.columns as usize + (effective_dst_x + x) as usize;
 
                 // Ensure we're within bounds (additional safety check)
                 // if src_index < S_LEN && dst_index < LEN {

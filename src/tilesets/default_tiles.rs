@@ -2,7 +2,7 @@
 #![allow(unused)]
 use tato_video::*;
 
-pub const SUBPALETTE_DEFAULT_0: [u8; 4] = [0, 1, 2, 3];
+pub const SUBPALETTE_DEFAULT_0: [u8; 4] = [1, 2, 3, 0];
 
 pub const TILE_CHECKERS: TileID = TileID(0);
 pub const TILE_EMPTY: TileID = TileID(1);

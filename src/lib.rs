@@ -1,42 +1,40 @@
-use tato_audio::AudioChip;
-// #![no_std]
+#![no_std]
+
 pub use tato_audio as audio;
 pub use tato_layout as layout;
 pub use tato_pad as pad;
 pub use tato_video as video;
-pub use tato_pipe as pipe;
 
 use tato_video::*;
 
-mod anim;
-pub use anim::Anim;
+pub mod anim;
 
-mod graphics;
-pub use graphics::*;
+pub mod graphics;
 
 mod tile_set;
-pub use tile_set::*;
+use tile_set::*;
 
-mod tilesets;
-pub use tilesets::*;
+pub mod tilesets;
 
-mod tile_bank;
-pub use tile_bank::*;
-
-mod rect;
-pub use rect::*;
+pub mod tile_bank;
+use tile_bank::*;
 
 pub mod prelude {
+    pub use crate::anim::*;
     pub use crate::graphics::*;
+    pub use crate::tile_bank::*;
+    pub use crate::tile_set::*;
+    pub use crate::tilesets::*;
+    pub use crate::Tato;
     pub use tato_audio::waveform::*;
     pub use tato_audio::*;
+    pub use tato_layout::*;
     pub use tato_pad::*;
     pub use tato_video::*;
-    // pub use tato_video::*;
 }
 
-const TILE_BANK_COUNT:usize = 2;
-const TILE_MAP_COUNT:usize = 2;
+const TILE_BANK_COUNT: usize = 2;
+const TILE_MAP_COUNT: usize = 2;
 
 #[derive(Debug)]
 pub struct Tato {
@@ -57,33 +55,31 @@ impl Tato {
             maps: core::array::from_fn(|_| Tilemap::new(64, 48)),
         };
 
-        println!(
-            "Size of Tato Engine: {:.1} Kb",
-            size_of::<Tato>() as f32 / 1024.0
-        );
-        println!(
-            "    Tato Video: {:.1} Kb",
-            size_of::<VideoChip>() as f32 / 1024.0
-        );
-        println!(
-            "    Tato Audio: {:.1} Kb",
-            size_of::<AudioChip>() as f32 / 1024.0
-        );
-        println!(
-            "    Tile Banks: {:.1} Kb",
-            size_of_val(&tato.tiles) as f32 / 1024.0
-        );
-        println!(
-            "    Tile Maps: {:.1} Kb",
-            size_of_val(&tato.maps) as f32 / 1024.0
-        );
+        // println!(
+        //     "Size of Tato Engine: {:.1} Kb",
+        //     size_of::<Tato>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "    Tato Video: {:.1} Kb",
+        //     size_of::<VideoChip>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "    Tato Audio: {:.1} Kb",
+        //     size_of::<AudioChip>() as f32 / 1024.0
+        // );
+        // println!(
+        //     "    Tile Banks: {:.1} Kb",
+        //     size_of_val(&tato.tiles) as f32 / 1024.0
+        // );
+        // println!(
+        //     "    Tile Maps: {:.1} Kb",
+        //     size_of_val(&tato.maps) as f32 / 1024.0
+        // );
 
         tato
     }
 
     pub fn map_refs(&self) -> [&Tilemap<BG_LEN>; TILE_MAP_COUNT] {
-        core::array::from_fn(|i|{
-            &self.maps[i]
-        })
+        core::array::from_fn(|i| &self.maps[i])
     }
 }

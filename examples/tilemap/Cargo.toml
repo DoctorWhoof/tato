@@ -8,4 +8,4 @@ tato = { path = "../../" }
 backend_raylib = { path = "../_backend/raylib"}
 
 [build-dependencies]
-tato = { path = "../../" }
+tato_pipe = { path = "../../../tato_pipe" }
