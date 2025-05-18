@@ -17,7 +17,7 @@ impl SceneC {
         let smiley = TILE_SMILEY;
 
         for col in 0..t.maps[0].columns {
-            for row in 0..t.maps[0].rows {
+            for row in 0..t.maps[0].rows() {
                 t.maps[0].set_tile(BgBundle {
                     col,
                     row,

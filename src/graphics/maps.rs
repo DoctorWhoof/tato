@@ -32,11 +32,11 @@ impl Tato {
         let src_x = src_rect.map_or(0, |r| r.x) as i16;
         let src_y = src_rect.map_or(0, |r| r.y) as i16;
         let src_w = src_rect.map_or(source.columns, |r| r.w) as i16;
-        let src_h = src_rect.map_or(source.rows, |r| r.h) as i16;
+        let src_h = src_rect.map_or(source.rows(), |r| r.h) as i16;
 
         // Make sure source rectangle is within bounds
         let src_w = i16::min(src_w, source.columns as i16 - src_x);
-        let src_h = i16::min(src_h, source.rows as i16 - src_y);
+        let src_h = i16::min(src_h, source.rows() as i16 - src_y);
 
         // Determine destination rectangle
         let dst_x = dst_rect.map_or(0, |r| r.x) as i16;
@@ -54,7 +54,7 @@ impl Tato {
 
         // Calculate effective width and height after clipping
         let effective_width = i16::max(0, i16::min(src_w - clip_x, dest.columns as i16 - effective_dst_x));
-        let effective_height = i16::max(0, i16::min(src_h - clip_y, dest.rows as i16 - effective_dst_y));
+        let effective_height = i16::max(0, i16::min(src_h - clip_y, dest.rows() as i16 - effective_dst_y));
 
         // If there's nothing to copy (zero width or height), return early
         if effective_width <= 0 || effective_height <= 0 {

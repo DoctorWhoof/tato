@@ -6,10 +6,8 @@ pub const SUBPALETTE_PATCH_0: [u8; 4] = [1, 2, 3, 0];
 
 pub const ANIM_PATCH: Anim<1, 9> = Anim {
     fps: 1,
-    cols_per_frame: 3,
     frames: [Tilemap::<9> {
         columns: 3,
-        rows: 3,
         data: [
             TileEntry { id: TileID(0), flags: TileFlags(0) },
             TileEntry { id: TileID(1), flags: TileFlags(0) },
