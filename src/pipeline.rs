@@ -17,10 +17,7 @@ impl Pipeline {
     pub fn new() -> Self {
         // Cargo build setup
         println!("cargo:warning=Running Build Script!");
-        println!(
-            "cargo:warning=Working Dir:{:?}",
-            std::env::current_dir().ok().unwrap()
-        );
+        println!("cargo:warning=Working Dir:{:?}", std::env::current_dir().ok().unwrap());
         println!("cargo:rerun-if-changed=build.rs");
         println!("cargo:rerun-if-changed=assets/*.*");
         // Create with defaults
@@ -39,12 +36,8 @@ impl Pipeline {
     pub fn new_palette(&mut self, name: impl Into<String>, capacity: u8) -> PaletteID {
         let id: u8 = self.palette_head;
         self.palette_head += 1;
-        println!(
-            "cargo:warning=Pipeline: initializing palette at index {}.",
-            id
-        );
-        self.palettes
-            .push(PaletteBuilder::new(name.into(), capacity.into(), id));
+        println!("cargo:warning=Pipeline: initializing palette at index {}.", id);
+        self.palettes.push(PaletteBuilder::new(name.into(), capacity.into(), id));
         PaletteID(id)
     }
 
@@ -52,12 +45,8 @@ impl Pipeline {
     pub fn new_tileset(&mut self, name: impl Into<String>, palette_id: PaletteID) -> TilesetID {
         let id: u8 = self.tileset_head;
         self.tileset_head += 1;
-        println!(
-            "cargo:warning=Pipeline: initializing tileset at index {}.",
-            id
-        );
-        self.tilesets
-            .push(TilesetBuilder::new(name.into(), palette_id));
+        println!("cargo:warning=Pipeline: initializing tileset at index {}.", id);
+        self.tilesets.push(TilesetBuilder::new(name.into(), palette_id));
         TilesetID(id)
     }
 
@@ -72,23 +61,13 @@ impl Pipeline {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
 
-        let palette = self
-            .palettes
-            .get_mut(tileset.palette_id.0 as usize)
-            .unwrap();
+        let palette = self.palettes.get_mut(tileset.palette_id.0 as usize).unwrap();
         let img = PalettizedImg::from_image(path, 1, 1, palette);
-        assert!(
-            img.width == TILE_SIZE as usize,
-            "Single tile width must be {}",
-            TILE_SIZE
-        );
+        assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
 
         let tile = tileset.add_tiles(&img, palette); //, group, false);
 
-        tileset.single_tiles.push(SingleTileBuilder {
-            name: strip_path_name(path),
-            entry: tile[0],
-        });
+        tileset.single_tiles.push(SingleTileBuilder { name: strip_path_name(path), entry: tile[0] });
     }
 
     /// Initializes a new animation sequence from a .png file. It will:
@@ -108,10 +87,7 @@ impl Pipeline {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
 
-        let palette = self
-            .palettes
-            .get_mut(tileset.palette_id.0 as usize)
-            .unwrap();
+        let palette = self.palettes.get_mut(tileset.palette_id.0 as usize).unwrap();
         let img = PalettizedImg::from_image(path, frames_h, frames_v, palette);
         let tiles = tileset.add_tiles(&img, palette); //, group, false);
         let tiles_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
@@ -128,9 +104,7 @@ impl Pipeline {
             frames: (0..frame_count)
                 .map(|i| {
                     let index = i * tiles_per_frame;
-                    FrameBuilder {
-                        tiles: tiles[index..index + tiles_per_frame].into(),
-                    }
+                    FrameBuilder { tiles: tiles[index..index + tiles_per_frame].into() }
                 })
                 .collect(),
         };
@@ -202,7 +176,6 @@ impl Pipeline {
 }
 
 // ****************************** Code Gen ******************************
-
 impl Pipeline {
     fn append_header(&mut self, code: &mut CodeWriter) {
         // Header
@@ -218,23 +191,12 @@ impl Pipeline {
     fn append_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
-        code.write_line(&format!(
-            "pub const PALETTE_{}: [Color9Bit; {}] = [",
-            palette.name.to_uppercase(),
-            palette.colors.len()
-        ));
-        code.indent();
+        code.write_line(&format!("pub const PALETTE_{}: [Color9Bit; {}] = [", palette.name.to_uppercase(), palette.colors.len()));
 
         for color in &palette.colors {
-            code.write_line(&format!(
-                "Color9Bit::new({}, {}, {}),",
-                color.r(),
-                color.g(),
-                color.b()
-            ));
+            code.write_line(&format!("Color9Bit::new({}, {}, {}),", color.r(), color.g(), color.b()));
         }
 
-        code.dedent();
         code.write_line("];");
         code.write_line("");
     }
@@ -245,18 +207,14 @@ impl Pipeline {
         for sub_plt in &tileset.sub_palettes {
             code.write_line(&format!(
                 "pub const SUBPALETTE_{}: [u8; {}] = [",
-                tileset
-                    .sub_palette_name_hash
-                    .get(sub_plt)
-                    .unwrap()
-                    .to_uppercase(),
+                tileset.sub_palette_name_hash.get(sub_plt).unwrap().to_uppercase(),
                 sub_plt.len()
             ));
-            code.indent();
+
             for color_index in sub_plt {
                 code.write_line(&format!("{},", color_index));
             }
-            code.dedent();
+
             code.write_line("];");
             code.write_line("");
         }
@@ -275,23 +233,21 @@ impl Pipeline {
                 anim.fps,
                 // anim.columns,
             ));
-            code.indent();
+
             for frame in &anim.frames {
                 code.write_line(&format!("Tilemap::<{}> {{", anim.columns as usize * anim.rows as usize));
-                code.indent();
                 code.write_line(&format!("columns: {},", anim.columns));
                 code.write_line("data: [");
-                code.indent();
+
                 for entry in &frame.tiles {
                     code.write_line(&format!("{:?},", *entry));
                 }
-                code.dedent();
+
                 code.write_line("],");
-                code.dedent();
                 code.write_line("},\n");
             }
+
             code.write_line("]");
-            code.dedent();
             code.write_line("};");
             code.write_line("");
         }
@@ -300,11 +256,7 @@ impl Pipeline {
     fn append_single_tile_ids(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for tile_builder in &tileset.single_tiles {
-            code.write_line(&format!(
-                "pub const {}: TileID = {:?};",
-                tile_builder.name.to_uppercase(),
-                tile_builder.entry.id,
-            ));
+            code.write_line(&format!("pub const {}: TileID = {:?};", tile_builder.name.to_uppercase(), tile_builder.entry.id,));
         }
     }
 
@@ -312,40 +264,28 @@ impl Pipeline {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         // Write Pixels at the bottom of the file!
         code.write_line("");
-        code.write_line(&format!(
-            "pub const TILESET_{}: [Tile<2>; {}] = [",
-            tileset.name.to_uppercase(),
-            tileset.pixels.len() / 64
-        ));
-        code.indent();
+        code.write_line(&format!("pub const TILESET_{}: [Tile<2>; {}] = [", tileset.name.to_uppercase(), tileset.pixels.len() / 64));
+
         for tile in tileset.pixels.chunks(64) {
-            code.indent();
             code.write_line("Tile {");
-            code.indent();
             code.write_line("clusters:[");
-            code.indent();
+
             for pixels in tile.chunks(8) {
                 let cluster = Cluster::<2>::from(pixels);
-                // code.write("Cluster {");
                 code.write(&format!("{:?},", cluster));
-                // code.write_line("},");
             }
-            code.dedent();
+
             code.write_line("],");
-            code.dedent();
             code.write_line("},");
-            code.dedent();
         }
-        code.dedent();
+
         code.write_line("];");
         code.write_line("");
     }
 
     fn format_output(&mut self, file_path: &str) {
         // Format the output file with rustfmt
-        let output = std::process::Command::new("rustfmt")
-            .arg(file_path)
-            .output();
+        let output = std::process::Command::new("rustfmt").arg(file_path).output();
 
         match output {
             Ok(output) => {
@@ -355,13 +295,11 @@ impl Pipeline {
                 } else {
                     println!("cargo:warning=Successfully formatted generated code");
                 }
-            }
+            },
             Err(e) => {
                 println!("cargo:warning=Failed to run rustfmt: {}", e);
-                println!(
-                    "cargo:warning=Make sure rustfmt is installed (rustup component add rustfmt)"
-                );
-            }
+                println!("cargo:warning=Make sure rustfmt is installed (rustup component add rustfmt)");
+            },
         }
     }
 }

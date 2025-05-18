@@ -1,6 +1,5 @@
 // Auto-generated code - do not edit manually
-#![allow(unused)]
-use tato::{video::*, *};
+use tato::prelude::*;
 
 pub const PALETTE_PALETTE_FG: [Color9Bit; 16] = [
     Color9Bit::new(0, 0, 0),
@@ -25,126 +24,49 @@ pub const SUBPALETTE_PALETTE_FG_0: [u8; 4] = [1, 2, 3, 4];
 
 pub const ANIM_SPY_IDLE: Anim<4, 6> = Anim {
     fps: 8,
-    cols_per_frame: 2,
     frames: [
         Tilemap::<6> {
             columns: 2,
-            rows: 3,
             data: [
-                TileEntry {
-                    id: TileID(0),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(1),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(2),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(3),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(4),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(5),
-                    flags: TileFlags(0),
-                },
+                TileEntry { id: TileID(0), flags: TileFlags(0) },
+                TileEntry { id: TileID(1), flags: TileFlags(0) },
+                TileEntry { id: TileID(2), flags: TileFlags(0) },
+                TileEntry { id: TileID(3), flags: TileFlags(0) },
+                TileEntry { id: TileID(4), flags: TileFlags(0) },
+                TileEntry { id: TileID(5), flags: TileFlags(0) },
             ],
         },
         Tilemap::<6> {
             columns: 2,
-            rows: 3,
             data: [
-                TileEntry {
-                    id: TileID(0),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(1),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(6),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(3),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(4),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(5),
-                    flags: TileFlags(0),
-                },
+                TileEntry { id: TileID(0), flags: TileFlags(0) },
+                TileEntry { id: TileID(1), flags: TileFlags(0) },
+                TileEntry { id: TileID(6), flags: TileFlags(0) },
+                TileEntry { id: TileID(3), flags: TileFlags(0) },
+                TileEntry { id: TileID(4), flags: TileFlags(0) },
+                TileEntry { id: TileID(5), flags: TileFlags(0) },
             ],
         },
         Tilemap::<6> {
             columns: 2,
-            rows: 3,
             data: [
-                TileEntry {
-                    id: TileID(0),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(1),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(7),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(3),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(4),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(5),
-                    flags: TileFlags(0),
-                },
+                TileEntry { id: TileID(0), flags: TileFlags(0) },
+                TileEntry { id: TileID(1), flags: TileFlags(0) },
+                TileEntry { id: TileID(7), flags: TileFlags(0) },
+                TileEntry { id: TileID(3), flags: TileFlags(0) },
+                TileEntry { id: TileID(4), flags: TileFlags(0) },
+                TileEntry { id: TileID(5), flags: TileFlags(0) },
             ],
         },
         Tilemap::<6> {
             columns: 2,
-            rows: 3,
             data: [
-                TileEntry {
-                    id: TileID(0),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(1),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(8),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(3),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(4),
-                    flags: TileFlags(0),
-                },
-                TileEntry {
-                    id: TileID(5),
-                    flags: TileFlags(0),
-                },
+                TileEntry { id: TileID(0), flags: TileFlags(0) },
+                TileEntry { id: TileID(1), flags: TileFlags(0) },
+                TileEntry { id: TileID(8), flags: TileFlags(0) },
+                TileEntry { id: TileID(3), flags: TileFlags(0) },
+                TileEntry { id: TileID(4), flags: TileFlags(0) },
+                TileEntry { id: TileID(5), flags: TileFlags(0) },
             ],
         },
     ],
