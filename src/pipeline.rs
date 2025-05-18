@@ -268,19 +268,18 @@ impl Pipeline {
         for anim in &tileset.anims {
             // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
-                "pub const ANIM_{}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
+                "pub const ANIM_{}: Anim<{}, {}> = Anim {{ fps: {}, frames: [",
                 anim.name.to_uppercase(),
                 anim.frames.len(),
                 anim.columns as usize * anim.rows as usize,
                 anim.fps,
-                anim.columns,
+                // anim.columns,
             ));
             code.indent();
             for frame in &anim.frames {
                 code.write_line(&format!("Tilemap::<{}> {{", anim.columns as usize * anim.rows as usize));
                 code.indent();
                 code.write_line(&format!("columns: {},", anim.columns));
-                code.write_line(&format!("rows: {},", anim.rows));
                 code.write_line("data: [");
                 code.indent();
                 for entry in &frame.tiles {
