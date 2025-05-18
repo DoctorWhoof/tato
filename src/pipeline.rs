@@ -5,6 +5,7 @@ pub const SUB_PALETTE_COUNT: usize = 16;
 pub const SUB_PALETTE_COLOR_COUNT: usize = 4;
 
 pub struct Pipeline {
+    pub allow_unused: bool,
     palettes: Vec<PaletteBuilder>,
     tilesets: Vec<TilesetBuilder>,
     tileset_head: u8,
@@ -24,6 +25,7 @@ impl Pipeline {
         println!("cargo:rerun-if-changed=assets/*.*");
         // Create with defaults
         Pipeline {
+            allow_unused: false,
             palettes: Vec::new(),
             tilesets: Vec::new(),
             tileset_head: 0,
@@ -205,8 +207,10 @@ impl Pipeline {
     fn append_header(&mut self, code: &mut CodeWriter) {
         // Header
         code.write_line("// Auto-generated code - do not edit manually");
-        code.write_line("#![allow(unused)]");
-        code.write_line("use tato_video::*;");
+        if self.allow_unused {
+            code.write_line("#![allow(unused)]");
+        }
+        code.write_line("use tato::prelude::*;");
         code.write_line("");
         code.write_line("");
     }
@@ -235,7 +239,6 @@ impl Pipeline {
         code.write_line("");
     }
 
-
     fn append_sub_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         // Sub-Palettes
@@ -259,30 +262,38 @@ impl Pipeline {
         }
     }
 
-
     fn append_anims(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
         // Tilesets
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for anim in &tileset.anims {
             // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
-                "pub const {}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
+                "pub const ANIM_{}: Anim<{}, {}> = Anim {{ fps: {}, cols_per_frame: {}, frames: [",
                 anim.name.to_uppercase(),
                 anim.frames.len(),
                 anim.columns as usize * anim.rows as usize,
                 anim.fps,
-                anim.columns
+                anim.columns,
             ));
             code.indent();
             for frame in &anim.frames {
-                code.start_line("[");
-                for tile in &frame.tiles {
-                    code.write(&format!("{}, ", tile.id.0));
+                code.write_line(&format!("Tilemap::<{}> {{", anim.columns as usize * anim.rows as usize));
+                code.indent();
+                code.write_line(&format!("columns: {},", anim.columns));
+                code.write_line(&format!("rows: {},", anim.rows));
+                code.write_line("data: [");
+                code.indent();
+                for entry in &frame.tiles {
+                    code.write_line(&format!("{:?},", *entry));
                 }
-                code.finish_line("],\n");
+                code.dedent();
+                code.write_line("],");
+                code.dedent();
+                code.write_line("},\n");
             }
+            code.write_line("]");
             code.dedent();
-            code.write_line("]};");
+            code.write_line("};");
             code.write_line("");
         }
     }

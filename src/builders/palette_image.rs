@@ -74,7 +74,7 @@ impl PalettizedImg {
         }
     }
 
-    // Populates the palettized, 1 byte-per-pixel image from a source RGBA image.
+    // Creates a palettized image from a source RGBA image, populates the palette.
     pub fn palletize(img: DynamicImage, palette: &mut PaletteBuilder) -> Vec<u8> {
         let mut pixels = vec![];
         for y in 0..img.height() as usize {
