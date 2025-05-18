@@ -1,6 +1,5 @@
 // Auto-generated code - do not edit manually
-#![allow(unused)]
-use tato_video::*;
+use crate::prelude::*;
 
 pub const SUBPALETTE_DEFAULT_0: [u8; 4] = [1, 2, 3, 0];
 

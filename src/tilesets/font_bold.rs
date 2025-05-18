@@ -1,6 +1,5 @@
 // Auto-generated code - do not edit manually
-#![allow(unused)]
-use tato_video::*;
+use crate::prelude::*;
 
 pub const TILESET_FONT: [Tile<2>; 85] = [
     Tile {
