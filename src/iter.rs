@@ -24,9 +24,9 @@ pub struct PixelIter<'a> {
     pub current_tile_bank: usize,
     pub current_bg_bank: usize,
     pub tile_banks: [&'a [Tile<2>]; 16],
-    pub bg_banks: [&'a Tilemap<BG_LEN>; 16],
+    pub bg_banks: [&'a BGMap<BG_LEN>; 16],
     // pub tiles: &'a [Tile<2>],
-    // pub bg: &'a Tilemap<BG_LEN>,
+    // pub bg: &'a BGMap<BG_LEN>,
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline,   // current sprite scanline
@@ -131,11 +131,25 @@ impl<'a> Iterator for PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new(vid: &'a VideoChip, tiles: &[&'a [Tile<2>]], bgs: &[&'a Tilemap<BG_LEN>]) -> Self {
+    // pub fn new(vid: &'a VideoChip, tiles: &[&'a [Tile<2>]], bgs: &[&'a BGMap<BG_LEN>]) -> Self {
+    pub fn new(vid: &'a VideoChip, mem: &'a [&'a VideoMemory<512, BG_LEN>]) -> Self {
+        assert!(!mem.is_empty(), err!("Tile Memory bank can't be empty"));
         let mut result = Self {
             vid,
-            tile_banks: from_fn(|i| if i < tiles.len() { tiles[i] } else { tiles[0] }),
-            bg_banks: from_fn(|i| if i < bgs.len() { bgs[i] } else { bgs[0] }),
+            tile_banks: from_fn(|i| {
+                if i < mem.len() {
+                    &mem[i].tiles[..]
+                } else {
+                    &mem[0].tiles[..]
+                }
+            }),
+            bg_banks: from_fn(|i| {
+                if i < mem.len() {
+                    &mem[i].bg
+                } else {
+                    &mem[0].bg
+                }
+            }),
             current_bg_bank: 0,
             current_tile_bank: 0,
             x: 0,
@@ -177,7 +191,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline]
-    fn call_line_irq(&mut self){
+    fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
             func(
                 self,
@@ -202,8 +216,8 @@ impl<'a> PixelIter<'a> {
 
         // Get new tile info
         let bg_map_index = (bg_row as usize * bg.columns as usize) + bg_col as usize;
-        let current_bg_tile_id = bg.data[bg_map_index].id.0;
-        self.bg_flags = bg.data[bg_map_index].flags;
+        let current_bg_tile_id = bg.cells[bg_map_index].id.0;
+        self.bg_flags = bg.cells[bg_map_index].flags;
 
         // Calculate local tile coordinates
         let tile_x = (bg_x % TILE_SIZE as u16) as u8;
@@ -300,7 +314,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline(always)]
-    fn is_outside(&self, bg: &Tilemap<BG_LEN>) -> bool {
+    fn is_outside(&self, bg: &BGMap<BG_LEN>) -> bool {
         // Calculate raw screen position for bounds check
         let raw_x = self.x as i16 + self.scroll_x;
         let raw_y = self.y as i16 + self.scroll_y;

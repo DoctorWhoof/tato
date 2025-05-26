@@ -1,43 +1,41 @@
 use crate::*;
 
 #[derive(Debug, Clone)]
-pub struct Tilemap<const LEN: usize> {
-    pub data: [TileEntry; LEN],
+pub struct BGMap<const CELLS: usize> {
+    pub cells: [Cell; CELLS],
     pub columns: u16,
+    pub rows:u16,
 }
 
-/// A simple packet of required data to fully set the attributes on a BG tile.
+/// A simple packet of required cells to fully set the attributes on a BG tile.
 #[derive(Debug, Clone, Copy)]
-pub struct BgBundle {
+pub struct BgOp {
     pub col: u16,
     pub row: u16,
     pub tile_id: TileID,
     pub flags: TileFlags,
 }
 
-impl<const LEN: usize> Tilemap<LEN> {
+impl<const CELLS: usize> BGMap<CELLS> {
     pub fn new(columns: u16, rows: u16) -> Self {
         assert!(
-            LEN < u16::MAX as usize,
-            err!("Invalid Tilemap LEN (maximum number of tiles), must be lower than {}"),
+            CELLS < u16::MAX as usize,
+            err!("Invalid BGMap CELLS (maximum number of tiles), must be lower than {}"),
             u16::MAX
         );
         assert!(
-            (columns as usize * rows as usize) <= LEN,
+            (columns as usize * rows as usize) <= CELLS,
             err!("Invalid tilemap dimensions")
         );
         assert!(
             columns > 0 && rows > 0,
-            err!("Tilemap dimensions can't be zero")
+            err!("BGMap dimensions can't be zero")
         );
         Self {
-            data: core::array::from_fn(|_| TileEntry::default()),
+            cells: core::array::from_fn(|_| Cell::default()),
             columns,
+            rows
         }
-    }
-
-    pub fn rows(&self) -> u16 {
-        LEN as u16 / self.columns
     }
 
     pub fn width(&self) -> u16 {
@@ -45,19 +43,24 @@ impl<const LEN: usize> Tilemap<LEN> {
     }
 
     pub fn height(&self) -> u16 {
-        self.rows() as u16 * TILE_SIZE as u16
+        self.rows as u16 * TILE_SIZE as u16
+    }
+
+    pub fn len(&self) -> usize {
+        CELLS
     }
 
     pub fn set_size(&mut self, columns: u16, rows: u16) {
         assert!(
-            columns as usize * rows as usize <= LEN,
+            columns as usize * rows as usize <= CELLS,
             err!("Invalid column count")
         );
         assert!(
             columns > 0 && rows > 0,
-            err!("Tilemap dimensions can't be zero")
+            err!("BGMap dimensions can't be zero")
         );
         self.columns = columns;
+        self.rows = rows;
     }
 
     // Returns None if coords are out of map. not sure if useful yet.
@@ -65,40 +68,40 @@ impl<const LEN: usize> Tilemap<LEN> {
     fn get_index(&self, col: u16, row: u16) -> Option<usize> {
         // #[cfg(debug_assertions)]
         // {
-            if col as usize >= self.columns as usize || row as usize >= self.rows() as usize {
+            if col as usize >= self.columns as usize || row as usize >= self.rows as usize {
                 return None;
             }
         // }
         Some((row as usize * self.columns as usize) + col as usize)
     }
 
-    pub fn set_tile(&mut self, data: BgBundle) {
-        if let Some(index) = self.get_index(data.col, data.row) {
-            self.data[index].id = data.tile_id;
-            self.data[index].flags = data.flags;
+    pub fn set_cell(&mut self, op: BgOp) {
+        if let Some(index) = self.get_index(op.col, op.row) {
+            self.cells[index].id = op.tile_id;
+            self.cells[index].flags = op.flags;
         }
     }
 
     pub fn set_id(&mut self, col: u16, row: u16, tile_id: impl Into<TileID>) {
         if let Some(index) = self.get_index(col, row) {
-            self.data[index].id = tile_id.into();
+            self.cells[index].id = tile_id.into();
         }
     }
 
     pub fn set_flags(&mut self, col: u16, row: u16, flags: impl Into<TileFlags>) {
         if let Some(index) = self.get_index(col, row) {
-            self.data[index].flags = flags.into();
+            self.cells[index].flags = flags.into();
         }
     }
 
     pub fn get_id(&self, col: u16, row: u16) -> Option<TileID> {
         let index = self.get_index(col, row)?;
-        Some(self.data[index].id)
+        Some(self.cells[index].id)
     }
 
     pub fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags> {
         let index = self.get_index(col, row)?;
-        Some(self.data[index].flags)
+        Some(self.cells[index].flags)
     }
 
     // /// Copies a rectangular region from a source tilemap to this tilemap.
@@ -107,7 +110,7 @@ impl<const LEN: usize> Tilemap<LEN> {
     // /// - Negative destination coordinates are handled by clipping the source region.
     // pub fn copy_rect<const S_LEN: usize>(
     //     &mut self,
-    //     source: &Tilemap<S_LEN>,
+    //     source: &BGMap<S_LEN>,
     //     src_rect: Option<&Rect>,
     //     dst_rect: Option<&Rect>,
     // ) {
@@ -159,8 +162,8 @@ impl<const LEN: usize> Tilemap<LEN> {
     //                 + (effective_dst_x + x) as usize;
 
     //             // Ensure we're within bounds (additional safety check)
-    //             // if src_index < S_LEN && dst_index < LEN {
-    //                 self.data[dst_index] = source.data[src_index];
+    //             // if src_index < S_LEN && dst_index < CELLS {
+    //                 self.cells[dst_index] = source.cells[src_index];
     //             // }
     //         }
     //     }

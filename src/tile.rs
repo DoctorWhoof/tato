@@ -21,14 +21,6 @@ impl<const BITS_PER_PIXEL: usize> Tile<BITS_PER_PIXEL> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]
-pub struct TileEntry {
-    pub id: TileID,
-    pub flags: TileFlags,
-    // pub custom_data: u8, // Unused for now
-}
-
-
 // For immutable indexing
 impl<T> Index<TileID> for [T] {
     type Output = T;

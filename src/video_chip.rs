@@ -36,6 +36,7 @@ pub struct VideoChip {
 
     // Pixel data for all tiles, stored as palette indices.
     // pub tiles: &'a [Tile<2>; TILE_COUNT],
+    // pub tile_mem: VideoMemory<512, 4096>,
     // ---------------------- Main Data ----------------------
     pub(crate) sprite_gen: SpriteGenerator,
     // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; MAX_LINES],
@@ -62,8 +63,9 @@ impl VideoChip {
         );
 
         let mut result = Self {
-            // map_world: Tilemap::new(64, 48),
-            // map_gui: Tilemap::new(32, 32),
+            // map_world: BGMap::new(64, 48),
+            // map_gui: BGMap::new(32, 32),
+            // tile_mem: VideoMemory::new(),
             // tiles,
             bg_color: GRAY,
             wrap_sprites: true,
@@ -262,11 +264,7 @@ impl VideoChip {
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
     /// Requires a reference to the Tile array.
-    pub fn iter_pixels<'a>(
-        &'a self,
-        tiles: &[&'a [Tile<2>]],    // Reference to an external Tile array
-        bg: &[&'a Tilemap<BG_LEN>], // Reference to an external Tilemap
-    ) -> PixelIter<'a> {
-        PixelIter::new(self, tiles, bg)
+    pub fn iter_pixels<'a>(&'a self, tile_mem: &'a [&'a VideoMemory<TILE_COUNT, BG_LEN>]) -> PixelIter<'a> {
+        PixelIter::new(self, tile_mem)
     }
 }

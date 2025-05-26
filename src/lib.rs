@@ -1,5 +1,11 @@
 #![no_std]
 
+mod bg_map;
+pub use bg_map::*;
+
+mod cell;
+pub use cell::*;
+
 pub mod color;
 pub use color::*;
 
@@ -20,8 +26,8 @@ pub use tile::*;
 mod tile_flags;
 pub use tile_flags::*;
 
-mod tile_map;
-pub use tile_map::*;
+mod video_mem;
+pub use video_mem::*;
 
 mod video_chip;
 pub use video_chip::*;
@@ -33,7 +39,7 @@ pub use video_chip::*;
 /// - Read-only reference to the VideoChip
 /// - Read only reference to the current tilemap
 /// - Read only reference to the tile bank (pixels).
-pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &Tilemap<BG_LEN>, &[Tile<2>]);
+pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &BGMap<BG_LEN>, &[Tile<2>]);
 
 // -------------------------------- Constants --------------------------------
 
@@ -75,4 +81,4 @@ pub const COLORS_PER_PALETTE: u8 = 16;
 pub const LOCAL_PALETTE_COUNT: u8 = 16;
 
 /// Maximum number of BG Tiles
-pub const BG_LEN: usize = 4096;
+pub const BG_LEN: usize = 1024;
