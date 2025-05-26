@@ -15,7 +15,7 @@ pub(crate) struct AnimBuilder {
 pub struct FrameBuilder {
     // pub cols: u8,
     // pub rows: u8,
-    pub tiles: Vec<TileEntry>,
+    pub tiles: Vec<Cell>,
 }
 
 // impl FrameBuilder {

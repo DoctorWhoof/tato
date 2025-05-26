@@ -15,7 +15,7 @@ pub struct TilesetBuilder {
     pub name: String,
     pub pixels: Vec<u8>,
     // Stores the Tile (ID and Flags) for each unique set of pixels
-    pub tile_hash: HashMap<Vec<u8>, TileEntry>,
+    pub tile_hash: HashMap<Vec<u8>, Cell>,
     // Stores the names of each unique palette
     pub sub_palette_name_hash: HashMap<[u8; SUB_PALETTE_COLOR_COUNT], String>,
     // The actual color indices for the sub-palettes
@@ -67,7 +67,7 @@ impl TilesetBuilder {
 
     /// Main workhorse function! Splits images into 8x8 tiles (8 pixels wide, as many pixels as it needs tall)
     /// grouped by frame. Returns the indices, the flags and the number of tiles
-    pub fn add_tiles(&mut self, img: &PalettizedImg, palette: &PaletteBuilder) -> Vec<TileEntry> {
+    pub fn add_tiles(&mut self, img: &PalettizedImg, palette: &PaletteBuilder) -> Vec<Cell> {
         // Phase 1: Collect all unique color sets without creating sub-palettes yet
         let color_sets = self.collect_tile_color_sets(img);
 
@@ -219,7 +219,7 @@ impl TilesetBuilder {
     }
 
     // Phase 3: Process tiles with pre-allocated sub-palettes
-    fn process_tiles_with_palettes(&mut self, img: &PalettizedImg) -> Vec<TileEntry> {
+    fn process_tiles_with_palettes(&mut self, img: &PalettizedImg) -> Vec<Cell> {
         let mut tiles = vec![];
         let tile_length = TILE_SIZE as usize * TILE_SIZE as usize;
 
@@ -266,7 +266,7 @@ impl TilesetBuilder {
                             };
 
                             // Insert normal tile in hashmap
-                            let new_tile = TileEntry {
+                            let new_tile = Cell {
                                 id: TileID(self.next_tile),
                                 flags: TileFlags::default(),
                             };
