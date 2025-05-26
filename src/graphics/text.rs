@@ -1,9 +1,8 @@
-use crate::{Tato, TilesetID};
+use crate::{AnimID, MapID, Tato, TilesetID};
 use tato_video::{color::PaletteID, *};
 
-pub struct TextBundle {
-    pub map: u8,
-    pub tileset: TilesetID, // TODO: Use TilesetID
+pub struct TextOp {
+    pub id: TilesetID,
     pub col: u16,
     pub row: u16,
     pub width: u16,
@@ -11,23 +10,28 @@ pub struct TextBundle {
 }
 
 impl Tato {
-    /// "Draws" a text string to the BG Map, returns the resulting height (in rows).
-    pub fn draw_text(&mut self, text: &str, bundle: TextBundle) -> u16 {
+    /// "Draws" a text string to the BG Map, returns the resulting height (in rows), if any.
+    pub fn draw_text(&mut self, text: &str, op: TextOp) -> Option<u16> {
         debug_assert!(text.is_ascii());
+        let tileset = self
+            .assets
+            .tilesets
+            .get(op.id.0 as usize)?;
 
-        let tileset = &self.tiles.sets[bundle.tileset.0 as usize];
+        // let tileset = &self.tiles.sets[bundle.tileset.0 as usize];
         let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {
-            self.maps[bundle.map as usize].set_tile(BgBundle {
-                col: bundle.col + cursor_x,
-                row: bundle.row + cursor_y,
-                tile_id: TileID(char_to_id_ex(ch) + tileset.start),
-                flags: bundle.palette.into(),
+            self.banks[tileset.bank_id as usize].bg.set_cell(BgOp {
+                col: op.col + cursor_x,
+                row: op.row + cursor_y,
+                tile_id: TileID(char_to_id_ex(ch) + tileset.tile_start),
+                flags: op.palette.into(),
             });
         };
+
         let mut cursor_x = 0;
         let mut cursor_y = 0;
         for word in text.split(' ') {
-            if cursor_x + (word.len() as u16) > bundle.width {
+            if cursor_x + (word.len() as u16) > op.width {
                 cursor_x = 0;
                 cursor_y += 1;
             }
@@ -35,7 +39,7 @@ impl Tato {
                 set_tile(ch, cursor_x, cursor_y);
                 cursor_x += 1;
             }
-            if cursor_x >= bundle.width {
+            if cursor_x >= op.width {
                 cursor_x = 0;
                 cursor_y += 1;
             } else {
@@ -43,7 +47,8 @@ impl Tato {
                 cursor_x += 1;
             }
         }
-        cursor_y + 1
+        // If successful, return number of lines written
+        Some(cursor_y + 1)
     }
 }
 

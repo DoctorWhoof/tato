@@ -1,10 +1,10 @@
-use tato_video::{TileEntry, prelude::err};
+use tato_video::{Cell, prelude::err};
 
 use crate::Rect;
 
 #[derive(Debug)]
 pub struct Tilemap<const LEN: usize> {
-    pub data: [TileEntry; LEN],
+    pub data: [Cell; LEN],
     columns: u16,
     rows: u16,
 }
@@ -20,7 +20,7 @@ impl<const LEN: usize> Tilemap<LEN> {
             err!("Tilemap dimensions can't be zero")
         );
         Self {
-            data: core::array::from_fn(|_| TileEntry::default()),
+            data: core::array::from_fn(|_| Cell::default()),
             columns,
             rows,
         }
@@ -65,7 +65,7 @@ impl<const LEN: usize> Tilemap<LEN> {
         Some((row as usize * self.columns as usize) + col as usize)
     }
 
-    pub fn set_tile(&mut self, data: BgBundle) {
+    pub fn set_tile(&mut self, data: BgOp) {
         if let Some(index) = self.get_index(data.col, data.row) {
             self.data[index].id = data.tile_id;
             self.data[index].flags = data.flags;

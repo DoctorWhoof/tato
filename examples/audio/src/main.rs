@@ -29,12 +29,8 @@ fn main() {
     let target_fps = 60.0;
     let w = tato.video.width() as i32;
     let h = tato.video.height() as i32;
-    let (mut ray, ray_thread) = raylib::init()
-        .size(w * 3, h * 3)
-        .title("Tato Demo")
-        .vsync()
-        .resizable()
-        .build();
+    let (mut ray, ray_thread) =
+        raylib::init().size(w * 3, h * 3).title("Tato Demo").vsync().resizable().build();
     config_raylib();
     ray.set_target_fps(target_fps as u32);
 
@@ -42,23 +38,17 @@ fn main() {
     let mut pixels: [u8; W * H * 4] = core::array::from_fn(|_| 0);
     let mut render_texture = {
         let render_image = Image::gen_image_color(w, h, Color::BLACK);
-        ray.load_texture_from_image(&ray_thread, &render_image)
-            .unwrap()
+        ray.load_texture_from_image(&ray_thread, &render_image).unwrap()
     };
 
-    let empty = tato.tiles.new_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
-    println!("{:?}", empty);
-    println!("{:?}", tato.tiles.sets[empty.0 as usize]);
-    let font = tato.tiles.new_tileset(0, &TILESET_FONT);
-    println!("{:?}", font);
-    println!("{:?}", tato.tiles.sets[font.0 as usize]);
+    let empty = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]); // TODO: Return Option
+    let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
         "SOUND TEST",
-        TextBundle {
-            map: 0,
-            tileset: font,
+        TextOp {
+            id: font,
             col: 2,
             row: 2,
             width: 12,
@@ -68,9 +58,8 @@ fn main() {
 
     tato.draw_text(
         "Currently playing:",
-        TextBundle {
-            map: 0,
-            tileset: font,
+        TextOp {
+            id: font,
             col: 2,
             row: 6,
             width: 20,
@@ -124,9 +113,8 @@ fn main() {
                     format!("Wave Type: White Noise        ")
                 }
             },
-            TextBundle {
-                map: 0,
-                tileset: font,
+            TextOp {
+                id: font,
                 col: 2,
                 row: 8,
                 width: 100,
@@ -136,9 +124,8 @@ fn main() {
 
         tato.draw_text(
             &format!("Volume: {}    ", audio.channels[0].volume()),
-            TextBundle {
-                map: 0,
-                tileset: font,
+            TextOp {
+                id: font,
                 col: 2,
                 row: 10,
                 width: 100,
@@ -148,9 +135,8 @@ fn main() {
 
         tato.draw_text(
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
-            TextBundle {
-                map: 0,
-                tileset: font,
+            TextOp {
+                id: font,
                 col: 2,
                 row: 12,
                 width: 100,
@@ -160,13 +146,7 @@ fn main() {
 
         // Update backends
         audio_backend.process_frame(&mut audio);
-        copy_pixels_to_texture(
-            &mut tato,
-            &ray_thread,
-            &mut ray,
-            &mut pixels,
-            &mut render_texture,
-        );
+        copy_pixels_to_texture(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
     }
 
     audio_backend.write_wav_file();

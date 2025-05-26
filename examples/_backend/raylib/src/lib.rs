@@ -68,17 +68,22 @@ pub fn copy_pixels_to_texture(
     // Copy from framebuffer to raylib texture
     let time = std::time::Instant::now();
 
-    let tiles = &t.tiles.get_all();
-    let tilemaps = &t.map_refs();
-    for (color, coords) in t.video.iter_pixels(tiles, tilemaps) {
+    // let tiles = &t.tile_refs();
+    // let tilemaps = &t.map_refs();
+    let banks = t.get_video_banks();
+    for (color, coords) in t.video.iter_pixels(&banks) {
         let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
         pixels[i + 2] = color.b;
         pixels[i + 3] = color.a;
     }
-    println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
     texture.update_texture(pixels).unwrap();
+    t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
+    // if t.video.frame_count() % 60 == 0 {
+        // println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
+        println!("iter time: {:.2} ms", t.update_time_acc.average());
+    // }
 
     // Calculate rect with correct aspect ratio with integer scaling
     let screen_width = ray.get_screen_width();
@@ -92,7 +97,7 @@ pub fn copy_pixels_to_texture(
 
     // Present frame
     let mut canvas = ray.begin_drawing(thread);
-    canvas.clear_background(Color::new(48,32,24,255));
+    canvas.clear_background(Color::new(48, 32, 24, 255));
     canvas.draw_texture_ex(
         &texture,
         Vector2::new(draw_rect_x as f32, draw_rect_y as f32),

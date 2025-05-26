@@ -15,7 +15,6 @@ impl SceneA {
     // Initialize and retuns a new scene
     // pub fn new(video: &mut VideoChip, tiles: &mut TileBank) -> Self {
     pub fn new(t: &mut Tato) -> Self {
-        t.maps[0] = Tilemap::new(32, 24);
         t.video.bg_color = ColorID(0);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
@@ -48,20 +47,21 @@ impl SceneA {
         }
 
         // Define new tiles
-        let _tileset = t.tiles.new_tileset(0, &TILESET_DEFAULT);
+        let _tileset = t.add_tileset(0, &TILESET_DEFAULT).unwrap();
         let smiley = TILE_SMILEY;
         let arrow = TILE_ARROW;
 
         // Set BG tiles
-        t.maps[0].set_size(14 * 4, 14 * 4);
-        for col in 0..t.maps[0].columns {
-            for row in 0..t.maps[0].rows() {
+        t.set_bg_size(0, 28, 28);
+        let map = &mut t.banks[0].bg;
+        for col in 0..map.columns {
+            for row in 0..map.rows {
                 // Calculate palette ID based on coordinates, limits to 14 indices
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
 
-                t.maps[0].set_tile(BgBundle {
+                map.set_cell(BgOp {
                     col,
                     row,
                     tile_id: arrow,
@@ -73,8 +73,8 @@ impl SceneA {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0..t.maps[0].width() as i16 - TILE_SIZE as i16) as f32,
-                y: rand::random_range(0..t.maps[0].height() as i16 - TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..map.width() as i16 - TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..map.height() as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }
@@ -158,15 +158,16 @@ impl SceneA {
 
         t.video.color_cycle(self.player.flags.palette(), 3, 1, 15);
 
-        for col in 0..t.maps[0].columns {
-            for row in 0..t.maps[0].rows() {
-                let Some(mut flags) = t.maps[0].get_flags(col, row) else {
+        let map = &mut t.banks[0].bg;
+        for col in 0..map.columns {
+            for row in 0..map.rows {
+                let Some(mut flags) = map.get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                t.maps[0].set_flags(col, row, flags);
+                map.set_flags(col, row, flags);
             }
         }
 

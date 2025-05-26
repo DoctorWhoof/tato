@@ -9,5 +9,5 @@ fn main() {
     let tileset_patch = pipe.new_tileset("patch", palette_patch);
 
     pipe.new_anim("../../assets/patch.png", 1, 1, 1, tileset_patch);
-    pipe.write_tileset(tileset_patch, "src/patch.rs");
+    pipe.write_pixels(tileset_patch, "src/patch.rs");
 }

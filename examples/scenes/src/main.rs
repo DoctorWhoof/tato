@@ -110,7 +110,7 @@ fn main() {
 
         if let Some(choice) = scene_change {
             t.video.reset_all();
-            t.tiles.reset();
+            t.reset();
             match choice {
                 SceneChange::A => scene = Scene::A(SceneA::new(&mut t)),
                 SceneChange::B => scene = Scene::B(SceneB::new(&mut t)),

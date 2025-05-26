@@ -2,27 +2,7 @@
 #![allow(unused)]
 use tato::prelude::*;
 
-pub const SUBPALETTE_PATCH_0: [u8; 4] = [1, 2, 3, 0];
-
-pub const ANIM_PATCH: Anim<1, 9> = Anim {
-    fps: 1,
-    frames: [Tilemap::<9> {
-        columns: 3,
-        data: [
-            TileEntry { id: TileID(0), flags: TileFlags(0) },
-            TileEntry { id: TileID(1), flags: TileFlags(0) },
-            TileEntry { id: TileID(2), flags: TileFlags(0) },
-            TileEntry { id: TileID(3), flags: TileFlags(0) },
-            TileEntry { id: TileID(4), flags: TileFlags(0) },
-            TileEntry { id: TileID(5), flags: TileFlags(0) },
-            TileEntry { id: TileID(6), flags: TileFlags(0) },
-            TileEntry { id: TileID(7), flags: TileFlags(0) },
-            TileEntry { id: TileID(8), flags: TileFlags(0) },
-        ],
-    }],
-};
-
-pub const TILESET_PATCH: [Tile<2>; 9] = [
+pub const PATCH_TILESET: [Tile<2>; 9] = [
     Tile {
         clusters: [
             Cluster { data: [0, 0] },

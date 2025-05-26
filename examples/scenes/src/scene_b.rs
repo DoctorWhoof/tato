@@ -9,8 +9,6 @@ pub struct SceneB {
 
 impl SceneB {
     pub fn new(t: &mut Tato) -> Self {
-        t.maps[0] = Tilemap::new(32, 24);
-
         // Center view
         let x = t.video.max_x() / 2;
         let y = t.video.max_y() / 2;
@@ -19,7 +17,7 @@ impl SceneB {
 
         // Colors
         t.video.bg_color = DARK_GREEN;
-        let _palette_bg = t
+        let palette_bg = t
             .video
             .push_subpalette([BG_COLOR, BG_COLOR, BG_COLOR, GREEN]);
         let palette_smiley = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, YELLOW]);
@@ -27,11 +25,15 @@ impl SceneB {
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
-        let _tileset = t.tiles.new_tileset(0, &TILESET_DEFAULT);
+        let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
         let tile = TILE_SMILEY;
 
-        for entry in &mut t.maps[0].data {
-            entry.id = tile;
+        let map = &mut t.banks[0].bg; // TODO: easy getter
+        map.set_size(32, 24);
+
+        for cell in &mut map.cells {
+            cell.id = tile;
+            cell.flags = palette_bg.into();
         }
 
         Self {

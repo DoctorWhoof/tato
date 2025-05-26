@@ -9,16 +9,16 @@ pub struct SceneC {
 
 impl SceneC {
     pub fn new(t: &mut Tato) -> Self {
-        t.maps[0] = Tilemap::new(32, 24);
-
-        let _tileset = t.tiles.new_tileset(0, &TILESET_DEFAULT);
+        let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
         let solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
-        for col in 0..t.maps[0].columns {
-            for row in 0..t.maps[0].rows() {
-                t.maps[0].set_tile(BgBundle {
+        let map = &mut t.banks[0].bg; // TODO: easy getter
+        map.set_size(32, 24);
+        for col in 0..map.columns {
+            for row in 0..map.rows {
+                map.set_cell(BgOp {
                     col,
                     row,
                     tile_id: cross,
@@ -28,14 +28,13 @@ impl SceneC {
         }
 
         for id in 0..16 as u8 {
-            t.maps[0].set_tile(BgBundle {
+            map.set_cell(BgOp {
                 col: id as u16,
                 row: 0,
                 tile_id: solid,
                 flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
             });
-            t.video
-                .set_palette(PaletteID(id), [BG_COLOR, BG_COLOR, BG_COLOR, ColorID(id)]);
+            t.video.set_palette(PaletteID(id), [BG_COLOR, BG_COLOR, BG_COLOR, ColorID(id)]);
         }
 
         SceneC { smiley, counter: 0 }
@@ -62,10 +61,6 @@ impl SceneC {
         self.counter += 1;
 
         // Input
-        if app.pad.is_just_pressed(Button::Menu) {
-            Some(SceneChange::A)
-        } else {
-            None
-        }
+        if app.pad.is_just_pressed(Button::Menu) { Some(SceneChange::A) } else { None }
     }
 }

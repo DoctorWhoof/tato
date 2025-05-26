@@ -13,19 +13,24 @@ pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
-    let _empty = tato.tiles.new_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
-    let tileset = tato.tiles.new_tileset(0, &TILESET_PATCH);
-    // let colors = [BG_COLOR, BLACK, DARK_BLUE, BLUE];
-    tato.draw_patch(
-        0,
-        Rect {
-            x: 4,
-            y: 4,
-            w: 8,
-            h: 5,
-        },
-        tileset,
-    );
+    let _empty = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
+    let tileset = tato.add_tileset(0, &PATCH_TILESET).unwrap();
+    let colors = [BG_COLOR, BLACK, DARK_BLUE, BLUE];
+
+    //------ > TODO: NEXT: Patch Must draw a Map (or Anim, but Map makes more sense)
+    // since it needs per-cell flags
+    // TODO: Ensure "cell" (instead of entry) is used everywhere in the code
+
+    // tato.draw_patch(
+    //     0,
+    //     Rect {
+    //         x: 4,
+    //         y: 4,
+    //         w: 8,
+    //         h: 5,
+    //     },
+    //     tileset,
+    // );
 
     // Raylib setup
     let target_fps = 60.0;
