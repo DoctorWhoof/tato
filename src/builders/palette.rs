@@ -1,5 +1,6 @@
-use crate::Color14Bit;
+// use crate::Color14Bit;
 use std::collections::HashMap;
+use tato_video::*;
 
 // #[derive(Debug, Clone, Copy)]
 // pub struct PaletteID(pub u8);
@@ -7,29 +8,26 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub(crate) struct PaletteBuilder {
     pub name: String,
-    pub colors: Vec<Color14Bit>,
-    pub color_hash: HashMap<Color14Bit, u8>,
+    pub colors: Vec<Color12Bit>,
+    pub color_hash: HashMap<Color12Bit, u8>,
     id: u8,
-    palette_head: usize,
 }
 
 impl PaletteBuilder {
-    pub fn new(name: String, color_count: u8, id: u8) -> Self {
+    pub fn new(name: String, id: u8) -> Self {
         PaletteBuilder {
             name,
-            colors: vec![Color14Bit::default(); color_count as usize],
+            colors: vec![],
             color_hash: HashMap::new(),
-            palette_head: 0,
             id,
         }
     }
 
-    pub fn push(&mut self, color: Color14Bit) {
-        if self.palette_head == self.colors.len() {
-            panic!("Palette error: capacity of {} exceeded.", self.colors.len())
+    pub fn push(&mut self, color: Color12Bit) {
+        if self.colors.len() == COLORS_PER_PALETTE as usize {
+            panic!("Palette error: capacity of {} exceeded.", COLORS_PER_PALETTE)
         }
-        self.colors[self.palette_head] = color;
-        self.palette_head += 1;
+        self.colors.push(color);
     }
 
     pub fn id(&self) -> u8 {

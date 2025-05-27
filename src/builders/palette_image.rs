@@ -1,7 +1,7 @@
 use image::{DynamicImage, ImageReader};
 use tato_video::*;
 
-use crate::*;
+// use crate::*;
 
 use super::*;
 
@@ -89,10 +89,10 @@ impl PalettizedImg {
                     let a = buf[buf_index + 3];
 
                     let rgb_color = if a < 255 {
-                        Color14Bit::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
+                        Color12Bit::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
                     } else {
                         let color_rgb = ColorRGB32 { r, g, b, a };
-                        Color14Bit::from(color_rgb)
+                        Color12Bit::from(color_rgb)
                     };
 
                     // Result

@@ -1,6 +1,9 @@
 mod anim;
 pub(crate) use anim::*;
 
+mod map;
+pub(crate) use map::*;
+
 mod palette;
 pub(crate) use palette::*;
 

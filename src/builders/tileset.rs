@@ -21,6 +21,7 @@ pub struct TilesetBuilder {
     // The actual color indices for the sub-palettes
     pub sub_palettes: Vec<[u8; SUB_PALETTE_COLOR_COUNT]>,
     pub anims: Vec<AnimBuilder>,
+    pub maps: Vec<MapBuilder>,
     pub single_tiles: Vec<SingleTileBuilder>,
     pub palette_id: PaletteID,
     next_tile: u16,
@@ -38,6 +39,7 @@ impl TilesetBuilder {
             sub_palette_name_hash: HashMap::new(),
             next_tile: 0,
             anims: vec![],
+            maps: vec![],
             single_tiles: vec![],
             palette_id,
             sub_palettes: Vec::new(),

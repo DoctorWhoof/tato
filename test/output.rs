@@ -1,78 +1,25 @@
 // Auto-generated code - do not edit manually
 use tato::prelude::*;
 
-pub const PALETTE_PALETTE_FG: [Color9Bit; 16] = [
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(7, 5, 5),
-    Color9Bit::new(3, 3, 5),
-    Color9Bit::new(5, 5, 5),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
-    Color9Bit::new(0, 0, 0),
+pub const PALETTE_FG_PALETTE: [Color12Bit; 5] = [
+    Color12Bit::new(0, 0, 0, 0),
+    Color12Bit::new(0, 0, 0, 7),
+    Color12Bit::new(7, 5, 5, 7),
+    Color12Bit::new(3, 3, 5, 7),
+    Color12Bit::new(5, 5, 5, 7),
 ];
 
-pub const SUBPALETTE_PALETTE_FG_0: [u8; 4] = [1, 2, 3, 4];
+pub const PALETTE_SUBPALETTE_FG: [u8; 4] = [1, 2, 3, 4];
 
-pub const ANIM_SPY_IDLE: Anim<4, 6> = Anim {
+pub const SPY_IDLE_ANIM: Anim = Anim {
     fps: 8,
-    frames: [
-        Tilemap::<6> {
-            columns: 2,
-            data: [
-                Cell { id: TileID(0), flags: TileFlags(0) },
-                Cell { id: TileID(1), flags: TileFlags(0) },
-                Cell { id: TileID(2), flags: TileFlags(0) },
-                Cell { id: TileID(3), flags: TileFlags(0) },
-                Cell { id: TileID(4), flags: TileFlags(0) },
-                Cell { id: TileID(5), flags: TileFlags(0) },
-            ],
-        },
-        Tilemap::<6> {
-            columns: 2,
-            data: [
-                Cell { id: TileID(0), flags: TileFlags(0) },
-                Cell { id: TileID(1), flags: TileFlags(0) },
-                Cell { id: TileID(6), flags: TileFlags(0) },
-                Cell { id: TileID(3), flags: TileFlags(0) },
-                Cell { id: TileID(4), flags: TileFlags(0) },
-                Cell { id: TileID(5), flags: TileFlags(0) },
-            ],
-        },
-        Tilemap::<6> {
-            columns: 2,
-            data: [
-                Cell { id: TileID(0), flags: TileFlags(0) },
-                Cell { id: TileID(1), flags: TileFlags(0) },
-                Cell { id: TileID(7), flags: TileFlags(0) },
-                Cell { id: TileID(3), flags: TileFlags(0) },
-                Cell { id: TileID(4), flags: TileFlags(0) },
-                Cell { id: TileID(5), flags: TileFlags(0) },
-            ],
-        },
-        Tilemap::<6> {
-            columns: 2,
-            data: [
-                Cell { id: TileID(0), flags: TileFlags(0) },
-                Cell { id: TileID(1), flags: TileFlags(0) },
-                Cell { id: TileID(8), flags: TileFlags(0) },
-                Cell { id: TileID(3), flags: TileFlags(0) },
-                Cell { id: TileID(4), flags: TileFlags(0) },
-                Cell { id: TileID(5), flags: TileFlags(0) },
-            ],
-        },
-    ],
+    columns_per_frame: 8,
+    rows_per_frame: 8,
+    data_start: 8,
+    data_len: 8,
 };
 
-pub const TILESET_CHARS: [Tile<2>; 9] = [
+pub const CHARS_TILESET: [Tile<2>; 9] = [
     Tile {
         clusters: [
             Cluster { data: [0, 0] },

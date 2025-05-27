@@ -33,11 +33,11 @@ impl Pipeline {
     // TODO: Limit tileset entries to 256
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_palette(&mut self, name: impl Into<String>, capacity: u8) -> PaletteID {
+    pub fn new_palette(&mut self, name: impl Into<String>) -> PaletteID {
         let id: u8 = self.palette_head;
         self.palette_head += 1;
         println!("cargo:warning=Pipeline: initializing palette at index {}.", id);
-        self.palettes.push(PaletteBuilder::new(name.into(), capacity.into(), id));
+        self.palettes.push(PaletteBuilder::new(name.into(), id));
         PaletteID(id)
     }
 
@@ -67,9 +67,7 @@ impl Pipeline {
 
         let tile = tileset.add_tiles(&img, palette); //, group, false);
 
-        tileset
-            .single_tiles
-            .push(SingleTileBuilder { name: strip_path_name(path), cell: tile[0] });
+        tileset.single_tiles.push(SingleTileBuilder { name: strip_path_name(path), cell: tile[0] });
     }
 
     /// Initializes a new animation sequence from a .png file. It will:
@@ -83,7 +81,6 @@ impl Pipeline {
         frames_h: u8,
         frames_v: u8,
         tileset_id: TilesetID,
-        // group_id: impl GroupEnum,
     ) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
@@ -91,22 +88,21 @@ impl Pipeline {
 
         let palette = self.palettes.get_mut(tileset.palette_id.0 as usize).unwrap();
         let img = PalettizedImg::from_image(path, frames_h, frames_v, palette);
-        let tiles = tileset.add_tiles(&img, palette); //, group, false);
-        let tiles_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
+        let cells = tileset.add_tiles(&img, palette); //, group, false);
+        let cells_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
         assert!(frame_count > 0);
 
         let anim = AnimBuilder {
             name: strip_path_name(path),
-            // id: tileset.anims.len().try_into().unwrap(),
             fps,
             columns: u8::try_from(img.cols_per_frame).unwrap(),
             rows: u8::try_from(img.rows_per_frame).unwrap(),
             frames: (0..frame_count)
                 .map(|i| {
-                    let index = i * tiles_per_frame;
-                    FrameBuilder { tiles: tiles[index..index + tiles_per_frame].into() }
+                    let index = i * cells_per_frame;
+                    FrameBuilder { tiles: cells[index..index + cells_per_frame].into() }
                 })
                 .collect(),
         };
@@ -114,6 +110,26 @@ impl Pipeline {
         tileset.anims.push(anim);
     }
 
+    pub fn new_map(&mut self, path: &str, tileset_id: TilesetID) {
+        let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
+            panic!("Invalid tileset id: {:?}", tileset_id);
+        };
+
+        let palette = self.palettes.get_mut(tileset.palette_id.0 as usize).unwrap();
+        let img = PalettizedImg::from_image(path, 1, 1, palette);
+        let cells = tileset.add_tiles(&img, palette); //, group, false);
+
+        let map = MapBuilder {
+            name: strip_path_name(path),
+            columns: u8::try_from(img.cols_per_frame).unwrap(),
+            rows: u8::try_from(img.rows_per_frame).unwrap(),
+            cells,
+        };
+
+        tileset.maps.push(map);
+    }
+
+    // TODO: Pass as an argument? Or just automatically to this for "Font", when I have that
     pub fn disable_tile_transform_detection(&mut self, tileset_id: TilesetID) {
         if let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) {
             tileset.allow_tile_transforms = false;
@@ -130,6 +146,7 @@ impl Pipeline {
         self.append_palettes(tileset_id, &mut code);
         self.append_sub_palettes(tileset_id, &mut code);
         self.append_anims(tileset_id, &mut code);
+        self.append_maps(tileset_id, &mut code);
         self.append_single_tile_ids(tileset_id, &mut code);
         self.append_tiles(tileset_id, &mut code);
         self.format_output(file_path);
@@ -194,17 +211,18 @@ impl Pipeline {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
         code.write_line(&format!(
-            "pub const {}_PALETTE: [Color9Bit; {}] = [",
+            "pub const {}_PALETTE: [Color12Bit; {}] = [",
             palette.name.to_uppercase(),
             palette.colors.len()
         ));
 
         for color in &palette.colors {
             code.write_line(&format!(
-                "Color9Bit::new({}, {}, {}),",
+                "Color12Bit::new({}, {}, {}, {}),",
                 color.r(),
                 color.g(),
-                color.b()
+                color.b(),
+                color.a()
             ));
         }
 
@@ -246,10 +264,8 @@ impl Pipeline {
         for anim in &tileset.anims {
             // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
-                // "pub const ANIM_{}: Anim<{}, {}> = Anim {{ fps: {}, tileset_id:None, frames: [",
                 "pub const {}_ANIM: Anim = Anim {{",
                 anim.name.to_uppercase(),
-                // anim.columns,
             ));
 
             code.write_line(&format!("    fps: {},", anim.fps));
@@ -257,21 +273,25 @@ impl Pipeline {
             code.write_line(&format!("    rows_per_frame: {},", anim.fps));
             code.write_line(&format!("    data_start: {},", anim.fps));
             code.write_line(&format!("    data_len: {},", anim.fps));
-            // for frame in &anim.frames {
-            //     code.write_line(&format!("Tilemap::<{}> {{", anim.columns as usize * anim.rows as usize));
-            //     code.write_line(&format!("columns: {},", anim.columns));
-            //     code.write_line("data: [");
-
-            //     for cell in &frame.tiles {
-            //         code.write_line(&format!("{:?},", *cell));
-            //     }
-
-            //     code.write_line("],");
-            //     code.write_line("},\n");
-            // }
-
-            // code.write_line("]");
             code.write_line("};");
+            code.write_line("");
+        }
+    }
+
+    fn append_maps(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        // Tilesets
+        let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
+        for map in &tileset.maps {
+            // println!("Anim: {:#?}", anim);
+            code.write_line(&format!(
+                "pub const {}_MAP: [Cell; {}] = [",
+                map.name.to_uppercase(),
+                map.cells.len()
+            ));
+            for cell in &map.cells {
+                code.write_line(&format!("    {:?},", cell));
+            }
+            code.write_line("];");
             code.write_line("");
         }
     }

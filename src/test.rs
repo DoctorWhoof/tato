@@ -5,8 +5,8 @@ use crate::*;
 fn test_anim() {
     let mut pipe = Pipeline::new();
     // Create new empty palettes
-    let palette_fg = pipe.new_palette("palette_fg", 16);
-    let palette_bg = pipe.new_palette("palette_bg", 16);
+    let palette_fg = pipe.new_palette("palette_fg");
+    let palette_bg = pipe.new_palette("palette_bg");
 
     // New empty tilesets, will populate their own tile pixels
     // and add colors to one of the palettes
