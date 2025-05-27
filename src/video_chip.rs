@@ -52,6 +52,7 @@ pub struct VideoChip {
     frame_count: usize,
     // Next available palette.
     palette_head: u8,
+    sub_palette_head: u8,
 }
 
 impl VideoChip {
@@ -75,6 +76,7 @@ impl VideoChip {
             local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprite_gen: SpriteGenerator::new(),
             palette_head: 0,
+            sub_palette_head: 0,
             view_left: 0,
             view_top: 0,
             view_right: w - 1,
@@ -158,6 +160,7 @@ impl VideoChip {
             }
         });
         self.local_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));
+        self.sub_palette_head = 0;
         self.palette_head = 0;
     }
 
@@ -177,7 +180,7 @@ impl VideoChip {
         self.sprite_gen.reset();
     }
 
-    pub fn set_palette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
+    pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
         debug_assert!(
             index.0 < LOCAL_PALETTE_COUNT,
             err!("Invalid local palette index, must be less than PALETTE_COUNT")
@@ -186,10 +189,10 @@ impl VideoChip {
     }
 
     pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
-        assert!(self.palette_head < 16, err!("PALETTE_COUNT exceeded"));
-        let result = self.palette_head;
-        self.local_palettes[self.palette_head as usize] = colors;
-        self.palette_head += 1;
+        assert!(self.sub_palette_head < 16, err!("PALETTE_COUNT exceeded"));
+        let result = self.sub_palette_head;
+        self.local_palettes[self.sub_palette_head as usize] = colors;
+        self.sub_palette_head += 1;
         PaletteID(result)
     }
 
