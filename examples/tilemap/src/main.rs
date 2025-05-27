@@ -13,24 +13,22 @@ pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
+
+    tato.video.bg_color = ColorID(0);
+    tato.video.bg_palette.iter_mut().zip(PATCH_PALETTE.iter()).for_each(|(dest, &src)| *dest = src);
+
+    // let _colors = tato.video.push_subpalette([BG_COLOR, DARK_BLUE, BLUE, BLACK]);
     let _empty = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
     let tileset = tato.add_tileset(0, &PATCH_TILESET).unwrap();
-    let colors = [BG_COLOR, BLACK, DARK_BLUE, BLUE];
+    let map = tato.add_tilemap(tileset, 3, &PATCH_MAP);
 
-    //------ > TODO: NEXT: Patch Must draw a Map (or Anim, but Map makes more sense)
-    // since it needs per-cell flags
-    // TODO: Ensure "cell" (instead of entry) is used everywhere in the code
-
-    // tato.draw_patch(
-    //     0,
-    //     Rect {
-    //         x: 4,
-    //         y: 4,
-    //         w: 8,
-    //         h: 5,
-    //     },
-    //     tileset,
-    // );
+    let w = 7;
+    let h = 5;
+    for row in 0..4 {
+        for col in 0..4 {
+            tato.draw_patch(Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 }, map);
+        }
+    }
 
     // Raylib setup
     let target_fps = 60.0;
@@ -50,19 +48,12 @@ fn main() {
     let mut pixels: [u8; W * H * 4] = core::array::from_fn(|_| 0);
     let mut render_texture = {
         let render_image = Image::gen_image_color(w, h, Color::BLACK);
-        ray.load_texture_from_image(&ray_thread, &render_image)
-            .unwrap()
+        ray.load_texture_from_image(&ray_thread, &render_image).unwrap()
     };
 
     // Main Loop
     while !ray.window_should_close() {
         // Update backends
-        copy_pixels_to_texture(
-            &mut tato,
-            &ray_thread,
-            &mut ray,
-            &mut pixels,
-            &mut render_texture,
-        );
+        copy_pixels_to_texture(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
     }
 }

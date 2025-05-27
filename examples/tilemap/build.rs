@@ -5,9 +5,9 @@ fn main() {
     pipe.allow_unused = true;
 
     // Tile Patch example
-    let palette_patch = pipe.new_palette("patch", 16);
+    let palette_patch = pipe.new_palette("patch");
     let tileset_patch = pipe.new_tileset("patch", palette_patch);
 
-    pipe.new_anim("../../assets/patch.png", 1, 1, 1, tileset_patch);
-    pipe.write_pixels(tileset_patch, "src/patch.rs");
+    pipe.new_map("../../assets/patch.png", tileset_patch);
+    pipe.write_all_assets(tileset_patch, "src/patch.rs");
 }

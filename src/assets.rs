@@ -33,13 +33,17 @@ pub struct Tilemap {
     pub data_len: u16,
 }
 
+/// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
+/// tileset and its tiles currently loaded in a video memory bank
 #[derive(Debug, Clone)]
 pub struct AssetRoster {
     pub tilesets: [Tileset; 256],
+    // Asset types
     pub anims: [Anim; 256],
-    // Stores any asset that requires cells, like Anims and Maps
-    pub cells: [Cell; 2048],
     pub maps: [Tilemap; 256],
+    // pub fonts: [Font; 256],
+    // "flat" storage for cells used by any asset type.
+    pub cells: [Cell; 2048],
     // Everything that needs to be counted.
     cell_head: u16,
     tileset_head: u8,
@@ -101,19 +105,15 @@ impl Tato {
         Some(TilesetID(id))
     }
 
-
     /// Adds a tilemap entry that refers to already loaded tiles in a tileset.
     /// Returns the index of the map
-    pub fn add_tilemap(
-        &mut self,
-        bank_id: u8,
-        tileset_id: TilesetID,
-        columns: u16,
-        data: &[Cell],
-    ) -> MapID {
+    pub fn add_tilemap(&mut self, tileset_id: TilesetID, columns: u16, data: &[Cell]) -> MapID {
         // let bank = &mut self.banks[bank_id as usize];
-        // let tileset = roster.tilesets[tileset_id.0 as usize];
+        // Acquire tile offset for desired tileset
         let roster = &mut self.assets;
+        let tileset = &roster.tilesets[tileset_id.0 as usize];
+        let tileset_offset = tileset.tile_start;
+        let bank_id = tileset.bank_id;
 
         if roster.map_head as usize >= roster.maps.len() {
             panic!(err!("Map capacity exceeded on bank {}"), bank_id);
@@ -131,11 +131,8 @@ impl Tato {
         );
 
         // Map entry
-        roster.maps[roster.map_head as usize] = Tilemap { bank_id, columns, rows, data_start, data_len };
-
-        // Acquire tile offset for desired tileset
-        let tileset = &roster.tilesets[tileset_id.0 as usize];
-        let tileset_offset = tileset.tile_start;
+        roster.maps[roster.map_head as usize] =
+            Tilemap { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
         for (i, &cell) in data.iter().enumerate() {

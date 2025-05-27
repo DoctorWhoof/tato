@@ -68,8 +68,6 @@ pub fn copy_pixels_to_texture(
     // Copy from framebuffer to raylib texture
     let time = std::time::Instant::now();
 
-    // let tiles = &t.tile_refs();
-    // let tilemaps = &t.map_refs();
     let banks = t.get_video_banks();
     for (color, coords) in t.video.iter_pixels(&banks) {
         let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
@@ -97,7 +95,8 @@ pub fn copy_pixels_to_texture(
 
     // Present frame
     let mut canvas = ray.begin_drawing(thread);
-    canvas.clear_background(Color::new(48, 32, 24, 255));
+    canvas.clear_background(Color::new(64, 64, 64, 255));
+    // canvas.clear_background(Color::new(48, 32, 24, 255));
     canvas.draw_texture_ex(
         &texture,
         Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
