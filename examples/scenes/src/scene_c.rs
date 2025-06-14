@@ -9,16 +9,16 @@ pub struct SceneC {
 
 impl SceneC {
     pub fn new(t: &mut Tato) -> Self {
-        let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
+        let _tileset = t.new_tileset(0, DEFAULT_TILESET);
+        // let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
         let solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
-        let map = &mut t.banks[0].bg; // TODO: easy getter
-        map.set_size(32, 24);
-        for col in 0..map.columns {
-            for row in 0..map.rows {
-                map.set_cell(BgOp {
+        t.bg.set_size(32, 24);
+        for col in 0..t.bg.columns {
+            for row in 0..t.bg.rows {
+                t.bg.set_cell(BgOp {
                     col,
                     row,
                     tile_id: cross,
@@ -28,13 +28,13 @@ impl SceneC {
         }
 
         for id in 0..16 as u8 {
-            map.set_cell(BgOp {
+            t.bg.set_cell(BgOp {
                 col: id as u16,
                 row: 0,
                 tile_id: solid,
                 flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
             });
-            t.video.set_subpalette(PaletteID(id), [BG_COLOR, BG_COLOR, BG_COLOR, ColorID(id)]);
+            t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, BG_COLOR, BG_COLOR, ColorID(id)]);
         }
 
         SceneC { smiley, counter: 0 }

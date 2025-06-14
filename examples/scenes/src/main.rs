@@ -54,10 +54,12 @@ fn main() {
     let mut t = Tato::new(W as u16, H as u16);
     let mut scene = Scene::None;
     // Line scrolling effect, adjusts scroll on every line
-    t.video.irq_line = Some(|iter, video, _bg, _tiles| {
+    t.video.irq_line = Some(|iter, video, _bg| {
         let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;
         let phase = ((video.frame_count() as f32 / 30.0) + line_offset).sin();
         iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
+
+        iter.bg_map_bank = 1;
     });
 
     // Raylib setup

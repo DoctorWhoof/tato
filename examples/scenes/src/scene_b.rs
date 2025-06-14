@@ -18,20 +18,20 @@ impl SceneB {
         // Colors
         t.video.bg_color = DARK_GREEN;
         let palette_bg = t
-            .video
+            .banks[0]
             .push_subpalette([BG_COLOR, BG_COLOR, BG_COLOR, GREEN]);
-        let palette_smiley = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, YELLOW]);
-        let palette_cycler = t.video.push_subpalette([BG_COLOR, BLACK, BLACK, WHITE]);
+        let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, BLACK, BLACK, YELLOW]);
+        let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, BLACK, BLACK, WHITE]);
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
-        let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
+        let _tileset = t.new_tileset(0, DEFAULT_TILESET);
+        // let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
         let tile = TILE_SMILEY;
 
-        let map = &mut t.banks[0].bg; // TODO: easy getter
-        map.set_size(32, 24);
+        t.bg.set_size(32, 24);
 
-        for cell in &mut map.cells {
+        for cell in &mut t.bg.cells {
             cell.id = tile;
             cell.flags = palette_bg.into();
         }
@@ -69,7 +69,7 @@ impl SceneB {
         }
 
         // Draw!
-        t.video.color_cycle(self.player.flags.palette(), 3, 1, 15);
+        t.banks[0].color_cycle(self.player.flags.palette(), 3, 1, 15);
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {

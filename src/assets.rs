@@ -1,70 +1,61 @@
 use crate::*;
 use core::array::from_fn;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq)]
-pub struct MapID(pub u8);
+// mod palette;
+// use palette::*;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq)]
-pub struct AnimID(pub u8);
+mod anim;
+pub use anim::*;
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Tileset {
-    pub bank_id: u8,
-    pub tile_start: u16,
-    pub tiles_count: u16,
-}
+mod tileset;
+pub use tileset::*;
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Anim {
-    pub bank_id: u8,
-    pub fps: u8,
-    pub columns_per_frame: u8,
-    pub rows_per_frame: u8,
-    pub data_start: u16,
-    pub data_len: u16,
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Tilemap {
-    pub bank_id: u8,
-    pub columns: u16,
-    pub rows: u16,
-    pub data_start: u16,
-    pub data_len: u16,
-}
+mod tilemap;
+pub use tilemap::*;
 
 /// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
 /// tileset and its tiles currently loaded in a video memory bank
 #[derive(Debug, Clone)]
-pub struct AssetRoster {
+pub struct Assets {
     pub tilesets: [Tileset; 256],
     // Asset types
     pub anims: [Anim; 256],
     pub maps: [Tilemap; 256],
+    // pub palettes: [Palette; 256],
     // pub fonts: [Font; 256],
     // "flat" storage for cells used by any asset type.
     pub cells: [Cell; 2048],
+
+    pub colors: [Color12Bit; 256],
+    pub sub_palettes: [[u8; 4]; 256],
     // Everything that needs to be counted.
     cell_head: u16,
     tileset_head: u8,
     anim_head: u8,
     map_head: u8,
+    color_head: u8,
+    sub_palette_head: u8,
 }
 
-impl AssetRoster {
+impl Assets {
     pub fn new() -> Self {
         Self {
             // Metadata
             tilesets: from_fn(|_| Tileset::default()),
             anims: from_fn(|_| Anim::default()),
-            maps: core::array::from_fn(|_| Tilemap::default()),
-            // "Flat" entry data for maps and anims
+            maps: from_fn(|_| Tilemap::default()),
+            colors: from_fn(|_| Color12Bit::default()),
+            sub_palettes: from_fn(|_| Default::default()),
+            // "Flat" entry data for maps, anims and fonts
             cells: from_fn(|_| Cell::default()),
-            // frame_head: 0,
+
+            // Counters
             cell_head: 0,
             tileset_head: 0,
             anim_head: 0,
             map_head: 0,
+            color_head: 0,
+            sub_palette_head: 0,
         }
     }
 
@@ -73,41 +64,80 @@ impl AssetRoster {
         self.tileset_head = 0;
         self.anim_head = 0;
         self.map_head = 0;
+        self.color_head = 0;
+        self.sub_palette_head = 0;
     }
 }
 
 impl Tato {
     /// Adds a single tile, returns a TileID
     #[inline]
-    pub fn add_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
+    pub fn new_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
         self.banks[bank_id as usize].add_tile(tile)
     }
 
     /// Adds a tileset as a batch of tiles to the bank
     /// Returns the tileset id.
-    pub fn add_tileset(&mut self, bank_id: u8, tiles: &[Tile<2>]) -> Option<TilesetID> {
+    pub fn new_tileset(&mut self, bank_id: u8, data: TilesetData) -> Option<TilesetID> {
         let bank = self.banks.get_mut(bank_id as usize)?;
         let roster = &mut self.assets;
-        if bank.tile_count() + tiles.len() > bank.tile_capacity() {
+        if bank.tile_count() + data.tiles.len() > bank.tile_capacity() {
             return None;
         }
-
         let id = roster.tileset_head;
-        let tile_start = u16::try_from(bank.tile_count()).unwrap();
-        let tiles_count = u16::try_from(tiles.len()).unwrap();
 
-        for tile in tiles.iter() {
+        // Tile processing
+        let tile_start = u16::try_from(bank.tile_count()).unwrap();
+        let tiles_count = u16::try_from(data.tiles.len()).unwrap();
+
+        for tile in data.tiles.iter() {
             bank.add_tile(tile);
         }
 
-        roster.tilesets[id as usize] = Tileset { bank_id, tile_start, tiles_count };
+        // Color processing
+        if let Some(colors) = data.colors {
+            let colors_start = roster.color_head;
+            let colors_len = u8::try_from(colors.len()).unwrap();
+
+            for (i, color) in colors.iter().enumerate() {
+                let index = colors_start as usize + i;
+                roster.colors[index] = *color;
+                bank.palette[index] = *color;
+            }
+            // TODO: Needs to "build" a VideoMemory palette from smaller palettes,
+            // skip redundant colors
+            // let mut bg_palette = Palette::default();
+            // for color in data.palette {
+            //     // remove colors already in use
+            //     if !self.video.bg_palette.contains(color) {
+            //         bg_palette.push(*color);
+            //     }
+            // }
+
+            // let palette_id = PaletteID(roster.palettte_head);
+            // roster.tilesets[id as usize] = Tileset { palette_id, bank_id, tile_start, tiles_count };
+            roster.tilesets[id as usize] =
+                Tileset { bank_id, tile_start, tiles_count, colors_start, colors_len };
+        } else {
+            roster.tilesets[id as usize] = Tileset {
+                bank_id,
+                tile_start,
+                tiles_count,
+                colors_start: roster.color_head,
+                colors_len: 0,
+            };
+        }
+
+        roster.color_head += 1;
         roster.tileset_head += 1;
         Some(TilesetID(id))
     }
 
+    // TODO: Make private, loading tilesets should load all associated assets
+
     /// Adds a tilemap entry that refers to already loaded tiles in a tileset.
     /// Returns the index of the map
-    pub fn add_tilemap(&mut self, tileset_id: TilesetID, columns: u16, data: &[Cell]) -> MapID {
+    pub fn new_tilemap(&mut self, tileset_id: TilesetID, columns: u16, data: &[Cell]) -> MapID {
         // let bank = &mut self.banks[bank_id as usize];
         // Acquire tile offset for desired tileset
         let roster = &mut self.assets;
@@ -136,12 +166,15 @@ impl Tato {
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
         for (i, &cell) in data.iter().enumerate() {
-            roster.cells[data_start as usize + i] =
-                Cell { id: TileID(cell.id.0 + tileset_offset), ..cell };
+            roster.cells[data_start as usize + i] = Cell {
+                id: TileID(cell.id.0 + tileset_offset), //
+                flags: cell.flags,
+            };
         }
 
         // Advance and return
         roster.map_head += 1;
+        roster.cell_head += data_len;
         MapID(map_idx)
     }
 
@@ -177,91 +210,5 @@ impl Tato {
     //     // Advance and return
     //     self.anim_head += 1;
     //     Some(AnimID(anim_idx))
-    // }
-
-    // // Function to add a complete tileset at once
-    // // This takes slices of pre-existing data instead of owned structures
-    // pub fn add_tileset(
-    //     &mut self,
-    //     tiles: &[Tile<2>],
-    //     animations: &[(u8, &[u16])],  // (fps, frames)
-    //     maps: &[(u16, &[Cell])], // (columns, tile_entries)
-    // ) -> Option<u16> {
-    //     // Record starting positions for everything
-    //     let id = self.tileset_head;
-    //     let tile_start = self.tile_head as u16;
-    //     let anims_start = self.anim_head as u16;
-    //     let maps_start = self.map_head as u16;
-    //     //
-
-    //     // Add tiles
-    //     self.add_tiles(tiles)?;
-
-    //     // Add animations
-    //     for &(fps, frames) in animations {
-    //         let frames_start = self.add_anim_frames(frames)?;
-    //         self.add_animation(fps, frames_start, frames.len() as u16)?;
-    //     }
-
-    //     // Add maps
-    //     for &(columns, tile_entries) in maps {
-    //         let entries_start = self.add_tile_entries(tile_entries)?;
-    //         self.add_map(columns, entries_start, tile_entries.len() as u16)?;
-    //     }
-
-    //     self.tileset_entries[id as usize] = Tileset {
-    //         tile_start,
-    //         tiles_count: todo!(),
-    //         anims_start,
-    //         anims_count: todo!(),
-    //         maps_start,
-    //         maps_count: todo!(),
-    //     };
-
-    //     self.tileset_head += 1;
-    //     Some(id)
-    // }
-
-    // Retrieval functions
-
-    // // Get a reference to a tileset entry
-    // pub fn get_tileset(&self, tileset_idx: usize) -> Option<&Tileset> {
-    //     if tileset_idx < self.tileset_head { Some(&self.tileset_entries[tileset_idx]) } else { None }
-    // }
-
-    // // Get a specific animation within a tileset
-    // pub fn get_animation(&self, tileset_idx: usize, anim_offset: usize) -> Option<&Anim> {
-    //     let tileset = self.get_tileset(tileset_idx)?;
-
-    //     if anim_offset < tileset.anims_count as usize {
-    //         let anim_idx = tileset.anims_start as usize + anim_offset;
-    //         Some(&self.anims[anim_idx])
-    //     } else {
-    //         None
-    //     }
-    // }
-
-    // // Get a specific map within a tileset
-    // pub fn get_map(&self, tileset_idx: usize, map_offset: usize) -> Option<&MapEntry> {
-    //     let tileset = self.get_tileset(tileset_idx)?;
-
-    //     if map_offset < tileset.maps_count as usize {
-    //         let map_idx = tileset.maps_start as usize + map_offset;
-    //         Some(&self.maps[map_idx])
-    //     } else {
-    //         None
-    //     }
-    // }
-
-    // // Get a specific tile within a tileset
-    // pub fn get_tile(&self, tileset_idx: usize, tile_offset: usize) -> Option<&Tile<2>> {
-    //     let tileset = self.get_tileset(tileset_idx)?;
-
-    //     if tile_offset < tileset.tiles_count as usize {
-    //         let tile_idx = tileset.tile_start as usize + tile_offset;
-    //         Some(&self.tiles[tile_idx])
-    //     } else {
-    //         None
-    //     }
     // }
 }

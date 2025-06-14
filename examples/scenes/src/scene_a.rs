@@ -18,9 +18,10 @@ impl SceneA {
         t.video.bg_color = ColorID(0);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
+        t.video.bg_tile_bank = 1;
 
         // Palette test - defines BG palette with a golden tint!
-        t.video.bg_palette = [
+        t.banks[1].palette = [
             Color12Bit::new(0, 0, 0, 0),
             Color12Bit::new(2, 1, 1, 7),
             Color12Bit::new(3, 1, 1, 7),
@@ -40,28 +41,33 @@ impl SceneA {
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
-        for i in 0..t.video.bg_palette.len() {
+        for i in 0..t.banks[1].palette.len() {
             let _ = t
-                .video
+                .banks[0]
+                .push_subpalette([BG_COLOR, BLACK, BLACK, ColorID(i as u8)]);
+            let _ = t
+                .banks[1]
                 .push_subpalette([BG_COLOR, BLACK, BLACK, ColorID(i as u8)]);
         }
 
         // Define new tiles
-        let _tileset = t.add_tileset(0, &TILESET_DEFAULT).unwrap();
+        let _tileset_fg = t.new_tileset(0, DEFAULT_TILESET).unwrap();
+        let _tileset_bg = t.new_tileset(1, DEFAULT_TILESET).unwrap();
+        // let _tileset = t.add_tileset(0, &TILESET_DEFAULT).unwrap();
         let smiley = TILE_SMILEY;
         let arrow = TILE_ARROW;
 
         // Set BG tiles
-        t.set_bg_size(0, 28, 28);
-        let map = &mut t.banks[0].bg;
-        for col in 0..map.columns {
-            for row in 0..map.rows {
+        t.bg.set_size(28, 28);
+        // let t.bg = &mut t.banks[0].bg;
+        for col in 0..t.bg.columns {
+            for row in 0..t.bg.rows {
                 // Calculate palette ID based on coordinates, limits to 14 indices
                 let index = (col + row) % 14;
                 // Adds 2 to avoid colors 0 and 1 in the BG
                 let adjusted_palette = PaletteID(2 + index as u8);
 
-                map.set_cell(BgOp {
+                t.bg.set_cell(BgOp {
                     col,
                     row,
                     tile_id: arrow,
@@ -73,8 +79,8 @@ impl SceneA {
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0..map.width() as i16 - TILE_SIZE as i16) as f32,
-                y: rand::random_range(0..map.height() as i16 - TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..t.bg.width() as i16 - TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..t.bg.height() as i16 - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }
@@ -156,18 +162,18 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        t.video.color_cycle(self.player.flags.palette(), 3, 1, 15);
+        t.banks[0].color_cycle(self.player.flags.palette(), 3, 1, 15);
 
-        let map = &mut t.banks[0].bg;
-        for col in 0..map.columns {
-            for row in 0..map.rows {
-                let Some(mut flags) = map.get_flags(col, row) else {
+        // let t.bg = &mut t.banks[0].bg;
+        for col in 0..t.bg.columns {
+            for row in 0..t.bg.rows {
+                let Some(mut flags) = t.bg.get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                map.set_flags(col, row, flags);
+                t.bg.set_flags(col, row, flags);
             }
         }
 

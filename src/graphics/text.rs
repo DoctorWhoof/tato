@@ -20,7 +20,7 @@ impl Tato {
 
         // let tileset = &self.tiles.sets[bundle.tileset.0 as usize];
         let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {
-            self.banks[tileset.bank_id as usize].bg.set_cell(BgOp {
+            self.bg.set_cell(BgOp {
                 col: op.col + cursor_x,
                 row: op.row + cursor_y,
                 tile_id: TileID(char_to_id_ex(ch) + tileset.tile_start),

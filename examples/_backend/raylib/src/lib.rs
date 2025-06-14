@@ -69,7 +69,7 @@ pub fn copy_pixels_to_texture(
     let time = std::time::Instant::now();
 
     let banks = t.get_video_banks();
-    for (color, coords) in t.video.iter_pixels(&banks) {
+    for (color, coords) in t.video.iter_pixels(&banks, &[&t.bg]) {
         let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
@@ -79,8 +79,8 @@ pub fn copy_pixels_to_texture(
     texture.update_texture(pixels).unwrap();
     t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
     // if t.video.frame_count() % 60 == 0 {
-        // println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
-        println!("iter time: {:.2} ms", t.update_time_acc.average());
+    // println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
+    println!("iter time: {:.2} ms", t.update_time_acc.average());
     // }
 
     // Calculate rect with correct aspect ratio with integer scaling

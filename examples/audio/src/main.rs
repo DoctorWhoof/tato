@@ -42,7 +42,8 @@ fn main() {
     };
 
     let empty = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]); // TODO: Return Option
-    let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
+    let font = tato.add_tileset(0, &TILESET_FONT, &PALETTE_DEFAULT).unwrap();
+    // let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(

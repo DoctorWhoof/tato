@@ -1,6 +1,4 @@
 
-
-
 [ ] Dual chip setup for multiple video layers
 
 [.] Use LIRQ (Line interrupt) to draw GUI
@@ -25,9 +23,9 @@
 [.] Finish converting Anim data to array of tilemaps in tato_pipe
     [x] "draw_patch" will then take a map as a parameter, which will bring in tile flags.
 
---->[ ] Treat Palettes and SubPalettes as assets!
-        . Will allow easier importing from png assets, loading/unloading, etc.
-        [ ] Remove palette head style counters from tato_video, move all management to Tato.
+[?] Treat Palettes and SubPalettes as assets
+    . Will allow easier importing from png assets, loading/unloading, etc.
+    [ ] Remove palette head style counters from tato_video, move all management to Tato.
 
 [ ] Smarter sub-palettes in Pipeline?
     . The problem is that, depending on order of tile processing, too many unnecessary palettes are generated

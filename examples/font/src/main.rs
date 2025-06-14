@@ -18,7 +18,8 @@ fn main() {
     let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
 
     let _empty_tile = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]); // Our tile zero
-    let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
+    let font = tato.add_tileset(0, &TILESET_FONT, &PALETTE_DEFAULT).unwrap();
+    // let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
     tato.video.bg_color = DARK_BLUE;
 
     // Pre-draw fixed text (writes to BG Map)

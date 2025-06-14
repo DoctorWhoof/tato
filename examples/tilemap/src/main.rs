@@ -13,20 +13,32 @@ pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
-
     tato.video.bg_color = ColorID(0);
-    tato.video.bg_palette.iter_mut().zip(PATCH_PALETTE.iter()).for_each(|(dest, &src)| *dest = src);
 
-    // let _colors = tato.video.push_subpalette([BG_COLOR, DARK_BLUE, BLUE, BLACK]);
-    let _empty = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]);
-    let tileset = tato.add_tileset(0, &PATCH_TILESET).unwrap();
-    let map = tato.add_tilemap(tileset, 3, &PATCH_MAP);
+    // PATCH_COLORS //
+    //     .iter()
+    //     .zip(tato.banks[0].palette.iter_mut())
+    //     .for_each(|(&src, dest)| *dest = src);
+
+    let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
+    let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
+    let map_a = tato.new_tilemap(tileset, 3, &PATCH_MAP);
+    let map_b = tato.new_tilemap(tileset, 3, &DEFAULT_TILES_MAP);
 
     let w = 7;
     let h = 5;
     for row in 0..4 {
-        for col in 0..4 {
-            tato.draw_patch(Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 }, map);
+        for col in 0..2 {
+            tato.draw_patch(
+                Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
+                map_a, //
+            );
+        }
+        for col in 2..4 {
+            tato.draw_patch(
+                Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
+                map_b, //
+            );
         }
     }
 

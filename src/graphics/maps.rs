@@ -13,13 +13,12 @@ pub struct MapOp {
 impl Tato {
     pub fn draw_patch(&mut self, rect: Rect<u16>, map_id: MapID) {
         let map = &self.assets.maps[map_id.0 as usize];
-        let bank = &mut self.banks[map.bank_id as usize];
 
         assert!(map.columns == 3, err!("Patch tilemaps must be 3 columns wide."));
         assert!(map.rows == 3, err!("Patch rows must be 3 rows tall."));
 
         let top_left = self.assets.cells[map.data_start as usize];
-        bank.bg.set_cell(BgOp {
+        self.bg.set_cell(BgOp {
             col: rect.x,
             row: rect.y,
             tile_id: top_left.id,
@@ -28,11 +27,11 @@ impl Tato {
 
         let top = self.assets.cells[map.data_start as usize + 1];
         for col in rect.x + 1..rect.x + rect.w {
-            bank.bg.set_cell(BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
+            self.bg.set_cell(BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
         }
 
         let top_right = self.assets.cells[map.data_start as usize + 2];
-        bank.bg.set_cell(BgOp {
+        self.bg.set_cell(BgOp {
             col: rect.x + rect.w,
             row: rect.y,
             tile_id: top_right.id,
@@ -41,19 +40,19 @@ impl Tato {
 
         let left = self.assets.cells[map.data_start as usize + 3];
         for row in rect.y + 1..rect.y + rect.h {
-            bank.bg.set_cell(BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
+            self.bg.set_cell(BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
         }
 
         let center = self.assets.cells[map.data_start as usize + 4];
         for row in rect.y + 1..rect.y + rect.h {
             for col in rect.x + 1..rect.x + rect.w {
-                bank.bg.set_cell(BgOp { col, row, tile_id: center.id, flags: center.flags });
+                self.bg.set_cell(BgOp { col, row, tile_id: center.id, flags: center.flags });
             }
         }
 
         let right = self.assets.cells[map.data_start as usize + 5];
         for row in rect.y + 1..rect.y + rect.h {
-            bank.bg.set_cell(BgOp {
+            self.bg.set_cell(BgOp {
                 col: rect.x + rect.w,
                 row,
                 tile_id: right.id,
@@ -62,7 +61,7 @@ impl Tato {
         }
 
         let bottom_left = self.assets.cells[map.data_start as usize + 6];
-        bank.bg.set_cell(BgOp {
+        self.bg.set_cell(BgOp {
             col: rect.x,
             row: rect.y + rect.h,
             tile_id: bottom_left.id,
@@ -71,7 +70,7 @@ impl Tato {
 
         let bottom = self.assets.cells[map.data_start as usize + 7];
         for col in rect.x + 1..rect.x + rect.w {
-            bank.bg.set_cell(BgOp {
+            self.bg.set_cell(BgOp {
                 col,
                 row: rect.y + rect.h,
                 tile_id: bottom.id,
@@ -80,7 +79,7 @@ impl Tato {
         }
 
         let bottom_right = self.assets.cells[map.data_start as usize + 8];
-        bank.bg.set_cell(BgOp {
+        self.bg.set_cell(BgOp {
             col: rect.x + rect.w,
             row: rect.y + rect.h,
             tile_id: bottom_right.id,
