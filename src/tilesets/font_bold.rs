@@ -1,15 +1,8 @@
 // Auto-generated code - do not edit manually
 use crate::prelude::*;
 
-pub const FONT_TILESET: TilesetData = TilesetData {
-    tiles: &FONT_TILES,
-    colors: None,
-    sub_palettes: None,
-};
-
-pub const FONT_COLORS: [Color12Bit; 2] = [Color12Bit::new(0, 0, 0, 7), Color12Bit::new(7, 7, 7, 7)];
-
-pub const FONT_SUBPALETTE_0: [u8; 4] = [1, 0, 0, 0];
+pub const FONT_TILESET: TilesetData =
+    TilesetData { tiles: &FONT_TILES, colors: None, sub_palettes: None };
 
 pub const FONT_ARCADE_BOLD_MAP: [Cell; 90] = [
     Cell { id: TileID(0), flags: TileFlags(0) },
@@ -97,14 +90,14 @@ pub const FONT_ARCADE_BOLD_MAP: [Cell; 90] = [
     Cell { id: TileID(82), flags: TileFlags(0) },
     Cell { id: TileID(83), flags: TileFlags(0) },
     Cell { id: TileID(84), flags: TileFlags(0) },
-    Cell { id: TileID(68), flags: TileFlags(0) },
-    Cell { id: TileID(68), flags: TileFlags(0) },
-    Cell { id: TileID(68), flags: TileFlags(0) },
-    Cell { id: TileID(68), flags: TileFlags(0) },
-    Cell { id: TileID(68), flags: TileFlags(0) },
+    Cell { id: TileID(85), flags: TileFlags(0) },
+    Cell { id: TileID(86), flags: TileFlags(0) },
+    Cell { id: TileID(87), flags: TileFlags(0) },
+    Cell { id: TileID(88), flags: TileFlags(0) },
+    Cell { id: TileID(89), flags: TileFlags(0) },
 ];
 
-pub const FONT_TILES: [Tile<2>; 85] = [
+pub const FONT_TILES: [Tile<2>; 90] = [
     Tile {
         clusters: [
             Cluster { data: [21, 80] },
@@ -1122,6 +1115,66 @@ pub const FONT_TILES: [Tile<2>; 85] = [
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
             Cluster { data: [85, 85] },
+            Cluster { data: [0, 0] },
+        ],
+    },
+    Tile {
+        clusters: [
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+        ],
+    },
+    Tile {
+        clusters: [
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+        ],
+    },
+    Tile {
+        clusters: [
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+        ],
+    },
+    Tile {
+        clusters: [
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+        ],
+    },
+    Tile {
+        clusters: [
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
         ],
     },

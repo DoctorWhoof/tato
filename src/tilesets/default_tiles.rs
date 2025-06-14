@@ -1,20 +1,8 @@
 // Auto-generated code - do not edit manually
 use crate::prelude::*;
 
-pub const DEFAULT_TILESET: TilesetData = TilesetData {
-    tiles: &DEFAULT_TILES,
-    colors: None,
-    sub_palettes: None,
-};
-
-pub const DEFAULT_COLORS: [Color12Bit; 4] = [
-    Color12Bit::new(0, 0, 0, 0),
-    Color12Bit::new(2, 2, 4, 7),
-    Color12Bit::new(3, 4, 5, 7),
-    Color12Bit::new(7, 7, 7, 7),
-];
-
-pub const DEFAULT_SUBPALETTE_0: [u8; 4] = [1, 2, 3, 0];
+pub const DEFAULT_TILESET: TilesetData =
+    TilesetData { tiles: &DEFAULT_TILES, colors: None, sub_palettes: None };
 
 pub const TILE_CHECKERS: TileID = TileID(0);
 pub const TILE_EMPTY: TileID = TileID(1);
