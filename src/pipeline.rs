@@ -5,7 +5,14 @@ pub const SUB_PALETTE_COUNT: usize = 16;
 pub const SUB_PALETTE_COLOR_COUNT: usize = 4;
 
 pub struct Pipeline {
+    /// Adds "allow unused" lint attribute to the top of the exported file
     pub allow_unused: bool,
+    /// Generally should never be true, only used by the tato library for default assets
+    pub use_crate_assets: bool,
+    /// Allows skipping the palette when saving a tileset.
+    /// Useful for assets intended to use the default palette only.
+    pub save_palettes: bool,
+
     palettes: Vec<PaletteBuilder>,
     tilesets: Vec<TilesetBuilder>,
     tileset_head: u8,
@@ -23,6 +30,8 @@ impl Pipeline {
         // Create with defaults
         Pipeline {
             allow_unused: false,
+            use_crate_assets: false,
+            save_palettes: true,
             palettes: Vec::new(),
             tilesets: Vec::new(),
             tileset_head: 0,
@@ -193,7 +202,11 @@ impl Pipeline {
         if self.allow_unused {
             code.write_line("#![allow(unused)]");
         }
-        code.write_line("use tato::prelude::*;");
+        if self.use_crate_assets {
+            code.write_line("use crate::prelude::*;");
+        } else {
+            code.write_line("use tato::prelude::*;");
+        }
         code.write_line("");
         code.write_line("");
     }
@@ -201,19 +214,21 @@ impl Pipeline {
     fn append_tileset_data(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
+
         code.write_line(&format!(
             "pub const {}_TILESET: TilesetData = TilesetData{{",
             palette.name.to_uppercase(),
         ));
 
         code.write_line(&format!("    tiles: &{}_TILES,", tileset.name.to_uppercase()));
-        if self.palettes.len() > 0 {
+        if self.palettes.len() > 0 && self.save_palettes {
             code.write_line(&format!("    colors: Some(&{}_COLORS),", tileset.name.to_uppercase()));
         } else {
             code.write_line(&format!("    colors: None,"));
         }
 
-        if tileset.sub_palettes.len() > 0 {
+        // TODO: Should this also check for save_palettes? Not sure.
+        if tileset.sub_palettes.len() > 0 && self.save_palettes {
             code.write_line(&format!("    sub_palettes: Some(&["));
             for (i, _sub_plt) in tileset.sub_palettes.iter().enumerate() {
                 code.write_line(&format!("&{}_SUBPALETTE_{},", tileset.name.to_uppercase(), i,));
@@ -223,28 +238,14 @@ impl Pipeline {
             code.write_line(&format!("    sub_palettes: None,"));
         }
 
-        // for sub_plt in &tileset.sub_palettes {
-        //     let name_str = tileset
-        //         .sub_palette_name_hash
-        //         .get(sub_plt)
-        //         .unwrap() //
-        //         .to_uppercase();
-        //     let mut name_parts = name_str.split('_');
-        //     let left_name = name_parts.next().unwrap();
-        //     let right_name = name_parts.next().unwrap_or("");
-        //     code.write_line(&format!(
-        //         "&{}_SUBPALETTE_{}: [u8; {}] = [",
-        //         left_name,
-        //         right_name,
-        //         sub_plt.len()
-        //     ));
-        // }
-
         code.write_line("};");
         code.write_line("");
     }
 
     fn append_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        if !self.save_palettes {
+            return;
+        }
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
         if palette.colors.len() > 0 {
@@ -270,6 +271,9 @@ impl Pipeline {
     }
 
     fn append_sub_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+        if !self.save_palettes {
+            return;
+        }
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         // Sub-Palettes
         for sub_plt in &tileset.sub_palettes {
