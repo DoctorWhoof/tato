@@ -1,9 +1,5 @@
 
-const PROCESS_DEFAULT_FILES:bool = true;
-
 fn main() {
-    if !PROCESS_DEFAULT_FILES { return }
-
     use tato_pipe::*;
     let mut pipe = Pipeline::new();
     pipe.save_palettes = false;

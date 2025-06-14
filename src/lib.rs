@@ -17,15 +17,11 @@ pub mod graphics;
 mod tato;
 pub use tato::*;
 
-mod tile_set;
-use tile_set::*;
-
 pub mod tilesets;
 
 pub mod prelude {
     pub use crate::*;
     pub use crate::graphics::*;
-    pub use crate::tile_set::*;
     pub use crate::tilesets::*;
     pub use tato_audio::waveform::*;
     pub use tato_audio::*;

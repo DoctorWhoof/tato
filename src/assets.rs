@@ -80,11 +80,11 @@ impl Tato {
     /// Returns the tileset id.
     pub fn new_tileset(&mut self, bank_id: u8, data: TilesetData) -> Option<TilesetID> {
         let bank = self.banks.get_mut(bank_id as usize)?;
-        let roster = &mut self.assets;
+        let assets = &mut self.assets;
         if bank.tile_count() + data.tiles.len() > bank.tile_capacity() {
             return None;
         }
-        let id = roster.tileset_head;
+        let id = assets.tileset_head;
 
         // Tile processing
         let tile_start = u16::try_from(bank.tile_count()).unwrap();
@@ -94,42 +94,64 @@ impl Tato {
             bank.add_tile(tile);
         }
 
-        // Color processing
-        if let Some(colors) = data.colors {
-            let colors_start = roster.color_head;
-            let colors_len = u8::try_from(colors.len()).unwrap();
+        // Main Color processing
+        let mut color_entries: [ColorEntry; COLORS_PER_PALETTE as usize] = Default::default();
+        let mut color_count = 0;
+        let colors_start = assets.color_head;
 
-            for (i, color) in colors.iter().enumerate() {
-                let index = colors_start as usize + i;
-                roster.colors[index] = *color;
-                bank.palette[index] = *color;
+        if let Some(data_colors) = data.colors {
+            for (i, color) in data_colors.iter().enumerate() {
+                let mut reused_color = false;
+                let mut index = colors_start;
+                // Compare to bank colors
+                for slot in 0..bank.color_count() {
+                    let bank_color = bank.palette[slot as usize];
+                    if *color == bank_color {
+                        reused_color = true;
+                        index = slot;
+                        break;
+                    }
+                }
+                if !reused_color {
+                    color_count += 1;
+                    index = colors_start + color_count;
+                }
+                // Store color entry for management
+                color_entries[i] = ColorEntry { reused_color, index, value: *color };
+                // Immediately also set the color in the bank
+                bank.palette[index as usize] = *color;
             }
-            // TODO: Needs to "build" a VideoMemory palette from smaller palettes,
-            // skip redundant colors
-            // let mut bg_palette = Palette::default();
-            // for color in data.palette {
-            //     // remove colors already in use
-            //     if !self.video.bg_palette.contains(color) {
-            //         bg_palette.push(*color);
-            //     }
-            // }
-
-            // let palette_id = PaletteID(roster.palettte_head);
-            // roster.tilesets[id as usize] = Tileset { palette_id, bank_id, tile_start, tiles_count };
-            roster.tilesets[id as usize] =
-                Tileset { bank_id, tile_start, tiles_count, colors_start, colors_len };
-        } else {
-            roster.tilesets[id as usize] = Tileset {
-                bank_id,
-                tile_start,
-                tiles_count,
-                colors_start: roster.color_head,
-                colors_len: 0,
-            };
         }
 
-        roster.color_head += 1;
-        roster.tileset_head += 1;
+        // Sub palette processing
+        // Maps indices starting at zero to the actual current color positions in the bank
+        let sub_palettes_start = assets.sub_palette_head;
+        let mut sub_palettes_len = 0;
+        if let Some(sub_palettes) = data.sub_palettes {
+            for sub_palette in sub_palettes {
+                let mapped_sub_palette:[ColorID; COLORS_PER_TILE as usize] = from_fn(|i|{
+                    let mapped = color_entries[sub_palette[i] as usize].index;
+                    ColorID(mapped)
+                });
+                bank.push_subpalette(mapped_sub_palette);
+            }
+            sub_palettes_len += 1;
+        }
+
+        // Build tileset entry
+        assets.tilesets[id as usize] = Tileset {
+            bank_id,
+            tile_start,
+            tiles_count,
+            color_entries,
+            color_count,
+            sub_palettes_start,
+            sub_palettes_len,
+        };
+
+        assets.color_head += color_count;
+        assets.sub_palette_head += sub_palettes_len;
+        assets.tileset_head += 1;
         Some(TilesetID(id))
     }
 
@@ -140,18 +162,18 @@ impl Tato {
     pub fn new_tilemap(&mut self, tileset_id: TilesetID, columns: u16, data: &[Cell]) -> MapID {
         // let bank = &mut self.banks[bank_id as usize];
         // Acquire tile offset for desired tileset
-        let roster = &mut self.assets;
-        let tileset = &roster.tilesets[tileset_id.0 as usize];
+        let assets = &mut self.assets;
+        let tileset = &assets.tilesets[tileset_id.0 as usize];
         let tileset_offset = tileset.tile_start;
         let bank_id = tileset.bank_id;
 
-        if roster.map_head as usize >= roster.maps.len() {
+        if assets.map_head as usize >= assets.maps.len() {
             panic!(err!("Map capacity exceeded on bank {}"), bank_id);
         }
 
         // Add metadata
-        let map_idx = roster.map_head;
-        let data_start = roster.cell_head;
+        let map_idx = assets.map_head;
+        let data_start = assets.cell_head;
         let data_len = u16::try_from(data.len()).unwrap();
         let rows = data_len / columns;
 
@@ -161,20 +183,20 @@ impl Tato {
         );
 
         // Map entry
-        roster.maps[roster.map_head as usize] =
+        assets.maps[assets.map_head as usize] =
             Tilemap { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
         for (i, &cell) in data.iter().enumerate() {
-            roster.cells[data_start as usize + i] = Cell {
+            assets.cells[data_start as usize + i] = Cell {
                 id: TileID(cell.id.0 + tileset_offset), //
                 flags: cell.flags,
             };
         }
 
         // Advance and return
-        roster.map_head += 1;
-        roster.cell_head += data_len;
+        assets.map_head += 1;
+        assets.cell_head += data_len;
         MapID(map_idx)
     }
 
