@@ -1,5 +1,4 @@
 use crate::*;
-use core::array::from_fn;
 
 /// A convenient packet of data used to draw a tile as a sprite.
 #[derive(Debug, Clone, Copy)]
@@ -15,12 +14,12 @@ pub struct DrawBundle {
 pub struct VideoChip {
     /// The color rendered if resulting pixel is transparent
     pub bg_color: ColorID,
-    /// The main FG palette with 16 colors. Used by sprites.
-    pub fg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
-    /// The main BG palette with 16 colors. Used by BG tiles.
-    pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
-    /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
-    pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+    // /// The main FG palette with 16 colors. Used by sprites.
+    // pub fg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
+    // /// The main BG palette with 16 colors. Used by BG tiles.
+    // pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
+    // /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
+    // pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     /// Maps i16 coordinates into the u8 range, bringing sprites "outside the screen" into view.
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
@@ -29,11 +28,13 @@ pub struct VideoChip {
     pub scroll_x: i16,
     /// Offsets the BG Map and Sprite tiles vertically
     pub scroll_y: i16,
+    // ---------------------- Iterator control ----------------------
     /// A callback that can modify the iterator, called once per line.
     /// It is automatically passed to the PixelIterator.
     // pub irq_x_callback: Option<VideoIRQ>,
     pub irq_line: Option<VideoIRQ>,
-
+    pub fg_tile_bank: u8,
+    pub bg_tile_bank: u8,
     // Pixel data for all tiles, stored as palette indices.
     // pub tiles: &'a [Tile<2>; TILE_COUNT],
     // pub tile_mem: VideoMemory<512, 4096>,
@@ -50,9 +51,9 @@ pub struct VideoChip {
     pub(crate) view_bottom: u16,
     // Internal timer. Useful for IRQ manipulation
     frame_count: usize,
-    // Next available palette.
-    palette_head: u8,
-    sub_palette_head: u8,
+    // // Next available palette.
+    // palette_head: u8,
+    // sub_palette_head: u8,
 }
 
 impl VideoChip {
@@ -64,19 +65,10 @@ impl VideoChip {
         );
 
         let mut result = Self {
-            // map_world: BGMap::new(64, 48),
-            // map_gui: BGMap::new(32, 32),
-            // tile_mem: VideoMemory::new(),
-            // tiles,
             bg_color: GRAY,
             wrap_sprites: true,
             wrap_bg: true,
-            fg_palette: [Color12Bit::default(); COLORS_PER_PALETTE as usize],
-            bg_palette: [Color12Bit::default(); COLORS_PER_PALETTE as usize],
-            local_palettes: [[ColorID(0); COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
             sprite_gen: SpriteGenerator::new(),
-            palette_head: 0,
-            sub_palette_head: 0,
             view_left: 0,
             view_top: 0,
             view_right: w - 1,
@@ -89,6 +81,8 @@ impl VideoChip {
             // Video IRQs
             // irq_x_callback: None,
             irq_line: None,
+            fg_tile_bank: 0,
+            bg_tile_bank: 0,
         };
         result.reset_all();
 
@@ -138,31 +132,32 @@ impl VideoChip {
         self.bg_color = GRAY;
         self.wrap_sprites = true;
         self.frame_count = 0;
+        self.fg_tile_bank = 0;
+        self.bg_tile_bank = 0;
         self.reset_scroll();
-        self.reset_palettes();
         self.reset_viewport();
         self.reset_sprites();
     }
 
-    pub fn reset_palettes(&mut self) {
-        self.fg_palette = from_fn(|i| {
-            if i < PALETTE_DEFAULT.len() {
-                PALETTE_DEFAULT[i]
-            } else {
-                Color12Bit::default()
-            }
-        });
-        self.bg_palette = from_fn(|i| {
-            if i < PALETTE_DEFAULT.len() {
-                PALETTE_DEFAULT[i]
-            } else {
-                Color12Bit::default()
-            }
-        });
-        self.local_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));
-        self.sub_palette_head = 0;
-        self.palette_head = 0;
-    }
+    // pub fn reset_palettes(&mut self) {
+    //     self.fg_palette = from_fn(|i| {
+    //         if i < PALETTE_DEFAULT.len() {
+    //             PALETTE_DEFAULT[i]
+    //         } else {
+    //             Color12Bit::default()
+    //         }
+    //     });
+    //     self.bg_palette = from_fn(|i| {
+    //         if i < PALETTE_DEFAULT.len() {
+    //             PALETTE_DEFAULT[i]
+    //         } else {
+    //             Color12Bit::default()
+    //         }
+    //     });
+    //     self.local_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));
+    //     self.sub_palette_head = 0;
+    //     self.palette_head = 0;
+    // }
 
     pub fn reset_scroll(&mut self) {
         self.scroll_x = 0;
@@ -180,21 +175,21 @@ impl VideoChip {
         self.sprite_gen.reset();
     }
 
-    pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
-        debug_assert!(
-            index.0 < LOCAL_PALETTE_COUNT,
-            err!("Invalid local palette index, must be less than PALETTE_COUNT")
-        );
-        self.local_palettes[index.0 as usize] = colors;
-    }
+    // pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
+    //     debug_assert!(
+    //         index.0 < LOCAL_PALETTE_COUNT,
+    //         err!("Invalid local palette index, must be less than PALETTE_COUNT")
+    //     );
+    //     self.local_palettes[index.0 as usize] = colors;
+    // }
 
-    pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
-        assert!(self.sub_palette_head < 16, err!("PALETTE_COUNT exceeded"));
-        let result = self.sub_palette_head;
-        self.local_palettes[self.sub_palette_head as usize] = colors;
-        self.sub_palette_head += 1;
-        PaletteID(result)
-    }
+    // pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
+    //     assert!(self.sub_palette_head < 16, err!("PALETTE_COUNT exceeded"));
+    //     let result = self.sub_palette_head;
+    //     self.local_palettes[self.sub_palette_head as usize] = colors;
+    //     self.sub_palette_head += 1;
+    //     PaletteID(result)
+    // }
 
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
     /// also provide various tile flags, like flipping, and specify a palette id.
@@ -243,23 +238,6 @@ impl VideoChip {
             .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id);
     }
 
-    /// Increments or decrements an index in a local palette so that its value
-    /// cycles between "min" and "max", which represent colors in the Main FG and BG palettes.
-    pub fn color_cycle(&mut self, palette: PaletteID, color: u8, min: u8, max: u8) {
-        let color_cycle = &mut self.local_palettes[palette.id()][color as usize].0;
-        if max > min {
-            *color_cycle += 1;
-            if *color_cycle > max {
-                *color_cycle = min
-            }
-        } else {
-            *color_cycle -= 1;
-            if *color_cycle < min {
-                *color_cycle = max
-            }
-        }
-    }
-
     pub fn start_frame(&mut self) {
         self.frame_count += 1;
         self.reset_sprites();
@@ -267,7 +245,15 @@ impl VideoChip {
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
     /// Requires a reference to the Tile array.
-    pub fn iter_pixels<'a>(&'a self, tile_mem: &'a [&'a VideoMemory<TILE_COUNT, BG_LEN>]) -> PixelIter<'a> {
-        PixelIter::new(self, tile_mem)
+    pub fn iter_pixels<'a>(
+        &'a self,
+        video_banks: &'a [&'a VideoMemory<TILE_COUNT>],
+        bg_banks: &'a [&'a BGMap<BG_LEN>],
+    ) -> PixelIter<'a> {
+        PixelIter::new(
+            self,
+            video_banks,
+            bg_banks,
+        )
     }
 }

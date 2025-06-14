@@ -60,6 +60,16 @@ impl TileFlags {
         Self(data | palette.0)
     }
 
+    pub const fn set_palette(&mut self, palette: PaletteID) {
+        debug_assert!(
+            palette.0 < 16,
+            err!("Tile Palette must be in the 0 to 15 range")
+        );
+        self.0 &= 0b_1111_0000; // Clear the lower 4 bits (palette bits)
+        self.0 |= palette.0 & 0b_0000_1111; // Set the new palette (mask to ensure only lower 4 bits)
+    }
+
+
     /// If true flag will be flipped horizontally
     pub const fn set_flip_x(&mut self, state: bool) {
         if state {

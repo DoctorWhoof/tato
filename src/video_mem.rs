@@ -1,26 +1,77 @@
 use crate::*;
+use core::array::from_fn;
 
 #[derive(Debug, Clone)]
-pub struct VideoMemory<const TILES:usize, const CELLS:usize> {
+pub struct VideoMemory<const TILES: usize> {
     pub tiles: [Tile<2>; TILES],
-    pub bg: BGMap<CELLS>,
+    pub palette: [Color12Bit; COLORS_PER_PALETTE as usize],
+    /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the main palette.
+    pub sub_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     // Everything that needs to be counted
     tile_head: u16,
+    palette_head: u8,
+    sub_palette_head: u8,
 }
 
-impl<const TILES:usize, const CELLS:usize> VideoMemory<TILES, CELLS> {
+impl<const TILES: usize> VideoMemory<TILES> {
     pub fn new() -> Self {
         Self {
-            tiles: core::array::from_fn(|_| Tile::default()),
-            // "Flat" BgOp data for maps and anims
-            bg: BGMap::new(32, 32),
+            tiles: from_fn(|_| Tile::default()),
+            // bg: BGMap::new(32, 32),
+            palette: PALETTE_DEFAULT,
+            sub_palettes: from_fn(|_| from_fn(|i| ColorID(i as u8))),
             tile_head: 0,
+            palette_head: 0,
+            sub_palette_head: 0
         }
     }
 
     /// Does not erase the contents! Simply sets its internal count to 0.
     pub fn reset(&mut self) {
         self.tile_head = 0;
+        self.palette_head = 0;
+        self.sub_palette_head = 0;
+        self.reset_palettes();
+    }
+
+    pub fn reset_palettes(&mut self) {
+        self.palette = PALETTE_DEFAULT;
+        self.sub_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));
+        self.sub_palette_head = 0;
+        self.palette_head = 0;
+    }
+
+    pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
+        debug_assert!(
+            index.0 < LOCAL_PALETTE_COUNT,
+            err!("Invalid local palette index, must be less than PALETTE_COUNT")
+        );
+        self.sub_palettes[index.0 as usize] = colors;
+    }
+
+    pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
+        assert!(self.sub_palette_head < 16, err!("PALETTE_COUNT exceeded"));
+        let result = self.sub_palette_head;
+        self.sub_palettes[self.sub_palette_head as usize] = colors;
+        self.sub_palette_head += 1;
+        PaletteID(result)
+    }
+
+    /// Increments or decrements an index in a local palette so that its value
+    /// cycles between "min" and "max", which represent colors in the Main FG and BG palettes.
+    pub fn color_cycle(&mut self, palette: PaletteID, color: u8, min: u8, max: u8) {
+        let color_cycle = &mut self.sub_palettes[palette.id()][color as usize].0;
+        if max > min {
+            *color_cycle += 1;
+            if *color_cycle > max {
+                *color_cycle = min
+            }
+        } else {
+            *color_cycle -= 1;
+            if *color_cycle < min {
+                *color_cycle = max
+            }
+        }
     }
 
     pub fn tile_count(&self) -> usize {
@@ -31,13 +82,12 @@ impl<const TILES:usize, const CELLS:usize> VideoMemory<TILES, CELLS> {
         TILES
     }
 
-    pub fn cell_capacity(&self) -> usize {
-        CELLS
-    }
-
     /// Adds a single tile, returns a TileID
     pub fn add_tile(&mut self, tile: &Tile<2>) -> TileID {
-        assert!((self.tile_head as usize) < TILES, err!("Tileset capacity reached"));
+        assert!(
+            (self.tile_head as usize) < TILES,
+            err!("Tileset capacity reached")
+        );
         let result = TileID(self.tile_head);
         // Copy tile data to bank
         let dest_index = self.tile_head as usize;

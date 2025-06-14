@@ -37,9 +37,16 @@ pub use video_chip::*;
 /// The parameters are:
 /// - Mutable reference to the iterator
 /// - Read-only reference to the VideoChip
+/// - Read only reference to the FG tile bank (pixels).
+/// - Read only reference to the BG tile bank (pixels).
 /// - Read only reference to the current tilemap
-/// - Read only reference to the tile bank (pixels).
-pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &BGMap<BG_LEN>, &[Tile<2>]);
+pub type VideoIRQ = fn(
+    &mut PixelIter,
+    &VideoChip,
+    // &[VideoMemory<TILE_COUNT>],
+    // &[VideoMemory<TILE_COUNT>],
+    &BGMap<BG_LEN>,
+);
 
 // -------------------------------- Constants --------------------------------
 
