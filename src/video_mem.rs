@@ -22,15 +22,15 @@ impl<const TILES: usize> VideoMemory<TILES> {
             sub_palettes: from_fn(|_| from_fn(|i| ColorID(i as u8))),
             tile_head: 0,
             palette_head: 0,
-            sub_palette_head: 0
+            sub_palette_head: 0,
         }
     }
 
-    /// Does not erase the contents! Simply sets its internal count to 0.
+
     pub fn reset(&mut self) {
+        // Simply sets internal counters to 0.
         self.tile_head = 0;
-        self.palette_head = 0;
-        self.sub_palette_head = 0;
+        // Will reset colors to their defaults
         self.reset_palettes();
     }
 
@@ -41,7 +41,11 @@ impl<const TILES: usize> VideoMemory<TILES> {
         self.palette_head = 0;
     }
 
-    pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
+    pub fn set_subpalette(
+        &mut self,
+        index: PaletteID,
+        colors: [ColorID; COLORS_PER_TILE as usize],
+    ) {
         debug_assert!(
             index.0 < LOCAL_PALETTE_COUNT,
             err!("Invalid local palette index, must be less than PALETTE_COUNT")
@@ -76,6 +80,14 @@ impl<const TILES: usize> VideoMemory<TILES> {
 
     pub fn tile_count(&self) -> usize {
         self.tile_head as usize
+    }
+
+    pub fn color_count(&self) -> u8 {
+        self.palette_head
+    }
+
+    pub fn sub_palette_count(&self) -> u8 {
+        self.sub_palette_head
     }
 
     pub fn tile_capacity(&self) -> usize {
