@@ -77,7 +77,7 @@ impl TilesetBuilder {
         self.allocate_sub_palettes(&color_sets, palette);
 
         // Phase 3: Process tiles with pre-allocated sub-palettes
-        self.process_tiles_with_palettes(img)
+        self.process_tiles_with_palettes(img, palette)
     }
 
     // Helper method to collect all unique color sets from an image
@@ -101,10 +101,10 @@ impl TilesetBuilder {
                                 let index = (img.width * abs_y) + abs_x;
                                 let value = img.pixels[index];
 
-                                if value != 0 {
+                                // if value != 0 {
                                     // Typically 0 is transparent/background
                                     colors.insert(value);
-                                }
+                                // }
                             }
                         }
 
@@ -129,9 +129,9 @@ impl TilesetBuilder {
     // Helper method to allocate optimal sub-palettes
     fn allocate_sub_palettes(&mut self, color_sets: &[HashSet<u8>], palette: &PaletteBuilder) {
         // Clear existing data
-        self.sub_palette_name_hash.clear();
-        self.sub_palettes.clear();
-        self.sub_palette_head = 0;
+        // self.sub_palette_name_hash.clear();
+        // self.sub_palettes.clear();
+        // self.sub_palette_head = 0;
 
         // Sort color sets by size (largest first)
         let mut sorted_sets = color_sets.to_vec();
@@ -149,9 +149,9 @@ impl TilesetBuilder {
             for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
                 let mut combined_palette = HashSet::new();
                 for &color in sub_pal {
-                    if color != 0 {
+                    // if color != 0 {
                         combined_palette.insert(color);
-                    }
+                    // }
                 }
 
                 // Check if combining would stay within limit
@@ -221,7 +221,7 @@ impl TilesetBuilder {
     }
 
     // Phase 3: Process tiles with pre-allocated sub-palettes
-    fn process_tiles_with_palettes(&mut self, img: &PalettizedImg) -> Vec<Cell> {
+    fn process_tiles_with_palettes(&mut self, img: &PalettizedImg, palette:&PaletteBuilder) -> Vec<Cell> {
         let mut tiles = vec![];
         let tile_length = TILE_SIZE as usize * TILE_SIZE as usize;
 
@@ -248,9 +248,9 @@ impl TilesetBuilder {
                                 tile_candidate[(TILE_SIZE as usize * y) + x] = value;
                                 tile_candidate_flip_h[(TILE_SIZE as usize * y) + mirror_x] = value;
 
-                                if value != 0 {
+                                // if value != 0 {
                                     color_set.insert(value);
-                                }
+                                // }
                             }
                         }
 
@@ -267,14 +267,24 @@ impl TilesetBuilder {
                                 panic!("Error: Tileset capacity exceeded")
                             };
 
+                            // Find the correct sub-palette for this tile's color set
+                            let color_set_key = color_set_to_string(&color_set);
+                            let sub_palette_id = self.color_set_to_palette.get(&color_set_key)
+                                .copied()
+                                .unwrap_or_else(|| {
+                                    // If not found, try to find an existing compatible sub-palette
+                                    // or create a new one
+                                    self.find_or_create_sub_palette(&color_set, palette)
+                                });
+
                             // Insert normal tile in hashmap
-                            let new_tile = Cell {
+                            let mut new_tile = Cell {
                                 id: TileID(self.next_tile),
                                 flags: TileFlags::default(),
                             };
 
-                            self.tile_hash
-                                .insert(tile_candidate.clone(), new_tile.clone());
+                            // Set the sub-palette in the tile flags
+                            new_tile.flags.set_palette(PaletteID(sub_palette_id));  // You'll need this method
 
                             // Insert horizontally mirrored tile in hashmap if allowed
                             if self.allow_tile_transforms {
@@ -298,6 +308,33 @@ impl TilesetBuilder {
         }
 
         tiles
+    }
+
+    fn find_or_create_sub_palette(&mut self, color_set: &HashSet<u8>, palette: &PaletteBuilder) -> u8 {
+        // Try to find an existing sub-palette that contains all these colors
+        for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
+            let mut pal_colors = HashSet::new();
+            for &color in sub_pal {
+                if color != 0 {  // Assuming 0 is padding/transparent
+                    pal_colors.insert(color);
+                }
+            }
+
+            if color_set.is_subset(&pal_colors) {
+                return i as u8;
+            }
+        }
+
+        // If no existing palette works, create a new one
+        let mut color_vec: Vec<_> = color_set.iter().cloned().collect();
+        color_vec.sort();
+        let palette_array = create_palette_array(&color_vec);
+
+        let palette_id = self.push_sub_palette(&palette_array);
+        let name = format!("{}_{}", palette.name, palette_id);
+        self.sub_palette_name_hash.insert(palette_array, name);
+
+        palette_id
     }
 }
 
