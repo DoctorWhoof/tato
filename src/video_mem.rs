@@ -8,7 +8,7 @@ pub struct VideoMemory<const TILES: usize> {
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the main palette.
     pub sub_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
     // Everything that needs to be counted
-    tile_head: u16,
+    tile_head: u8,
     palette_head: u8,
     sub_palette_head: u8,
 }
@@ -109,7 +109,7 @@ impl<const TILES: usize> VideoMemory<TILES> {
     }
 
     /// Get a specific tile within a tileset
-    pub fn get_tile(&self, index: u16) -> Option<&Tile<2>> {
+    pub fn get_tile(&self, index: u8) -> Option<&Tile<2>> {
         if index < self.tile_head {
             Some(&self.tiles[index as usize])
         } else {

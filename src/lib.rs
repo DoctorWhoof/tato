@@ -40,13 +40,7 @@ pub use video_chip::*;
 /// - Read only reference to the FG tile bank (pixels).
 /// - Read only reference to the BG tile bank (pixels).
 /// - Read only reference to the current tilemap
-pub type VideoIRQ = fn(
-    &mut PixelIter,
-    &VideoChip,
-    // &[VideoMemory<TILE_COUNT>],
-    // &[VideoMemory<TILE_COUNT>],
-    &BGMap<BG_LEN>,
-);
+pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &BGMap<BG_LEN>);
 
 // -------------------------------- Constants --------------------------------
 
@@ -64,9 +58,8 @@ pub const SPRITES_PER_LINE: usize = 16;
 /// quickly determine if any sprite is present in that section.
 pub const SLOTS_PER_LINE: usize = 16;
 
-/// Maximum sprite storage length (8 Kb with Cluster<2> used).
-/// TODO: May be increased to 1024?
-pub const TILE_COUNT: usize = 512;
+/// Maximum tile count in video memory (4 Kb with Cluster<2> used).
+pub const TILE_COUNT: usize = 256;
 
 /// Determines the X and Y size used by every tile.
 pub const TILE_SIZE: u8 = 8;
