@@ -4,21 +4,23 @@ use backend_raylib::{
 };
 use tato::{Tato, prelude::*};
 
+mod font;
+
 const W: usize = 240;
 const H: usize = 180;
 pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(W as u16, H as u16);
-    tato.banks[0].bg.set_size(32, 24);
+    // tato.banks[0].bg.set_size(32, 24);
 
     // Graphics setup
-    let plt_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let plt_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
-    let plt_cycle = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
 
-    let _empty_tile = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]); // Our tile zero
-    let font = tato.add_tileset(0, &TILESET_FONT, &PALETTE_DEFAULT).unwrap();
+    let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
+    let font = tato.new_tileset(0, FONT_TILESET).unwrap();
+    let plt_default = tato.new_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
+    let plt_light = tato.new_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
+    let plt_cycle = tato.new_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
     // let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
     tato.video.bg_color = DARK_BLUE;
 
@@ -100,8 +102,8 @@ fn main() {
         }
 
         // Draw
-        let color = &mut tato.video.local_palettes[plt_cycle.0 as usize][1];
-        color.0 = cycle as u8;
+        // let color = &mut tato.video.local_palettes[plt_cycle.0 as usize][1];
+        // color.0 = cycle as u8;
         cycle += ray.get_frame_time() * 2.0;
         if cycle >= 16.0 {
             cycle = 1.0

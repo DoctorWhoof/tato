@@ -1,3 +1,5 @@
+use tato::video::*;
+
 pub use raylib;
 use raylib::prelude::*;
 use tato::{Tato, prelude::*};
@@ -65,11 +67,10 @@ pub fn copy_pixels_to_texture(
     pixels: &mut [u8],
     texture: &mut Texture2D,
 ) {
-    // Copy from framebuffer to raylib texture
     let time = std::time::Instant::now();
 
-    let banks = t.get_video_banks();
-    for (color, coords) in t.video.iter_pixels(&banks, &[&t.bg]) {
+    // Copy from framebuffer to raylib texture
+    for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), &[&t.bg]) {
         let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
         pixels[i] = color.r;
         pixels[i + 1] = color.g;
@@ -77,11 +78,49 @@ pub fn copy_pixels_to_texture(
         pixels[i + 3] = color.a;
     }
     texture.update_texture(pixels).unwrap();
+
     t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
-    // if t.video.frame_count() % 60 == 0 {
-    // println!("iter time: {:.2} ms", time.elapsed().as_secs_f64() * 1000.0);
     println!("iter time: {:.2} ms", t.update_time_acc.average());
-    // }
+
+    let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
+    let debug_w = (tiles_per_row * TILE_SIZE as usize) as i32;
+    let debug_h = (((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize) as i32;
+
+    let mut tile_debug_texture = {
+        let render_image = Image::gen_image_color(debug_w, debug_h, Color::BLACK);
+        ray.load_texture_from_image(thread, &render_image).unwrap()
+    };
+
+    // Copy tile pixels to debug texture
+
+    {
+        let mut pixel_data = vec![0u8; (debug_w * debug_h * 4) as usize];
+
+        for tile_index in 0..TILE_COUNT {
+            let bank = &t.banks[0];
+            let tile_x = tile_index % tiles_per_row;
+            let tile_y = tile_index / tiles_per_row;
+
+            for y in 0..TILE_SIZE as usize {
+                for x in 0..TILE_SIZE as usize {
+                    let color_index = bank.tiles[tile_index].get_pixel(x as u8, y as u8);
+                    let gray_value = color_index * 63; // Map 0-4 to 0-252
+
+                    let pixel_x = tile_x * TILE_SIZE as usize + x;
+                    let pixel_y = tile_y * TILE_SIZE as usize + y;
+                    let pixel_offset = (pixel_y * debug_w as usize + pixel_x) * 4;
+
+                    // Set RGBA values
+                    pixel_data[pixel_offset] = gray_value; // R
+                    pixel_data[pixel_offset + 1] = gray_value; // G
+                    pixel_data[pixel_offset + 2] = gray_value; // B
+                    pixel_data[pixel_offset + 3] = 255; // A
+                }
+            }
+        }
+
+        tile_debug_texture.update_texture(&pixel_data).unwrap();
+    }
 
     // Calculate rect with correct aspect ratio with integer scaling
     let screen_width = ray.get_screen_width();
@@ -95,8 +134,9 @@ pub fn copy_pixels_to_texture(
 
     // Present frame
     let mut canvas = ray.begin_drawing(thread);
-    canvas.clear_background(Color::new(64, 64, 64, 255));
-    // canvas.clear_background(Color::new(48, 32, 24, 255));
+    let bg_color = Color::new(64, 64, 64, 255);
+    // let bg_color = Color::new(48, 32, 24, 255);
+    canvas.clear_background(bg_color);
     canvas.draw_texture_ex(
         &texture,
         Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
@@ -104,4 +144,14 @@ pub fn copy_pixels_to_texture(
         scale as f32,
         Color::WHITE,
     );
+    let x = screen_width - debug_w as i32 - 8;
+    let y = 8;
+    canvas.draw_texture_ex(
+        &tile_debug_texture,
+        Vector2::new(x as f32, y as f32 + 16.0),
+        0.0,
+        1.0,
+        Color::WHITE,
+    );
+    canvas.draw_text("bank 0", x, y, 16, Color::WHITE);
 }

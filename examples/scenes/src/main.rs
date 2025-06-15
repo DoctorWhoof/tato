@@ -2,7 +2,7 @@ mod scene_a;
 mod scene_b;
 mod scene_c;
 
-use backend_raylib::*;
+use backend_raylib::{raylib::ffi::TraceLogLevel, *};
 use raylib::{color::Color, texture::Image};
 use scene_a::*;
 use scene_b::*;
@@ -67,6 +67,7 @@ fn main() {
     let w = t.video.width() as i32;
     let h = t.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
+        .log_level(TraceLogLevel::LOG_WARNING)
         .size(w * 3, h * 3)
         .title("Tato Demo")
         .vsync()

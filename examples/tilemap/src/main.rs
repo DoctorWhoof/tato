@@ -15,13 +15,10 @@ fn main() {
     let mut tato = Tato::new(240, 180);
     tato.video.bg_color = ColorID(0);
 
-    // PATCH_COLORS //
-    //     .iter()
-    //     .zip(tato.banks[0].palette.iter_mut())
-    //     .for_each(|(&src, dest)| *dest = src);
-
+    // WARNING: build script is also adding default tiles, just for debugging
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
+
     let map_a = tato.new_tilemap(tileset, 3, &PATCH_MAP);
     let map_b = tato.new_tilemap(tileset, 3, &DEFAULT_TILES_MAP);
 

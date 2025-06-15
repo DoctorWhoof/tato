@@ -21,7 +21,7 @@ tato_pipe = { path = "../tato_pipe" }
 members = [
     "examples/scenes",
     # "examples/audio",
-    # "examples/font",
+    "examples/font",
     "examples/tilemap",
     # "examples/pipe",
 ]

@@ -17,8 +17,8 @@ pub(crate) struct ColorEntry {
 pub struct Tileset {
     pub bank_id: u8,
     // pub palette_id: PaletteID,
-    pub tile_start: u16,
-    pub tiles_count: u16,
+    pub tile_start: u8,
+    pub tiles_count: u8,
     pub color_entries: [ColorEntry; COLORS_PER_PALETTE as usize],
     pub color_count: u8,
 

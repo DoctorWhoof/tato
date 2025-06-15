@@ -76,6 +76,10 @@ impl Tato {
         self.banks[bank_id as usize].add_tile(tile)
     }
 
+    pub fn new_subpalette(&mut self, sub_palette:[ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
+        PaletteID(0)
+    }
+
     /// Adds a tileset as a batch of tiles to the bank
     /// Returns the tileset id.
     pub fn new_tileset(&mut self, bank_id: u8, data: TilesetData) -> Option<TilesetID> {
@@ -87,8 +91,8 @@ impl Tato {
         let id = assets.tileset_head;
 
         // Tile processing
-        let tile_start = u16::try_from(bank.tile_count()).unwrap();
-        let tiles_count = u16::try_from(data.tiles.len()).unwrap();
+        let tile_start = u8::try_from(bank.tile_count()).unwrap();
+        let tiles_count = u8::try_from(data.tiles.len()).unwrap();
 
         for tile in data.tiles.iter() {
             bank.add_tile(tile);

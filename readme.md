@@ -2,7 +2,7 @@
 
 ### Warning: In early development, please don't use yet!
 
-Tato (as in "po-tato-powered") is a collection of zero dependencies, zero allocation, NO_STD libraries for game development, mostly focused on Pixel Art & Chiptunes. **It is not an engine**, and has a minimalist philosophy that embraces explicit limitations over flexibility.
+Tato (as in "po-tato-powered") is a collection of zero dependencies, zero allocation, NO_STD libraries for game development, mostly focused on Pixel Art & Chiptunes. **It is not an engine**, and has a minimalist design that embraces explicit limitations over flexibility.
 
 It encompasses:
 

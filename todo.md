@@ -5,6 +5,11 @@
     . Will need to switch Tile bank halfway through
     . Will also need external BG Maps
 
+--->[.] Debug views! Display all loaded tiles, colors and subpalettes
+        [ ] Display all banks
+        [ ] Display all palette colors
+        [ ] Display all subpalettes
+
 ### Pipeline:
 
 [x] Load individual named tiles into a tileset, each will be exported as a const
@@ -13,12 +18,20 @@
 ### Assets
 
 [.] Text and Fonts
-    [ ] Fonts will be Cell-based assets, like Anim and Tilemaps
+    [/] Fonts will be Cell-based assets, like Anim and Tilemaps
+        . May not be needed at all! Using Tilemaps as fonts seems to work fine, and allows easy detection of flipped tiles, etc.
     [x] Write directly to the BG Map
     [?] Let the function accept a user defined slice of characters so that simple and complex fonts may be used freely.
 
 [.] Load & Unload Tilesets
     . Wait until external tiles and Tile Maps are more stable
+
+[ ] Tilemaps
+--->[ ] Correctly map subpalettes when loading into Assets
+
+[ ] Anims: Update to latest Assets struct
+
+[ ] Fonts: Replace text rendering using Anim to use Fonts
 
 [.] Finish converting Anim data to array of tilemaps in tato_pipe
     [x] "draw_patch" will then take a map as a parameter, which will bring in tile flags.
