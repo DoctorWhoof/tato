@@ -9,6 +9,6 @@ fn main() {
     let tileset_patch = pipe.new_tileset("patch", palette_patch);
 
     pipe.new_map("../../assets/patch.png", tileset_patch);
-    pipe.new_map("../../assets/default_tiles.png", tileset_patch); // for debugging
+    pipe.new_map("assets/smileys.png", tileset_patch);
     pipe.write_tileset(tileset_patch, "src/patch.rs");
 }

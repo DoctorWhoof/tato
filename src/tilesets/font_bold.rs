@@ -90,14 +90,14 @@ pub const FONT_ARCADE_BOLD_MAP: [Cell; 90] = [
     Cell { id: TileID(82), flags: TileFlags(0) },
     Cell { id: TileID(83), flags: TileFlags(0) },
     Cell { id: TileID(84), flags: TileFlags(0) },
-    Cell { id: TileID(85), flags: TileFlags(0) },
-    Cell { id: TileID(86), flags: TileFlags(0) },
-    Cell { id: TileID(87), flags: TileFlags(0) },
-    Cell { id: TileID(88), flags: TileFlags(0) },
-    Cell { id: TileID(89), flags: TileFlags(0) },
+    Cell { id: TileID(68), flags: TileFlags(0) },
+    Cell { id: TileID(68), flags: TileFlags(0) },
+    Cell { id: TileID(68), flags: TileFlags(0) },
+    Cell { id: TileID(68), flags: TileFlags(0) },
+    Cell { id: TileID(68), flags: TileFlags(0) },
 ];
 
-pub const FONT_TILES: [Tile<2>; 90] = [
+pub const FONT_TILES: [Tile<2>; 85] = [
     Tile {
         clusters: [
             Cluster { data: [21, 80] },
@@ -1115,66 +1115,6 @@ pub const FONT_TILES: [Tile<2>; 90] = [
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
             Cluster { data: [85, 85] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
         ],
     },

@@ -15,12 +15,12 @@ pub(crate) struct ColorEntry {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Tileset {
-    pub bank_id: u8,
+    pub(crate) bank_id: u8,
     // pub palette_id: PaletteID,
-    pub tile_start: u8,
-    pub tiles_count: u8,
-    pub color_entries: [ColorEntry; COLORS_PER_PALETTE as usize],
-    pub color_count: u8,
+    pub(crate) tile_start: u8,
+    pub(crate) tiles_count: u8,
+    pub(crate) color_entries: [ColorEntry; COLORS_PER_PALETTE as usize],
+    pub(crate) color_count: u8,
 
     // TODO: Get rid of these once color entry management is in!
     // pub colors_start: u8,

@@ -91,11 +91,11 @@ pub const FONT_ARCADE_BOLD_MAP: [Cell; 90] = [
     Cell { id: TileID(80), flags: TileFlags(0) },
     Cell { id: TileID(74), flags: TileFlags(128) },
     Cell { id: TileID(81), flags: TileFlags(0) },
-    Cell { id: TileID(67), flags: TileFlags(128) },
-    Cell { id: TileID(67), flags: TileFlags(128) },
-    Cell { id: TileID(67), flags: TileFlags(128) },
-    Cell { id: TileID(67), flags: TileFlags(128) },
-    Cell { id: TileID(67), flags: TileFlags(128) },
+    Cell { id: TileID(67), flags: TileFlags(224) },
+    Cell { id: TileID(67), flags: TileFlags(224) },
+    Cell { id: TileID(67), flags: TileFlags(224) },
+    Cell { id: TileID(67), flags: TileFlags(224) },
+    Cell { id: TileID(67), flags: TileFlags(224) },
 ];
 
 pub const FONT_TILES: [Tile<2>; 82] = [
