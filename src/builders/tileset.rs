@@ -6,8 +6,8 @@ use crate::*;
 use std::collections::{HashMap, HashSet};
 use std::{vec, vec::Vec};
 
-const TILE_SIZE_BYTES: usize = TILE_SIZE as usize * TILE_SIZE as usize;
-type TileData = [u8; TILE_SIZE_BYTES]; // 64 bytes, stack allocated
+const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
+type TileData = [u8; TILE_LEN]; // 64 bytes, stack allocated
 
 #[derive(Debug, Clone, Copy)]
 pub struct TilesetBuilderID(pub u8);
@@ -17,7 +17,7 @@ pub struct TilesetBuilder {
     pub name: String,
     pub pixels: Vec<u8>,
     // Stores the Tile (ID and Flags) for each unique set of pixels
-    pub tile_hash: HashMap<Vec<u8>, Cell>,
+    pub tile_hash: HashMap<TileData, Cell>, // Fixed array keys
     // Stores the names of each unique palette
     pub sub_palette_name_hash: HashMap<[u8; SUB_PALETTE_COLOR_COUNT], String>,
     // The actual color indices for the sub-palettes
@@ -98,11 +98,7 @@ impl TilesetBuilder {
                                 let abs_y = (TILE_SIZE as usize * abs_row) + y;
                                 let index = (img.width * abs_y) + abs_x;
                                 let value = img.pixels[index];
-
-                                // if value != 0 {
-                                // Typically 0 is transparent/background
                                 colors.insert(value);
-                                // }
                             }
                         }
 
@@ -126,11 +122,6 @@ impl TilesetBuilder {
 
     // Helper method to allocate optimal sub-palettes
     fn allocate_sub_palettes(&mut self, color_sets: &[HashSet<u8>], palette: &PaletteBuilder) {
-        // Clear existing data
-        // self.sub_palette_name_hash.clear();
-        // self.sub_palettes.clear();
-        // self.sub_palette_head = 0;
-
         // Sort color sets by size (largest first)
         let mut sorted_sets = color_sets.to_vec();
         sorted_sets.sort_by(|a, b| b.len().cmp(&a.len()));
@@ -147,9 +138,7 @@ impl TilesetBuilder {
             for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
                 let mut combined_palette = HashSet::new();
                 for &color in sub_pal {
-                    // if color != 0 {
                     combined_palette.insert(color);
-                    // }
                 }
 
                 // Check if combining would stay within limit
@@ -284,7 +273,11 @@ impl TilesetBuilder {
                             new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
                             // Store original tile in hash
-                            self.tile_hash.insert(tile_normalized.clone(), new_tile);
+                            let tile_array: TileData = tile_normalized
+                                .clone()
+                                .try_into()
+                                .expect("tile should be 64 bytes");
+                            self.tile_hash.insert(tile_array, new_tile);
 
                             // Generate and store all transformations if enabled
                             if self.allow_tile_transforms {
@@ -306,7 +299,7 @@ impl TilesetBuilder {
     }
 
     // Helper to find if any transformation of this tile already exists
-    fn find_existing_transformation(&self, tile: &[u8]) -> Option<(Cell, TileFlags)> {
+    fn find_existing_transformation(&self, tile: &[u8; TILE_LEN]) -> Option<(Cell, TileFlags)> {
         // Check original tile first
         if let Some(existing) = self.tile_hash.get(tile) {
             return Some((*existing, existing.flags));
@@ -340,7 +333,7 @@ impl TilesetBuilder {
     }
 
     // Helper to add all transformations of a tile to the hash map
-    fn add_tile_transformations(&mut self, tile: &[u8], base_tile: Cell) {
+    fn add_tile_transformations(&mut self, tile: &[u8; TILE_LEN], base_tile: Cell) {
         // Create a base tile with clean flags for storing transformations
         let storage_tile = Cell {
             id: base_tile.id,
@@ -421,52 +414,42 @@ fn color_set_to_string(color_set: &HashSet<u8>) -> String {
 fn normalize_tile_to_sub_palette(
     original_tile: &[u8],
     sub_palette: &[u8; SUB_PALETTE_COLOR_COUNT],
-) -> Vec<u8> {
-    original_tile
-        .iter()
-        .map(|&original_color| {
-            // Find this color's position in the sub-palette
-            sub_palette.iter().position(|&pal_color| pal_color == original_color).unwrap_or(0) as u8 // Default to 0 if not found
-        })
-        .collect()
+) -> TileData {
+    let mut result = [0u8; TILE_LEN];
+    for (i, &original_color) in original_tile.iter().take(TILE_LEN).enumerate() {
+        result[i] =
+            sub_palette.iter().position(|&pal_color| pal_color == original_color).unwrap_or(0)
+                as u8;
+    }
+    result
 }
 
 // Apply transformation based on the three TileFlags bits
-fn transform_tile(tile: &[u8], flip_x: bool, flip_y: bool, rotation: bool) -> Vec<u8> {
+// Change transform_tile to work with fixed arrays
+fn transform_tile(tile: &TileData, flip_x: bool, flip_y: bool, rotation: bool) -> TileData {
+    let mut result = [0u8; TILE_LEN];
     let size = TILE_SIZE as usize;
-    let mut result = vec![0u8; tile.len()];
 
     for y in 0..size {
         for x in 0..size {
             let src_idx = y * size + x;
-
-            // Start with original coordinates
             let mut dst_x = x;
             let mut dst_y = y;
 
-            // Apply rotation first (this is the mystery transformation)
             if rotation {
-                // Based on the TileFlags convention, rotation seems to be:
-                // a 90° counter-clockwise rotation (since rotate_left() sets this bit)
-                let temp_x = dst_x;
+                let temp = dst_x;
                 dst_x = dst_y;
-                dst_y = size - 1 - temp_x;
+                dst_y = size - 1 - temp;
             }
-
-            // Apply horizontal flip
             if flip_x {
                 dst_x = size - 1 - dst_x;
             }
-
-            // Apply vertical flip
             if flip_y {
                 dst_y = size - 1 - dst_y;
             }
 
-            let dst_idx = dst_y * size + dst_x;
-            result[dst_idx] = tile[src_idx];
+            result[dst_y * size + dst_x] = tile[src_idx];
         }
     }
-
     result
 }
