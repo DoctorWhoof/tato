@@ -60,6 +60,19 @@ impl TileFlags {
         Self(data | palette.0)
     }
 
+    /// Consumes original, sets desired transformations
+    pub const fn with_transform(self, flip_x: bool, flip_y: bool, rotation: bool) -> Self {
+        let mut flags = self;
+        flags.set_flip_x(flip_x);
+        flags.set_flip_y(flip_y);
+        flags.set_rotation(rotation);
+        flags
+    }
+
+    pub const fn get_transform_bits(self) -> (bool, bool, bool) {
+        (self.is_flipped_x(), self.is_flipped_y(), self.is_rotated())
+    }
+
     pub const fn set_palette(&mut self, palette: PaletteID) {
         debug_assert!(
             palette.0 < 16,
