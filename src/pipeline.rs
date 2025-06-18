@@ -25,8 +25,10 @@ impl Pipeline {
         // Cargo build setup
         println!("cargo:warning=Running Build Script!");
         println!("cargo:warning=Working Dir:{:?}", std::env::current_dir().ok().unwrap());
+
         println!("cargo:rerun-if-changed=build.rs");
         println!("cargo:rerun-if-changed=assets/*.*");
+
         // Create with defaults
         Pipeline {
             allow_unused: false,
@@ -51,19 +53,19 @@ impl Pipeline {
     }
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_tileset(&mut self, name: impl Into<String>, palette_id: PaletteID) -> TilesetID {
+    pub fn new_tileset(&mut self, name: impl Into<String>, palette_id: PaletteID) -> TilesetBuilderID {
         let id: u8 = self.tileset_head;
         self.tileset_head += 1;
         println!("cargo:warning=Pipeline: initializing tileset at index {}.", id);
         self.tilesets.push(TilesetBuilder::new(name.into(), palette_id));
-        TilesetID(id)
+        TilesetBuilderID(id)
     }
 
     /// Initializes a new single tile from a .png file:
     pub fn new_tile(
         &mut self,
         path: &str,
-        tileset_id: TilesetID,
+        tileset_id: TilesetBuilderID,
         // group_id: impl GroupEnum,
     ) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
@@ -89,7 +91,7 @@ impl Pipeline {
         fps: u8,
         frames_h: u8,
         frames_v: u8,
-        tileset_id: TilesetID,
+        tileset_id: TilesetBuilderID,
     ) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
@@ -119,7 +121,7 @@ impl Pipeline {
         tileset.anims.push(anim);
     }
 
-    pub fn new_map(&mut self, path: &str, tileset_id: TilesetID) {
+    pub fn new_map(&mut self, path: &str, tileset_id: TilesetBuilderID) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
@@ -139,13 +141,13 @@ impl Pipeline {
     }
 
     // TODO: Pass as an argument? Or just automatically to this for "Font", when I have that
-    pub fn disable_tile_transform_detection(&mut self, tileset_id: TilesetID) {
+    pub fn disable_tile_transform_detection(&mut self, tileset_id: TilesetBuilderID) {
         if let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) {
             tileset.allow_tile_transforms = false;
         }
     }
 
-    pub fn write_tileset(&mut self, tileset_id: TilesetID, file_path: &str) {
+    pub fn write_tileset(&mut self, tileset_id: TilesetBuilderID, file_path: &str) {
         // The code writer is created, modified and dropped in this scope
         // which means the file is ready to be formatted next.
         let mut code = CodeWriter::new(file_path);
@@ -162,14 +164,14 @@ impl Pipeline {
         self.format_output(file_path);
     }
 
-    pub fn write_palettes(&mut self, tileset_id: TilesetID, file_path: &str) {
+    pub fn write_palettes(&mut self, tileset_id: TilesetBuilderID, file_path: &str) {
         let mut code = CodeWriter::new(file_path);
         self.append_header(&mut code);
         self.append_palettes(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_pixels(&mut self, tileset_id: TilesetID, file_path: &str) {
+    pub fn write_pixels(&mut self, tileset_id: TilesetBuilderID, file_path: &str) {
         let mut code = CodeWriter::new(file_path);
         self.append_header(&mut code);
         self.append_single_tile_ids(tileset_id, &mut code);
@@ -177,14 +179,14 @@ impl Pipeline {
         self.format_output(file_path);
     }
 
-    pub fn write_tileset_sub_palettes(&mut self, tileset_id: TilesetID, file_path: &str) {
+    pub fn write_tileset_sub_palettes(&mut self, tileset_id: TilesetBuilderID, file_path: &str) {
         let mut code = CodeWriter::new(file_path);
         self.append_header(&mut code);
         self.append_sub_palettes(tileset_id, &mut code);
         self.format_output(file_path);
     }
 
-    pub fn write_tileset_anims(&mut self, tileset_id: TilesetID, file_path: &str) {
+    pub fn write_tileset_anims(&mut self, tileset_id: TilesetBuilderID, file_path: &str) {
         let mut code = CodeWriter::new(file_path);
         self.append_header(&mut code);
         code.write_line("use tato::Anim;");
@@ -211,7 +213,7 @@ impl Pipeline {
         code.write_line("");
     }
 
-    fn append_tileset_data(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_tileset_data(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
 
@@ -242,7 +244,7 @@ impl Pipeline {
         code.write_line("");
     }
 
-    fn append_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_palettes(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         if !self.save_palettes {
             return;
         }
@@ -270,7 +272,7 @@ impl Pipeline {
         }
     }
 
-    fn append_sub_palettes(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_sub_palettes(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         if !self.save_palettes {
             return;
         }
@@ -301,7 +303,7 @@ impl Pipeline {
         }
     }
 
-    fn append_anims(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_anims(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         // Tilesets
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for anim in &tileset.anims {
@@ -321,7 +323,7 @@ impl Pipeline {
         }
     }
 
-    fn append_maps(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_maps(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         // Tilesets
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for map in &tileset.maps {
@@ -339,7 +341,7 @@ impl Pipeline {
         }
     }
 
-    // fn append_anims(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    // fn append_anims(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
     //     // Tilesets
     //     let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
     //     for anim in &tileset.anims {
@@ -373,7 +375,7 @@ impl Pipeline {
     //     }
     // }
 
-    fn append_single_tile_ids(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_single_tile_ids(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for tile_builder in &tileset.single_tiles {
             code.write_line(&format!(
@@ -384,7 +386,7 @@ impl Pipeline {
         }
     }
 
-    fn append_tiles(&mut self, tileset_id: TilesetID, code: &mut CodeWriter) {
+    fn append_tiles(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         // Write Pixels at the bottom of the file!
         code.write_line("");

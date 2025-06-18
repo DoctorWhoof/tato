@@ -6,9 +6,11 @@ use crate::*;
 use std::collections::{HashMap, HashSet};
 use std::{vec, vec::Vec};
 
-// TODO: Move to main engine?
+const TILE_SIZE_BYTES: usize = TILE_SIZE as usize * TILE_SIZE as usize;
+type TileData = [u8; TILE_SIZE_BYTES]; // 64 bytes, stack allocated
+
 #[derive(Debug, Clone, Copy)]
-pub struct TilesetID(pub u8);
+pub struct TilesetBuilderID(pub u8);
 
 pub struct TilesetBuilder {
     pub allow_tile_transforms: bool,
@@ -24,7 +26,7 @@ pub struct TilesetBuilder {
     pub maps: Vec<MapBuilder>,
     pub single_tiles: Vec<SingleTileBuilder>,
     pub palette_id: PaletteID,
-    next_tile: u16,
+    next_tile: u8,
     sub_palette_head: usize,
     color_set_to_palette: HashMap<String, u8>,
 }
@@ -50,17 +52,13 @@ impl TilesetBuilder {
 
     fn push_sub_palette(&mut self, sub_palette: &[u8]) -> u8 {
         if self.sub_palette_head == SUB_PALETTE_COUNT {
-            panic!(
-                "Tileset error: capacity of {} sub-palettes exceeded.",
-                self.sub_palettes.len()
-            )
+            panic!("Tileset error: capacity of {} sub-palettes exceeded.", self.sub_palettes.len())
         }
 
-        self.sub_palettes
-            .push(from_fn(|i| match sub_palette.get(i) {
-                Some(value) => *value,
-                None => 0,
-            }));
+        self.sub_palettes.push(from_fn(|i| match sub_palette.get(i) {
+            Some(value) => *value,
+            None => 0,
+        }));
 
         let result = u8::try_from(self.sub_palette_head).unwrap();
         self.sub_palette_head += 1;
@@ -102,8 +100,8 @@ impl TilesetBuilder {
                                 let value = img.pixels[index];
 
                                 // if value != 0 {
-                                    // Typically 0 is transparent/background
-                                    colors.insert(value);
+                                // Typically 0 is transparent/background
+                                colors.insert(value);
                                 // }
                             }
                         }
@@ -150,7 +148,7 @@ impl TilesetBuilder {
                 let mut combined_palette = HashSet::new();
                 for &color in sub_pal {
                     // if color != 0 {
-                        combined_palette.insert(color);
+                    combined_palette.insert(color);
                     // }
                 }
 
@@ -219,9 +217,12 @@ impl TilesetBuilder {
         // Store the mapping for use in the processing phase
         self.color_set_to_palette = color_set_to_palette;
     }
-
     // Phase 3: Process tiles with pre-allocated sub-palettes
-    fn process_tiles_with_palettes(&mut self, img: &PalettizedImg, palette:&PaletteBuilder) -> Vec<Cell> {
+    fn process_tiles_with_palettes(
+        &mut self,
+        img: &PalettizedImg,
+        palette: &PaletteBuilder,
+    ) -> Vec<Cell> {
         let mut tiles = vec![];
         let tile_length = TILE_SIZE as usize * TILE_SIZE as usize;
 
@@ -232,74 +233,68 @@ impl TilesetBuilder {
                         let abs_col = (frame_h * img.cols_per_frame as usize) + col;
                         let abs_row = (frame_v * img.rows_per_frame as usize) + row;
 
-                        let mut tile_candidate = vec![0u8; tile_length];
-                        let mut tile_candidate_flip_h = vec![0u8; tile_length];
+                        let mut tile_candidate_original = vec![0u8; tile_length];
                         let mut color_set = HashSet::new();
 
-                        // Extract tile pixels and collect colors
+                        // Extract tile pixels and collect colors (original indices)
                         for y in 0..TILE_SIZE as usize {
                             for x in 0..TILE_SIZE as usize {
-                                let mirror_x = TILE_SIZE as usize - x - 1;
                                 let abs_x = (TILE_SIZE as usize * abs_col) + x;
                                 let abs_y = (TILE_SIZE as usize * abs_row) + y;
                                 let index = (img.width * abs_y) + abs_x;
                                 let value = img.pixels[index];
 
-                                tile_candidate[(TILE_SIZE as usize * y) + x] = value;
-                                tile_candidate_flip_h[(TILE_SIZE as usize * y) + mirror_x] = value;
-
-                                // if value != 0 {
-                                    color_set.insert(value);
-                                // }
+                                tile_candidate_original[(TILE_SIZE as usize * y) + x] = value;
+                                color_set.insert(value);
                             }
                         }
 
-                        // Rest of processing remains similar to the original
-                        // Look up or create new tile
+                        // Find the sub-palette for this color set
+                        let color_set_key = color_set_to_string(&color_set);
+                        let sub_palette_id =
+                            self.color_set_to_palette.get(&color_set_key).copied().unwrap_or_else(
+                                || self.find_or_create_sub_palette(&color_set, palette),
+                            );
 
-                        if self.tile_hash.contains_key(&tile_candidate) {
-                            // If tile is already in hashmap, reuse its index
-                            let reused_tile = self.tile_hash.get(&tile_candidate).unwrap();
-                            tiles.push((*reused_tile).clone());
+                        // Get the sub-palette
+                        let sub_palette = &self.sub_palettes[sub_palette_id as usize];
+
+                        // Convert original indices to sub-palette relative indices
+                        let tile_normalized =
+                            normalize_tile_to_sub_palette(&tile_candidate_original, sub_palette);
+
+                        // Try to find this tile in any transformation
+                        if let Some((existing_tile, transform_flags)) =
+                            self.find_existing_transformation(&tile_normalized)
+                        {
+                            // Create a new cell with the existing tile ID but fresh flags
+                            let mut reused_tile = Cell {
+                                id: existing_tile.id,
+                                flags: transform_flags, // Use the transformation flags directly
+                            };
+
+                            // Set the correct palette for this usage
+                            reused_tile.flags.set_palette(PaletteID(sub_palette_id));
+
+                            tiles.push(reused_tile);
                         } else {
-                            // If hashmap doesn't contain tile, add it
-                            if self.next_tile == 256 {
-                                panic!("Error: Tileset capacity exceeded")
-                            };
+                            // Create new tile and add all transformations to hash
+                            let mut new_tile =
+                                Cell { id: TileID(self.next_tile), flags: TileFlags::default() };
+                            new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
-                            // Find the correct sub-palette for this tile's color set
-                            let color_set_key = color_set_to_string(&color_set);
-                            let sub_palette_id = self.color_set_to_palette.get(&color_set_key)
-                                .copied()
-                                .unwrap_or_else(|| {
-                                    // If not found, try to find an existing compatible sub-palette
-                                    // or create a new one
-                                    self.find_or_create_sub_palette(&color_set, palette)
-                                });
+                            // Store original tile in hash
+                            self.tile_hash.insert(tile_normalized.clone(), new_tile);
 
-                            // Insert normal tile in hashmap
-                            let mut new_tile = Cell {
-                                id: TileID(self.next_tile),
-                                flags: TileFlags::default(),
-                            };
-
-                            // Set the sub-palette in the tile flags
-                            new_tile.flags.set_palette(PaletteID(sub_palette_id));  // You'll need this method
-
-                            // Insert horizontally mirrored tile in hashmap if allowed
+                            // Generate and store all transformations if enabled
                             if self.allow_tile_transforms {
-                                let mut tile_flipped_h = new_tile.clone();
-                                tile_flipped_h.flags.set_flip_x(true);
-                                self.tile_hash.insert(tile_candidate_flip_h, tile_flipped_h);
+                                self.add_tile_transformations(&tile_normalized, new_tile);
                             }
 
-                            // Add tile pixels to tileset data
-                            self.pixels.extend_from_slice(&tile_candidate);
+                            // Store normalized tile data in pixels (only the original)
+                            self.pixels.extend_from_slice(&tile_normalized);
 
-                            // Add to return vector
                             tiles.push(new_tile);
-
-                            // Next
                             self.next_tile += 1;
                         }
                     }
@@ -310,12 +305,84 @@ impl TilesetBuilder {
         tiles
     }
 
-    fn find_or_create_sub_palette(&mut self, color_set: &HashSet<u8>, palette: &PaletteBuilder) -> u8 {
+    // Helper to find if any transformation of this tile already exists
+    fn find_existing_transformation(&self, tile: &[u8]) -> Option<(Cell, TileFlags)> {
+        // Check original tile first
+        if let Some(existing) = self.tile_hash.get(tile) {
+            return Some((*existing, existing.flags));
+        }
+
+        if !self.allow_tile_transforms {
+            return None;
+        }
+
+        // Try all 8 possible transformations
+        for flip_x in [false, true] {
+            for flip_y in [false, true] {
+                for rotation in [false, true] {
+                    // Skip the original (already checked above)
+                    if !flip_x && !flip_y && !rotation {
+                        continue;
+                    }
+
+                    // Apply transformation to current tile
+                    let transformed_tile = transform_tile(tile, flip_x, flip_y, rotation);
+
+                    // Check if this transformation exists in our hash
+                    if let Some(existing) = self.tile_hash.get(&transformed_tile) {
+                        return Some((*existing, existing.flags));
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    // Helper to add all transformations of a tile to the hash map
+    fn add_tile_transformations(&mut self, tile: &[u8], base_tile: Cell) {
+        // Create a base tile with clean flags for storing transformations
+        let storage_tile = Cell {
+            id: base_tile.id,
+            flags: TileFlags::default(), // Clean slate
+        };
+
+        // Generate all 8 possible combinations of the 3 transform bits
+        for flip_x in [false, true] {
+            for flip_y in [false, true] {
+                for rotation in [false, true] {
+                    // Skip the original combination (0,0,0) as it's already stored
+                    if !flip_x && !flip_y && !rotation {
+                        continue;
+                    }
+
+                    // Apply the transformation to the tile pixels
+                    let transformed_tile = transform_tile(tile, flip_x, flip_y, rotation);
+
+                    // Create the flags for this transformation
+                    let mut tile_with_flags = storage_tile;
+                    tile_with_flags.flags.set_flip_x(flip_x);
+                    tile_with_flags.flags.set_flip_y(flip_y);
+                    tile_with_flags.flags.set_rotation(rotation);
+
+                    // Store in hash map
+                    self.tile_hash.insert(transformed_tile, tile_with_flags);
+                }
+            }
+        }
+    }
+
+    fn find_or_create_sub_palette(
+        &mut self,
+        color_set: &HashSet<u8>,
+        palette: &PaletteBuilder,
+    ) -> u8 {
         // Try to find an existing sub-palette that contains all these colors
         for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
             let mut pal_colors = HashSet::new();
             for &color in sub_pal {
-                if color != 0 {  // Assuming 0 is padding/transparent
+                if color != 0 {
+                    // Assuming 0 is padding/transparent
                     pal_colors.insert(color);
                 }
             }
@@ -347,9 +414,59 @@ fn create_palette_array(color_vec: &[u8]) -> [u8; SUB_PALETTE_COLOR_COUNT] {
 fn color_set_to_string(color_set: &HashSet<u8>) -> String {
     let mut colors: Vec<_> = color_set.iter().cloned().collect();
     colors.sort();
-    colors
+    colors.iter().map(|c| c.to_string()).collect::<Vec<_>>().join("_")
+}
+
+// Helper function to convert original palette indices to sub-palette relative indices
+fn normalize_tile_to_sub_palette(
+    original_tile: &[u8],
+    sub_palette: &[u8; SUB_PALETTE_COLOR_COUNT],
+) -> Vec<u8> {
+    original_tile
         .iter()
-        .map(|c| c.to_string())
-        .collect::<Vec<_>>()
-        .join("_")
+        .map(|&original_color| {
+            // Find this color's position in the sub-palette
+            sub_palette.iter().position(|&pal_color| pal_color == original_color).unwrap_or(0) as u8 // Default to 0 if not found
+        })
+        .collect()
+}
+
+// Apply transformation based on the three TileFlags bits
+fn transform_tile(tile: &[u8], flip_x: bool, flip_y: bool, rotation: bool) -> Vec<u8> {
+    let size = TILE_SIZE as usize;
+    let mut result = vec![0u8; tile.len()];
+
+    for y in 0..size {
+        for x in 0..size {
+            let src_idx = y * size + x;
+
+            // Start with original coordinates
+            let mut dst_x = x;
+            let mut dst_y = y;
+
+            // Apply rotation first (this is the mystery transformation)
+            if rotation {
+                // Based on the TileFlags convention, rotation seems to be:
+                // a 90° counter-clockwise rotation (since rotate_left() sets this bit)
+                let temp_x = dst_x;
+                dst_x = dst_y;
+                dst_y = size - 1 - temp_x;
+            }
+
+            // Apply horizontal flip
+            if flip_x {
+                dst_x = size - 1 - dst_x;
+            }
+
+            // Apply vertical flip
+            if flip_y {
+                dst_y = size - 1 - dst_y;
+            }
+
+            let dst_idx = dst_y * size + dst_x;
+            result[dst_idx] = tile[src_idx];
+        }
+    }
+
+    result
 }
