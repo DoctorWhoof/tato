@@ -20,7 +20,7 @@ fn main() {
     let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
 
     let map_a = tato.new_tilemap(tileset, 3, &PATCH_MAP);
-    // let map_b = tato.new_tilemap(tileset, 3, &DEFAULT_TILES_MAP);
+    let map_b = tato.new_tilemap(tileset, 3, &DEFAULT_TILES_MAP);
 
     let w = 7;
     let h = 5;
@@ -31,12 +31,12 @@ fn main() {
                 map_a, //
             );
         }
-        // for col in 2..4 {
-        //     tato.draw_patch(
-        //         Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
-        //         map_b, //
-        //     );
-        // }
+        for col in 2..4 {
+            tato.draw_patch(
+                Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
+                map_b, //
+            );
+        }
     }
 
     // Raylib setup

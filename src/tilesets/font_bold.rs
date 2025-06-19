@@ -1,4 +1,5 @@
 // Auto-generated code - do not edit manually
+#![allow(unused)]
 use crate::prelude::*;
 
 pub const FONT_TILESET: TilesetData =
