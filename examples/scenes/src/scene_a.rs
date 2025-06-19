@@ -44,10 +44,10 @@ impl SceneA {
         for i in 0..t.banks[1].palette.len() {
             let _ = t
                 .banks[0]
-                .push_subpalette([BG_COLOR, BLACK, BLACK, ColorID(i as u8)]);
+                .push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
             let _ = t
                 .banks[1]
-                .push_subpalette([BG_COLOR, BLACK, BLACK, ColorID(i as u8)]);
+                .push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
         }
 
         // Define new tiles
@@ -162,7 +162,7 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        t.banks[0].color_cycle(self.player.flags.palette(), 3, 1, 15);
+        t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
 
         // let t.bg = &mut t.banks[0].bg;
         for col in 0..t.bg.columns {

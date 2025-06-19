@@ -18,23 +18,15 @@ fn main() {
     // WARNING: build script is also adding default tiles, just for debugging
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
-
-    let map_a = tato.new_tilemap(tileset, 3, &PATCH_MAP);
-    let map_b = tato.new_tilemap(tileset, 3, &DEFAULT_TILES_MAP);
+    let map = tato.new_tilemap(tileset, 3, &PATCH_MAP);
 
     let w = 7;
     let h = 5;
     for row in 0..4 {
-        for col in 0..2 {
+        for col in 0..4 {
             tato.draw_patch(
                 Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
-                map_a, //
-            );
-        }
-        for col in 2..4 {
-            tato.draw_patch(
-                Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
-                map_b, //
+                map, //
             );
         }
     }

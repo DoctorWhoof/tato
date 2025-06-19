@@ -11,7 +11,7 @@ fn main() {
     let tileset_font = pipe.new_tileset("font", palette_font);
     pipe.disable_tile_transform_detection(tileset_font);
     pipe.new_map("assets/font_arcade_bold.png", tileset_font);
-    pipe.write_tileset(tileset_font, "src/tilesets/font_bold.rs");
+    pipe.write_tileset(tileset_font, "src/default_assets/font_bold.rs");
 
     // Default basic tiles
     let palette_default = pipe.new_palette("default");
@@ -24,7 +24,5 @@ fn main() {
     pipe.new_tile("assets/tile_crosshairs.png", tileset_default);
     pipe.new_tile("assets/tile_arrow.png", tileset_default);
     pipe.new_tile("assets/tile_smiley.png", tileset_default);
-    // pipe.new_anim("assets/default_tiles.png", 1, 1, 1, tileset_default);
-    pipe.new_map("assets/default_tiles.png", tileset_default);
-    pipe.write_tileset(tileset_default, "src/tilesets/default_tiles.rs");
+    pipe.write_tileset(tileset_default, "src/default_assets/default_tiles.rs");
 }

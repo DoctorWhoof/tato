@@ -19,9 +19,9 @@ impl SceneB {
         t.video.bg_color = DARK_GREEN;
         let palette_bg = t
             .banks[0]
-            .push_subpalette([BG_COLOR, BG_COLOR, BG_COLOR, GREEN]);
-        let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, BLACK, BLACK, YELLOW]);
-        let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, BLACK, BLACK, WHITE]);
+            .push_subpalette([BG_COLOR, GREEN, BG_COLOR, BG_COLOR]);
+        let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
+        let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
 
         // Since we're only defining one tile and it is tile 0, it will automatically
         // be used in the BG, since by default the BG tiles are all set to zero.
