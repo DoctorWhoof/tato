@@ -18,10 +18,10 @@ fn main() {
 
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let font = tato.new_tileset(0, FONT_TILESET).unwrap();
-    let plt_default = tato.new_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let plt_light = tato.new_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
-    let plt_cycle = tato.new_subpalette([BG_COLOR, WHITE, GRAY, BLACK]);
-    // let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
+    let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
+    let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
+    let plt_cycle = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, BLACK]);
+
     tato.video.bg_color = DARK_BLUE;
 
     // Pre-draw fixed text (writes to BG Map)
@@ -59,6 +59,13 @@ fn main() {
         TextOp { id: font, col, row: line, width: 26, palette: plt_default },
     );
 
+    // Animated text
+    line += 2;
+    tato.draw_text(
+        "Animated palette",
+        TextOp { id: font, col, row: line, width: 26, palette: plt_cycle },
+    );
+
     // Raylib setup
     let target_fps = 60.0;
     let w = tato.video.width() as i32;
@@ -81,7 +88,6 @@ fn main() {
     };
 
     // Main Loop
-    line += 2;
     let mut cycle = 1.0;
     tato.video.wrap_bg = true;
 
@@ -89,6 +95,7 @@ fn main() {
         // Input
         tato.video.start_frame();
         update_gamepad(&ray, &mut tato.pad);
+
         if tato.pad.is_down(Button::Right) {
             tato.video.scroll_x += 1;
         } else if tato.pad.is_down(Button::Left) {
@@ -102,18 +109,12 @@ fn main() {
         }
 
         // Draw
-        // let color = &mut tato.video.local_palettes[plt_cycle.0 as usize][1];
-        // color.0 = cycle as u8;
+        let color = &mut tato.banks[0].sub_palettes[plt_cycle.0 as usize][1];
+        color.0 = cycle as u8;
         cycle += ray.get_frame_time() * 2.0;
         if cycle >= 16.0 {
             cycle = 1.0
         }
-
-        // Animated text, drawn every frame
-        tato.draw_text(
-            "Animated palette",
-            TextOp { id: font, col, row: line, width: 26, palette: plt_cycle },
-        );
 
         // Update backends
         copy_pixels_to_texture(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
