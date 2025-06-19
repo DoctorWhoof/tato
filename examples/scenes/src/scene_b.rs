@@ -22,11 +22,7 @@ impl SceneB {
             .push_subpalette([BG_COLOR, GREEN, BG_COLOR, BG_COLOR]);
         let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
         let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
-
-        // Since we're only defining one tile and it is tile 0, it will automatically
-        // be used in the BG, since by default the BG tiles are all set to zero.
         let _tileset = t.new_tileset(0, DEFAULT_TILESET);
-        // let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
         let tile = TILE_SMILEY;
 
         t.bg.set_size(32, 24);
@@ -69,7 +65,7 @@ impl SceneB {
         }
 
         // Draw!
-        t.banks[0].color_cycle(self.player.flags.palette(), 3, 1, 15);
+        t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {

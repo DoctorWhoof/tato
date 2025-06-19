@@ -4,8 +4,8 @@ use backend_raylib::{
 };
 use tato::prelude::*;
 
-mod patch;
-use patch::*;
+mod assets;
+use assets::*;
 
 const W: usize = 240;
 const H: usize = 180;
@@ -18,18 +18,11 @@ fn main() {
     // WARNING: build script is also adding default tiles, just for debugging
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
-    let map = tato.new_tilemap(tileset, 3, &PATCH_MAP);
+    let map_patch = tato.new_tilemap(tileset, &PATCH_MAP);
+    let map_smileys = tato.new_tilemap(tileset, &SMILEYS_MAP);
 
-    let w = 7;
-    let h = 5;
-    for row in 0..4 {
-        for col in 0..4 {
-            tato.draw_patch(
-                Rect { x: (col * w) + 1, y: (row * h) + 1, w: w - 1, h: h - 1 },
-                map, //
-            );
-        }
-    }
+    tato.draw_patch(map_patch, Rect { x: 1, y: 1, w: 5, h: 4 });
+    tato.draw_map(map_smileys, None, Some(Rect { x: 3, y: 5, w: 16, h: 10 }));
 
     // Raylib setup
     let target_fps = 60.0;

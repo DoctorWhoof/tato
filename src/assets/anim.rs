@@ -2,7 +2,7 @@
 pub struct AnimID(pub u8);
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Anim {
+pub struct AnimEntry {
     pub bank_id: u8,
     pub fps: u8,
     pub columns_per_frame: u8,

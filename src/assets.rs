@@ -1,9 +1,6 @@
 use crate::*;
 use core::array::from_fn;
 
-// mod palette;
-// use palette::*;
-
 mod anim;
 pub use anim::*;
 
@@ -19,8 +16,8 @@ pub use tilemap::*;
 pub struct Assets {
     pub tilesets: [Tileset; 256],
     // Asset types
-    pub anims: [Anim; 256],
-    pub maps: [Tilemap; 256],
+    pub anims: [AnimEntry; 256],
+    pub maps: [TilemapEntry; 256],
     // pub palettes: [Palette; 256],
     // pub fonts: [Font; 256],
     // "flat" storage for cells used by any asset type.
@@ -29,12 +26,12 @@ pub struct Assets {
     pub colors: [Color12Bit; 256],
     pub sub_palettes: [[u8; 4]; 256],
     // Everything that needs to be counted.
-    cell_head: u16,
-    tileset_head: u8,
-    anim_head: u8,
-    map_head: u8,
-    color_head: u8,
-    sub_palette_head: u8,
+    pub(crate) cell_head: u16,
+    pub(crate) tileset_head: u8,
+    pub(crate) anim_head: u8,
+    pub(crate) map_head: u8,
+    pub(crate) color_head: u8,
+    pub(crate) sub_palette_head: u8,
 }
 
 impl Assets {
@@ -42,8 +39,8 @@ impl Assets {
         Self {
             // Metadata
             tilesets: from_fn(|_| Tileset::default()),
-            anims: from_fn(|_| Anim::default()),
-            maps: from_fn(|_| Tilemap::default()),
+            anims: from_fn(|_| AnimEntry::default()),
+            maps: from_fn(|_| TilemapEntry::default()),
             colors: from_fn(|_| Color12Bit::default()),
             sub_palettes: from_fn(|_| Default::default()),
             // "Flat" entry data for maps, anims and fonts
@@ -76,7 +73,10 @@ impl Tato {
         self.banks[bank_id as usize].add_tile(tile)
     }
 
-    pub fn new_subpalette(&mut self, sub_palette:[ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
+    pub fn new_subpalette(
+        &mut self,
+        sub_palette: [ColorID; COLORS_PER_TILE as usize],
+    ) -> PaletteID {
         PaletteID(0)
     }
 
@@ -133,7 +133,7 @@ impl Tato {
         let mut sub_palettes_len = 0;
         if let Some(sub_palettes) = data.sub_palettes {
             for sub_palette in sub_palettes {
-                let mapped_sub_palette:[ColorID; COLORS_PER_TILE as usize] = from_fn(|i|{
+                let mapped_sub_palette: [ColorID; COLORS_PER_TILE as usize] = from_fn(|i| {
                     let mapped = color_entries[sub_palette[i] as usize].index;
                     ColorID(mapped)
                 });
@@ -163,8 +163,11 @@ impl Tato {
 
     /// Adds a tilemap entry that refers to already loaded tiles in a tileset.
     /// Returns the index of the map
-    pub fn new_tilemap(&mut self, tileset_id: TilesetID, columns: u16, data: &[Cell]) -> MapID {
-        // let bank = &mut self.banks[bank_id as usize];
+    pub fn new_tilemap<const LEN: usize>(
+        &mut self,
+        tileset_id: TilesetID,
+        data: &BGMap<LEN>,
+    ) -> MapID {
         // Acquire tile offset for desired tileset
         let assets = &mut self.assets;
         let tileset = &assets.tilesets[tileset_id.0 as usize];
@@ -179,19 +182,20 @@ impl Tato {
         let map_idx = assets.map_head;
         let data_start = assets.cell_head;
         let data_len = u16::try_from(data.len()).unwrap();
-        let rows = data_len / columns;
+        let columns = data.columns;
+        let rows = data_len / data.columns;
 
         assert!(
-            data_len % columns == 0,
+            data_len % data.columns == 0,
             err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
         );
 
         // Map entry
         assets.maps[assets.map_head as usize] =
-            Tilemap { bank_id, columns, rows, data_start, data_len };
+            TilemapEntry { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
-        for (i, &cell) in data.iter().enumerate() {
+        for (i, &cell) in data.cells.iter().enumerate() {
             assets.cells[data_start as usize + i] = Cell {
                 id: TileID(cell.id.0 + tileset_offset), //
                 flags: cell.flags,
@@ -236,5 +240,18 @@ impl Tato {
     //     // Advance and return
     //     self.anim_head += 1;
     //     Some(AnimID(anim_idx))
+    // }
+
+    // pub fn get_tilemap(&self, id: MapID) -> Option<Tilemap> {
+    //     if id.0 >= self.assets.map_head {
+    //         return None;
+    //     }
+
+    //     let map = &self.assets.maps[id.0 as usize];
+    //     let start = map.data_start as usize;
+    //     let end = start + map.data_len as usize;
+    //     let cells = &self.assets.cells[start..end];
+
+    //     Some(Tilemap { cells, columns: map.columns, rows: map.rows })
     // }
 }

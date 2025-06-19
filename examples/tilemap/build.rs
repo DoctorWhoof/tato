@@ -2,7 +2,6 @@ use tato_pipe::*;
 
 fn main() {
     let mut pipe = Pipeline::new();
-    // pipe.allow_unused = true;
 
     // Tile Patch example
     let palette_patch = pipe.new_palette("patch");

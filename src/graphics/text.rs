@@ -1,4 +1,4 @@
-use crate::{AnimID, MapID, Tato, TilesetID};
+use crate::{Tato, TilesetID};
 use tato_video::{color::PaletteID, *};
 
 pub struct TextOp {
