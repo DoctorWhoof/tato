@@ -53,7 +53,11 @@ impl Pipeline {
     }
 
     /// Initializes an empty tileset, returns its ID
-    pub fn new_tileset(&mut self, name: impl Into<String>, palette_id: PaletteID) -> TilesetBuilderID {
+    pub fn new_tileset(
+        &mut self,
+        name: impl Into<String>,
+        palette_id: PaletteID,
+    ) -> TilesetBuilderID {
         let id: u8 = self.tileset_head;
         self.tileset_head += 1;
         println!("cargo:warning=Pipeline: initializing tileset at index {}.", id);
@@ -132,8 +136,8 @@ impl Pipeline {
 
         let map = MapBuilder {
             name: strip_path_name(path),
-            // columns: u8::try_from(img.cols_per_frame).unwrap(),
-            // rows: u8::try_from(img.rows_per_frame).unwrap(),
+            columns: u8::try_from(img.cols_per_frame).unwrap(),
+            rows: u8::try_from(img.rows_per_frame).unwrap(),
             cells,
         };
 
@@ -324,19 +328,21 @@ impl Pipeline {
     }
 
     fn append_maps(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
-        // Tilesets
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for map in &tileset.maps {
-            // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
-                "pub const {}_MAP: [Cell; {}] = [",
+                "pub const {}_MAP: BGMap<{}> = BGMap {{",
                 map.name.to_uppercase(),
-                map.cells.len()
+                map.cells.len(),
             ));
+            code.write_line(&format!("cells: [",));
             for cell in &map.cells {
                 code.write_line(&format!("    {:?},", cell));
             }
-            code.write_line("];");
+            code.write_line("],");
+            code.write_line(&format!("columns: {},", map.columns));
+            code.write_line(&format!("rows: {}", map.rows));
+            code.write_line("};");
             code.write_line("");
         }
     }

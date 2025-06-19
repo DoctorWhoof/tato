@@ -4,6 +4,6 @@ use tato_video::*;
 pub(crate) struct MapBuilder {
     pub name: String,
     pub cells: Vec<Cell>,
-    // pub columns: u8,
-    // pub rows: u8,
+    pub columns: u8,
+    pub rows: u8,
 }
