@@ -6,9 +6,8 @@ fn main() {
     pipe.save_palettes = false;
 
     // Tile Patch example
-    let palette_font = pipe.new_palette("font");
-    let tileset_font = pipe.new_tileset("font", palette_font);
+    let palette_patch = pipe.new_palette("patch");
+    let tileset_patch = pipe.new_tileset("patch", palette_patch);
 
-    pipe.new_map("../../assets/font_arcade_bold.png", tileset_font); // for debugging
-    pipe.write_tileset(tileset_font, "src/font.rs");
+    pipe.write_tileset(tileset_patch, "src/font.rs");
 }

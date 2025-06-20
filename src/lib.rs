@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 
 use smooth_buffer::SmoothBuffer;
 pub use tato_audio as audio;

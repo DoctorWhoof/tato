@@ -1,14 +1,16 @@
 
+### Backend and examples
+
 [ ] Dual chip setup for multiple video layers
 
 [.] Use LIRQ (Line interrupt) to draw GUI
     . Will need to switch Tile bank halfway through
     . Will also need external BG Maps
 
---->[.] Debug views! Display all loaded tiles, colors and subpalettes
-        [ ] Display all banks
-        [ ] Display all palette colors
-        [ ] Display all subpalettes
+[.] Debug views! Display all loaded tiles, colors and subpalettes
+--->[ ] Display palette colors
+    [ ] Display subpalettes
+    [ ] Display all banks
 
 ### Pipeline:
 
