@@ -117,6 +117,6 @@ fn main() {
         }
 
         // Update backends
-        copy_pixels_to_texture(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
+        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture, true);
     }
 }

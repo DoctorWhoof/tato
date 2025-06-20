@@ -147,7 +147,7 @@ fn main() {
 
         // Update backends
         audio_backend.process_frame(&mut audio);
-        copy_pixels_to_texture(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
+        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture, true);
     }
 
     audio_backend.write_wav_file();

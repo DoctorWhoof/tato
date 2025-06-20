@@ -80,18 +80,17 @@ fn main() {
     let mut pixels: [u8; PIXEL_COUNT] = core::array::from_fn(|_| 0);
     let mut render_texture = {
         let render_image = Image::gen_image_color(w, h, Color::BLACK);
-        ray.load_texture_from_image(&ray_thread, &render_image)
-            .unwrap()
+        ray.load_texture_from_image(&ray_thread, &render_image).unwrap()
     };
 
     // Main Loop
+    let mut display_debug = true;
     while !ray.window_should_close() {
         update_gamepad(&ray, &mut t.pad);
-        let state = BackendState {
-            pad: t.pad,
-            time: ray.get_time(),
-            elapsed: 1.0 / target_fps,
+        if t.pad.is_just_pressed(Button::LeftShoulder) {
+            display_debug = !display_debug;
         };
+        let state = BackendState { pad: t.pad, time: ray.get_time(), elapsed: 1.0 / target_fps };
 
         // If scene is None, immediately switch to A.
         // Otherwise process it to get scene_change.
@@ -103,12 +102,13 @@ fn main() {
         };
 
         // Update backend
-        copy_pixels_to_texture(
+        tato_to_raylib(
             &mut t,
             &ray_thread,
             &mut ray,
             &mut pixels,
             &mut render_texture,
+            display_debug,
         );
 
         if let Some(choice) = scene_change {
