@@ -1,9 +1,6 @@
-use std::array::from_fn;
-
-use tato::video::*;
-
 pub use raylib;
 use raylib::prelude::*;
+use std::array::from_fn;
 use tato::{Tato, prelude::*};
 
 pub fn config_raylib() {
@@ -76,67 +73,94 @@ pub fn tato_to_raylib(
     texture: &mut Texture2D,
 ) {
     static mut DISPLAY_DEBUG: bool = true;
+    static mut DISPLAY_DEBUG_SCALE: i32 = 2;
 
     let time = std::time::Instant::now();
-    if ray.is_key_pressed(KeyboardKey::KEY_TAB) {
-        unsafe { DISPLAY_DEBUG = !DISPLAY_DEBUG }
-    }
 
-    // Copy from framebuffer to raylib texture
-    for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), &[&t.bg]) {
-        let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
-        pixels[i] = color.r;
-        pixels[i + 1] = color.g;
-        pixels[i + 2] = color.b;
-        pixels[i + 3] = color.a;
-    }
-    texture.update_texture(pixels).unwrap();
-
-    t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
-    println!("iter time: {:.2} ms", t.update_time_acc.average());
-
-    let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
-    let debug_w = (tiles_per_row * TILE_SIZE as usize) as i32;
-    let debug_h = (((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize) as i32;
-
-    let debug_image = Image::gen_image_color(debug_w, debug_h, Color::BLACK);
-    let mut tile_debug_texture: [Texture2D; BANK_COUNT] =
-        from_fn(|_| ray.load_texture_from_image(thread, &debug_image).unwrap());
-
-    // Calculate rect with correct aspect ratio with integer scaling
-    let screen_width = ray.get_screen_width();
-    let screen_height = ray.get_screen_height();
-
-    let scale = (screen_height as f32 / t.video.height() as f32).floor() as i32;
-    let w = t.video.width() as i32 * scale;
-    let h = t.video.height() as i32 * scale;
-    let draw_rect_x = (screen_width - w) / 2;
-    let draw_rect_y = (screen_height - h) / 2;
-
-    // Present pixels
-    let mut canvas = ray.begin_drawing(thread);
-    let bg_color = Color::new(64, 64, 64, 255);
-
-    canvas.clear_background(bg_color);
-    canvas.draw_texture_ex(
-        &texture,
-        Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
-        0.0,
-        scale as f32,
-        Color::WHITE,
-    );
-
-    // Copy tile pixels to debug texture
-    let mut y = 8;
+    // It needs "unsafe" to modify the static DISPLAY_DEBUG.
     unsafe {
+        if ray.is_key_pressed(KeyboardKey::KEY_TAB) {
+            DISPLAY_DEBUG = !DISPLAY_DEBUG
+        }
+        if ray.is_key_pressed(KeyboardKey::KEY_EQUAL) {
+            DISPLAY_DEBUG_SCALE += 1
+        }
+        if ray.is_key_pressed(KeyboardKey::KEY_MINUS) {
+            if DISPLAY_DEBUG_SCALE > 1 {
+                DISPLAY_DEBUG_SCALE -= 1;
+            }
+        }
+
+        // Copy from framebuffer to raylib texture
+        for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), &[&t.bg]) {
+            let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
+            pixels[i] = color.r;
+            pixels[i + 1] = color.g;
+            pixels[i + 2] = color.b;
+            pixels[i + 3] = color.a;
+        }
+        texture.update_texture(pixels).unwrap();
+
+        t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
+        println!("iter time: {:.2} ms", t.update_time_acc.average());
+
+        let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
+        let debug_w = (tiles_per_row * TILE_SIZE as usize) as i32 * DISPLAY_DEBUG_SCALE;
+        let debug_h = (((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize)
+            as i32
+            * DISPLAY_DEBUG_SCALE;
+
+        let debug_image = Image::gen_image_color(debug_w, debug_h, Color::BLACK);
+        let mut tile_debug_texture: [Texture2D; BANK_COUNT] =
+            from_fn(|_| ray.load_texture_from_image(thread, &debug_image).unwrap());
+
+        // Calculate rect with correct aspect ratio with integer scaling
+        let screen_width = ray.get_screen_width();
+        let screen_height = ray.get_screen_height();
+
+        let scale = (screen_height as f32 / t.video.height() as f32).floor() as i32;
+        let w = t.video.width() as i32 * scale;
+        let h = t.video.height() as i32 * scale;
+        let draw_rect_x = (screen_width - w) / 2;
+        let draw_rect_y = (screen_height - h) / 2;
+
+        // Present pixels
+        let mut canvas = ray.begin_drawing(thread);
+        let bg_color = Color::new(64, 64, 64, 255);
+
+        canvas.clear_background(bg_color);
+        canvas.draw_texture_ex(
+            &texture,
+            Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
+            0.0,
+            scale as f32,
+            Color::WHITE,
+        );
+
+        // Copy tile pixels to debug texture
         if DISPLAY_DEBUG {
-            for n in 0..BANK_COUNT {
+            let color_bg = Color::new(0, 0, 0, 100);
+            let font_size = 8;
+            let x = screen_width - debug_w as i32 - 16;
+            let rect_bg = Rect {
+                x: x,
+                y: font_size,
+                w: debug_w,
+                h: screen_height - font_size - font_size,
+            };
+            canvas.draw_rectangle(rect_bg.x, rect_bg.y, rect_bg.w, rect_bg.h, color_bg);
+            let mut layout = Frame::new(rect_bg);
+            // Reset on every loop since I change it along the way!
+            layout.set_gap(1);
+            layout.set_margin(0);
+            layout.fitting = Fitting::Relaxed;
+
+            for bank_index in 0..BANK_COUNT {
                 let mut pixel_data = vec![0u8; (debug_w * debug_h * 4) as usize];
-                let x = screen_width - debug_w as i32 - 16;
+                let bank = &t.banks[bank_index];
 
                 // acquire tile pixels.
                 for tile_index in 0..TILE_COUNT {
-                    let bank = &t.banks[n];
                     let tile_x = tile_index % tiles_per_row;
                     let tile_y = tile_index / tiles_per_row;
 
@@ -158,81 +182,88 @@ pub fn tato_to_raylib(
                     }
                 }
 
-                // label
-                let text = format!("bank {}", n);
-                canvas.draw_text(&text, x, y, 8, Color::WHITE);
+                // Label
+                layout.push_edge(Edge::Top, font_size, |frame| {
+                    let rect = frame.rect();
+                    let text = format!("bank {}", bank_index);
+                    canvas.draw_text(&text, rect.x + 1, rect.y, font_size, Color::WHITE);
+                });
 
-                // colors
-                y += 10;
-                let mut color_x = x;
-                let gap = 2;
-                for c in 0..COLORS_PER_PALETTE as usize {
-                    let bank = &t.banks[n];
-                    let color = bank.palette[c];
-                    let size = 6;
-                    canvas.draw_rectangle(
-                        color_x,
-                        y,
-                        size,
-                        size,
-                        Color::new(color.r() * 36, color.g() * 36, color.b() * 36, color.a() * 36),
-                    );
-                    color_x += size + gap;
-                }
-
-                y += 8;
-                let lines = 4;
+                // Color swatches
+                layout.push_edge(Edge::Top, 8 * DISPLAY_DEBUG_SCALE, |frame| {
+                    // draw bg
+                    let rect = frame.rect();
+                    canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, color_bg);
+                    let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
+                    for c in 0..COLORS_PER_PALETTE as usize {
+                        let color = bank.palette[c];
+                        frame.push_edge(Edge::Left, swatch_w, |swatch| {
+                            let rect = swatch.rect();
+                            canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, rl_color(color));
+                        });
+                    }
+                });
 
                 // Subpalettes
-                y += 2;
-                let sub_size_x = 6;
-                let sub_size_y = 6;
-                let frame_y = y;
-                let mut frame_height = 0;
-                y += 1;
-                for l in 0..lines {
-                    for c in 0..SUBPALETTE_COUNT as usize / lines {
-                        let bank = &t.banks[n];
-                        let subpal = bank.sub_palettes[(l * lines) + c];
-
-                        for (i, index) in subpal.iter().enumerate() {
-                            let color = bank.palette[index.0 as usize];
-                            canvas.draw_rectangle(
-                                x + (sub_size_x * i as i32) + (c as i32 * sub_size_x * 4),
-                                y,
-                                sub_size_x,
-                                sub_size_y,
-                                Color::new(
-                                    color.r() * 36,
-                                    color.g() * 36,
-                                    color.b() * 36,
-                                    color.a() * 36,
-                                ),
-                            );
-                        }
+                layout.push_edge(Edge::Top, 32 * DISPLAY_DEBUG_SCALE, |frame| {
+                    let columns = 4;
+                    let rows = COLORS_PER_PALETTE as u32 / columns;
+                    let column_w = frame.divide_width(columns);
+                    for column in 0..columns {
+                        frame.push_edge(Edge::Left, column_w, |frame_column| {
+                            frame_column.set_gap(0);
+                            frame_column.set_margin(1);
+                            // draw bg
+                            let rect = frame_column.rect();
+                            canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, color_bg);
+                            // draw each row
+                            let row_h = frame_column.divide_height(rows);
+                            for row in 0..rows {
+                                frame_column.push_edge(Edge::Top, row_h, |frame_row| {
+                                    frame_row.set_gap(0);
+                                    frame_row.set_margin(1);
+                                    let subp_index =
+                                        ((row * COLORS_PER_TILE as u32) + column) as usize;
+                                    let subp = &bank.sub_palettes[subp_index];
+                                    // draw each swatch
+                                    let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
+                                    for n in 0..COLORS_PER_TILE as usize {
+                                        frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
+                                            let r = swatch.rect();
+                                            let color_index = subp[n].0 as usize;
+                                            let color = bank.palette[color_index];
+                                            canvas.draw_rectangle(
+                                                r.x,
+                                                r.y,
+                                                r.w,
+                                                r.h,
+                                                rl_color(color),
+                                            );
+                                        });
+                                    }
+                                });
+                            }
+                        });
                     }
-                    y += 8;
-                    frame_height += 8;
-                }
-
-                //frames
-                canvas.draw_rectangle_lines(x, frame_y, debug_w, frame_height, Color::BLACK);
-                for x in (x .. x + debug_w).step_by(sub_size_x as usize * COLORS_PER_TILE as usize) {
-                    canvas.draw_line(x, frame_y, x, frame_y + frame_height, Color::BLACK);
-                }
+                });
 
                 // tiles
-                y += 2;
-                tile_debug_texture[n].update_texture(&pixel_data).unwrap();
-                canvas.draw_texture_ex(
-                    &tile_debug_texture[n],
-                    Vector2::new(x as f32, y as f32),
-                    0.0,
-                    1.0,
-                    Color::WHITE,
-                );
-                y += 132;
+                layout.push_edge(Edge::Top, debug_h, |frame_tiles| {
+                    tile_debug_texture[bank_index].update_texture(&pixel_data).unwrap();
+                    let r = frame_tiles.rect();
+                    canvas.draw_texture_ex(
+                        &tile_debug_texture[bank_index],
+                        Vector2::new(r.x as f32, r.y as f32),
+                        0.0,
+                        DISPLAY_DEBUG_SCALE as f32,
+                        Color::WHITE,
+                    );
+                });
             }
         }
     }
+}
+
+fn rl_color(color: Color12Bit) -> Color {
+    Color::new(color.r() * 36, color.g() * 36, color.b() * 36, color.a() * 36)
 }
