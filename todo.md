@@ -8,9 +8,10 @@
     . Will also need external BG Maps
 
 [.] Debug views! Display all loaded tiles, colors and subpalettes
---->[ ] Display palette colors
-    [ ] Display subpalettes
-    [ ] Display all banks
+    [x] Display all banks
+    [x] Display palette colors
+--->[ ] Display subpalettes.
+        [ ] New: Use tato_layout, positioning everything is a pain!
 
 ### Pipeline:
 

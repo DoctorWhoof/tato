@@ -30,7 +30,7 @@ fn main() {
     let h = tato.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
         .log_level(TraceLogLevel::LOG_WARNING)
-        .size(w * 3, h * 3)
+        .size(w * 4, h * 3)
         .title("Tato Demo")
         .vsync()
         .resizable()
@@ -48,6 +48,6 @@ fn main() {
     // Main Loop
     while !ray.window_should_close() {
         // Update backends
-        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture, true);
+        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
     }
 }

@@ -12,10 +12,8 @@ pub const PIXEL_COUNT: usize = W * H * 4;
 
 fn main() {
     let mut tato = Tato::new(W as u16, H as u16);
-    // tato.banks[0].bg.set_size(32, 24);
 
     // Graphics setup
-
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let font = tato.new_tileset(0, FONT_TILESET).unwrap();
     let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
@@ -72,7 +70,7 @@ fn main() {
     let h = tato.video.height() as i32;
     let (mut ray, ray_thread) = raylib::init()
         .log_level(TraceLogLevel::LOG_WARNING)
-        .size(w * 3, h * 3)
+        .size(w * 4, h * 3)
         .title("Tato Demo")
         .vsync()
         .resizable()
@@ -117,6 +115,6 @@ fn main() {
         }
 
         // Update backends
-        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture, true);
+        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
     }
 }
