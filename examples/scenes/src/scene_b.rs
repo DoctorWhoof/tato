@@ -53,6 +53,8 @@ impl SceneB {
     pub fn update(&mut self, t: &mut Tato, app: BackendState) -> Option<SceneChange> {
         t.video.start_frame();
         let speed = 1.0;
+
+        // Input
         if app.pad.is_down(Button::Left) {
             self.player.x -= speed;
         } else if app.pad.is_down(Button::Right) {

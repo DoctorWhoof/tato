@@ -2,16 +2,11 @@ mod scene_a;
 mod scene_b;
 mod scene_c;
 
-use backend_raylib::{raylib::ffi::TraceLogLevel, *};
-use raylib::{color::Color, texture::Image};
+use backend_raylib::*;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
 use tato::{Tato, prelude::*};
-
-const W: usize = 240;
-const H: usize = 180;
-pub const PIXEL_COUNT: usize = W * H * 4;
 
 #[derive(Debug, Clone, Copy)]
 pub struct BackendState {
@@ -46,12 +41,8 @@ pub enum Scene {
 }
 
 fn main() {
-    // Print working directory
-    let current_dir = std::env::current_dir().unwrap();
-    println!("Current directory: {:?}", current_dir);
-
     // Tato setup + initial scene
-    let mut t = Tato::new(W as u16, H as u16);
+    let mut t = Tato::new(240, 180);
     let mut scene = Scene::None;
     // Line scrolling effect, adjusts scroll on every line
     t.video.irq_line = Some(|iter, video, _bg| {
@@ -62,38 +53,18 @@ fn main() {
         iter.bg_map_bank = 1;
     });
 
-    // Raylib setup
+    // Backend
     let target_fps = 60.0;
-    let w = t.video.width() as i32;
-    let h = t.video.height() as i32;
-    let (mut ray, ray_thread) = raylib::init()
-        .log_level(TraceLogLevel::LOG_WARNING)
-        .size(w * 4, h * 3)
-        .title("Tato Demo")
-        .vsync()
-        .resizable()
-        .build();
-    config_raylib();
-    ray.set_target_fps(target_fps as u32);
-
-    // Create pixel buffer for rendering
-    let mut pixels: [u8; PIXEL_COUNT] = core::array::from_fn(|_| 0);
-    let mut render_texture = {
-        let render_image = Image::gen_image_color(w, h, Color::BLACK);
-        ray.load_texture_from_image(&ray_thread, &render_image).unwrap()
-    };
-
-    // Main Loop
-    let mut display_debug = true;
-    while !ray.window_should_close() {
-        update_gamepad(&ray, &mut t.pad);
-        if t.pad.is_just_pressed(Button::LeftShoulder) {
-            display_debug = !display_debug;
+    let mut back = RaylibBackend::new(&t, target_fps);
+    while !back.ray.window_should_close() {
+        back.update_gamepad(&mut t.pad);
+        let state = BackendState {
+            pad: t.pad,
+            time: back.ray.get_time(),
+            elapsed: 1.0 / target_fps as f64,
         };
-        let state = BackendState { pad: t.pad, time: ray.get_time(), elapsed: 1.0 / target_fps };
 
-        // If scene is None, immediately switch to A.
-        // Otherwise process it to get scene_change.
+        // If scene is None, immediately switch to A, otherwise process it.
         let scene_change = match &mut scene {
             Scene::None => Some(SceneChange::A),
             Scene::A(scn) => scn.update(&mut t, state),
@@ -102,8 +73,9 @@ fn main() {
         };
 
         // Update backend
-        tato_to_raylib(&mut t, &ray_thread, &mut ray, &mut pixels, &mut render_texture);
+        back.render(&mut t);
 
+        // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {
             t.video.reset_all();
             t.reset();

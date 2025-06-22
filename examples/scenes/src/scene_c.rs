@@ -10,7 +10,6 @@ pub struct SceneC {
 impl SceneC {
     pub fn new(t: &mut Tato) -> Self {
         let _tileset = t.new_tileset(0, DEFAULT_TILESET);
-        // let _tileset = t.add_tileset(0, &TILESET_DEFAULT);
         let solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
