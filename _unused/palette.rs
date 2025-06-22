@@ -8,7 +8,7 @@ use tato_video::*;
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Palette {
     // pub bank_id: u8,
-    pub colors: [ColorRGBA12; COLORS_PER_PALETTE as usize],
+    pub colors: [RGBA12; COLORS_PER_PALETTE as usize],
     pub head: u8,
 }
 
@@ -27,7 +27,7 @@ impl Palette {
         self.head = 0;
     }
 
-    pub fn push(&mut self, color:ColorRGBA12){
+    pub fn push(&mut self, color:RGBA12){
         assert!(self.head < COLORS_PER_PALETTE, err!("Palette capacity exceeded"));
         self.colors[self.head as usize] = color;
         self.head += 1;

@@ -1,8 +1,6 @@
 
 ### Backend and examples
 
-[ ] Dual chip setup for multiple video layers
-
 [.] Use LIRQ (Line interrupt) to draw GUI
     . Will need to switch Tile bank halfway through
     . Will also need external BG Maps
@@ -11,8 +9,13 @@
     [x] Display all banks
     [x] Display palette colors
     [x] Display subpalettes.
-        [x] New: Use tato_layout, positioning everything is a pain!
---->[ ] Mouse over information
+    [x] Use tato_layout, positioning everything manually is a pain!
+    [x] Mouse over display debug
+    [ ] Mouse over video output:
+------->[ ] Inspect any BG tile being displayed by tato_video.
+        [ ] Inspect Sprites.
+
+[ ] Dual chip setup for multiple video layers
 
 ### Pipeline:
 
@@ -27,11 +30,11 @@
     [x] Write directly to the BG Map
     [?] Let the function accept a user defined slice of characters so that simple and complex fonts may be used freely.
 
-[.] Load & Unload Tilesets
-    . Wait until external tiles and Tile Maps are more stable
+--->[ ] Load & Unload Tilesets
 
 [ ] Tilemaps
-    [?] Correctly map subpalettes when loading into Assets. Looks done? Needs more testing
+    [?] Correctly map subpalettes when loading into Assets.
+        . Looks done? Needs more testing
 
 [ ] Anims: Update to latest Assets struct
 

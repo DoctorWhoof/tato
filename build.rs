@@ -1,5 +1,5 @@
 
-const REGENERATE_DEFAULT_ASSETS:bool = false;
+const REGENERATE_DEFAULT_ASSETS:bool = true;
 
 fn main() {
     if ! REGENERATE_DEFAULT_ASSETS { return }

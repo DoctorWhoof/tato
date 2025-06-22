@@ -12,7 +12,7 @@ fn main() {
     let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, BLACK]);
 
-    tato.video.bg_color = DARK_BLUE;
+    tato.video.bg_color = RGBA12::new(1,1,3,7);
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;

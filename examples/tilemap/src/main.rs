@@ -6,7 +6,7 @@ use assets::*;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
-    tato.video.bg_color = ColorID(0);
+    tato.video.bg_color = RGBA12::new(0, 0, 0, 7);
 
     // Populate tileset
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
@@ -21,6 +21,19 @@ fn main() {
     // Backend
     let mut backend = RaylibBackend::new(&tato, 60.0);
     while !backend.ray.window_should_close() {
+        backend.update_gamepad(&mut tato.pad);
+        if tato.pad.is_down(Button::Right) {
+            tato.video.scroll_x += 1;
+        } else if tato.pad.is_down(Button::Left) {
+            tato.video.scroll_x -= 1;
+        }
+
+        if tato.pad.is_down(Button::Down) {
+            tato.video.scroll_y += 1;
+        } else if tato.pad.is_down(Button::Up) {
+            tato.video.scroll_y -= 1;
+        }
+
         backend.render(&mut tato);
     }
 }

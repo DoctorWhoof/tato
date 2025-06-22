@@ -14,6 +14,7 @@ impl SceneC {
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
+        t.video.bg_color = RGBA12::GRAY;
         t.bg.set_size(32, 24);
         for col in 0..t.bg.columns {
             for row in 0..t.bg.rows {

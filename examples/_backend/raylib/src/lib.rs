@@ -203,7 +203,8 @@ impl RaylibBackend {
                 layout.push_edge(Edge::Top, font_size / self.display_debug_scale, |frame| {
                     let rect = frame.rect();
                     let text = format!("bank {}", bank_index);
-                    canvas.draw_text(&text, rect.x + 1, rect.y, font_size, Color::WHITE);
+                    let gap = self.display_debug_scale;
+                    canvas.draw_text(&text, rect.x + gap, rect.y, font_size, Color::WHITE);
                 });
 
                 // Color swatches
@@ -359,7 +360,7 @@ impl RaylibBackend {
     }
 }
 
-fn rl_color(color: ColorRGBA12) -> Color {
+fn rl_color(color: RGBA12) -> Color {
     Color::new(
         ((color.r() as u16 * 255) / 7) as u8,
         ((color.g() as u16 * 255) / 7) as u8,

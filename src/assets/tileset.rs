@@ -10,7 +10,7 @@ pub(crate) struct ColorEntry {
     /// The index used by the color in the video chip
     pub index: u8,
     /// The color itself
-    pub value: ColorRGBA12,
+    pub value: RGBA12,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -33,7 +33,7 @@ pub struct Tileset {
 #[derive(Debug, Clone, Copy)]
 pub struct TilesetData<'a> {
     pub tiles: &'a [Tile<2>],
-    pub colors: Option<&'a [ColorRGBA12]>,
+    pub colors: Option<&'a [RGBA12]>,
     pub sub_palettes: Option<&'a [&'a [u8; COLORS_PER_TILE as usize]]>,
     // pub maps: Option< &'a [&'a [Cell; 9]]>,
     // pub anims: Option< &'a [&'a [Cell; 9]]>,

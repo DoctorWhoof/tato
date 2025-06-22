@@ -16,7 +16,7 @@ impl SceneB {
         t.video.set_viewport(8, 8, 224, 164);
 
         // Colors
-        t.video.bg_color = DARK_GREEN;
+        t.video.bg_color = RGBA12::new(0, 3, 1, 7);
         let palette_bg = t
             .banks[0]
             .push_subpalette([BG_COLOR, GREEN, BG_COLOR, BG_COLOR]);

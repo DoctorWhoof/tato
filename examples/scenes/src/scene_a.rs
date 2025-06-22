@@ -15,29 +15,29 @@ impl SceneA {
     // Initialize and retuns a new scene
     // pub fn new(video: &mut VideoChip, tiles: &mut TileBank) -> Self {
     pub fn new(t: &mut Tato) -> Self {
-        t.video.bg_color = ColorID(0);
+        t.video.bg_color = RGBA12::new(3, 1, 0, 7);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
         t.video.bg_tile_bank = 1;
 
         // Palette test - defines BG palette with a golden tint!
         t.banks[1].palette = [
-            ColorRGBA12::new(0, 0, 0, 0),
-            ColorRGBA12::new(2, 1, 1, 7),
-            ColorRGBA12::new(3, 1, 1, 7),
-            ColorRGBA12::new(4, 2, 1, 7),
-            ColorRGBA12::new(4, 2, 1, 7),
-            ColorRGBA12::new(5, 2, 2, 7),
-            ColorRGBA12::new(5, 3, 2, 7),
-            ColorRGBA12::new(5, 4, 2, 7),
-            ColorRGBA12::new(5, 4, 3, 7),
-            ColorRGBA12::new(6, 4, 3, 7),
-            ColorRGBA12::new(6, 4, 4, 7),
-            ColorRGBA12::new(6, 5, 4, 7),
-            ColorRGBA12::new(6, 6, 4, 7),
-            ColorRGBA12::new(6, 6, 4, 7),
-            ColorRGBA12::new(6, 6, 5, 7),
-            ColorRGBA12::new(6, 6, 5, 7),
+            RGBA12::new(0, 0, 0, 0),
+            RGBA12::new(2, 1, 1, 7),
+            RGBA12::new(3, 1, 1, 7),
+            RGBA12::new(4, 2, 1, 7),
+            RGBA12::new(4, 2, 1, 7),
+            RGBA12::new(5, 2, 2, 7),
+            RGBA12::new(5, 3, 2, 7),
+            RGBA12::new(5, 4, 2, 7),
+            RGBA12::new(5, 4, 3, 7),
+            RGBA12::new(6, 4, 3, 7),
+            RGBA12::new(6, 4, 4, 7),
+            RGBA12::new(6, 5, 4, 7),
+            RGBA12::new(6, 6, 4, 7),
+            RGBA12::new(6, 6, 4, 7),
+            RGBA12::new(6, 6, 5, 7),
+            RGBA12::new(6, 6, 5, 7),
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
