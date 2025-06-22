@@ -1,7 +1,7 @@
 
 /// The output format of the Pixel Iterator.
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
-pub struct ColorRGB32 {
+pub struct ColorRGBA32 {
     pub r: u8,
     pub g: u8,
     pub b: u8,
@@ -9,7 +9,7 @@ pub struct ColorRGB32 {
 }
 
 /// The Default color is "Debug Pink", not intended to be actually seen!
-impl Default for ColorRGB32{
+impl Default for ColorRGBA32{
     fn default() -> Self {
         Self {
             r: 255,
@@ -17,5 +17,12 @@ impl Default for ColorRGB32{
             b: 255,
             a: 255
         }
+    }
+}
+
+impl core::fmt::Display for ColorRGBA32 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "ColorRGBA32(r: {}, g: {}, b: {}, a: {})",
+            self.r, self.g, self.b, self.a)
     }
 }

@@ -29,7 +29,7 @@ pub struct PixelIter<'a> {
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline,   // current sprite scanline
-    pub bg_color: Color12Bit, // Background color
+    pub bg_color: ColorRGBA12, // Background color
 }
 
 pub struct ScreenCoords {
@@ -150,7 +150,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline]
-    fn get_pixel_color(&self) -> Color12Bit {
+    fn get_pixel_color(&self) -> ColorRGBA12 {
         // If BG Tile is set to FG and is not zero, return early
         if self.bg_flags.is_fg() && !self.force_bg_color {
             let sub_palette = self.bg_flags.palette().0 as usize;
@@ -245,7 +245,7 @@ impl<'a> PixelIter<'a> {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (ColorRGB32, ScreenCoords);
+    type Item = (ColorRGBA32, ScreenCoords);
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -272,10 +272,10 @@ impl<'a> Iterator for PixelIter<'a> {
             || self.y >= self.vid.view_bottom as u16;
 
         let color = if is_outside_viewport {
-            ColorRGB32::from(self.bg_color)
+            ColorRGBA32::from(self.bg_color)
         } else {
             // Check for foreground pixel, compensating for crop_x
-            ColorRGB32::from(self.get_pixel_color())
+            ColorRGBA32::from(self.get_pixel_color())
         };
 
         // // Cache result coordinates

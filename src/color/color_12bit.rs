@@ -2,13 +2,13 @@ use crate::*;
 
 /// Every color in the main palettes (FG and BG palette) is stored as 3 bits-per-channel,
 /// allowing a maximum of 512 possible colors packed into 12 bits (excluding alpha).
-/// Can be converted to ColorRGB32 (8 bits per channel) for easy interop with graphics back-ends.
+/// Can be converted to ColorRGBA32 (8 bits per channel) for easy interop with graphics back-ends.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Color12Bit {
+pub struct ColorRGBA12 {
     pub data: u16,
 }
 
-impl Color12Bit {
+impl ColorRGBA12 {
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         assert!(r < 8, err!("Exceeded maximum value for Red channel"));
         assert!(g < 8, err!("Exceeded maximum value for Green channel"));
@@ -58,8 +58,8 @@ impl Color12Bit {
     }
 }
 
-impl From<Color12Bit> for ColorRGB32 {
-    fn from(color: Color12Bit) -> Self {
+impl From<ColorRGBA12> for ColorRGBA32 {
+    fn from(color: ColorRGBA12) -> Self {
         // Extract the 3-bit color components
         let r = ((color.data >> 6) & 0x7) as u8;
         let g = ((color.data >> 3) & 0x7) as u8;
@@ -77,8 +77,8 @@ impl From<Color12Bit> for ColorRGB32 {
     }
 }
 
-impl From<ColorRGB32> for Color12Bit {
-    fn from(color: ColorRGB32) -> Self {
+impl From<ColorRGBA32> for ColorRGBA12 {
+    fn from(color: ColorRGBA32) -> Self {
         // Scale down 8-bit values (0-255) to 3-bit values (0-7)
         // Using (value + 16) / 32 for rounding to nearest value
         let r = ((color.r as u16 + 16) >> 5).min(7);
@@ -90,5 +90,12 @@ impl From<ColorRGB32> for Color12Bit {
         Self {
             data: (a << 9) | (r << 6) | (g << 3) | b,
         }
+    }
+}
+
+impl core::fmt::Display for ColorRGBA12 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "ColorRGBA12(r: {}, g: {}, b: {}, a: {})",
+            self.r(), self.g(), self.b(), self.a())
     }
 }
