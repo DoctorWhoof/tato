@@ -1,10 +1,9 @@
 use backend_raylib::*;
 use tato::{Tato, prelude::*};
 
-mod font;
-
 fn main() {
     let mut tato = Tato::new(240, 180);
+    tato.bg.set_size(32, 18);
 
     // Graphics setup
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);

@@ -129,7 +129,8 @@ impl RaylibBackend {
             }
         }
 
-        // Copy from framebuffer to raylib texture
+        // ---------------------- Copy from framebuffer to raylib texture ----------------------
+
         for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), &[&t.bg]) {
             let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
             self.pixels[i] = color.r;
@@ -170,9 +171,11 @@ impl RaylibBackend {
             Color::WHITE,
         );
 
-        // Copy tile pixels to debug texture
+        // ---------------------- Copy tile pixels to debug texture ----------------------
+
         if self.display_debug {
-            let color_bg = Color::new(0, 0, 0, 100);
+            let dark_bg = Color::new(32, 32, 32, 255);
+            let light_bg = Color::new(48, 48, 48, 255);
             let font_size = 8;
             let rect_bg = Rect {
                 x: screen_width - (debug_w as i32 * self.display_debug_scale) - 8,
@@ -180,18 +183,91 @@ impl RaylibBackend {
                 w: debug_w * self.display_debug_scale,
                 h: screen_height - font_size - font_size,
             };
-            canvas.draw_rectangle(rect_bg.x, rect_bg.y, rect_bg.w, rect_bg.h, color_bg);
+            canvas.draw_rectangle(rect_bg.x, rect_bg.y, rect_bg.w, rect_bg.h, light_bg);
             let mut layout = Frame::new(rect_bg);
+
             // Reset on every loop since I may change it along the way!
             layout.set_gap(1);
             layout.set_margin(1);
             layout.set_scale(self.display_debug_scale as f32);
             layout.fitting = Fitting::Clamp;
 
+            // Process each video memory bank
             for bank_index in 0..BANK_COUNT {
                 let bank = &t.banks[bank_index];
 
-                // acquire tile pixels.
+                // Label
+                layout.push_edge(Edge::Top, font_size / self.display_debug_scale, |frame| {
+                    let rect = frame.rect();
+                    let text = format!("bank {}", bank_index);
+                    canvas.draw_text(&text, rect.x + 1, rect.y, font_size, Color::WHITE);
+                });
+
+                // Color swatches
+                layout.push_edge(Edge::Top, 8, |frame| {
+                    // draw bg
+                    let rect = frame.rect();
+                    canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, dark_bg);
+                    let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
+                    for c in 0..COLORS_PER_PALETTE as usize {
+                        let color = bank.palette[c];
+                        frame.push_edge(Edge::Left, swatch_w, |swatch| {
+                            let rect = swatch.rect();
+                            canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, rl_color(color));
+                        });
+                    }
+                });
+
+                // Subpalettes
+                let columns = 4;
+                let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
+                let frame_h = (rows as i32 * 8) + 2;
+
+                layout.push_edge(Edge::Top, frame_h, |frame| {
+                    let column_w = frame.divide_width(columns);
+                    for column in 0..columns {
+                        frame.push_edge(Edge::Left, column_w, |frame_column| {
+                            frame_column.set_gap(0);
+                            frame_column.set_margin(0);
+                            // draw bg
+                            let rect = frame_column.rect();
+                            canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, dark_bg);
+                            // draw each row
+                            let row_h = frame_column.divide_height(rows);
+                            for row in 0..rows {
+                                frame_column.push_edge(Edge::Top, row_h, |frame_row| {
+                                    frame_row.set_gap(0);
+                                    frame_row.set_margin(1);
+                                    let subp_index =
+                                        ((row * COLORS_PER_TILE as u32) + column) as usize;
+                                    let subp = &bank.sub_palettes[subp_index];
+                                    // draw each swatch, but only if subpalette is defined
+                                    let current_item = (row * columns) + column;
+                                    if current_item < bank.sub_palette_count() as u32 {
+                                        let swatch_w =
+                                            frame_row.divide_width(COLORS_PER_TILE as u32);
+                                        for n in 0..COLORS_PER_TILE as usize {
+                                            frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
+                                                let r = swatch.rect();
+                                                let color_index = subp[n].0 as usize;
+                                                let color = bank.palette[color_index];
+                                                canvas.draw_rectangle(
+                                                    r.x,
+                                                    r.y,
+                                                    r.w,
+                                                    r.h,
+                                                    rl_color(color),
+                                                );
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Tiles
                 for tile_index in 0..TILE_COUNT {
                     let tile_x = tile_index % tiles_per_row;
                     let tile_y = tile_index / tiles_per_row;
@@ -214,73 +290,6 @@ impl RaylibBackend {
                     }
                 }
 
-                // Label
-                layout.push_edge(Edge::Top, font_size / self.display_debug_scale, |frame| {
-                    let rect = frame.rect();
-                    let text = format!("bank {}", bank_index);
-                    canvas.draw_text(&text, rect.x + 1, rect.y, font_size, Color::WHITE);
-                });
-
-                // Color swatches
-                layout.push_edge(Edge::Top, 8, |frame| {
-                    // draw bg
-                    let rect = frame.rect();
-                    canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, color_bg);
-                    let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
-                    for c in 0..COLORS_PER_PALETTE as usize {
-                        let color = bank.palette[c];
-                        frame.push_edge(Edge::Left, swatch_w, |swatch| {
-                            let rect = swatch.rect();
-                            canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, rl_color(color));
-                        });
-                    }
-                });
-
-                // Subpalettes
-                let columns = 4;
-                let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
-                let frame_h = (rows as i32 * 8) + 4;
-                layout.push_edge(Edge::Top, frame_h, |frame| {
-                    let column_w = frame.divide_width(columns);
-                    for column in 0..columns {
-                        frame.push_edge(Edge::Left, column_w, |frame_column| {
-                            frame_column.set_gap(0);
-                            frame_column.set_margin(1);
-                            // draw bg
-                            let rect = frame_column.rect();
-                            canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, color_bg);
-                            // draw each row
-                            let row_h = frame_column.divide_height(rows);
-                            for row in 0..rows {
-                                frame_column.push_edge(Edge::Top, row_h, |frame_row| {
-                                    frame_row.set_gap(0);
-                                    frame_row.set_margin(1);
-                                    let subp_index =
-                                        ((row * COLORS_PER_TILE as u32) + column) as usize;
-                                    let subp = &bank.sub_palettes[subp_index];
-                                    // draw each swatch
-                                    let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
-                                    for n in 0..COLORS_PER_TILE as usize {
-                                        frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
-                                            let r = swatch.rect();
-                                            let color_index = subp[n].0 as usize;
-                                            let color = bank.palette[color_index];
-                                            canvas.draw_rectangle(
-                                                r.x,
-                                                r.y,
-                                                r.w,
-                                                r.h,
-                                                rl_color(color),
-                                            );
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-
-                // tiles
                 layout.push_edge(Edge::Top, debug_h, |frame_tiles| {
                     self.debug_texture[bank_index]
                         .update_texture(&self.debug_pixels[bank_index])
@@ -288,7 +297,7 @@ impl RaylibBackend {
                     let r = frame_tiles.rect();
                     canvas.draw_texture_ex(
                         &self.debug_texture[bank_index],
-                        Vector2::new(r.x as f32, r.y as f32),
+                        Vector2::new((r.x - 1) as f32, r.y as f32),
                         0.0,
                         self.display_debug_scale as f32,
                         Color::WHITE,
