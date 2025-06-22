@@ -161,8 +161,10 @@ where
     /// taking into account the size of the gaps between each column.
     /// The number of columns stays consistent regardless of scale.
     pub fn divide_width(&self, columns: u32) -> T {
-        let gaps = self.gap * ((columns - 1) as f32 * self.scale);
-        let size = ((self.cursor.w - gaps) / (columns as f32)) / self.scale;
+        if columns <= 1 { return T::from_f32(self.cursor.w) }
+        let unscaled_gap = self.gap * (columns - 1) as f32;
+        let available_width = (self.cursor.w / self.scale) - unscaled_gap;
+        let size = available_width / columns as f32;
         T::from_f32(size)
     }
 
@@ -170,8 +172,10 @@ where
     /// taking into account the size of the gaps between each row.
     /// The number of rows stays consistent regardless of scale.
     pub fn divide_height(&self, rows: u32) -> T {
-        let gaps = self.gap * ((rows - 1) as f32 * self.scale);
-        let size = ((self.cursor.h - gaps) / (rows as f32)) / self.scale;
+        if rows <= 1 { return T::from_f32(self.cursor.h) }
+        let unscaled_gap = self.gap * (rows - 1) as f32;
+        let available_height = (self.cursor.h / self.scale) - unscaled_gap;
+        let size = available_height / rows as f32;
         T::from_f32(size)
     }
 
