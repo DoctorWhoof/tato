@@ -4,7 +4,7 @@ use core::array::from_fn;
 #[derive(Debug, Clone)]
 pub struct VideoMemory<const TILES: usize> {
     pub tiles: [Tile<2>; TILES],
-    pub palette: [ColorRGBA12; COLORS_PER_PALETTE as usize],
+    pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the main palette.
     pub sub_palettes: [[ColorID; COLORS_PER_TILE as usize]; SUBPALETTE_COUNT as usize],
     // Everything that needs to be counted

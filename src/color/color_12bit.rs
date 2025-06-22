@@ -2,13 +2,30 @@ use crate::*;
 
 /// Every color in the main palettes (FG and BG palette) is stored as 3 bits-per-channel,
 /// allowing a maximum of 512 possible colors packed into 12 bits (excluding alpha).
-/// Can be converted to ColorRGBA32 (8 bits per channel) for easy interop with graphics back-ends.
+/// Can be converted to RGBA32 (8 bits per channel) for easy interop with graphics back-ends.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct ColorRGBA12 {
+pub struct RGBA12 {
     pub data: u16,
 }
 
-impl ColorRGBA12 {
+impl RGBA12 {
+    pub const BG: RGBA12 = RGBA12::new(0, 0, 0, 0);
+    pub const BLACK: RGBA12 = RGBA12::new(0, 0, 0, 7);
+    pub const GRAY: RGBA12 = RGBA12::new(4, 4, 4, 7);
+    pub const WHITE: RGBA12 = RGBA12::new(7, 7, 7, 7);
+    pub const DARK_RED: RGBA12 = RGBA12::new(3, 0, 0, 7);
+    pub const RED: RGBA12 = RGBA12::new(5, 2, 2, 7);
+    pub const LIGHT_RED: RGBA12 = RGBA12::new(7, 5, 5, 7);
+    pub const ORANGE: RGBA12 = RGBA12::new(6, 4, 1, 7);
+    pub const YELLOW: RGBA12 = RGBA12::new(7, 6, 3, 7);
+    pub const DARK_GREEN: RGBA12 = RGBA12::new(0, 2, 1, 7);
+    pub const GREEN: RGBA12 = RGBA12::new(2, 4, 2, 7);
+    pub const LIGHT_GREEN: RGBA12 = RGBA12::new(4, 6, 3, 7);
+    pub const DARK_BLUE: RGBA12 = RGBA12::new(0, 1, 3, 7);
+    pub const BLUE: RGBA12 = RGBA12::new(1, 2, 6, 7);
+    pub const LIGHT_BLUE: RGBA12 = RGBA12::new(4, 6, 7, 7);
+    pub const PINK: RGBA12 = RGBA12::new(6, 3, 6, 7);
+
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         assert!(r < 8, err!("Exceeded maximum value for Red channel"));
         assert!(g < 8, err!("Exceeded maximum value for Green channel"));
@@ -58,8 +75,8 @@ impl ColorRGBA12 {
     }
 }
 
-impl From<ColorRGBA12> for ColorRGBA32 {
-    fn from(color: ColorRGBA12) -> Self {
+impl From<RGBA12> for RGBA32 {
+    fn from(color: RGBA12) -> Self {
         // Extract the 3-bit color components
         let r = ((color.data >> 6) & 0x7) as u8;
         let g = ((color.data >> 3) & 0x7) as u8;
@@ -72,13 +89,13 @@ impl From<ColorRGBA12> for ColorRGBA32 {
             r: (r * 36) + (r / 2),
             g: (g * 36) + (g / 2),
             b: (b * 36) + (b / 2),
-            a: (a * 36) + (a / 2)
+            a: (a * 36) + (a / 2),
         }
     }
 }
 
-impl From<ColorRGBA32> for ColorRGBA12 {
-    fn from(color: ColorRGBA32) -> Self {
+impl From<RGBA32> for RGBA12 {
+    fn from(color: RGBA32) -> Self {
         // Scale down 8-bit values (0-255) to 3-bit values (0-7)
         // Using (value + 16) / 32 for rounding to nearest value
         let r = ((color.r as u16 + 16) >> 5).min(7);
@@ -93,9 +110,15 @@ impl From<ColorRGBA32> for ColorRGBA12 {
     }
 }
 
-impl core::fmt::Display for ColorRGBA12 {
+impl core::fmt::Display for RGBA12 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "ColorRGBA12(r: {}, g: {}, b: {}, a: {})",
-            self.r(), self.g(), self.b(), self.a())
+        write!(
+            f,
+            "RGBA12(r: {}, g: {}, b: {}, a: {})",
+            self.r(),
+            self.g(),
+            self.b(),
+            self.a()
+        )
     }
 }

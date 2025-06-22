@@ -53,62 +53,21 @@ pub const BLUE: ColorID = ColorID(13);
 pub const LIGHT_BLUE: ColorID = ColorID(14);
 pub const PINK: ColorID = ColorID(15);
 
-/// Adjusted from the "pure" 512 color palette to be less saturated and less contrasty.
-pub const PALETTE_DEFAULT: [ColorRGBA12; 16] = [
-    ColorRGBA12::new(0, 0, 0, 0), // BG, 0
-    ColorRGBA12::new(0, 0, 0, 7), // Black, 1
-    ColorRGBA12::new(4, 4, 4, 7), // Gray, 2
-    ColorRGBA12::new(7, 7, 7, 7), // White, 3
-    ColorRGBA12::new(3, 0, 0, 7), // Dark Red, 4
-    ColorRGBA12::new(5, 2, 2, 7), // Red, 5
-    ColorRGBA12::new(7, 5, 5, 7), // Light Red, 6
-    ColorRGBA12::new(6, 4, 1, 7), // Orange, 7
-    ColorRGBA12::new(7, 6, 3, 7), // Yellow, 8
-    ColorRGBA12::new(0, 2, 1, 7), // Dark Green, 9
-    ColorRGBA12::new(2, 4, 2, 7), // Green, 10
-    ColorRGBA12::new(4, 6, 3, 7), // Green Light, 11
-    ColorRGBA12::new(0, 1, 3, 7), // Dark Blue, 12
-    ColorRGBA12::new(1, 2, 6, 7), // Blue, 13
-    ColorRGBA12::new(4, 6, 7, 7), // Light Blue, 14
-    ColorRGBA12::new(6, 3, 6, 7), // Pink, 15
+pub const PALETTE_DEFAULT: [RGBA12; 16] = [
+    RGBA12::BG,
+    RGBA12::BLACK,
+    RGBA12::GRAY,
+    RGBA12::WHITE,
+    RGBA12::DARK_RED,
+    RGBA12::RED,
+    RGBA12::LIGHT_RED,
+    RGBA12::ORANGE,
+    RGBA12::YELLOW,
+    RGBA12::DARK_GREEN,
+    RGBA12::GREEN,
+    RGBA12::LIGHT_GREEN,
+    RGBA12::DARK_BLUE,
+    RGBA12::BLUE,
+    RGBA12::LIGHT_BLUE,
+    RGBA12::PINK,
 ];
-
-
-// /// "Pure" 3 bits per channel palette. Very bright and saturated.
-// pub const PALETTE_DEFAULT: [ColorRGBA12; 16] = [
-//     ColorRGBA12::new(0, 0, 0, 7), // BG, 0
-//     ColorRGBA12::new(0, 0, 0, 7), // Black, 1
-//     ColorRGBA12::new(3, 3, 3, 7), // Gray, 2
-//     ColorRGBA12::new(7, 7, 7, 7), // White, 3
-//     ColorRGBA12::new(3, 1, 1, 7), // Dark Red, 4
-//     ColorRGBA12::new(5, 1, 1, 7), // Red, 5
-//     ColorRGBA12::new(6, 4, 3, 7), // Light Red, 6
-//     ColorRGBA12::new(5, 3, 0, 7), // Orange, 7
-//     ColorRGBA12::new(6, 6, 1, 7), // Yellow, 8
-//     ColorRGBA12::new(1, 2, 1, 7), // Dark Green, 9
-//     ColorRGBA12::new(1, 4, 1, 7), // Green, 10
-//     ColorRGBA12::new(3, 6, 3, 7), // Green Light, 11
-//     ColorRGBA12::new(1, 1, 3, 7), // Dark Blue, 12
-//     ColorRGBA12::new(1, 2, 6, 7), // Blue, 13
-//     ColorRGBA12::new(3, 6, 6, 7), // Light Blue, 14
-//     ColorRGBA12::new(6, 2, 6, 7), // Pink, 15
-// ];
-
-// pub const PALETTE_ORIGINAL: [ColorRGB24; 16] = [
-//     ColorRGB24 { r:   0, g:   0, b:   0 }, // BG, 0
-//     ColorRGB24 { r:  10, g:  10, b:  10 }, // Black, 1
-//     ColorRGB24 { r: 122, g: 122, b: 122 }, // Gray, 2
-//     ColorRGB24 { r: 228, g: 228, b: 228 }, // White, 3
-//     ColorRGB24 { r: 110, g:  42, b:  20 }, // Dark Red, 4
-//     ColorRGB24 { r: 192, g:  64, b:  64 }, // Red, 5
-//     ColorRGB24 { r: 212, g: 156, b: 148 }, // Light Red, 6
-//     ColorRGB24 { r: 178, g: 126, b:  20 }, // Orange, 7
-//     ColorRGB24 { r: 212, g: 202, b:  46 }, // Yellow, 8
-//     ColorRGB24 { r:  42, g:  72, b:  48 }, // Dark Green, 9
-//     ColorRGB24 { r:  46, g: 154, b:  46 }, // Green, 10
-//     ColorRGB24 { r: 140, g: 202, b: 126 }, // Green Light, 11
-//     ColorRGB24 { r:  40, g:  40, b: 126 }, // Dark Blue, 12
-//     ColorRGB24 { r:  64, g:  72, b: 212 }, // Blue, 13
-//     ColorRGB24 { r: 124, g: 176, b: 228 }, // Light Blue, 14
-//     ColorRGB24 { r: 188, g:  88, b: 148 }, // Pink, 15
-// ];

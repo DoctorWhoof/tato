@@ -13,14 +13,8 @@ pub struct DrawBundle {
 #[derive(Debug)]
 pub struct VideoChip {
     /// The color rendered if resulting pixel is transparent
-    pub bg_color: ColorID,
-    // /// The main FG palette with 16 colors. Used by sprites.
-    // pub fg_palette: [ColorRGBA12; COLORS_PER_PALETTE as usize],
-    // /// The main BG palette with 16 colors. Used by BG tiles.
-    // pub bg_palette: [ColorRGBA12; COLORS_PER_PALETTE as usize],
-    // /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
-    // pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; SUBPALETTE_COUNT as usize],
-    /// Maps i16 coordinates into the u8 range, bringing sprites "outside the screen" into view.
+    pub bg_color: RGBA12,
+    /// Brings sprites "outside the screen" into view.
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
     pub wrap_bg: bool,
@@ -35,12 +29,8 @@ pub struct VideoChip {
     pub irq_line: Option<VideoIRQ>,
     pub fg_tile_bank: u8,
     pub bg_tile_bank: u8,
-    // Pixel data for all tiles, stored as palette indices.
-    // pub tiles: &'a [Tile<2>; TILE_COUNT],
-    // pub tile_mem: VideoMemory<512, 4096>,
     // ---------------------- Main Data ----------------------
     pub(crate) sprite_gen: SpriteGenerator,
-    // pub(crate) scanlines: [[Cluster<4>; 256 / PIXELS_PER_CLUSTER as usize]; MAX_LINES],
     pub(crate) w: u16,
     pub(crate) h: u16,
     // ---------------------- Bookkeeping ----------------------
@@ -49,11 +39,8 @@ pub struct VideoChip {
     pub(crate) view_top: u16,
     pub(crate) view_right: u16,
     pub(crate) view_bottom: u16,
-    // Internal timer. Useful for IRQ manipulation
+    // Internal timer.
     frame_count: usize,
-    // // Next available palette.
-    // palette_head: u8,
-    // sub_palette_head: u8,
 }
 
 impl VideoChip {
@@ -65,7 +52,7 @@ impl VideoChip {
         );
 
         let mut result = Self {
-            bg_color: GRAY,
+            bg_color: RGBA12::new(0, 0, 0, 7), // TODO: replace with RGBA12::BLACK
             wrap_sprites: true,
             wrap_bg: true,
             sprite_gen: SpriteGenerator::new(),
@@ -129,7 +116,7 @@ impl VideoChip {
 
     /// Resets the chip to its initial state.
     pub fn reset_all(&mut self) {
-        self.bg_color = GRAY;
+        self.bg_color = RGBA12::new(0, 0, 0, 7); // TODO: replace with RGBA12::BLACK
         self.wrap_sprites = true;
         self.frame_count = 0;
         self.fg_tile_bank = 0;
@@ -138,26 +125,6 @@ impl VideoChip {
         self.reset_viewport();
         self.reset_sprites();
     }
-
-    // pub fn reset_palettes(&mut self) {
-    //     self.fg_palette = from_fn(|i| {
-    //         if i < PALETTE_DEFAULT.len() {
-    //             PALETTE_DEFAULT[i]
-    //         } else {
-    //             ColorRGBA12::default()
-    //         }
-    //     });
-    //     self.bg_palette = from_fn(|i| {
-    //         if i < PALETTE_DEFAULT.len() {
-    //             PALETTE_DEFAULT[i]
-    //         } else {
-    //             ColorRGBA12::default()
-    //         }
-    //     });
-    //     self.local_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));
-    //     self.sub_palette_head = 0;
-    //     self.palette_head = 0;
-    // }
 
     pub fn reset_scroll(&mut self) {
         self.scroll_x = 0;
@@ -174,22 +141,6 @@ impl VideoChip {
     pub fn reset_sprites(&mut self) {
         self.sprite_gen.reset();
     }
-
-    // pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
-    //     debug_assert!(
-    //         index.0 < SUBPALETTE_COUNT,
-    //         err!("Invalid local palette index, must be less than PALETTE_COUNT")
-    //     );
-    //     self.local_palettes[index.0 as usize] = colors;
-    // }
-
-    // pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
-    //     assert!(self.sub_palette_head < 16, err!("PALETTE_COUNT exceeded"));
-    //     let result = self.sub_palette_head;
-    //     self.local_palettes[self.sub_palette_head as usize] = colors;
-    //     self.sub_palette_head += 1;
-    //     PaletteID(result)
-    // }
 
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
     /// also provide various tile flags, like flipping, and specify a palette id.

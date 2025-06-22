@@ -28,8 +28,8 @@ pub struct PixelIter<'a> {
     pub bg_banks: [&'a BGMap<BG_LEN>; 16],
     pub scroll_x: i16,
     pub scroll_y: i16,
-    pub scanline: Scanline,   // current sprite scanline
-    pub bg_color: ColorRGBA12, // Background color
+    pub scanline: Scanline,    // current sprite scanline
+    pub bg_color: RGBA12, // Background color
 }
 
 pub struct ScreenCoords {
@@ -38,7 +38,6 @@ pub struct ScreenCoords {
 }
 
 impl<'a> PixelIter<'a> {
-    // pub fn new(vid: &'a VideoChip, tiles: &[&'a [Tile<2>]], bgs: &[&'a BGMap<BG_LEN>]) -> Self {
     pub fn new(
         vid: &'a VideoChip,
         video_mem: &'a [&'a VideoMemory<TILE_COUNT>],
@@ -81,7 +80,7 @@ impl<'a> PixelIter<'a> {
             scroll_x: vid.scroll_x,
             scroll_y: vid.scroll_y,
             subpixel_index: 0,
-            bg_color: video_mem[0].palette[vid.bg_color.id()],
+            bg_color: vid.bg_color,
             scanline: vid.sprite_gen.scanlines[0].clone(),
         };
         // Run Y IRQ on first line before anything else
@@ -108,8 +107,6 @@ impl<'a> PixelIter<'a> {
             func(
                 self,
                 self.vid,
-                // self.tile_banks[self.fg_tile_bank],
-                // self.tile_banks[self.bg_tile_bank as usize],
                 self.bg_banks[self.bg_map_bank as usize],
             );
         }
@@ -150,7 +147,7 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline]
-    fn get_pixel_color(&self) -> ColorRGBA12 {
+    fn get_pixel_color(&self) -> RGBA12 {
         // If BG Tile is set to FG and is not zero, return early
         if self.bg_flags.is_fg() && !self.force_bg_color {
             let sub_palette = self.bg_flags.palette().0 as usize;
@@ -160,7 +157,7 @@ impl<'a> PixelIter<'a> {
             let global_idx = bank.sub_palettes[sub_palette][color as usize].0 as usize;
             let color = bank.palette[global_idx];
             if color.a() > 0 {
-                return color
+                return color;
             }
         }
 
@@ -245,7 +242,7 @@ impl<'a> PixelIter<'a> {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (ColorRGBA32, ScreenCoords);
+    type Item = (RGBA32, ScreenCoords);
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -255,7 +252,7 @@ impl<'a> Iterator for PixelIter<'a> {
 
         // Run X IRQ on every pixel
         // TODO: This hits performance hard! Disabling for now,
-        // think of stategies. Maybe per "new bg cluster", instead of
+        // thinking of strategies. Maybe per "new bg cluster", instead of
         // every pixel?
         // if let Some(func) = self.irq_x {
         //     func(
@@ -272,10 +269,10 @@ impl<'a> Iterator for PixelIter<'a> {
             || self.y >= self.vid.view_bottom as u16;
 
         let color = if is_outside_viewport {
-            ColorRGBA32::from(self.bg_color)
+            RGBA32::from(self.bg_color)
         } else {
             // Check for foreground pixel, compensating for crop_x
-            ColorRGBA32::from(self.get_pixel_color())
+            RGBA32::from(self.get_pixel_color())
         };
 
         // // Cache result coordinates
