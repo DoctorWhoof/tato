@@ -20,22 +20,22 @@ pub const PATCH_TILESET: TilesetData = TilesetData {
     ]),
 };
 
-pub const PATCH_COLORS: [Color12Bit; 15] = [
-    Color12Bit::new(0, 0, 0, 0),
-    Color12Bit::new(5, 5, 6, 7),
-    Color12Bit::new(3, 3, 3, 7),
-    Color12Bit::new(1, 1, 2, 7),
-    Color12Bit::new(7, 7, 2, 7),
-    Color12Bit::new(7, 4, 6, 7),
-    Color12Bit::new(3, 6, 7, 7),
-    Color12Bit::new(3, 6, 2, 7),
-    Color12Bit::new(7, 6, 5, 7),
-    Color12Bit::new(0, 0, 0, 7),
-    Color12Bit::new(7, 4, 1, 7),
-    Color12Bit::new(3, 3, 7, 7),
-    Color12Bit::new(2, 2, 4, 7),
-    Color12Bit::new(3, 2, 2, 7),
-    Color12Bit::new(4, 2, 4, 7),
+pub const PATCH_COLORS: [ColorRGBA12; 15] = [
+    ColorRGBA12::new(0, 0, 0, 0),
+    ColorRGBA12::new(5, 5, 6, 7),
+    ColorRGBA12::new(3, 3, 3, 7),
+    ColorRGBA12::new(1, 1, 2, 7),
+    ColorRGBA12::new(7, 7, 2, 7),
+    ColorRGBA12::new(7, 4, 6, 7),
+    ColorRGBA12::new(3, 6, 7, 7),
+    ColorRGBA12::new(3, 6, 2, 7),
+    ColorRGBA12::new(7, 6, 5, 7),
+    ColorRGBA12::new(0, 0, 0, 7),
+    ColorRGBA12::new(7, 4, 1, 7),
+    ColorRGBA12::new(3, 3, 7, 7),
+    ColorRGBA12::new(2, 2, 4, 7),
+    ColorRGBA12::new(3, 2, 2, 7),
+    ColorRGBA12::new(4, 2, 4, 7),
 ];
 
 pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];

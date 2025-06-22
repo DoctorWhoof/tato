@@ -22,22 +22,22 @@ impl SceneA {
 
         // Palette test - defines BG palette with a golden tint!
         t.banks[1].palette = [
-            Color12Bit::new(0, 0, 0, 0),
-            Color12Bit::new(2, 1, 1, 7),
-            Color12Bit::new(3, 1, 1, 7),
-            Color12Bit::new(4, 2, 1, 7),
-            Color12Bit::new(4, 2, 1, 7),
-            Color12Bit::new(5, 2, 2, 7),
-            Color12Bit::new(5, 3, 2, 7),
-            Color12Bit::new(5, 4, 2, 7),
-            Color12Bit::new(5, 4, 3, 7),
-            Color12Bit::new(6, 4, 3, 7),
-            Color12Bit::new(6, 4, 4, 7),
-            Color12Bit::new(6, 5, 4, 7),
-            Color12Bit::new(6, 6, 4, 7),
-            Color12Bit::new(6, 6, 4, 7),
-            Color12Bit::new(6, 6, 5, 7),
-            Color12Bit::new(6, 6, 5, 7),
+            ColorRGBA12::new(0, 0, 0, 0),
+            ColorRGBA12::new(2, 1, 1, 7),
+            ColorRGBA12::new(3, 1, 1, 7),
+            ColorRGBA12::new(4, 2, 1, 7),
+            ColorRGBA12::new(4, 2, 1, 7),
+            ColorRGBA12::new(5, 2, 2, 7),
+            ColorRGBA12::new(5, 3, 2, 7),
+            ColorRGBA12::new(5, 4, 2, 7),
+            ColorRGBA12::new(5, 4, 3, 7),
+            ColorRGBA12::new(6, 4, 3, 7),
+            ColorRGBA12::new(6, 4, 4, 7),
+            ColorRGBA12::new(6, 5, 4, 7),
+            ColorRGBA12::new(6, 6, 4, 7),
+            ColorRGBA12::new(6, 6, 4, 7),
+            ColorRGBA12::new(6, 6, 5, 7),
+            ColorRGBA12::new(6, 6, 5, 7),
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID

@@ -116,6 +116,8 @@ impl RaylibBackend {
 
     pub fn render(&mut self, t: &mut Tato) {
         let time = std::time::Instant::now();
+        let mouse_x = self.ray.get_mouse_x();
+        let mouse_y = self.ray.get_mouse_y();
 
         if self.ray.is_key_pressed(KeyboardKey::KEY_TAB) {
             self.display_debug = !self.display_debug
@@ -176,7 +178,7 @@ impl RaylibBackend {
         if self.display_debug {
             let dark_bg = Color::new(32, 32, 32, 255);
             let light_bg = Color::new(48, 48, 48, 255);
-            let font_size = 8;
+            let font_size = 8 * self.display_debug_scale;
             let rect_bg = Rect {
                 x: screen_width - (debug_w as i32 * self.display_debug_scale) - 8,
                 y: font_size,
@@ -195,6 +197,7 @@ impl RaylibBackend {
             // Process each video memory bank
             for bank_index in 0..BANK_COUNT {
                 let bank = &t.banks[bank_index];
+                let mut mouse_over_text = String::new();
 
                 // Label
                 layout.push_edge(Edge::Top, font_size / self.display_debug_scale, |frame| {
@@ -214,6 +217,17 @@ impl RaylibBackend {
                         frame.push_edge(Edge::Left, swatch_w, |swatch| {
                             let rect = swatch.rect();
                             canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, rl_color(color));
+                            // mouse over
+                            if rect.contains(mouse_x, mouse_y) {
+                                mouse_over_text = format!(
+                                    "Color {} = {}, {}, {}, {}",
+                                    c,
+                                    color.r(),
+                                    color.g(),
+                                    color.b(),
+                                    color.a()
+                                );
+                            }
                         });
                     }
                 });
@@ -261,6 +275,18 @@ impl RaylibBackend {
                                             });
                                         }
                                     }
+                                    //mouse over
+                                    if frame_row.rect().contains(mouse_x, mouse_y) {
+                                        let subp_text = format!(
+                                            "[{}]",
+                                            subp.iter()
+                                                .map(|color_id| color_id.0.to_string())
+                                                .collect::<Vec<String>>()
+                                                .join(",")
+                                        );
+                                        mouse_over_text =
+                                            format!("Sub Palette {} = Indices {}", subp_index, subp_text)
+                                    }
                                 });
                             }
                         });
@@ -302,13 +328,38 @@ impl RaylibBackend {
                         self.display_debug_scale as f32,
                         Color::WHITE,
                     );
+                    // mouse over
+                    if r.contains(mouse_x, mouse_y){
+                        let col = ((mouse_x - r.x) / TILE_SIZE as i32) / self.display_debug_scale;
+                        let row = ((mouse_y - r.y) / TILE_SIZE as i32) / self.display_debug_scale;
+                        let tile_index = (row * tiles_per_row as i32) + col;
+                        if tile_index < bank.tile_count() as i32 {
+                            mouse_over_text = format!("Tile {}", tile_index);
+                        }
+                    }
                 });
+
+                // Mouse over
+                if !mouse_over_text.is_empty() {
+                    let text_w = canvas.measure_text(&mouse_over_text, font_size);
+                    let text_x = mouse_x - text_w - 12;
+                    let text_y = mouse_y + 12;
+                    let pad = self.display_debug_scale;
+                    canvas.draw_rectangle(
+                        text_x - pad,
+                        text_y,
+                        text_w + pad + pad,
+                        font_size,
+                        Color::BLACK,
+                    );
+                    canvas.draw_text(&mouse_over_text, text_x, text_y, font_size, Color::WHITE);
+                }
             }
         }
     }
 }
 
-fn rl_color(color: Color12Bit) -> Color {
+fn rl_color(color: ColorRGBA12) -> Color {
     Color::new(
         ((color.r() as u16 * 255) / 7) as u8,
         ((color.g() as u16 * 255) / 7) as u8,

@@ -10,8 +10,9 @@
 [.] Debug views! Display all loaded tiles, colors and subpalettes
     [x] Display all banks
     [x] Display palette colors
---->[ ] Display subpalettes.
-        [ ] New: Use tato_layout, positioning everything is a pain!
+    [x] Display subpalettes.
+        [x] New: Use tato_layout, positioning everything is a pain!
+--->[ ] Mouse over information
 
 ### Pipeline:
 
@@ -30,11 +31,11 @@
     . Wait until external tiles and Tile Maps are more stable
 
 [ ] Tilemaps
---->[ ] Correctly map subpalettes when loading into Assets
+    [?] Correctly map subpalettes when loading into Assets. Looks done? Needs more testing
 
 [ ] Anims: Update to latest Assets struct
 
-[ ] Fonts: Replace text rendering using Anim to use Fonts
+[ ] Fonts: Replace text rendering using Anim to use Fonts. Update: maybe tilemaps, to allow flags?
 
 [.] Finish converting Anim data to array of tilemaps in tato_pipe
     [x] "draw_patch" will then take a map as a parameter, which will bring in tile flags.
@@ -47,3 +48,4 @@
     . The problem is that, depending on order of tile processing, too many unnecessary palettes are generated
     . Option 1: pre-process the palette using the whole image, instead of per tile?
     . Option 2: Try Option<u8> when building color hashes, and if when inserting a color one slot is None, it is still available and we don't need a new tile hash, we can modify the existing one instead? More complex, Let's try option 1 instead first...
+--->[ ] Almost there! Only remaining issue is palette swapped tiles can get flagged as separate tiles. Instead of the actual color index, the Hashmap needs to store a "difference map" that compares a pixel to its rightmost neighbor (wraps around). 1 is "different", 0 is "same".

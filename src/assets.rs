@@ -23,7 +23,7 @@ pub struct Assets {
     // "flat" storage for cells used by any asset type.
     pub cells: [Cell; 2048],
 
-    pub colors: [Color12Bit; 256],
+    pub colors: [ColorRGBA12; 256],
     pub sub_palettes: [[u8; 4]; 256],
     // Everything that needs to be counted.
     pub(crate) cell_head: u16,
@@ -41,7 +41,7 @@ impl Assets {
             tilesets: from_fn(|_| Tileset::default()),
             anims: from_fn(|_| AnimEntry::default()),
             maps: from_fn(|_| TilemapEntry::default()),
-            colors: from_fn(|_| Color12Bit::default()),
+            colors: from_fn(|_| ColorRGBA12::default()),
             sub_palettes: from_fn(|_| Default::default()),
             // "Flat" entry data for maps, anims and fonts
             cells: from_fn(|_| Cell::default()),
