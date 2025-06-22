@@ -19,7 +19,7 @@ pub struct VideoChip {
     // /// The main BG palette with 16 colors. Used by BG tiles.
     // pub bg_palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     // /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the global palette.
-    // pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+    // pub local_palettes: [[ColorID; COLORS_PER_TILE as usize]; SUBPALETTE_COUNT as usize],
     /// Maps i16 coordinates into the u8 range, bringing sprites "outside the screen" into view.
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
@@ -177,7 +177,7 @@ impl VideoChip {
 
     // pub fn set_subpalette(&mut self, index: PaletteID, colors: [ColorID; COLORS_PER_TILE as usize]) {
     //     debug_assert!(
-    //         index.0 < LOCAL_PALETTE_COUNT,
+    //         index.0 < SUBPALETTE_COUNT,
     //         err!("Invalid local palette index, must be less than PALETTE_COUNT")
     //     );
     //     self.local_palettes[index.0 as usize] = colors;

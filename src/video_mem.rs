@@ -6,7 +6,7 @@ pub struct VideoMemory<const TILES: usize> {
     pub tiles: [Tile<2>; TILES],
     pub palette: [Color12Bit; COLORS_PER_PALETTE as usize],
     /// Local Palettes, 16 with 4 ColorIDs each. Each ID referes to a color in the main palette.
-    pub sub_palettes: [[ColorID; COLORS_PER_TILE as usize]; LOCAL_PALETTE_COUNT as usize],
+    pub sub_palettes: [[ColorID; COLORS_PER_TILE as usize]; SUBPALETTE_COUNT as usize],
     // Everything that needs to be counted
     tile_head: u8,
     palette_head: u8,
@@ -47,14 +47,14 @@ impl<const TILES: usize> VideoMemory<TILES> {
         colors: [ColorID; COLORS_PER_TILE as usize],
     ) {
         debug_assert!(
-            index.0 < LOCAL_PALETTE_COUNT,
+            index.0 < SUBPALETTE_COUNT,
             err!("Invalid local palette index, must be less than PALETTE_COUNT")
         );
         self.sub_palettes[index.0 as usize] = colors;
     }
 
     pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
-        assert!(self.sub_palette_head < 16, err!("PALETTE_COUNT exceeded"));
+        assert!(self.sub_palette_head < 16, err!("COLORS_PER_PALETTE exceeded"));
         let result = self.sub_palette_head;
         self.sub_palettes[self.sub_palette_head as usize] = colors;
         self.sub_palette_head += 1;
