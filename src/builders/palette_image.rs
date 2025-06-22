@@ -89,10 +89,10 @@ impl PalettizedImg {
                     let a = buf[buf_index + 3];
 
                     let rgb_color = if a < 255 {
-                        ColorRGBA12::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
+                        RGBA12::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
                     } else {
-                        let color_rgb = ColorRGBA32 { r, g, b, a };
-                        ColorRGBA12::from(color_rgb)
+                        let color_rgb = RGBA32 { r, g, b, a };
+                        RGBA12::from(color_rgb)
                     };
 
                     // Result

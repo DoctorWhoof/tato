@@ -256,14 +256,14 @@ impl Pipeline {
         let palette = &mut self.palettes.get(tileset.palette_id.0 as usize).unwrap();
         if palette.colors.len() > 0 {
             code.write_line(&format!(
-                "pub const {}_COLORS: [ColorRGBA12; {}] = [",
+                "pub const {}_COLORS: [RGBA12; {}] = [",
                 palette.name.to_uppercase(),
                 palette.colors.len()
             ));
 
             for color in &palette.colors {
                 code.write_line(&format!(
-                    "ColorRGBA12::new({}, {}, {}, {}),",
+                    "RGBA12::new({}, {}, {}, {}),",
                     color.r(),
                     color.g(),
                     color.b(),

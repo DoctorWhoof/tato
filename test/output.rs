@@ -7,12 +7,12 @@ pub const PALETTE_FG_TILESET: TilesetData = TilesetData {
     sub_palettes: None,
 };
 
-pub const PALETTE_FG_COLORS: [ColorRGBA12; 5] = [
-    ColorRGBA12::new(0, 0, 0, 0),
-    ColorRGBA12::new(0, 0, 0, 7),
-    ColorRGBA12::new(7, 5, 5, 7),
-    ColorRGBA12::new(3, 3, 5, 7),
-    ColorRGBA12::new(5, 5, 5, 7),
+pub const PALETTE_FG_COLORS: [RGBA12; 5] = [
+    RGBA12::new(0, 0, 0, 0),
+    RGBA12::new(0, 0, 0, 7),
+    RGBA12::new(7, 5, 5, 7),
+    RGBA12::new(3, 3, 5, 7),
+    RGBA12::new(5, 5, 5, 7),
 ];
 
 pub const SPY_IDLE_ANIM: Anim = Anim {

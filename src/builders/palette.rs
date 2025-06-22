@@ -8,8 +8,8 @@ use tato_video::*;
 #[derive(Debug, Clone)]
 pub(crate) struct PaletteBuilder {
     pub name: String,
-    pub colors: Vec<ColorRGBA12>,
-    pub color_hash: HashMap<ColorRGBA12, u8>,
+    pub colors: Vec<RGBA12>,
+    pub color_hash: HashMap<RGBA12, u8>,
     id: u8,
 }
 
@@ -23,7 +23,7 @@ impl PaletteBuilder {
         }
     }
 
-    pub fn push(&mut self, color: ColorRGBA12) {
+    pub fn push(&mut self, color: RGBA12) {
         if self.colors.len() == COLORS_PER_PALETTE as usize {
             panic!("Palette error: capacity of {} exceeded.", COLORS_PER_PALETTE)
         }
