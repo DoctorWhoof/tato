@@ -12,6 +12,7 @@ pub struct RaylibBackend {
     debug_pixels: Vec<Vec<u8>>,
     render_texture: Texture2D,
     debug_texture: Vec<Texture2D>,
+    font: Font,
 }
 
 impl RaylibBackend {
@@ -27,6 +28,7 @@ impl RaylibBackend {
             .build();
         // Config raylib
         ray.set_target_fps(target_fps as u32);
+        let font = ray.load_font(&thread, "examples/_backend/raylib/src/font.ttf").unwrap();
         unsafe {
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
             // Disable ESC to close window. "Cmd + Q" still works!
@@ -57,6 +59,7 @@ impl RaylibBackend {
             debug_pixels,
             render_texture,
             debug_texture,
+            font,
         }
     }
 
@@ -176,9 +179,9 @@ impl RaylibBackend {
         // ---------------------- Copy tile pixels to debug texture ----------------------
 
         if self.display_debug {
+            let font_size = 10 * self.display_debug_scale;
             let dark_bg = Color::new(32, 32, 32, 255);
             let light_bg = Color::new(48, 48, 48, 255);
-            let font_size = 8 * self.display_debug_scale;
             let rect_bg = Rect {
                 x: screen_width - (debug_w as i32 * self.display_debug_scale) - 8,
                 y: font_size,
@@ -204,7 +207,14 @@ impl RaylibBackend {
                     let rect = frame.rect();
                     let text = format!("bank {}", bank_index);
                     let gap = self.display_debug_scale;
-                    canvas.draw_text(&text, rect.x + gap, rect.y, font_size, Color::WHITE);
+                    canvas.draw_text_ex(
+                        &self.font,
+                        &text,
+                        Vector2::new((rect.x + gap) as f32, rect.y as f32),
+                        font_size as f32,
+                        1.0,
+                        Color::WHITE,
+                    );
                 });
 
                 // Color swatches
@@ -285,8 +295,10 @@ impl RaylibBackend {
                                                 .collect::<Vec<String>>()
                                                 .join(",")
                                         );
-                                        mouse_over_text =
-                                            format!("Sub Palette {} = Indices {}", subp_index, subp_text)
+                                        mouse_over_text = format!(
+                                            "Sub Palette {} = Indices {}",
+                                            subp_index, subp_text
+                                        )
                                     }
                                 });
                             }
@@ -330,7 +342,7 @@ impl RaylibBackend {
                         Color::WHITE,
                     );
                     // mouse over
-                    if r.contains(mouse_x, mouse_y){
+                    if r.contains(mouse_x, mouse_y) {
                         let col = ((mouse_x - r.x) / TILE_SIZE as i32) / self.display_debug_scale;
                         let row = ((mouse_y - r.y) / TILE_SIZE as i32) / self.display_debug_scale;
                         let tile_index = (row * tiles_per_row as i32) + col;
@@ -342,18 +354,25 @@ impl RaylibBackend {
 
                 // Mouse over
                 if !mouse_over_text.is_empty() {
-                    let text_w = canvas.measure_text(&mouse_over_text, font_size);
-                    let text_x = mouse_x - text_w - 12;
+                    let size = self.font.measure_text(&mouse_over_text, font_size as f32, 1.0);
+                    let text_x = mouse_x - size.x as i32 - 12;
                     let text_y = mouse_y + 12;
                     let pad = self.display_debug_scale;
                     canvas.draw_rectangle(
                         text_x - pad,
                         text_y,
-                        text_w + pad + pad,
+                        size.x as i32 + pad + pad,
                         font_size,
                         Color::BLACK,
                     );
-                    canvas.draw_text(&mouse_over_text, text_x, text_y, font_size, Color::WHITE);
+                    canvas.draw_text_ex(
+                        &self.font,
+                        &mouse_over_text,
+                        Vector2::new(text_x as f32, text_y as f32),
+                        font_size as f32,
+                        1.0,
+                        Color::WHITE,
+                    );
                 }
             }
         }

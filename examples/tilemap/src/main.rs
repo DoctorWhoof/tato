@@ -6,10 +6,11 @@ use assets::*;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
-    tato.video.bg_color = RGBA12::new(0, 0, 0, 7);
+    tato.video.bg_color = RGBA12::new(0, 0, 0, 0);
 
     // Populate tileset
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
+    let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
     let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
     let map_patch = tato.new_tilemap(tileset, &PATCH_MAP);
     let map_smileys = tato.new_tilemap(tileset, &SMILEYS_MAP);

@@ -135,7 +135,7 @@ impl Tato {
 
         // Sub palette processing
         // Maps indices starting at zero to the actual current color positions in the bank
-        let sub_palettes_start = assets.sub_palette_head;
+        let sub_palettes_start = bank.sub_palette_count();
         let mut sub_palettes_len = 0;
         if let Some(sub_palettes) = data.sub_palettes {
             for sub_palette in sub_palettes {
@@ -200,10 +200,13 @@ impl Tato {
             TilemapEntry { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
+        println!("{}", tileset.sub_palettes_start);
         for (i, &cell) in data.cells.iter().enumerate() {
+            let mut flags = cell.flags;
+            flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
             assets.cells[data_start as usize + i] = Cell {
                 id: TileID(cell.id.0 + tileset_offset), //
-                flags: cell.flags,
+                flags,
             };
         }
 
