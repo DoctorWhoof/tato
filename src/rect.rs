@@ -45,7 +45,7 @@ impl<T: Num> Rect<T> {
 
     /// Checks if the rectangle contains the point (x, y)
     pub fn contains(&self, x: T, y: T) -> bool {
-        x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
+        x >= self.x && x <= self.x + self.w && y >= self.y && y <= self.y + self.h
     }
 
     /// Checks if this rectangle overlaps with another rectangle
