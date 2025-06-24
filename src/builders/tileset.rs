@@ -7,23 +7,16 @@ use std::collections::{HashMap, HashSet};
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 type TileData = [u8; TILE_LEN];
-// Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
-type CanonicalTile = [u8; TILE_LEN];
+type CanonicalTile = [u8; TILE_LEN]; // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
 
 #[derive(Debug, Clone, Copy)]
 pub struct TilesetBuilderID(pub u8);
-
-#[derive(Debug, Clone)]
-pub struct TileInfo {
-    cell: Cell,
-    original_colors: Vec<u8>, // The original colors in canonical order
-}
 
 pub struct TilesetBuilder {
     pub allow_tile_transforms: bool,
     pub name: String,
     pub pixels: Vec<u8>,
-    pub tile_hash: HashMap<CanonicalTile, TileInfo>,
+    pub tile_hash: HashMap<CanonicalTile, Cell>,
     pub sub_palette_name_hash: HashMap<[u8; SUB_PALETTE_COLOR_COUNT], String>,
     pub sub_palettes: Vec<[u8; SUB_PALETTE_COLOR_COUNT]>,
     pub anims: Vec<AnimBuilder>,
@@ -75,27 +68,28 @@ impl TilesetBuilder {
                             }
                         }
 
-                        // Get unique colors and check limits
-                        let mut colors = HashSet::new();
-                        for &pixel in &tile_data {
-                            colors.insert(pixel);
-                        }
-
-                        if colors.len() > SUB_PALETTE_COLOR_COUNT {
-                            panic!("Tile exceeds {} color limit", SUB_PALETTE_COLOR_COUNT);
-                        }
-
                         // Create canonical representation
                         let (canonical_tile, color_mapping) = create_canonical_tile(&tile_data);
 
-                        // Check if this canonical tile (or any transformation) exists
-                        let mut found_tile_info = None;
+                        if color_mapping.len() > SUB_PALETTE_COLOR_COUNT {
+                            panic!("Tile exceeds {} color limit", SUB_PALETTE_COLOR_COUNT);
+                        }
 
-                        // Check original first
-                        if let Some(existing) = self.tile_hash.get(&canonical_tile) {
-                            found_tile_info = Some(existing.clone());
+                        // Will check if this canonical tile (or any transformation) exists
+                        let mut found_cell = None;
+
+                        // Create a temporary remapping to check against hash
+                        let (temp_sub_palette_id, temp_remapping) = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
+                        let mut temp_normalized = [0u8; TILE_LEN];
+                        for (i, &canonical_index) in canonical_tile.iter().enumerate() {
+                            temp_normalized[i] = temp_remapping[canonical_index as usize];
+                        }
+
+                        // Check original first using remapped data
+                        if let Some(existing) = self.tile_hash.get(&temp_normalized) {
+                            found_cell = Some(*existing);
                         } else if self.allow_tile_transforms {
-                            // Try all 7 other transformations
+                            // Try all 7 other transformations using remapped data
                             'outer: for flip_x in [false, true] {
                                 for flip_y in [false, true] {
                                     for rotation in [false, true] {
@@ -103,14 +97,28 @@ impl TilesetBuilder {
                                             continue;
                                         }
 
-                                        let transformed = transform_tile(
-                                            &canonical_tile,
+                                        let transformed_original = transform_tile(
+                                            &tile_data,
                                             flip_x,
                                             flip_y,
                                             rotation,
                                         );
-                                        if let Some(existing) = self.tile_hash.get(&transformed) {
-                                            found_tile_info = Some(existing.clone());
+                                        let (transformed_canonical, transformed_colors) = create_canonical_tile(&transformed_original);
+
+                                        // Apply remapping to transformed data
+                                        let mut transformed_normalized = [0u8; TILE_LEN];
+                                        for (i, &canonical_index) in transformed_canonical.iter().enumerate() {
+                                            if (canonical_index as usize) < transformed_colors.len() {
+                                                let color = transformed_colors[canonical_index as usize];
+                                                let original_index = color_mapping.iter().position(|&c| c == color).unwrap_or(0);
+                                                transformed_normalized[i] = temp_remapping[original_index];
+                                            } else {
+                                                transformed_normalized[i] = 0;
+                                            }
+                                        }
+
+                                        if let Some(existing) = self.tile_hash.get(&transformed_normalized) {
+                                            found_cell = Some(*existing);
                                             break 'outer;
                                         }
                                     }
@@ -118,22 +126,20 @@ impl TilesetBuilder {
                             }
                         }
 
-                        let cell = match found_tile_info {
-                            Some(existing_tile_info) => {
+                        let cell = match found_cell {
+                            Some(existing_cell) => {
                                 // Found existing tile with same pattern
-                                // Try to reuse existing sub-palette or find compatible one
-                                let sub_palette_id = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
-
+                                // Use the same sub-palette mapping we used for lookup
                                 let mut cell = Cell {
-                                    id: existing_tile_info.cell.id,
-                                    flags: existing_tile_info.cell.flags,
+                                    id: existing_cell.id,
+                                    flags: existing_cell.flags,
                                 };
-                                cell.flags.set_palette(PaletteID(sub_palette_id));
+                                cell.flags.set_palette(PaletteID(temp_sub_palette_id));
                                 cell
                             },
                             None => {
                                 // Create new tile - but still try to reuse compatible sub-palette
-                                let sub_palette_id = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
+                                let (sub_palette_id, remapping) = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
 
                                 let mut new_tile = Cell {
                                     id: TileID(self.next_tile),
@@ -141,15 +147,17 @@ impl TilesetBuilder {
                                 };
                                 new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
-                                let tile_info = TileInfo {
-                                    cell: new_tile,
-                                    original_colors: color_mapping.clone(),
-                                };
+                                // Store canonical tile data remapped to sub-palette indices
+                                let mut normalized = [0u8; TILE_LEN];
+                                for (i, &canonical_index) in canonical_tile.iter().enumerate() {
+                                    normalized[i] = remapping[canonical_index as usize];
+                                }
+                                self.pixels.extend_from_slice(&normalized);
 
-                                // Store original canonical tile
-                                self.tile_hash.insert(canonical_tile, tile_info.clone());
+                                // Store remapped tile in hash (after remapping is complete)
+                                self.tile_hash.insert(normalized, new_tile);
 
-                                // Store all transformations
+                                // Store all transformations using remapped data
                                 if self.allow_tile_transforms {
                                     for flip_x in [false, true] {
                                         for flip_y in [false, true] {
@@ -158,40 +166,40 @@ impl TilesetBuilder {
                                                     continue;
                                                 }
 
-                                                let transformed = transform_tile(
-                                                    &canonical_tile,
+                                                let transformed_original = transform_tile(
+                                                    &tile_data,
                                                     flip_x,
                                                     flip_y,
                                                     rotation,
                                                 );
+                                                let (transformed_canonical, transformed_colors) = create_canonical_tile(&transformed_original);
 
-                                                let mut tile_info_with_flags = tile_info.clone();
-                                                tile_info_with_flags.cell.flags.set_flip_x(flip_x);
-                                                tile_info_with_flags.cell.flags.set_flip_y(flip_y);
-                                                tile_info_with_flags
-                                                    .cell
-                                                    .flags
-                                                    .set_rotation(rotation);
+                                                // Apply same remapping to transformed data
+                                                let mut transformed_normalized = [0u8; TILE_LEN];
+                                                for (i, &canonical_index) in transformed_canonical.iter().enumerate() {
+                                                    if (canonical_index as usize) < transformed_colors.len() {
+                                                        // Find this color in our original color mapping
+                                                        let color = transformed_colors[canonical_index as usize];
+                                                        let original_index = color_mapping.iter().position(|&c| c == color).unwrap_or(0);
+                                                        transformed_normalized[i] = remapping[original_index];
+                                                    } else {
+                                                        transformed_normalized[i] = 0;
+                                                    }
+                                                }
 
-                                                self.tile_hash
-                                                    .insert(transformed, tile_info_with_flags);
+                                                // Only store if this transformation produces different data
+                                                if !self.tile_hash.contains_key(&transformed_normalized) {
+                                                    let mut cell_with_flags = new_tile;
+                                                    cell_with_flags.flags.set_flip_x(flip_x);
+                                                    cell_with_flags.flags.set_flip_y(flip_y);
+                                                    cell_with_flags.flags.set_rotation(rotation);
+
+                                                    self.tile_hash.insert(transformed_normalized, cell_with_flags);
+                                                }
                                             }
                                         }
                                     }
                                 }
-
-                                // Create normalized pixel data for the chosen sub-palette
-                                let sub_palette = &self.sub_palettes[sub_palette_id as usize];
-                                let mut normalized = [0u8; TILE_LEN];
-                                for (i, &original_color) in tile_data.iter().enumerate() {
-                                    normalized[i] = sub_palette
-                                        .iter()
-                                        .position(|&pal_color| pal_color == original_color)
-                                        .unwrap_or(0) as u8;
-                                }
-
-                                // Add normalized tile to pixel data
-                                self.pixels.extend_from_slice(&normalized);
                                 self.next_tile += 1;
 
                                 new_tile
@@ -207,26 +215,43 @@ impl TilesetBuilder {
         tiles
     }
 
-    fn find_or_create_compatible_sub_palette(&mut self, colors: &[u8], palette: &PaletteBuilder) -> u8 {
-        let color_set: HashSet<u8> = colors.iter().cloned().collect();
+    fn find_or_create_compatible_sub_palette(&mut self, colors: &[u8], palette: &PaletteBuilder) -> (u8, Vec<u8>) {
+        // Work with unique colors only to avoid issues with repeated colors
+        let unique_colors: Vec<u8> = {
+            let mut seen = HashSet::new();
+            colors.iter().filter(|&&color| seen.insert(color)).cloned().collect()
+        };
 
-        // First, try to find an existing sub-palette that contains all our colors
-        for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-            let pal_colors: HashSet<u8> = sub_pal.iter().cloned().collect();
-            if color_set.is_subset(&pal_colors) {
-                return i as u8;
-            }
-        }
-
-        // Check for exact match to avoid duplicates
-        let target_palette_array = from_fn(|i| if i < colors.len() { colors[i] } else { 0 });
+        // Check for exact match first (cheapest check)
+        let target_palette_array = from_fn(|i| if i < unique_colors.len() { unique_colors[i] } else { 0 });
         for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
             if *sub_pal == target_palette_array {
-                return i as u8;
+                // Create identity remapping for our original colors (including duplicates)
+                let mut remapping = Vec::new();
+                for &color in colors {
+                    let unique_index = unique_colors.iter().position(|&c| c == color).unwrap_or(0);
+                    remapping.push(unique_index as u8);
+                }
+                return (i as u8, remapping);
             }
         }
 
-        // Create new sub-palette
+        // Try to find an existing sub-palette that contains all our unique colors
+        let color_set: HashSet<u8> = unique_colors.iter().cloned().collect();
+        for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
+            let pal_colors: HashSet<u8> = sub_pal.iter().filter(|&&c| c != 0 || sub_pal[0] == 0).cloned().collect();
+            if color_set.is_subset(&pal_colors) {
+                // Create remapping from our canonical indices to sub-palette indices
+                let mut remapping = Vec::new();
+                for &color in colors {
+                    let sub_pal_index = sub_pal.iter().position(|&pal_color| pal_color == color).unwrap_or(0);
+                    remapping.push(sub_pal_index as u8);
+                }
+                return (i as u8, remapping);
+            }
+        }
+
+        // Create new sub-palette with unique colors only
         if self.sub_palette_head >= SUB_PALETTE_COUNT {
             panic!("Sub-palette capacity {} exceeded", SUB_PALETTE_COUNT);
         }
@@ -239,7 +264,13 @@ impl TilesetBuilder {
         let name = format!("{}_{}", palette.name, palette_id);
         self.sub_palette_name_hash.insert(target_palette_array, name);
 
-        palette_id
+        // Create identity remapping for our original colors (including duplicates)
+        let mut remapping = Vec::new();
+        for &color in colors {
+            let unique_index = unique_colors.iter().position(|&c| c == color).unwrap_or(0);
+            remapping.push(unique_index as u8);
+        }
+        (palette_id, remapping)
     }
 }
 
