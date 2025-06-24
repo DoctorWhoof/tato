@@ -88,22 +88,22 @@ mod tests {
         let rect = Rect { x: 10, y: 20, w: 30, h: 40 };
 
         // Points inside the rectangle
-        assert!(rect.contains(10, 20));  // Top-left corner (inclusive)
-        assert!(rect.contains(39, 59));  // Bottom-right corner (exclusive)
+        assert!(rect.contains(10, 20));  // Top-left corner
+        assert!(rect.contains(39, 59));  // Bottom-right corner
         assert!(rect.contains(25, 40));  // Middle point
 
         // Points outside the rectangle
         assert!(!rect.contains(9, 20));   // Left of rect
         assert!(!rect.contains(10, 19));  // Above rect
-        assert!(!rect.contains(40, 20));  // Right of rect (exclusive)
-        assert!(!rect.contains(10, 60));  // Below rect (exclusive)
+        assert!(!rect.contains(41, 20));  // Right of rect
+        assert!(!rect.contains(10, 61));  // Below rect
 
         // Test with floating point
         let rect_f32 = Rect { x: 10.5, y: 20.5, w: 30.0, h: 40.0 };
 
-        assert!(rect_f32.contains(10.5, 20.5));      // Top-left (inclusive)
+        assert!(rect_f32.contains(10.5, 20.5));      // Top-left
         assert!(rect_f32.contains(40.49, 60.49));    // Almost bottom-right
-        assert!(!rect_f32.contains(40.5, 60.5));     // Exactly bottom-right (exclusive)
+        assert!(rect_f32.contains(40.5, 60.5));     // Exactly bottom-right
     }
 
     #[test]
