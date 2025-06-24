@@ -162,8 +162,8 @@ impl<'a> PixelIter<'a> {
         }
 
         // Render sprite, fall back to BG if sprite is zero
-        let fg_pixel = {
-            let mut result = 0;
+        let fg_color = {
+            let mut result = RGBA12::BG;
             if self.scanline.mask > 0 {
                 let fg_x = self.x as i16;
                 let slot = (fg_x as f32 / self.slot_width) as u16;
@@ -195,9 +195,10 @@ impl<'a> PixelIter<'a> {
                         let tile = &bank.tiles[sprite.id.0 as usize];
                         let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
                         let palette = sprite.flags.palette().id();
-                        let pixel = bank.sub_palettes[palette][pixel].0;
-                        if pixel > 0 {
-                            result = pixel;
+                        let index = bank.sub_palettes[palette][pixel].0;
+                        let color = bank.palette[index as usize];
+                        if color.a() > 0 {
+                            result = color;
                             break 'sprite_loop;
                         }
                     }
@@ -206,10 +207,9 @@ impl<'a> PixelIter<'a> {
             result
         };
 
-        // Get color - FG has priority if not transparent
-        if fg_pixel > 0 {
-            let bank = self.tile_banks[self.fg_tile_bank as usize];
-            bank.palette[fg_pixel as usize]
+        // Color result - FG has priority if not transparent
+        if fg_color.a() > 0 {
+            fg_color
         } else if self.force_bg_color {
             // Use background color if we're outside bounds
             self.bg_color

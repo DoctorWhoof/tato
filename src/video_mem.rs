@@ -26,7 +26,6 @@ impl<const TILES: usize> VideoMemory<TILES> {
         }
     }
 
-
     pub fn reset(&mut self) {
         // Simply sets internal counters to 0.
         self.tile_head = 0;
@@ -41,12 +40,31 @@ impl<const TILES: usize> VideoMemory<TILES> {
         self.palette_head = 0;
     }
 
+    pub fn push_color(&mut self, color: RGBA12) -> ColorID {
+        assert!(
+            self.palette_head < COLORS_PER_PALETTE as u8,
+            "Palette capacity reached"
+        );
+        let id = ColorID(self.palette_head);
+        self.palette[self.palette_head as usize] = color;
+        self.palette_head += 1;
+        id
+    }
+
+    pub fn set_color(&mut self, id: ColorID, color: RGBA12) {
+        assert!(
+            id.0 < COLORS_PER_PALETTE as u8,
+            "Invalid color ID"
+        );
+        self.palette[id.0 as usize] = color;
+    }
+
     pub fn set_subpalette(
         &mut self,
         index: PaletteID,
         colors: [ColorID; COLORS_PER_TILE as usize],
     ) {
-        debug_assert!(
+        assert!(
             index.0 < SUBPALETTE_COUNT,
             err!("Invalid local palette index, must be less than PALETTE_COUNT")
         );
@@ -54,7 +72,10 @@ impl<const TILES: usize> VideoMemory<TILES> {
     }
 
     pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
-        assert!(self.sub_palette_head < 16, err!("COLORS_PER_PALETTE exceeded"));
+        assert!(
+            self.sub_palette_head < SUBPALETTE_COUNT,
+            err!("SUBPALETTE_COUNT exceeded")
+        );
         let result = self.sub_palette_head;
         self.sub_palettes[self.sub_palette_head as usize] = colors;
         self.sub_palette_head += 1;

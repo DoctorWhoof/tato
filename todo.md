@@ -1,5 +1,7 @@
 [ ] Test with a real project!
 
+[ ] BUG: Last pixel on each scanline is rendering BG color instead of tile or sprites
+
 [ ] Now that I have a working Horizontal IRQ, think about NOT having a fixed BG Map or even tile memory! Those can be passed to the video chip as immutable refs - memory banks, if you will! The refs can be copied to the iterator as public fields, and modified by the IRQ callback (this idea needs testing).
 
 
