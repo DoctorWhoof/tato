@@ -6,6 +6,7 @@ pub struct CodeWriter {
     indentation: usize,
 }
 
+// Note: indentation is now handled by simply calling rustfmt after generating code!
 impl CodeWriter {
     pub fn new(path: &str) -> Self {
         let file = File::create(path).expect("Could not create output file");
@@ -14,16 +15,6 @@ impl CodeWriter {
             indentation: 0,
         }
     }
-
-    // pub fn indent(&mut self) {
-    //     self.indentation += 4;
-    // }
-
-    // pub fn dedent(&mut self) {
-    //     if self.indentation >= 4 {
-    //         self.indentation -= 4;
-    //     }
-    // }
 
     pub fn write_line(&mut self, line: &str) {
         let indent = " ".repeat(self.indentation);
