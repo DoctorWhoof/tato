@@ -1,8 +1,11 @@
 use backend_raylib::*;
 use tato::prelude::*;
 
-mod assets;
-use assets::*;
+mod patch;
+use patch::*;
+
+mod smileys;
+use smileys::*;
 
 fn main() {
     let mut tato = Tato::new(240, 180);
@@ -11,9 +14,11 @@ fn main() {
     // Populate tileset
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
-    let tileset = tato.new_tileset(0, PATCH_TILESET).unwrap();
-    let map_patch = tato.new_tilemap(tileset, &PATCH_MAP);
-    let map_smileys = tato.new_tilemap(tileset, &SMILEYS_MAP);
+    let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
+    let map_patch = tato.new_tilemap(tileset_patch, &PATCH_MAP);
+
+    let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
+    let map_smileys = tato.new_tilemap(tileset_smileys, &SMILEYS_MAP);
 
     // Rects use "number of tiles" as the dimensions
     tato.draw_patch(map_patch, Rect { x: 1, y: 1, w: 5, h: 4 });

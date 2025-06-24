@@ -64,7 +64,7 @@ fn main() {
             elapsed: 1.0 / target_fps as f64,
         };
 
-        // If scene is None, immediately switch to A, otherwise process it.
+        // If scene_change is None, immediately switch to A, otherwise process it.
         let scene_change = match &mut scene {
             Scene::None => Some(SceneChange::A),
             Scene::A(scn) => scn.update(&mut t, state),

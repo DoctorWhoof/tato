@@ -109,29 +109,38 @@ impl Tato {
         let mut color_count = 0;
         let colors_start = assets.color_head;
 
+        // 'color_process:{
         if let Some(data_colors) = data.colors {
             for (i, color) in data_colors.iter().enumerate() {
                 let mut reused_color = false;
                 let mut index = colors_start;
                 // Compare to bank colors
-                for slot in 0..bank.color_count() {
+                'color_check: for slot in 0..bank.color_count() {
                     let bank_color = bank.palette[slot as usize];
                     if *color == bank_color {
                         reused_color = true;
                         index = slot;
-                        break;
+                        break 'color_check;
                     }
                 }
                 if !reused_color {
-                    color_count += 1;
                     index = colors_start + color_count;
+                    // if index >= COLORS_PER_PALETTE {
+                    //     // TODO: Should it panic? Result? Need to think about it.
+                    //     break 'color_process;
+                    // }
+                    // Immediately also set the color in the bank
+                    bank.push_color(*color);
+                    // Increment count since we added a new one
+                    color_count += 1;
+                    println!("{}: {}", index, *color);
+                } else {
                 }
                 // Store color entry for management
                 color_entries[i] = ColorEntry { reused_color, index, value: *color };
-                // Immediately also set the color in the bank
-                bank.palette[index as usize] = *color;
             }
         }
+        // }
 
         // Sub palette processing
         // Maps indices starting at zero to the actual current color positions in the bank
@@ -147,6 +156,7 @@ impl Tato {
                 sub_palettes_len += 1;
             }
         }
+
         // Build tileset entry
         assets.tilesets[id as usize] = Tileset {
             bank_id,
@@ -164,7 +174,8 @@ impl Tato {
         Some(TilesetID(id))
     }
 
-    // TODO: Make private, loading tilesets should load all associated assets
+    // TODO: Make private, loading tilesets should load all associated assets?
+    // In that case, how would I obtain the MapID? Doesn't seem to work...
 
     /// Adds a tilemap entry that refers to already loaded tiles in a tileset.
     /// Returns the index of the map
@@ -200,7 +211,6 @@ impl Tato {
             TilemapEntry { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
-        println!("{}", tileset.sub_palettes_start);
         for (i, &cell) in data.cells.iter().enumerate() {
             let mut flags = cell.flags;
             flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));

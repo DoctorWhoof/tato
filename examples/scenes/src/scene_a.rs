@@ -111,7 +111,6 @@ impl SceneA {
         if app.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;
             t.video.wrap_bg = !t.video.wrap_bg;
-            // println!("Sprites wrap: {}, BG wrap: {}", t.video.wrap_sprites, t.video.wrap_bg);
         }
 
         // Increase speed if any "face" button (A,B,X,Y) is down

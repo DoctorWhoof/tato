@@ -90,7 +90,6 @@ impl SceneB {
 
         if app.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;
-            // println!("Wrap: {}", t.video.wrap_sprites);
         }
 
         if app.pad.is_just_pressed(Button::Menu) {

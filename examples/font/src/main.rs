@@ -8,11 +8,12 @@ fn main() {
     // Graphics setup
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let font = tato.new_tileset(0, FONT_TILESET).unwrap();
+
     let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, BLACK]);
 
-    tato.video.bg_color = RGBA12::new(1,1,3,7);
+    tato.video.bg_color = RGBA12::new(1,2,3,7);
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
