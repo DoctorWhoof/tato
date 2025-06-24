@@ -79,7 +79,7 @@ impl PalettizedImg {
         let mut pixels = vec![];
         for y in 0..img.height() as usize {
             for x in 0..img.width() as usize {
-                let color = {
+                let color_index = {
                     let buf = img.as_bytes();
                     let index = x + (y * img.width() as usize);
                     let buf_index = index * 4;
@@ -88,17 +88,19 @@ impl PalettizedImg {
                     let b = buf[buf_index + 2];
                     let a = buf[buf_index + 3];
 
-                    let rgb_color = if a < 255 {
-                        RGBA12::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
-                    } else {
-                        let color_rgb = RGBA32 { r, g, b, a };
-                        RGBA12::from(color_rgb)
+                    let rgb_color = {
+                    // let rgb_color = if a < 255 {
+                    //     RGBA12::new(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
+                    // } else {
+                        let color_32bit = RGBA32 { r, g, b, a };
+                        RGBA12::from(color_32bit)
                     };
 
                     // Result
                     if palette.color_hash.contains_key(&rgb_color) {
                         *palette.color_hash.get(&rgb_color).unwrap()
                     } else {
+                        // TODO: Error message here if palette is too large
                         let color_head = u8::try_from(palette.color_hash.len()).ok().unwrap();
                         println!(
                             "cargo:warning= Inserting Palette {:02} -> {:02}: {:?}",
@@ -111,7 +113,7 @@ impl PalettizedImg {
                         color_head
                     }
                 };
-                pixels.push(color)
+                pixels.push(color_index)
             }
         }
         pixels

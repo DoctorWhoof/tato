@@ -48,11 +48,12 @@ impl TilesetBuilder {
         let mut tiles = vec![];
 
         // Main detection routine.
-        // Iterate frames, then tiles within frames.
+        // Iterate animation frames, then tiles within frames.
         for frame_v in 0..img.frames_v as usize {
             for frame_h in 0..img.frames_h as usize {
                 for row in 0..img.rows_per_frame as usize {
                     for col in 0..img.cols_per_frame as usize {
+
                         // Extract tile pixels
                         let mut tile_data = [0u8; TILE_LEN];
                         let abs_col = (frame_h * img.cols_per_frame as usize) + col;
