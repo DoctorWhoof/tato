@@ -75,18 +75,18 @@ impl TilesetBuilder {
                             panic!("Tile exceeds {} color limit", SUB_PALETTE_COLOR_COUNT);
                         }
 
-                        // Will check if this canonical tile (or any transformation) exists
-                        let mut found_cell = None;
+                        // Find or create sub-palette once and reuse for both hash lookup and storage
+                        let (sub_palette_id, remapping) = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
 
-                        // Create a temporary remapping to check against hash
-                        let (temp_sub_palette_id, temp_remapping) = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
-                        let mut temp_normalized = [0u8; TILE_LEN];
+                        // Check if this canonical tile (or any transformation) exists
+                        let mut found_cell = None;
+                        let mut normalized = [0u8; TILE_LEN];
                         for (i, &canonical_index) in canonical_tile.iter().enumerate() {
-                            temp_normalized[i] = temp_remapping[canonical_index as usize];
+                            normalized[i] = remapping[canonical_index as usize];
                         }
 
                         // Check original first using remapped data
-                        if let Some(existing) = self.tile_hash.get(&temp_normalized) {
+                        if let Some(existing) = self.tile_hash.get(&normalized) {
                             found_cell = Some(*existing);
                         } else if self.allow_tile_transforms {
                             // Try all 7 other transformations using remapped data
@@ -111,7 +111,7 @@ impl TilesetBuilder {
                                             if (canonical_index as usize) < transformed_colors.len() {
                                                 let color = transformed_colors[canonical_index as usize];
                                                 let original_index = color_mapping.iter().position(|&c| c == color).unwrap_or(0);
-                                                transformed_normalized[i] = temp_remapping[original_index];
+                                                transformed_normalized[i] = remapping[original_index];
                                             } else {
                                                 transformed_normalized[i] = 0;
                                             }
@@ -134,12 +134,11 @@ impl TilesetBuilder {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
                                 };
-                                cell.flags.set_palette(PaletteID(temp_sub_palette_id));
+                                cell.flags.set_palette(PaletteID(sub_palette_id));
                                 cell
                             },
                             None => {
-                                // Create new tile - but still try to reuse compatible sub-palette
-                                let (sub_palette_id, remapping) = self.find_or_create_compatible_sub_palette(&color_mapping, palette);
+                                // Create new tile using the sub-palette we already found/created
 
                                 let mut new_tile = Cell {
                                     id: TileID(self.next_tile),
@@ -147,11 +146,7 @@ impl TilesetBuilder {
                                 };
                                 new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
-                                // Store canonical tile data remapped to sub-palette indices
-                                let mut normalized = [0u8; TILE_LEN];
-                                for (i, &canonical_index) in canonical_tile.iter().enumerate() {
-                                    normalized[i] = remapping[canonical_index as usize];
-                                }
+                                // Store the already computed normalized tile data
                                 self.pixels.extend_from_slice(&normalized);
 
                                 // Store remapped tile in hash (after remapping is complete)
