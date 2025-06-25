@@ -216,11 +216,13 @@ impl<'a> PixelIter<'a> {
         } else {
             // Get pixel from current cluster
             let color = self.bg_cluster.get_subpixel(self.subpixel_index);
-            // If transparent, use background color
             let bg_palette = self.bg_flags.palette().0 as usize;
             let bank = self.tile_banks[self.bg_tile_bank as usize];
             let global_idx = bank.sub_palettes[bg_palette][color as usize].0 as usize;
             let result = bank.palette[global_idx];
+            // If transparent, use background color.
+            // Will ignore intermediate alpha levels - it's 0 or 1 only!
+            // You can still get 8 transparency levels in the bg color itself, though.
             if result.a() == 0 {
                 self.bg_color
             } else {
@@ -234,7 +236,6 @@ impl<'a> PixelIter<'a> {
         // Calculate raw screen position for bounds check
         let raw_x = self.x as i16 + self.scroll_x;
         let raw_y = self.y as i16 + self.scroll_y;
-
         // Update force_bg_color flag if wrapping is off and pixel is outside BG Map
         let w = bg.width() as i16;
         let h = bg.height() as i16;
@@ -265,9 +266,9 @@ impl<'a> Iterator for PixelIter<'a> {
         // }
 
         let is_outside_viewport = self.x < self.vid.view_left as u16
-            || self.x >= self.vid.view_right as u16
             || self.y < self.vid.view_top as u16
-            || self.y >= self.vid.view_bottom as u16;
+            || self.x > self.vid.view_right as u16 // allows view.right to be included!
+            || self.y > self.vid.view_bottom as u16; // allows view.bottom to be included!
 
         let color = if is_outside_viewport {
             RGBA32::from(self.bg_color)
