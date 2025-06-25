@@ -82,7 +82,6 @@ impl From<RGBA12> for RGBA32 {
         let g = ((color.data >> 3) & 0x7) as u8;
         let b = (color.data & 0x7) as u8;
         let a = ((color.data >> 9) & 0x7) as u8;
-
         // Scale the 3-bit values (0-7) to 8-bit range (0-255)
         Self {
             // Approximate v * 36.4 without overflow
@@ -97,12 +96,10 @@ impl From<RGBA12> for RGBA32 {
 impl From<RGBA32> for RGBA12 {
     fn from(color: RGBA32) -> Self {
         // Scale down 8-bit values (0-255) to 3-bit values (0-7)
-        // Using (value + 16) / 32 for rounding to nearest value
-        let r = ((color.r as u16 + 16) >> 5).min(7);
-        let g = ((color.g as u16 + 16) >> 5).min(7);
-        let b = ((color.b as u16 + 16) >> 5).min(7);
-        let a = ((color.a as u16 + 16) >> 5).min(7);
-
+        let r = (color.r / 36).min(7) as u16;
+        let g = (color.g / 36).min(7) as u16;
+        let b = (color.b / 36).min(7) as u16;
+        let a = (color.a / 36).min(7) as u16;
         // Combine the 3-bit components into a 12-bit value
         Self {
             data: (a << 9) | (r << 6) | (g << 3) | b,

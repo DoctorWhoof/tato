@@ -220,10 +220,11 @@ impl<'a> PixelIter<'a> {
             let bg_palette = self.bg_flags.palette().0 as usize;
             let bank = self.tile_banks[self.bg_tile_bank as usize];
             let global_idx = bank.sub_palettes[bg_palette][color as usize].0 as usize;
-            if global_idx == 0 {
+            let result = bank.palette[global_idx];
+            if result.a() == 0 {
                 self.bg_color
             } else {
-                bank.palette[global_idx]
+                result
             }
         }
     }
