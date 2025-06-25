@@ -9,9 +9,9 @@ pub const PATCH_TILESET: TilesetData = TilesetData {
 
 pub const PATCH_COLORS: [RGBA12; 4] = [
     RGBA12::new(0, 0, 0, 0),
-    RGBA12::new(5, 5, 6, 7),
-    RGBA12::new(3, 3, 3, 7),
-    RGBA12::new(1, 1, 2, 7),
+    RGBA12::new(4, 4, 5, 7),
+    RGBA12::new(2, 2, 2, 7),
+    RGBA12::new(0, 0, 1, 7),
 ];
 
 pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
@@ -23,11 +23,11 @@ pub const PATCH_MAP: BGMap<9> = BGMap {
         Cell { id: TileID(0), flags: TileFlags(0) },
         Cell { id: TileID(1), flags: TileFlags(0) },
         Cell { id: TileID(2), flags: TileFlags(1) },
-        Cell { id: TileID(1), flags: TileFlags(96) },
+        Cell { id: TileID(1), flags: TileFlags(32) },
         Cell { id: TileID(3), flags: TileFlags(0) },
         Cell { id: TileID(4), flags: TileFlags(1) },
         Cell { id: TileID(2), flags: TileFlags(97) },
-        Cell { id: TileID(4), flags: TileFlags(225) },
+        Cell { id: TileID(4), flags: TileFlags(97) },
         Cell { id: TileID(5), flags: TileFlags(1) },
     ],
     columns: 3,

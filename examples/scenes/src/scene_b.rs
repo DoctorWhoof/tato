@@ -16,10 +16,10 @@ impl SceneB {
         t.video.set_viewport(8, 8, 224, 164);
 
         // Colors
-        t.video.bg_color = RGBA12::new(0, 3, 1, 7);
+        t.video.bg_color = RGBA12::DARK_GREEN;
         let palette_bg = t
             .banks[0]
-            .push_subpalette([BG_COLOR, GREEN, BG_COLOR, BG_COLOR]);
+            .push_subpalette([DARK_GREEN, GREEN, DARK_GREEN, DARK_GREEN]);
         let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
         let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
         let _tileset = t.new_tileset(0, DEFAULT_TILESET);

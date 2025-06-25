@@ -124,13 +124,13 @@ impl Tato {
                     }
                 }
                 if !reused_color {
-                    index = colors_start + color_count;
+                    // index = colors_start + color_count;
                     // if index >= COLORS_PER_PALETTE {
                     //     // TODO: Should it panic? Result? Need to think about it.
                     //     break 'color_process;
                     // }
                     // Immediately also set the color in the bank
-                    bank.push_color(*color);
+                    index = bank.push_color(*color).0;
                     // Increment count since we added a new one
                     color_count += 1;
                     println!("{}: {}", index, *color);
