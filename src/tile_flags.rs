@@ -75,8 +75,8 @@ impl TileFlags {
 
     pub const fn set_palette(&mut self, palette: PaletteID) {
         debug_assert!(
-            palette.0 < 16,
-            err!("Tile Palette must be in the 0 to 15 range")
+            palette.0 < SUBPALETTE_COUNT,
+            err!("Tile Palette must be in SUBPALETTE_COUNT")
         );
         self.0 &= 0b_1111_0000; // Clear the lower 4 bits (palette bits)
         self.0 |= palette.0 & 0b_0000_1111; // Set the new palette (mask to ensure only lower 4 bits)
