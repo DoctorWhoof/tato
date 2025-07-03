@@ -4,6 +4,7 @@ use tato::{Tato, prelude::*};
 
 // pub struct RaylibBackend<const PIXEL_COUNT: usize> {
 pub struct RaylibBackend {
+    pub bg_color: Color,
     pub ray: RaylibHandle,
     pub display_debug: bool,
     pub display_debug_scale: i32,
@@ -51,6 +52,7 @@ impl RaylibBackend {
             .collect();
         // Build struct
         Self {
+            bg_color: Color::new(32, 32, 32, 255),
             ray,
             display_debug: true,
             display_debug_scale: 1,
@@ -165,9 +167,8 @@ impl RaylibBackend {
 
         // Present pixels
         let mut canvas = self.ray.begin_drawing(&self.thread);
-        let bg_color = Color::new(64, 64, 64, 255);
 
-        canvas.clear_background(bg_color);
+        canvas.clear_background(self.bg_color);
         canvas.draw_texture_ex(
             &self.render_texture,
             Vector2::new(draw_rect_x as f32, draw_rect_y as f32),

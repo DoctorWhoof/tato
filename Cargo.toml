@@ -20,7 +20,7 @@ tato_pipe = { path = "../tato_pipe" }
 [workspace]
 members = [
     "examples/scenes",
-    # "examples/audio",
+    "examples/audio",
     "examples/font",
     "examples/tilemap",
     # "examples/pipe",

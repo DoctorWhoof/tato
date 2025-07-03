@@ -22,6 +22,8 @@
 [x] Load individual named tiles into a tileset, each will be exported as a const
     . On the other end, insert single tiles into TileBank (returns TileID)
 
+[ ] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
+
 ### Assets
 
 [.] Text and Fonts

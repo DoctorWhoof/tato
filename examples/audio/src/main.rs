@@ -1,11 +1,7 @@
 use backend_raylib::*;
-use raylib::{color::Color, texture::Image};
+use tato::{Tato, prelude::*};
 use std::{f32::consts::PI, time::Instant};
-use tato::prelude::*;
 
-const W: usize = 240;
-const H: usize = 180;
-pub const PIXEL_COUNT: usize = W * H * 4;
 
 pub enum SoundType {
     WaveTable,
@@ -14,36 +10,16 @@ pub enum SoundType {
     WhiteNoise,
 }
 
-// TODO: Remove Videochip since this is an audio demo?
-// Can just use raylib to display text on the window
-
 fn main() {
-    let mut tato = Tato::new(W as u16, H as u16);
+    let mut tato = Tato::new(240, 180);
 
     // Tato Video Setup
-    tato.video.bg_color = DARK_BLUE;
-    let palette_default = tato.video.push_subpalette([BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let palette_light = tato.video.push_subpalette([BG_COLOR, WHITE, GRAY, GRAY]);
+    tato.video.bg_color = RGBA12::DARK_BLUE;
+    let palette_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
+    let palette_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
 
-    // Raylib setup
-    let target_fps = 60.0;
-    let w = tato.video.width() as i32;
-    let h = tato.video.height() as i32;
-    let (mut ray, ray_thread) =
-        raylib::init().size(w * 3, h * 3).title("Tato Demo").vsync().resizable().build();
-    config_raylib();
-    ray.set_target_fps(target_fps as u32);
-
-    // Create texture for rendering
-    let mut pixels: [u8; W * H * 4] = core::array::from_fn(|_| 0);
-    let mut render_texture = {
-        let render_image = Image::gen_image_color(w, h, Color::BLACK);
-        ray.load_texture_from_image(&ray_thread, &render_image).unwrap()
-    };
-
-    let empty = tato.add_tile(0, &TILESET_DEFAULT[TILE_EMPTY]); // TODO: Return Option
-    let font = tato.add_tileset(0, &TILESET_FONT, &PALETTE_DEFAULT).unwrap();
-    // let font = tato.add_tileset(0, &TILESET_FONT).unwrap();
+    let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
+    let font = tato.new_tileset(0, FONT_TILESET).unwrap();
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
@@ -70,7 +46,7 @@ fn main() {
 
     // Audio setup
     let mut audio = AudioChip::default();
-    let mut audio_backend = backend_cpal::AudioBackend::new(target_fps);
+    let mut audio_backend = backend_cpal::AudioBackend::new(60.0);
 
     audio.sample_rate = audio_backend.sample_rate();
     audio.channels[0].set_volume(15);
@@ -82,7 +58,8 @@ fn main() {
     let time = Instant::now();
 
     // Main Loop
-    while !ray.window_should_close() {
+    let mut backend = RaylibBackend::new(&tato, 60.0);
+    while !backend.ray.window_should_close() {
         // "Envelopes"
         let env_len = 2.0;
         let elapsed = time.elapsed().as_secs_f32() % env_len;
@@ -147,7 +124,7 @@ fn main() {
 
         // Update backends
         audio_backend.process_frame(&mut audio);
-        tato_to_raylib(&mut tato, &ray_thread, &mut ray, &mut pixels, &mut render_texture, true);
+        backend.render(&mut tato);
     }
 
     audio_backend.write_wav_file();

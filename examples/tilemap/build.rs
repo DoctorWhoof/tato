@@ -14,4 +14,10 @@ fn main() {
     let tileset_smileys = pipe.new_tileset("smileys", palette_smileys);
     pipe.new_map("assets/smileys.png", tileset_smileys);
     pipe.write_tileset(tileset_smileys, "src/smileys.rs");
+
+    // Test
+    let palette_test = pipe.new_palette("testmap");
+    let tileset_test = pipe.new_tileset("testmap", palette_test);
+    pipe.new_map("assets/test.png", tileset_test);
+    pipe.write_tileset(tileset_test, "src/testmap.rs");
 }
