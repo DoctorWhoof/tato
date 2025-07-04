@@ -42,8 +42,11 @@ pub enum Scene {
 
 fn main() {
     // Tato setup + initial scene
-    let mut t = Tato::new(240, 180);
+    let mut bg_map = BGMap::<1024>::new(32, 32);
     let mut scene = Scene::None;
+    let mut t = Tato::new(240, 180);
+    t.bg = Some(&mut bg_map);
+
     // Line scrolling effect, adjusts scroll on every line
     t.video.irq_line = Some(|iter, video, _bg| {
         let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;

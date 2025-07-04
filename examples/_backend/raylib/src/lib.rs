@@ -138,7 +138,14 @@ impl RaylibBackend {
 
         // ---------------------- Copy from framebuffer to raylib texture ----------------------
 
-        for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), &[&t.bg]) {
+        // Populate array with same bg reference
+        let bg_array = if let Some(bg) = &t.bg {
+            Some(std::array::from_fn(|_| *bg as & dyn DynamicBGMap))
+        } else {
+            None
+        };
+
+        for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), bg_array) {
             let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
             self.pixels[i] = color.r;
             self.pixels[i + 1] = color.g;

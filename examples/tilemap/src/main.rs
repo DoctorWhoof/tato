@@ -10,11 +10,14 @@ use tato::prelude::*;
 mod testmap;
 use testmap::*;
 
+const MAP_LEN:usize = 1024;
+
 // Rects use "number of tiles" as the dimensions
 fn main() {
     let mut tato = Tato::new(288, 216);
+    let mut bg_map = BGMap::<MAP_LEN>::new(32, 32);
+    tato.bg = Some(&mut bg_map);
     tato.video.bg_color = RGBA12::new(0, 0, 0, 0);
-    tato.bg.set_size(36, 28);
 
     // Populate tilesets
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
@@ -26,7 +29,7 @@ fn main() {
     // tato.draw_map(map_smileys, None, Some(Rect { x: 3, y: 5, w: 16, h: 10 }));
 
     let tileset_test = tato.new_tileset(0, TESTMAP_TILESET).unwrap();
-    let map_test = tato.new_tilemap(tileset_test, &TEST_MAP);
+    let map_test = tato.new_tilemap::<MAP_LEN>(tileset_test, &TEST_MAP);
     tato.draw_map(map_test, None, None);
 
     // let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();

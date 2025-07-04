@@ -2,8 +2,9 @@ use backend_raylib::*;
 use tato::{Tato, prelude::*};
 
 fn main() {
+    let mut bg_map = BGMap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180);
-    tato.bg.set_size(32, 18);
+    tato.bg = Some(&mut bg_map);
 
     // Graphics setup
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);

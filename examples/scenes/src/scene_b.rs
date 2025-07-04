@@ -17,28 +17,21 @@ impl SceneB {
 
         // Colors
         t.video.bg_color = RGBA12::DARK_GREEN;
-        let palette_bg = t
-            .banks[0]
-            .push_subpalette([DARK_GREEN, GREEN, DARK_GREEN, DARK_GREEN]);
+        let palette_bg = t.banks[0].push_subpalette([DARK_GREEN, GREEN, DARK_GREEN, DARK_GREEN]);
         let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
         let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
         let _tileset = t.new_tileset(0, DEFAULT_TILESET);
         let tile = TILE_SMILEY;
 
-        t.bg.set_size(32, 24);
-
-        for cell in &mut t.bg.cells {
-            cell.id = tile;
-            cell.flags = palette_bg.into();
-        }
+        if let Some(bg) = &mut t.bg {
+            for cell in bg.cells_mut() {
+                cell.id = tile;
+                cell.flags = palette_bg.into();
+            }
+        };
 
         Self {
-            player: Entity {
-                x: x as f32,
-                y: y as f32,
-                tile,
-                flags: palette_cycler.into(),
-            },
+            player: Entity { x: x as f32, y: y as f32, tile, flags: palette_cycler.into() },
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
                 // using "wrap_width" and "wrap_height"
@@ -92,10 +85,6 @@ impl SceneB {
             t.video.wrap_sprites = !t.video.wrap_sprites;
         }
 
-        if app.pad.is_just_pressed(Button::Menu) {
-            Some(SceneChange::C)
-        } else {
-            None
-        }
+        if app.pad.is_just_pressed(Button::Menu) { Some(SceneChange::C) } else { None }
     }
 }

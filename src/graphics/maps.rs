@@ -2,23 +2,16 @@ use tato_layout::Rect;
 
 use crate::*;
 
-// pub struct MapOp {
-//     pub map: MapID,
-//     pub col: u16,
-//     pub row: u16,
-//     pub tile_id: TileID,
-//     pub flags: TileFlags,
-// }
-
-impl Tato {
+impl<'a> Tato<'a> {
     pub fn draw_patch(&mut self, map_id: MapID, rect: Rect<u16>) {
         let map = &self.assets.maps[map_id.0 as usize];
 
         assert!(map.columns == 3, err!("Patch tilemaps must be 3 columns wide."));
         assert!(map.rows == 3, err!("Patch rows must be 3 rows tall."));
 
+        let Some(bg) = &mut self.bg else { return };
         let top_left = self.assets.cells[map.data_start as usize];
-        self.bg.set_cell(BgOp {
+        bg.set_cell(BgOp {
             col: rect.x,
             row: rect.y,
             tile_id: top_left.id,
@@ -27,11 +20,11 @@ impl Tato {
 
         let top = self.assets.cells[map.data_start as usize + 1];
         for col in rect.x + 1..rect.x + rect.w {
-            self.bg.set_cell(BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
+            bg.set_cell(BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
         }
 
         let top_right = self.assets.cells[map.data_start as usize + 2];
-        self.bg.set_cell(BgOp {
+        bg.set_cell(BgOp {
             col: rect.x + rect.w,
             row: rect.y,
             tile_id: top_right.id,
@@ -40,19 +33,19 @@ impl Tato {
 
         let left = self.assets.cells[map.data_start as usize + 3];
         for row in rect.y + 1..rect.y + rect.h {
-            self.bg.set_cell(BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
+            bg.set_cell(BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
         }
 
         let center = self.assets.cells[map.data_start as usize + 4];
         for row in rect.y + 1..rect.y + rect.h {
             for col in rect.x + 1..rect.x + rect.w {
-                self.bg.set_cell(BgOp { col, row, tile_id: center.id, flags: center.flags });
+                bg.set_cell(BgOp { col, row, tile_id: center.id, flags: center.flags });
             }
         }
 
         let right = self.assets.cells[map.data_start as usize + 5];
         for row in rect.y + 1..rect.y + rect.h {
-            self.bg.set_cell(BgOp {
+            bg.set_cell(BgOp {
                 col: rect.x + rect.w,
                 row,
                 tile_id: right.id,
@@ -61,7 +54,7 @@ impl Tato {
         }
 
         let bottom_left = self.assets.cells[map.data_start as usize + 6];
-        self.bg.set_cell(BgOp {
+        bg.set_cell(BgOp {
             col: rect.x,
             row: rect.y + rect.h,
             tile_id: bottom_left.id,
@@ -70,7 +63,7 @@ impl Tato {
 
         let bottom = self.assets.cells[map.data_start as usize + 7];
         for col in rect.x + 1..rect.x + rect.w {
-            self.bg.set_cell(BgOp {
+            bg.set_cell(BgOp {
                 col,
                 row: rect.y + rect.h,
                 tile_id: bottom.id,
@@ -79,7 +72,7 @@ impl Tato {
         }
 
         let bottom_right = self.assets.cells[map.data_start as usize + 8];
-        self.bg.set_cell(BgOp {
+        bg.set_cell(BgOp {
             col: rect.x + rect.w,
             row: rect.y + rect.h,
             tile_id: bottom_right.id,
@@ -141,7 +134,7 @@ impl Tato {
         let source = &self.assets.maps[id.0 as usize];
         let start = source.data_start as usize;
         let end = start + source.data_len as usize;
-        let cells = &self.assets.cells[start..end];
+        let cells = &mut self.assets.cells[start..end];
 
         // Determine source rectangle
         let src_x = src_rect.map_or(0, |r| r.x) as i16;
@@ -167,11 +160,13 @@ impl Tato {
         let effective_dst_x = i16::max(0, dst_x);
         let effective_dst_y = i16::max(0, dst_y);
 
+        let Some(bg) = &mut self.bg else { return };
+
         // Calculate effective width and height after clipping
         let effective_width =
-            i16::max(0, i16::min(src_w - clip_x, self.bg.columns as i16 - effective_dst_x));
+            i16::max(0, i16::min(src_w - clip_x, bg.columns() as i16 - effective_dst_x));
         let effective_height =
-            i16::max(0, i16::min(src_h - clip_y, self.bg.rows as i16 - effective_dst_y));
+            i16::max(0, i16::min(src_h - clip_y, bg.rows() as i16 - effective_dst_y));
 
         // If there's nothing to copy (zero width or height), return early
         if effective_width <= 0 || effective_height <= 0 {
@@ -183,12 +178,13 @@ impl Tato {
             for x in 0..effective_width {
                 let src_index = (effective_src_y + y) as usize * source.columns as usize
                     + (effective_src_x + x) as usize;
-                let dst_index = (effective_dst_y + y) as usize * self.bg.columns as usize
+                let dst_index = (effective_dst_y + y) as usize * bg.columns() as usize
                     + (effective_dst_x + x) as usize;
 
                 // Ensure we're within bounds (additional safety check)
                 // if src_index < S_LEN && dst_index < LEN {
-                self.bg.cells[dst_index] = cells[src_index];
+                // cells[dst_index] = cells[src_index];
+                bg.cells_mut()[dst_index] = cells[src_index];
                 // }
             }
         }

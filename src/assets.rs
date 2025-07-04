@@ -66,7 +66,7 @@ impl Assets {
     }
 }
 
-impl Tato {
+impl<'a> Tato<'a> {
     /// Adds a single tile, returns a TileID
     #[inline]
     pub fn new_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
@@ -182,7 +182,7 @@ impl Tato {
     pub fn new_tilemap<const LEN: usize>(
         &mut self,
         tileset_id: TilesetID,
-        data: &BGMap<LEN>,
+        data: &dyn DynamicBGMap,
     ) -> MapID {
         // Acquire tile offset for desired tileset
         let assets = &mut self.assets;
@@ -198,11 +198,11 @@ impl Tato {
         let map_idx = assets.map_head;
         let data_start = assets.cell_head;
         let data_len = u16::try_from(data.len()).unwrap();
-        let columns = data.columns;
-        let rows = data_len / data.columns;
+        let columns = data.columns();
+        let rows = data_len / data.columns();
 
         assert!(
-            data_len % data.columns == 0,
+            data_len % data.columns() == 0,
             err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
         );
 
@@ -211,7 +211,7 @@ impl Tato {
             TilemapEntry { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
-        for (i, &cell) in data.cells.iter().enumerate() {
+        for (i, &cell) in data.cells().iter().enumerate() {
             let mut flags = cell.flags;
             flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
             assets.cells[data_start as usize + i] = Cell {

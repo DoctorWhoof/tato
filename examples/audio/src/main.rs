@@ -12,6 +12,8 @@ pub enum SoundType {
 
 fn main() {
     let mut tato = Tato::new(240, 180);
+    let mut bg_map = BGMap::<1024>::new(32, 32);
+    tato.bg = Some(&mut bg_map);
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;

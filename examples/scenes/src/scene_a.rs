@@ -42,12 +42,8 @@ impl SceneA {
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
         for i in 0..t.banks[1].palette.len() {
-            let _ = t
-                .banks[0]
-                .push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
-            let _ = t
-                .banks[1]
-                .push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
+            let _ = t.banks[0].push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
+            let _ = t.banks[1].push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
         }
 
         // Define new tiles
@@ -58,34 +54,36 @@ impl SceneA {
         let arrow = TILE_ARROW;
 
         // Set BG tiles
-        t.bg.set_size(28, 28);
-        // let t.bg = &mut t.banks[0].bg;
-        for col in 0..t.bg.columns {
-            for row in 0..t.bg.rows {
-                // Calculate palette ID based on coordinates, limits to 14 indices
-                let index = (col + row) % 14;
-                // Adds 2 to avoid colors 0 and 1 in the BG
-                let adjusted_palette = PaletteID(2 + index as u8);
+        let (w, h) = if let Some(bg) = &mut t.bg {
+            for col in 0..bg.columns() {
+                for row in 0..bg.rows() {
+                    // Calculate palette ID based on coordinates, limits to 14 indices
+                    let index = (col + row) % 14;
+                    // Adds 2 to avoid colors 0 and 1 in the BG
+                    let adjusted_palette = PaletteID(2 + index as u8);
 
-                t.bg.set_cell(BgOp {
-                    col,
-                    row,
-                    tile_id: arrow,
-                    flags: TileFlags::from(adjusted_palette).with_rotation(),
-                });
+                    bg.set_cell(BgOp {
+                        col,
+                        row,
+                        tile_id: arrow,
+                        flags: TileFlags::from(adjusted_palette).with_rotation(),
+                    });
+                }
             }
-        }
+            (bg.width() as i16, bg.height() as i16)
+        } else {
+            unreachable!()
+        };
 
         // Pre-generate smileys array
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| {
             Entity {
-                x: rand::random_range(0..t.bg.width() as i16 - TILE_SIZE as i16) as f32,
-                y: rand::random_range(0..t.bg.height() as i16 - TILE_SIZE as i16) as f32,
+                x: rand::random_range(0..w - TILE_SIZE as i16) as f32,
+                y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
             }
         });
-
         // Sort smileys by y position only
         smileys.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
 
@@ -164,15 +162,16 @@ impl SceneA {
         t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
 
         // let t.bg = &mut t.banks[0].bg;
-        for col in 0..t.bg.columns {
-            for row in 0..t.bg.rows {
-                let Some(mut flags) = t.bg.get_flags(col, row) else {
+        let Some(bg) = &mut t.bg else { unreachable!() };
+        for col in 0..bg.columns() {
+            for row in 0..bg.rows() {
+                let Some(mut flags) = bg.get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                t.bg.set_flags(col, row, flags);
+                bg.set_flags(col, row, flags);
             }
         }
 
@@ -225,10 +224,6 @@ impl SceneA {
 
         // ------------------- Return mode switch request -------------------
 
-        if app.pad.is_just_pressed(Button::Menu) {
-            Some(SceneChange::B)
-        } else {
-            None
-        }
+        if app.pad.is_just_pressed(Button::Menu) { Some(SceneChange::B) } else { None }
     }
 }

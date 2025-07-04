@@ -15,26 +15,28 @@ impl SceneC {
         let smiley = TILE_SMILEY;
 
         t.video.bg_color = RGBA12::GRAY;
-        t.bg.set_size(32, 24);
-        for col in 0..t.bg.columns {
-            for row in 0..t.bg.rows {
-                t.bg.set_cell(BgOp {
-                    col,
-                    row,
-                    tile_id: cross,
-                    flags: TileFlags::from(PaletteID(1)).with_fg(),
-                });
+        if let Some(bg) = &mut t.bg {
+            for col in 0..bg.columns() {
+                for row in 0..bg.rows() {
+                    bg.set_cell(BgOp {
+                        col,
+                        row,
+                        tile_id: cross,
+                        flags: TileFlags::from(PaletteID(1)).with_fg(),
+                    });
+                }
             }
-        }
 
-        for id in 0..16 as u8 {
-            t.bg.set_cell(BgOp {
-                col: id as u16,
-                row: 0,
-                tile_id: solid,
-                flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
-            });
-            t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
+            for id in 0..16 as u8 {
+                bg.set_cell(BgOp {
+                    col: id as u16,
+                    row: 0,
+                    tile_id: solid,
+                    flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
+                });
+                t.banks[0]
+                    .set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
+            }
         }
 
         SceneC { smiley, counter: 0 }
