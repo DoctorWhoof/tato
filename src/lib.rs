@@ -40,7 +40,7 @@ pub use video_chip::*;
 /// - Read only reference to the FG tile bank (pixels).
 /// - Read only reference to the BG tile bank (pixels).
 /// - Read only reference to the current tilemap
-pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &BGMap<BG_LEN>);
+pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &dyn DynamicBGMap);
 
 // -------------------------------- Constants --------------------------------
 
