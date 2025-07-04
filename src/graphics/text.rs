@@ -11,10 +11,10 @@ pub struct TextOp {
 
 impl<'a> Tato<'a> {
     /// "Draws" a text string to the BG Map, returns the resulting height (in rows), if any.
-    pub fn draw_text(&mut self, text: &str, op: TextOp) -> Option<u16> {
+    pub fn draw_text(&mut self, bg_index:usize, text: &str, op: TextOp) -> Option<u16> {
         debug_assert!(text.is_ascii());
         let tileset = self.assets.tilesets.get(op.id.0 as usize)?;
-        let Some(bg) = &mut self.bg else { return None };
+        let Some(bg) = &mut self.bg[bg_index] else { return None };
         // let tileset = &self.tiles.sets[bundle.tileset.0 as usize];
         // let Some(bg) = &mut self.bg else { return None };
         let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {

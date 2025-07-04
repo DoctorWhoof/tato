@@ -3,13 +3,13 @@ use tato_layout::Rect;
 use crate::*;
 
 impl<'a> Tato<'a> {
-    pub fn draw_patch(&mut self, map_id: MapID, rect: Rect<u16>) {
+    pub fn draw_patch(&mut self, bg_index:usize, map_id: MapID, rect: Rect<u16>) {
         let map = &self.assets.maps[map_id.0 as usize];
 
         assert!(map.columns == 3, err!("Patch tilemaps must be 3 columns wide."));
         assert!(map.rows == 3, err!("Patch rows must be 3 rows tall."));
 
-        let Some(bg) = &mut self.bg else { return };
+        let Some(bg) = &mut self.bg[bg_index] else { return };
         let top_left = self.assets.cells[map.data_start as usize];
         bg.set_cell(BgOp {
             col: rect.x,
@@ -123,6 +123,7 @@ impl<'a> Tato<'a> {
     /// - Negative destination coordinates are handled by clipping the source region.
     pub fn draw_map(
         &mut self,
+        bg_index:usize,
         id: MapID,
         src_rect: Option<Rect<u16>>,
         dst_rect: Option<Rect<u16>>,
@@ -160,7 +161,7 @@ impl<'a> Tato<'a> {
         let effective_dst_x = i16::max(0, dst_x);
         let effective_dst_y = i16::max(0, dst_y);
 
-        let Some(bg) = &mut self.bg else { return };
+        let Some(bg) = &mut self.bg[bg_index] else { return };
 
         // Calculate effective width and height after clipping
         let effective_width =

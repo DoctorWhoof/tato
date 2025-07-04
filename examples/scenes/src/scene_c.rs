@@ -15,7 +15,7 @@ impl SceneC {
         let smiley = TILE_SMILEY;
 
         t.video.bg_color = RGBA12::GRAY;
-        if let Some(bg) = &mut t.bg {
+        if let Some(bg) = &mut t.bg[0] {
             for col in 0..bg.columns() {
                 for row in 0..bg.rows() {
                     bg.set_cell(BgOp {

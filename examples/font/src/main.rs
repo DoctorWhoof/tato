@@ -4,7 +4,7 @@ use tato::{Tato, prelude::*};
 fn main() {
     let mut bg_map = BGMap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180);
-    tato.bg = Some(&mut bg_map);
+    tato.bg[0] = Some(&mut bg_map);
 
     // Graphics setup
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
@@ -14,13 +14,14 @@ fn main() {
     let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
     let plt_cycle = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, BLACK]);
 
-    tato.video.bg_color = RGBA12::new(1,2,3,7);
+    tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
     let col = 1;
     let height = tato
         .draw_text(
+            0,
             "\"draw_text\" simply sets BG Map tiles, so they will scroll with \
         the rest of the map! Use the arrow keys to try it out.",
             TextOp { id: font, col, row: line, width: 27, palette: plt_light },
@@ -29,24 +30,28 @@ fn main() {
 
     line += height + 1;
     tato.draw_text(
+        0,
         "0123456789",
         TextOp { id: font, col, row: line, width: 26, palette: plt_light },
     );
 
     line += 2;
     tato.draw_text(
+        0,
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         TextOp { id: font, col, row: line, width: 26, palette: plt_default },
     );
 
     line += 2;
     tato.draw_text(
+        0,
         "abcdefghijklmnopqrstuvwxyz",
         TextOp { id: font, col, row: line, width: 26, palette: plt_light },
     );
 
     line += 2;
     tato.draw_text(
+        0,
         ":;<=>? !\"#$%&\'()*+,-./",
         TextOp { id: font, col, row: line, width: 26, palette: plt_default },
     );
@@ -54,6 +59,7 @@ fn main() {
     // Animated text
     line += 2;
     tato.draw_text(
+        0,
         "Animated palette",
         TextOp { id: font, col, row: line, width: 26, palette: plt_cycle },
     );

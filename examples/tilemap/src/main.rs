@@ -16,7 +16,7 @@ const MAP_LEN:usize = 1024;
 fn main() {
     let mut tato = Tato::new(288, 216);
     let mut bg_map = BGMap::<MAP_LEN>::new(32, 32);
-    tato.bg = Some(&mut bg_map);
+    tato.bg[0] = Some(&mut bg_map);
     tato.video.bg_color = RGBA12::new(0, 0, 0, 0);
 
     // Populate tilesets
@@ -30,7 +30,7 @@ fn main() {
 
     let tileset_test = tato.new_tileset(0, TESTMAP_TILESET).unwrap();
     let map_test = tato.new_tilemap::<MAP_LEN>(tileset_test, &TEST_MAP);
-    tato.draw_map(map_test, None, None);
+    tato.draw_map(0, map_test, None, None);
 
     // let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
     // let map_patch = tato.new_tilemap(tileset_patch, &PATCH_MAP);

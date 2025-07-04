@@ -13,7 +13,7 @@ pub enum SoundType {
 fn main() {
     let mut tato = Tato::new(240, 180);
     let mut bg_map = BGMap::<1024>::new(32, 32);
-    tato.bg = Some(&mut bg_map);
+    tato.bg[0] = Some(&mut bg_map);
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
@@ -25,6 +25,7 @@ fn main() {
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
+        0,
         "SOUND TEST",
         TextOp {
             id: font,
@@ -36,6 +37,7 @@ fn main() {
     );
 
     tato.draw_text(
+        0,
         "Currently playing:",
         TextOp {
             id: font,
@@ -86,6 +88,7 @@ fn main() {
 
         // Text info
         tato.draw_text(
+            0,
             &{
                 if audio.channels[0].noise_mix() == 0 {
                     format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
@@ -103,6 +106,7 @@ fn main() {
         );
 
         tato.draw_text(
+            0,
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextOp {
                 id: font,
@@ -114,6 +118,7 @@ fn main() {
         );
 
         tato.draw_text(
+            0,
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextOp {
                 id: font,

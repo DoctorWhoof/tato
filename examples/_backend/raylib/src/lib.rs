@@ -139,19 +139,20 @@ impl RaylibBackend {
         // ---------------------- Copy from framebuffer to raylib texture ----------------------
 
         // Populate array with same bg reference
-        let bg_array = if let Some(bg) = &t.bg {
-            Some(std::array::from_fn(|_| *bg as & dyn DynamicBGMap))
-        } else {
-            None
-        };
+        // let bg_array = if let Some(bg) = &t.bg {
+        //     Some(std::array::from_fn(|_| *bg as & dyn DynamicBGMap))
+        // } else {
+        //     None
+        // };
 
-        for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), bg_array) {
+        for (color, coords) in t.video.iter_pixels(&t.get_video_banks(), t.get_bg_banks()) {
             let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
             self.pixels[i] = color.r;
             self.pixels[i + 1] = color.g;
             self.pixels[i + 2] = color.b;
             self.pixels[i + 3] = color.a;
         }
+
         self.render_texture.update_texture(&self.pixels).unwrap();
 
         t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);

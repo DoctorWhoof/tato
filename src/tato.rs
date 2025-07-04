@@ -9,7 +9,7 @@ pub struct Tato<'a> {
     // Video
     pub video: tato_video::VideoChip,
     pub banks: [tato_video::VideoMemory<TILE_COUNT>; BANK_COUNT],
-    pub bg: Option<&'a mut dyn DynamicBGMap>,
+    pub bg: [Option<&'a mut dyn DynamicBGMap>; 8],
     pub assets: Assets,
     // Internals
     pub update_time_acc: SmoothBuffer<10, f64>,
@@ -18,7 +18,7 @@ pub struct Tato<'a> {
 impl<'a> Tato<'a> {
     pub fn new(w: u16, h: u16) -> Self {
         Self {
-            bg: None,
+            bg: core::array::from_fn(|_| None),
             assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
@@ -34,6 +34,13 @@ impl<'a> Tato<'a> {
         for bank in &mut self.banks {
             bank.reset();
         }
+    }
+
+    pub fn get_bg_banks(&self) -> [Option<&dyn DynamicBGMap>; 8] {
+        // Converts mutable BG refs to immutable
+        core::array::from_fn(|i| {
+            if let Some(bg) = &self.bg[i] { Some(*bg as &dyn DynamicBGMap) } else { None }
+        })
     }
 
     pub fn get_video_banks(&self) -> [&VideoMemory<TILE_COUNT>; BANK_COUNT] {

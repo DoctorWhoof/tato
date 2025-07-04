@@ -13,12 +13,11 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    // pub fn new(video: &mut VideoChip, tiles: &mut TileBank) -> Self {
     pub fn new(t: &mut Tato) -> Self {
+        t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(3, 1, 1, 7);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
-        t.video.bg_tile_bank = 1;
 
         // Palette test - defines BG palette with a golden tint!
         t.banks[1].palette = [
@@ -53,8 +52,8 @@ impl SceneA {
         let smiley = TILE_SMILEY;
         let arrow = TILE_ARROW;
 
-        // Set BG tiles
-        let (w, h) = if let Some(bg) = &mut t.bg {
+        // Set BG tiles, acquire width and height of bg map
+        let (w, h) = if let Some(bg) = &mut t.bg[0] {
             for col in 0..bg.columns() {
                 for row in 0..bg.rows() {
                     // Calculate palette ID based on coordinates, limits to 14 indices
@@ -162,18 +161,19 @@ impl SceneA {
         t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
 
         // let t.bg = &mut t.banks[0].bg;
-        let Some(bg) = &mut t.bg else { unreachable!() };
-        for col in 0..bg.columns() {
-            for row in 0..bg.rows() {
-                let Some(mut flags) = bg.get_flags(col, row) else {
-                    continue;
-                };
-                flags.set_rotation(self.player.flags.is_rotated());
-                flags.set_flip_x(self.player.flags.is_flipped_x());
-                flags.set_flip_y(self.player.flags.is_flipped_y());
-                bg.set_flags(col, row, flags);
+        if let Some(bg) = &mut t.bg[0] {
+            for col in 0..bg.columns() {
+                for row in 0..bg.rows() {
+                    let Some(mut flags) = bg.get_flags(col, row) else {
+                        continue;
+                    };
+                    flags.set_rotation(self.player.flags.is_rotated());
+                    flags.set_flip_x(self.player.flags.is_flipped_x());
+                    flags.set_flip_y(self.player.flags.is_flipped_y());
+                    bg.set_flags(col, row, flags);
+                }
             }
-        }
+        };
 
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {

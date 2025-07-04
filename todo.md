@@ -14,6 +14,10 @@
     [ ] Mouse over video output:
 ------->[ ] Inspect any BG tile being displayed by tato_video.
         [ ] Inspect Sprites.
+    [ ] Shrink tile view to used tiles Only
+    [ ] Shrink subpalettes size
+    [ ] Indicate colors added Vs. default colors
+    [ ] Indicate bank usage (as FG, BG bank or unused)
 
 [ ] Dual chip setup for multiple video layers
 
@@ -49,9 +53,9 @@
     . Will allow easier importing from png assets, loading/unloading, etc.
     [x] Remove palette head style counters from tato_video, move all management to Tato.
 
-[ ] Smarter sub-palettes in Pipeline?
+[x] Smarter sub-palettes in Pipeline?
     . The problem is that, depending on order of tile processing, too many unnecessary palettes are generated
     . Option 1: pre-process the palette using the whole image, instead of per tile?
     . Option 2: Try Option<u8> when building color hashes, and if when inserting a color one slot is None, it is still available and we don't need a new tile hash, we can modify the existing one instead? More complex, Let's try option 1 instead first...
-    [ ] Almost there! Only remaining issue is palette swapped tiles can get flagged as separate tiles. Instead of the actual color index, the Hashmap needs to store a "difference map" that compares a pixel to its rightmost neighbor (wraps around). 1 is "different", 0 is "same".
+    [x] Almost there! Only remaining issue is palette swapped tiles can get flagged as separate tiles. Instead of the actual color index, the Hashmap needs to store a "difference map" that compares a pixel to its rightmost neighbor (wraps around). 1 is "different", 0 is "same".
     [x] BUG: Transparent color is not coming through in tiles in the "tilemap" example. Indices seem to come in as "1" instead of "zero"? Also subpalette sorting doesn't seem right, could be related.

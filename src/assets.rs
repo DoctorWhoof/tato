@@ -133,7 +133,7 @@ impl<'a> Tato<'a> {
                     index = bank.push_color(*color).0;
                     // Increment count since we added a new one
                     color_count += 1;
-                    println!("{}: {}", index, *color);
+                    // println!("{}: {}", index, *color);
                 } else {
                 }
                 // Store color entry for management
