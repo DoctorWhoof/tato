@@ -1,5 +1,6 @@
 use crate::*;
 
+/// This trait allows references to BGMaps of different sizes to be used by the Pixel Iterator.
 pub trait DynamicBGMap: core::fmt::Debug {
     fn cells(&self) -> &[Cell];
     fn cells_mut(&mut self) -> &mut [Cell];
@@ -15,9 +16,11 @@ pub trait DynamicBGMap: core::fmt::Debug {
     fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags>;
 }
 
+/// A simple collection of Cells, split into a number of columns and rows that can never exceed the
+/// constant CELL_COUNT capacity.
 #[derive(Debug, Clone)]
-pub struct BGMap<const CELLS: usize> {
-    pub cells: [Cell; CELLS],
+pub struct BGMap<const CELL_COUNT: usize> {
+    pub cells: [Cell; CELL_COUNT],
     pub columns: u16,
     pub rows: u16,
 }
@@ -31,7 +34,56 @@ pub struct BgOp {
     pub flags: TileFlags,
 }
 
-impl<const CELLS: usize> DynamicBGMap for BGMap<CELLS> {
+impl<const CELL_COUNT: usize> BGMap<CELL_COUNT> {
+    pub fn new(columns: u16, rows: u16) -> Self {
+        assert!(
+            CELL_COUNT < u16::MAX as usize,
+            err!("Invalid BGMap CELL_COUNT (maximum number of tiles), must be lower than {}"),
+            u16::MAX
+        );
+        assert!(
+            (columns as usize * rows as usize) <= CELL_COUNT,
+            err!("Invalid tilemap dimensions {} x {} = {} (exceeds CELL_COUNT value of {})"),
+            columns,
+            rows,
+            columns as u32 * rows as u32,
+            CELL_COUNT,
+        );
+        assert!(
+            columns > 0 && rows > 0,
+            err!("BGMap dimensions can't be zero")
+        );
+        Self {
+            cells: core::array::from_fn(|_| Cell::default()),
+            columns,
+            rows,
+        }
+    }
+
+    pub fn set_size(&mut self, columns: u16, rows: u16) {
+        assert!(
+            columns as usize * rows as usize <= CELL_COUNT,
+            err!("Invalid column count")
+        );
+        assert!(
+            columns > 0 && rows > 0,
+            err!("BGMap dimensions can't be zero")
+        );
+        self.columns = columns;
+        self.rows = rows;
+    }
+
+    /// Returns None if coords are out of map. not sure if useful yet
+    /// since the Pixel Iterator uses its own, wrapping coordinates.
+    pub fn get_index(&self, col: u16, row: u16) -> Option<usize> {
+        if col as usize >= self.columns as usize || row as usize >= self.rows as usize {
+            return None;
+        }
+        Some((row as usize * self.columns as usize) + col as usize)
+    }
+}
+
+impl<const CELL_COUNT: usize> DynamicBGMap for BGMap<CELL_COUNT> {
     fn cells(&self) -> &[Cell] {
         &self.cells
     }
@@ -57,7 +109,7 @@ impl<const CELLS: usize> DynamicBGMap for BGMap<CELLS> {
     }
 
     fn len(&self) -> usize {
-        CELLS
+        CELL_COUNT
     }
 
     fn set_cell(&mut self, op: BgOp) {
@@ -87,57 +139,5 @@ impl<const CELLS: usize> DynamicBGMap for BGMap<CELLS> {
     fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index].flags)
-    }
-}
-
-impl<const CELLS: usize> BGMap<CELLS> {
-    pub fn new(columns: u16, rows: u16) -> Self {
-        assert!(
-            CELLS < u16::MAX as usize,
-            err!("Invalid BGMap CELLS (maximum number of tiles), must be lower than {}"),
-            u16::MAX
-        );
-        assert!(
-            (columns as usize * rows as usize) == CELLS,
-            err!("Invalid tilemap dimensions {} x {} = {} (generic CELLS value is {})"),
-            columns,
-            rows,
-            columns as u32 * rows as u32,
-            CELLS,
-        );
-        assert!(
-            columns > 0 && rows > 0,
-            err!("BGMap dimensions can't be zero")
-        );
-        Self {
-            cells: core::array::from_fn(|_| Cell::default()),
-            columns,
-            rows,
-        }
-    }
-
-    pub fn set_size(&mut self, columns: u16, rows: u16) {
-        assert!(
-            columns as usize * rows as usize <= CELLS,
-            err!("Invalid column count")
-        );
-        assert!(
-            columns > 0 && rows > 0,
-            err!("BGMap dimensions can't be zero")
-        );
-        self.columns = columns;
-        self.rows = rows;
-    }
-
-    // Returns None if coords are out of map. not sure if useful yet.
-    // Iterator uses its own, wrapping coordinates.
-    fn get_index(&self, col: u16, row: u16) -> Option<usize> {
-        // #[cfg(debug_assertions)]
-        // {
-        if col as usize >= self.columns as usize || row as usize >= self.rows as usize {
-            return None;
-        }
-        // }
-        Some((row as usize * self.columns as usize) + col as usize)
     }
 }
