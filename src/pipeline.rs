@@ -335,13 +335,13 @@ impl Pipeline {
                 map.name.to_uppercase(),
                 map.cells.len(),
             ));
+            code.write_line(&format!("columns: {},", map.columns));
+            code.write_line(&format!("rows: {},", map.rows));
             code.write_line(&format!("cells: [",));
             for cell in &map.cells {
                 code.write_line(&format!("    {:?},", cell));
             }
             code.write_line("],");
-            code.write_line(&format!("columns: {},", map.columns));
-            code.write_line(&format!("rows: {}", map.rows));
             code.write_line("};");
             code.write_line("");
         }
