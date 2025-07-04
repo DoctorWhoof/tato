@@ -10,12 +10,12 @@ use tato::prelude::*;
 mod testmap;
 use testmap::*;
 
-const MAP_LEN:usize = 1024;
+const MAP_LEN:usize = 4096;
 
 // Rects use "number of tiles" as the dimensions
 fn main() {
     let mut tato = Tato::new(288, 216);
-    let mut bg_map = BGMap::<MAP_LEN>::new(32, 32);
+    let mut bg_map = BGMap::<MAP_LEN>::new(72, 54);
     tato.bg[0] = Some(&mut bg_map);
     tato.video.bg_color = RGBA12::new(0, 0, 0, 0);
 

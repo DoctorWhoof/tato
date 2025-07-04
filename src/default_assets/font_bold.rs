@@ -6,6 +6,8 @@ pub const FONT_TILESET: TilesetData =
     TilesetData { tiles: &FONT_TILES, colors: None, sub_palettes: None };
 
 pub const FONT_BOLD_MAP: BGMap<90> = BGMap {
+    columns: 10,
+    rows: 9,
     cells: [
         Cell { id: TileID(0), flags: TileFlags(0) },
         Cell { id: TileID(1), flags: TileFlags(0) },
@@ -98,8 +100,6 @@ pub const FONT_BOLD_MAP: BGMap<90> = BGMap {
         Cell { id: TileID(68), flags: TileFlags(0) },
         Cell { id: TileID(68), flags: TileFlags(0) },
     ],
-    columns: 10,
-    rows: 9,
 };
 
 pub const FONT_TILES: [Tile<2>; 85] = [

@@ -54,6 +54,8 @@ pub const SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 10, 5, 0];
 pub const SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 11, 5, 0];
 
 pub const SMILEYS_MAP: BGMap<160> = BGMap {
+    columns: 16,
+    rows: 10,
     cells: [
         Cell { id: TileID(0), flags: TileFlags(0) },
         Cell { id: TileID(1), flags: TileFlags(0) },
@@ -216,8 +218,6 @@ pub const SMILEYS_MAP: BGMap<160> = BGMap {
         Cell { id: TileID(1), flags: TileFlags(64) },
         Cell { id: TileID(0), flags: TileFlags(160) },
     ],
-    columns: 16,
-    rows: 10,
 };
 
 pub const SMILEYS_TILES: [Tile<2>; 5] = [

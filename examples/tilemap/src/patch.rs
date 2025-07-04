@@ -19,6 +19,8 @@ pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
 pub const PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
 
 pub const PATCH_MAP: BGMap<9> = BGMap {
+    columns: 3,
+    rows: 3,
     cells: [
         Cell { id: TileID(0), flags: TileFlags(0) },
         Cell { id: TileID(1), flags: TileFlags(0) },
@@ -30,8 +32,6 @@ pub const PATCH_MAP: BGMap<9> = BGMap {
         Cell { id: TileID(4), flags: TileFlags(97) },
         Cell { id: TileID(5), flags: TileFlags(1) },
     ],
-    columns: 3,
-    rows: 3,
 };
 
 pub const PATCH_TILES: [Tile<2>; 6] = [
