@@ -22,6 +22,13 @@ pub struct RaylibBackend {
 
 impl RaylibBackend {
     pub fn new(tato: &Tato, target_fps: f32) -> Self {
+        // Config raylib
+        unsafe {
+            raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
+            // Disable ESC to close window. "Cmd + Q" still works!
+            raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
+        }
+
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
         let (mut ray, thread) = raylib::init()
@@ -31,19 +38,13 @@ impl RaylibBackend {
             .vsync()
             .resizable()
             .build();
-
-        // Config raylib
-        unsafe {
-            raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
-            // Disable ESC to close window. "Cmd + Q" still works!
-            raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
-        }
-        println!("Working directory: {:?}", std::env::current_dir().unwrap());
-
-        let font_data = include_bytes!("font.ttf");
-        let font = ray.load_font_from_memory(&thread, ".ttf", font_data, 32, None).unwrap();
-        // let font = ray.load_font(&thread, "font.ttf").unwrap();
         ray.set_target_fps(target_fps as u32);
+
+        // Embed Font file
+        let font_data = include_bytes!("font.ttf");
+        let font = ray
+            .load_font_from_memory(&thread, ".ttf", font_data, 32, None)
+            .unwrap();
 
         // Create texture for rendering
         let pixels = vec![0u8; w as usize * h as usize * 4];
@@ -52,25 +53,21 @@ impl RaylibBackend {
             ray.load_texture_from_image(&thread, &render_image).unwrap()
         };
 
-        // Create textures for debug display
-        let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
-        let debug_w = tiles_per_row * TILE_SIZE as usize;
-
+        // Pre-populate textures and pixel buffers
         let mut debug_texture = vec![];
         let mut debug_pixels = vec![];
-
+        let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
+        let tiles_w = tiles_per_row * TILE_SIZE as usize;
         for bank in &tato.banks {
             let max_row = (bank.tile_count() / tiles_per_row) + 1;
-            let debug_h = max_row * TILE_SIZE as usize;
-            let debug_h = debug_h.max(8);
-            println!("{debug_h}");
-            // let debug_h = ((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize;
-            let debug_image = Image::gen_image_color(debug_w as i32, debug_h as i32, Color::BLACK);
+            let tiles_h = max_row * TILE_SIZE as usize;
+            let tiles_h = tiles_h.max(8);
+            println!("{tiles_h}");
+            // let tiles_h = ((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize;
+            let debug_image = Image::gen_image_color(tiles_w as i32, tiles_h as i32, Color::BLACK);
             debug_texture.push(ray.load_texture_from_image(&thread, &debug_image).unwrap());
-            debug_pixels.push(vec![0u8; debug_w * debug_h * 4]);
+            debug_pixels.push(vec![0u8; tiles_w * tiles_h * 4]);
         }
-
-
 
         // Build struct
         Self {
@@ -160,8 +157,6 @@ impl RaylibBackend {
 
         // ---------------------- Copy from framebuffer to raylib texture ----------------------
 
-        // TODO: Return iterator directly from Tato struct,
-        // TODO: eliminate get_video_banks and get_bg_banks
         for (color, coords) in t.iter_pixels() {
             let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
             self.pixels[i] = color.r;
@@ -172,13 +167,12 @@ impl RaylibBackend {
 
         self.render_texture.update_texture(&self.pixels).unwrap();
 
-        t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
+        t.update_time_acc
+            .push(time.elapsed().as_secs_f64() * 1000.0);
         println!("iter time: {:.2} ms", t.update_time_acc.average());
 
         let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
-        let debug_w = (tiles_per_row * TILE_SIZE as usize) as i32;
-        let debug_h =
-            (((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize) as i32;
+        let tiles_w = (tiles_per_row * TILE_SIZE as usize) as i32;
 
         // Calculate rect with correct aspect ratio with integer scaling
         let screen_width = self.ray.get_screen_width();
@@ -208,9 +202,9 @@ impl RaylibBackend {
             let dark_bg = Color::new(32, 32, 32, 255);
             let light_bg = Color::new(48, 48, 48, 255);
             let rect_bg = Rect {
-                x: screen_width - (debug_w as i32 * self.display_debug_scale) - 8,
+                x: screen_width - (tiles_w as i32 * self.display_debug_scale) - 8,
                 y: font_size,
-                w: debug_w * self.display_debug_scale,
+                w: tiles_w * self.display_debug_scale,
                 h: screen_height - font_size - font_size,
             };
             canvas.draw_rectangle(rect_bg.x, rect_bg.y, rect_bg.w, rect_bg.h, light_bg);
@@ -221,26 +215,47 @@ impl RaylibBackend {
             layout.set_margin(1);
             layout.set_scale(self.display_debug_scale as f32);
             layout.fitting = Fitting::Clamp;
+            let gap = self.display_debug_scale;
+            let mut mouse_over_text = String::new();
 
             // Process each video memory bank
             for bank_index in 0..TILE_BANK_COUNT {
                 let bank = &t.banks[bank_index];
-                let mut mouse_over_text = String::new();
 
                 // Label
-                layout.push_edge(Edge::Top, font_size / self.display_debug_scale, |frame| {
+                let h = font_size / self.display_debug_scale;
+                layout.push_edge(Edge::Top, h, |frame| {
                     let rect = frame.rect();
-                    let text = format!("bank {}", bank_index);
-                    let gap = self.display_debug_scale;
                     canvas.draw_text_ex(
                         &self.font,
-                        &text,
+                        &format!("bank {}:", bank_index),
                         Vector2::new((rect.x + gap) as f32, rect.y as f32),
                         font_size as f32,
                         1.0,
                         Color::WHITE,
                     );
                 });
+
+                layout.push_edge(Edge::Top, h, |frame| {
+                    let rect = frame.rect();
+                    canvas.draw_text_ex(
+                        &self.font,
+                        &format!(
+                            "{} tiles, {} custom colors, {} sub-palettes",
+                            bank.tile_count(),
+                            bank.color_count(),
+                            bank.sub_palette_count()
+                        ),
+                        Vector2::new((rect.x + gap) as f32, rect.y as f32),
+                        font_size as f32 * 0.75,
+                        1.0,
+                        Color::WHITE,
+                    );
+                });
+
+                if bank.tile_count() == 0 {
+                    continue;
+                }
 
                 // Color swatches
                 layout.push_edge(Edge::Top, 8, |frame| {
@@ -271,7 +286,7 @@ impl RaylibBackend {
                 // Subpalettes
                 let columns = 4;
                 let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
-                let frame_h = (rows as i32 * 8) + 2;
+                let frame_h = (rows as i32 * 4) + 2;
 
                 layout.push_edge(Edge::Top, frame_h, |frame| {
                     let column_w = frame.divide_width(columns);
@@ -346,7 +361,7 @@ impl RaylibBackend {
 
                             let pixel_x = tile_x * TILE_SIZE as usize + x;
                             let pixel_y = tile_y * TILE_SIZE as usize + y;
-                            let pixel_offset = (pixel_y * debug_w as usize + pixel_x) * 4;
+                            let pixel_offset = (pixel_y * tiles_w as usize + pixel_x) * 4;
 
                             // Set RGBA values
                             self.debug_pixels[bank_index][pixel_offset] = gray_value; // R
@@ -379,29 +394,31 @@ impl RaylibBackend {
                         }
                     }
                 });
+            }
 
-                // Mouse over
-                if !mouse_over_text.is_empty() {
-                    let size = self.font.measure_text(&mouse_over_text, font_size as f32, 1.0);
-                    let text_x = mouse_x - size.x as i32 - 12;
-                    let text_y = mouse_y + 12;
-                    let pad = self.display_debug_scale;
-                    canvas.draw_rectangle(
-                        text_x - pad,
-                        text_y,
-                        size.x as i32 + pad + pad,
-                        font_size,
-                        Color::BLACK,
-                    );
-                    canvas.draw_text_ex(
-                        &self.font,
-                        &mouse_over_text,
-                        Vector2::new(text_x as f32, text_y as f32),
-                        font_size as f32,
-                        1.0,
-                        Color::WHITE,
-                    );
-                }
+            // Mouse over
+            if !mouse_over_text.is_empty() {
+                let size = self
+                    .font
+                    .measure_text(&mouse_over_text, font_size as f32, 1.0);
+                let text_x = mouse_x - size.x as i32 - 12;
+                let text_y = mouse_y + 12;
+                let pad = self.display_debug_scale;
+                canvas.draw_rectangle(
+                    text_x - pad,
+                    text_y,
+                    size.x as i32 + pad + pad,
+                    font_size,
+                    Color::BLACK,
+                );
+                canvas.draw_text_ex(
+                    &self.font,
+                    &mouse_over_text,
+                    Vector2::new(text_x as f32, text_y as f32),
+                    font_size as f32,
+                    1.0,
+                    Color::WHITE,
+                );
             }
         }
     }
