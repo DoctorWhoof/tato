@@ -82,3 +82,6 @@ pub const SUBPALETTE_COUNT: u8 = 16;
 
 /// Maximum number of BG Tiles
 pub const BG_LEN: usize = 1024;
+
+pub const BG_BANK_COUNT:usize = 2;
+pub const TILE_BANK_COUNT:usize = 2;

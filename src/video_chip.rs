@@ -198,8 +198,8 @@ impl VideoChip {
     /// Requires a reference to the Tile array.
     pub fn iter_pixels<'a>(
         &'a self,
-        video_banks: &'a [&'a VideoMemory<TILE_COUNT>],
-        bg_banks: [Option<&'a dyn DynamicBGMap>; 8],
+        video_banks: [&'a VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
+        bg_banks: [Option<&'a dyn DynamicBGMap>; BG_BANK_COUNT],
     ) -> PixelIter<'a> {
         PixelIter::new(
             self,
