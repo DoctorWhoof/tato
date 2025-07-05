@@ -2,7 +2,7 @@ mod scene_a;
 mod scene_b;
 mod scene_c;
 
-use backend_raylib::*;
+use tato_raylib::*;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;

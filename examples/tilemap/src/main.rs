@@ -1,40 +1,33 @@
-use backend_raylib::*;
+use tato_raylib::*;
 use tato::prelude::*;
 
-// mod patch;
-// use patch::*;
+mod patch;
+use patch::*;
 
-// mod smileys;
-// use smileys::*;
+mod smileys;
+use smileys::*;
 
-mod testmap;
-use testmap::*;
-
-const MAP_LEN:usize = 4096;
+const MAP_LEN:usize = 1024;
 
 // Rects use "number of tiles" as the dimensions
 fn main() {
-    let mut tato = Tato::new(288, 216);
-    let mut bg_map = BGMap::<MAP_LEN>::new(72, 54);
+    let mut tato = Tato::new(240, 180);
+    let mut bg_map = BGMap::<MAP_LEN>::new(32, 32);
     tato.bg[0] = Some(&mut bg_map);
-    tato.video.bg_color = RGBA12::new(0, 0, 0, 0);
+    tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
 
     // Populate tilesets
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let _transparent = tato.banks[0].push_color(RGBA12::new(0, 0, 0, 0));
     let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
 
-    // let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
-    // let map_smileys = tato.new_tilemap(tileset_smileys, &SMILEYS_MAP);
-    // tato.draw_map(map_smileys, None, Some(Rect { x: 3, y: 5, w: 16, h: 10 }));
+    let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
+    let map_smileys = tato.new_tilemap(tileset_smileys, &SMILEYS_MAP);
+    tato.draw_map(0, map_smileys, None, Some(Rect { x: 3, y: 5, w: 16, h: 10 }));
 
-    let tileset_test = tato.new_tileset(0, TESTMAP_TILESET).unwrap();
-    let map_test = tato.new_tilemap::<MAP_LEN>(tileset_test, &TEST_MAP);
-    tato.draw_map(0, map_test, None, None);
-
-    // let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
-    // let map_patch = tato.new_tilemap(tileset_patch, &PATCH_MAP);
-    // tato.draw_patch(map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
+    let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
+    let map_patch = tato.new_tilemap(tileset_patch, &PATCH_MAP);
+    tato.draw_patch(0, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
 
     // Backend
     let mut backend = RaylibBackend::new(&tato, 60.0);

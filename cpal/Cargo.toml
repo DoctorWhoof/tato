@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tato = {path = "../../../"}
+tato = {path = "../"}
 cpal = "0.15.3"
 # For audio debugging
 hound = "3.5.1"

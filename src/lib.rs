@@ -30,5 +30,4 @@ pub mod prelude {
     pub use tato_video::*;
 }
 
-pub const BANK_COUNT: usize = 2;
 pub const CELLS_PER_BANK:usize = 1024; // Maximum BG Map size per bank

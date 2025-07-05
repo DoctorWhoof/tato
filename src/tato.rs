@@ -8,7 +8,7 @@ pub struct Tato<'a> {
     pub audio: tato_audio::AudioChip,
     // Video
     pub video: tato_video::VideoChip,
-    pub banks: [tato_video::VideoMemory<TILE_COUNT>; BANK_COUNT],
+    pub banks: [tato_video::VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
     pub bg: [Option<&'a mut dyn DynamicBGMap>; 8],
     pub assets: Assets,
     // Internals
@@ -36,14 +36,11 @@ impl<'a> Tato<'a> {
         }
     }
 
-    pub fn get_bg_banks(&self) -> [Option<&dyn DynamicBGMap>; 8] {
-        // Converts mutable BG refs to immutable
-        core::array::from_fn(|i| {
+    pub fn iter_pixels(&self) -> PixelIter {
+        let bg_banks = core::array::from_fn(|i| {
             if let Some(bg) = &self.bg[i] { Some(*bg as &dyn DynamicBGMap) } else { None }
-        })
-    }
-
-    pub fn get_video_banks(&self) -> [&VideoMemory<TILE_COUNT>; BANK_COUNT] {
-        core::array::from_fn(|i| &self.banks[i])
+        });
+        let video_banks = core::array::from_fn(|i| &self.banks[i]);
+        self.video.iter_pixels(video_banks, bg_banks)
     }
 }

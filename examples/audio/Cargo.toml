@@ -4,11 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tato = { path = "../../"}
 rand = {version = "0.9.0" }
-backend_raylib = { path = "../_backend/raylib"}
-backend_cpal = { path = "../_backend/cpal"}
-# raylib = "5.5.1"
-
-## Other backends, currently not used
-# mini_sdl = { path = "../../../mini_sdl"}
+tato = { path = "../../"}
+backend_cpal = { path = "../../cpal"}
+tato_raylib = { path = "../../../tato_raylib"}

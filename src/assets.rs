@@ -179,11 +179,7 @@ impl<'a> Tato<'a> {
 
     /// Adds a tilemap entry that refers to already loaded tiles in a tileset.
     /// Returns the index of the map
-    pub fn new_tilemap<const LEN: usize>(
-        &mut self,
-        tileset_id: TilesetID,
-        data: &dyn DynamicBGMap,
-    ) -> MapID {
+    pub fn new_tilemap(&mut self, tileset_id: TilesetID, data: &dyn DynamicBGMap) -> MapID {
         // Acquire tile offset for desired tileset
         let assets = &mut self.assets;
         let tileset = &assets.tilesets[tileset_id.0 as usize];
