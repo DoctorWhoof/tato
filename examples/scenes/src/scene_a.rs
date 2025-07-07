@@ -13,7 +13,7 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(t: &mut Tato) -> Self {
+    pub fn new(t: &mut Tato, state: &mut State) -> Self {
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(3, 1, 1, 7);
         t.video.wrap_bg = false;
@@ -53,25 +53,26 @@ impl SceneA {
         let arrow = TILE_ARROW;
 
         // Set BG tiles, acquire width and height of bg map
-        let (w, h) = if let Some(bg) = &mut t.bg[0] {
-            for col in 0..bg.columns() {
-                for row in 0..bg.rows() {
+        let (w, h) = {
+            for col in 0..state.bg.columns() {
+                for row in 0..state.bg.rows() {
                     // Calculate palette ID based on coordinates, limits to 14 indices
                     let index = (col + row) % 14;
                     // Adds 2 to avoid colors 0 and 1 in the BG
                     let adjusted_palette = PaletteID(2 + index as u8);
 
-                    bg.set_cell(BgOp {
-                        col,
-                        row,
-                        tile_id: arrow,
-                        flags: TileFlags::from(adjusted_palette).with_rotation(),
-                    });
+                    bg_set_cell(
+                        &mut state.bg,
+                        BgOp {
+                            col,
+                            row,
+                            tile_id: arrow,
+                            flags: TileFlags::from(adjusted_palette).with_rotation(),
+                        },
+                    );
                 }
             }
-            (bg.width() as i16, bg.height() as i16)
-        } else {
-            unreachable!()
+            (state.bg.width() as i16, state.bg.height() as i16)
         };
 
         // Pre-generate smileys array
@@ -100,43 +101,43 @@ impl SceneA {
     }
 
     // Process the scene on each frame
-    pub fn update(&mut self, t: &mut Tato, app: BackendState) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
         t.video.start_frame();
 
         // ------------------------------ Input ------------------------------
 
-        if app.pad.is_just_pressed(Button::Start) {
+        if state.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;
             t.video.wrap_bg = !t.video.wrap_bg;
         }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
-        // let speed = if app.pad.is_any_down(AnyButton::Face) {
-        let speed = if app.pad.is_down(Button::A) {
-            30.0 * app.elapsed as f32
+        // let speed = if state.pad.is_any_down(AnyButton::Face) {
+        let speed = if state.pad.is_down(Button::A) {
+            30.0 * state.elapsed as f32
         } else {
-            120.0 * app.elapsed as f32
+            120.0 * state.elapsed as f32
         };
 
         // Ensures animation always starts from phase = 0.0;
-        if app.pad.is_any_just_pressed(AnyButton::Direction) {
-            self.movement_start = app.time as f32;
+        if state.pad.is_any_just_pressed(AnyButton::Direction) {
+            self.movement_start = state.time as f32;
         }
 
         // Player Movement
         let is_walking = {
             let (mut vel_x, mut vel_y) = (0.0, 0.0);
-            if app.pad.is_down(Button::Left) {
+            if state.pad.is_down(Button::Left) {
                 vel_x = -speed;
                 self.player.flags.rotate_left();
-            } else if app.pad.is_down(Button::Right) {
+            } else if state.pad.is_down(Button::Right) {
                 vel_x = speed;
                 self.player.flags.rotate_right();
             }
-            if app.pad.is_down(Button::Up) {
+            if state.pad.is_down(Button::Up) {
                 vel_y = -speed;
                 self.player.flags.rotate_up();
-            } else if app.pad.is_down(Button::Down) {
+            } else if state.pad.is_down(Button::Down) {
                 vel_y = speed;
                 self.player.flags.rotate_down();
             }
@@ -160,20 +161,17 @@ impl SceneA {
 
         t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
 
-        // let t.bg = &mut t.banks[0].bg;
-        if let Some(bg) = &mut t.bg[0] {
-            for col in 0..bg.columns() {
-                for row in 0..bg.rows() {
-                    let Some(mut flags) = bg.get_flags(col, row) else {
-                        continue;
-                    };
-                    flags.set_rotation(self.player.flags.is_rotated());
-                    flags.set_flip_x(self.player.flags.is_flipped_x());
-                    flags.set_flip_y(self.player.flags.is_flipped_y());
-                    bg.set_flags(col, row, flags);
-                }
+        for col in 0..state.bg.columns() {
+            for row in 0..state.bg.rows() {
+                let Some(mut flags) = bg_get_flags(&state.bg, col, row) else {
+                    continue;
+                };
+                flags.set_rotation(self.player.flags.is_rotated());
+                flags.set_flip_x(self.player.flags.is_flipped_x());
+                flags.set_flip_y(self.player.flags.is_flipped_y());
+                bg_set_flags(&mut state.bg, col, row, flags);
             }
-        };
+        }
 
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
@@ -204,12 +202,12 @@ impl SceneA {
 
         for entity in &self.smileys {
             // passing x as phase gives us out-of-sync motion
-            let hover_phase = entity.x + app.time as f32;
+            let hover_phase = entity.x + state.time as f32;
             sprite_hover(entity, hover_phase, 6.0, 1.5);
         }
 
         // Player goes in front. Drawing a sprite last means it has highest priority!
-        let hover_phase = app.time as f32 - self.movement_start;
+        let hover_phase = state.time as f32 - self.movement_start;
         let hover_speed = if is_walking { 24.0 } else { 4.0 };
         let hover_height = if is_walking { 2.0 } else { 1.5 };
         sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
@@ -224,6 +222,6 @@ impl SceneA {
 
         // ------------------- Return mode switch request -------------------
 
-        if app.pad.is_just_pressed(Button::Menu) { Some(SceneChange::B) } else { None }
+        if state.pad.is_just_pressed(Button::Menu) { Some(SceneChange::B) } else { None }
     }
 }

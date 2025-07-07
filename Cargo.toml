@@ -12,6 +12,7 @@ tato_pad = { path = "../tato_pad" }
 tato_layout = { path = "../tato_layout" }
 tato_audio = { path = "../tato_audio" }
 tato_video = { path = "../tato_video" }
+tato_math = { path = "../tato_math" }
 smooth-buffer = { path = "../smooth_buffer" }
 
 [build-dependencies]

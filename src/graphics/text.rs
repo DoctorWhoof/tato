@@ -9,22 +9,12 @@ pub struct TextOp {
     pub palette: PaletteID,
 }
 
-impl<'a> Tato<'a> {
+impl Tato {
     /// "Draws" a text string to the BG Map, returns the resulting height (in rows), if any.
-    pub fn draw_text(&mut self, bg_index:usize, text: &str, op: TextOp) -> Option<u16> {
+    pub fn draw_text(&mut self, bg: &mut dyn DynamicBGMap, text: &str, op: TextOp) -> Option<u16> {
         debug_assert!(text.is_ascii());
         let tileset = self.assets.tilesets.get(op.id.0 as usize)?;
-        let Some(bg) = &mut self.bg[bg_index] else { return None };
-        // let tileset = &self.tiles.sets[bundle.tileset.0 as usize];
-        // let Some(bg) = &mut self.bg else { return None };
-        let mut set_tile = |ch: char, cursor_x: u16, cursor_y: u16| {
-            bg.set_cell(BgOp {
-                col: op.col + cursor_x,
-                row: op.row + cursor_y,
-                tile_id: TileID(char_to_id_ex(ch) + tileset.tile_start),
-                flags: op.palette.into(),
-            });
-        };
+        let tile_start = tileset.tile_start;
 
         let mut cursor_x = 0;
         let mut cursor_y = 0;
@@ -34,14 +24,30 @@ impl<'a> Tato<'a> {
                 cursor_y += 1;
             }
             for ch in word.chars() {
-                set_tile(ch, cursor_x, cursor_y);
+                bg_set_cell(
+                    bg,
+                    BgOp {
+                        col: op.col + cursor_x,
+                        row: op.row + cursor_y,
+                        tile_id: TileID(char_to_id_ex(ch) + tile_start),
+                        flags: op.palette.into(),
+                    },
+                );
                 cursor_x += 1;
             }
             if cursor_x >= op.width {
                 cursor_x = 0;
                 cursor_y += 1;
             } else {
-                set_tile(' ', cursor_x, cursor_y);
+                bg_set_cell(
+                    bg,
+                    BgOp {
+                        col: op.col + cursor_x,
+                        row: op.row + cursor_y,
+                        tile_id: TileID(char_to_id_ex(' ') + tile_start),
+                        flags: op.palette.into(),
+                    },
+                );
                 cursor_x += 1;
             }
         }

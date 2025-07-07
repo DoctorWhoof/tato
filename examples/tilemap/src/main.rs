@@ -1,5 +1,5 @@
-use tato_raylib::*;
 use tato::prelude::*;
+use tato_raylib::*;
 
 mod patch;
 use patch::*;
@@ -7,13 +7,13 @@ use patch::*;
 mod smileys;
 use smileys::*;
 
-const MAP_LEN:usize = 1024;
+const MAP_LEN: usize = 1024;
 
 // Rects use "number of tiles" as the dimensions
 fn main() {
-    let mut tato = Tato::new(240, 180);
     let mut bg_map = BGMap::<MAP_LEN>::new(32, 32);
-    tato.bg[0] = Some(&mut bg_map);
+
+    let mut tato = Tato::new(240, 180);
     tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
 
     // Populate tilesets
@@ -23,11 +23,16 @@ fn main() {
 
     let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
     let map_smileys = tato.new_tilemap(tileset_smileys, &SMILEYS_MAP);
-    tato.draw_map(0, map_smileys, None, Some(Rect { x: 3, y: 5, w: 16, h: 10 }));
+    bg_copy(
+        &tato.tilemap::<160>(map_smileys),
+        None,
+        &mut bg_map,
+        Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
+    );
 
     let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
     let map_patch = tato.new_tilemap(tileset_patch, &PATCH_MAP);
-    tato.draw_patch(0, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
+    tato.draw_patch(&mut bg_map, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
 
     // Backend
     let mut backend = RaylibBackend::new(&tato, 60.0);
@@ -47,6 +52,6 @@ fn main() {
             tato.video.scroll_y -= 1;
         }
 
-        backend.render(&mut tato);
+        backend.render(&mut tato, &[&bg_map]);
     }
 }

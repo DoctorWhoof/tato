@@ -8,41 +8,45 @@ pub struct SceneC {
 }
 
 impl SceneC {
-    pub fn new(t: &mut Tato) -> Self {
+    pub fn new(t: &mut Tato, state: &mut State) -> Self {
         let _tileset = t.new_tileset(0, DEFAULT_TILESET);
         let solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
         t.video.bg_color = RGBA12::GRAY;
-        if let Some(bg) = &mut t.bg[0] {
-            for col in 0..bg.columns() {
-                for row in 0..bg.rows() {
-                    bg.set_cell(BgOp {
+
+        for col in 0..state.bg.columns() {
+            for row in 0..state.bg.rows() {
+                bg_set_cell(
+                    &mut state.bg,
+                    BgOp {
                         col,
                         row,
                         tile_id: cross,
                         flags: TileFlags::from(PaletteID(1)).with_fg(),
-                    });
-                }
+                    },
+                );
             }
+        }
 
-            for id in 0..16 as u8 {
-                bg.set_cell(BgOp {
+        for id in 0..16 as u8 {
+            bg_set_cell(
+                &mut state.bg,
+                BgOp {
                     col: id as u16,
                     row: 0,
                     tile_id: solid,
                     flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
-                });
-                t.banks[0]
-                    .set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
-            }
+                },
+            );
+            t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
         }
 
         SceneC { smiley, counter: 0 }
     }
 
-    pub fn update(&mut self, t: &mut Tato, app: BackendState) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
         t.video.start_frame();
 
         // Draw the sprite directly, no Entity
@@ -63,6 +67,6 @@ impl SceneC {
         self.counter += 1;
 
         // Input
-        if app.pad.is_just_pressed(Button::Menu) { Some(SceneChange::A) } else { None }
+        if state.pad.is_just_pressed(Button::Menu) { Some(SceneChange::A) } else { None }
     }
 }

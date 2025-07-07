@@ -2,17 +2,18 @@ mod scene_a;
 mod scene_b;
 mod scene_c;
 
-use tato_raylib::*;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
 use tato::{Tato, prelude::*};
+use tato_raylib::*;
 
-#[derive(Debug, Clone, Copy)]
-pub struct BackendState {
+#[derive(Debug, Clone)]
+pub struct State {
     pub pad: AnaloguePad,
     pub time: f64,
     pub elapsed: f64,
+    pub bg: BGMap<1024>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -42,10 +43,15 @@ pub enum Scene {
 
 fn main() {
     // Tato setup + initial scene
-    let mut bg_map = BGMap::<1024>::new(32, 32);
     let mut scene = Scene::None;
     let mut t = Tato::new(240, 180);
-    t.bg[0] = Some(&mut bg_map);
+
+    let mut state = State {
+        pad: t.pad,
+        time: 0.0,
+        elapsed: 0.0,
+        bg: BGMap::<1024>::new(32, 32),
+    };
 
     // Line scrolling effect, adjusts scroll on every line
     t.video.irq_line = Some(|iter, video, _bg| {
@@ -59,31 +65,29 @@ fn main() {
     let mut back = RaylibBackend::new(&t, target_fps);
     while !back.ray.window_should_close() {
         back.update_gamepad(&mut t.pad);
-        let state = BackendState {
-            pad: t.pad,
-            time: back.ray.get_time(),
-            elapsed: 1.0 / target_fps as f64,
-        };
+        state.time = back.ray.get_time();
+        state.elapsed = 1.0 / target_fps as f64;
+        state.pad = t.pad;
 
         // If scene_change is None, immediately switch to A, otherwise process it.
         let scene_change = match &mut scene {
             Scene::None => Some(SceneChange::A),
-            Scene::A(scn) => scn.update(&mut t, state),
-            Scene::B(scn) => scn.update(&mut t, state),
-            Scene::C(scn) => scn.update(&mut t, state),
+            Scene::A(scn) => scn.update(&mut t, &mut state),
+            Scene::B(scn) => scn.update(&mut t, &mut state),
+            Scene::C(scn) => scn.update(&mut t, &mut state),
         };
 
         // Update backend
-        back.render(&mut t);
+        back.render(&mut t, &[&state.bg]);
 
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {
             t.video.reset_all();
             t.reset();
             match choice {
-                SceneChange::A => scene = Scene::A(SceneA::new(&mut t)),
-                SceneChange::B => scene = Scene::B(SceneB::new(&mut t)),
-                SceneChange::C => scene = Scene::C(SceneC::new(&mut t)),
+                SceneChange::A => scene = Scene::A(SceneA::new(&mut t, &mut state)),
+                SceneChange::B => scene = Scene::B(SceneB::new(&mut t, &mut state)),
+                SceneChange::C => scene = Scene::C(SceneC::new(&mut t, &mut state)),
             }
         }
     }

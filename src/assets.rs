@@ -1,4 +1,4 @@
-use crate::*;
+use crate::prelude::*;
 use core::array::from_fn;
 
 mod anim;
@@ -17,7 +17,7 @@ pub struct Assets {
     pub tilesets: [Tileset; 256],
     // Asset types
     pub anims: [AnimEntry; 256],
-    pub maps: [TilemapEntry; 256],
+    pub map_entries: [TilemapEntry; 256],
     // pub palettes: [Palette; 256],
     // pub fonts: [Font; 256],
     // "flat" storage for cells used by any asset type.
@@ -40,7 +40,7 @@ impl Assets {
             // Metadata
             tilesets: from_fn(|_| Tileset::default()),
             anims: from_fn(|_| AnimEntry::default()),
-            maps: from_fn(|_| TilemapEntry::default()),
+            map_entries: from_fn(|_| TilemapEntry::default()),
             colors: from_fn(|_| RGBA12::default()),
             sub_palettes: from_fn(|_| Default::default()),
             // "Flat" entry data for maps, anims and fonts
@@ -66,7 +66,7 @@ impl Assets {
     }
 }
 
-impl<'a> Tato<'a> {
+impl Tato {
     /// Adds a single tile, returns a TileID
     #[inline]
     pub fn new_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
@@ -186,7 +186,7 @@ impl<'a> Tato<'a> {
         let tileset_offset = tileset.tile_start;
         let bank_id = tileset.bank_id;
 
-        if assets.map_head as usize >= assets.maps.len() {
+        if assets.map_head as usize >= assets.map_entries.len() {
             panic!(err!("Map capacity exceeded on bank {}"), bank_id);
         }
 
@@ -203,7 +203,7 @@ impl<'a> Tato<'a> {
         );
 
         // Map entry
-        assets.maps[assets.map_head as usize] =
+        assets.map_entries[assets.map_head as usize] =
             TilemapEntry { bank_id, columns, rows, data_start, data_len };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
@@ -220,6 +220,17 @@ impl<'a> Tato<'a> {
         assets.map_head += 1;
         assets.cell_head += data_len;
         MapID(map_idx)
+    }
+
+    pub fn tilemap<const LEN: usize>(&mut self, map_id: MapID) -> BGMapRef {
+        let entry = &self.assets.map_entries[map_id.0 as usize];
+        let start = entry.data_start as usize;
+        let end = start + entry.data_len as usize;
+        BGMapRef {
+            cells: &mut self.assets.cells[start..end],
+            columns: entry.columns,
+            rows: entry.rows,
+        }
     }
 
     // /// Adds an animation entry

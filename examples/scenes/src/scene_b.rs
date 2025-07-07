@@ -8,7 +8,7 @@ pub struct SceneB {
 }
 
 impl SceneB {
-    pub fn new(t: &mut Tato) -> Self {
+    pub fn new(t: &mut Tato, state: &mut State) -> Self {
         // Center view
         let x = t.video.max_x() / 2;
         let y = t.video.max_y() / 2;
@@ -23,12 +23,10 @@ impl SceneB {
         let _tileset = t.new_tileset(0, DEFAULT_TILESET);
         let tile = TILE_SMILEY;
 
-        if let Some(bg) = &mut t.bg[0] {
-            for cell in bg.cells_mut() {
-                cell.id = tile;
-                cell.flags = palette_bg.into();
-            }
-        };
+        for cell in state.bg.cells_mut() {
+            cell.id = tile;
+            cell.flags = palette_bg.into();
+        }
 
         Self {
             player: Entity { x: x as f32, y: y as f32, tile, flags: palette_cycler.into() },
@@ -43,19 +41,19 @@ impl SceneB {
         }
     }
 
-    pub fn update(&mut self, t: &mut Tato, app: BackendState) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
         t.video.start_frame();
         let speed = 1.0;
 
         // Input
-        if app.pad.is_down(Button::Left) {
+        if state.pad.is_down(Button::Left) {
             self.player.x -= speed;
-        } else if app.pad.is_down(Button::Right) {
+        } else if state.pad.is_down(Button::Right) {
             self.player.x += speed;
         }
-        if app.pad.is_down(Button::Up) {
+        if state.pad.is_down(Button::Up) {
             self.player.y -= speed;
-        } else if app.pad.is_down(Button::Down) {
+        } else if state.pad.is_down(Button::Down) {
             self.player.y += speed;
         }
 
@@ -81,10 +79,10 @@ impl SceneB {
             flags: self.player.flags,
         });
 
-        if app.pad.is_just_pressed(Button::Start) {
+        if state.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;
         }
 
-        if app.pad.is_just_pressed(Button::Menu) { Some(SceneChange::C) } else { None }
+        if state.pad.is_just_pressed(Button::Menu) { Some(SceneChange::C) } else { None }
     }
 }
