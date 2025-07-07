@@ -22,13 +22,6 @@ pub struct RaylibBackend {
 
 impl RaylibBackend {
     pub fn new(tato: &Tato, target_fps: f32) -> Self {
-        // Config raylib
-        unsafe {
-            raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
-            // Disable ESC to close window. "Cmd + Q" still works!
-            raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
-        }
-
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
         let (mut ray, thread) = raylib::init()
@@ -38,7 +31,14 @@ impl RaylibBackend {
             .vsync()
             .resizable()
             .build();
+
+        // Config raylib
         ray.set_target_fps(target_fps as u32);
+        unsafe {
+            raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
+            // Disable ESC to close window. "Cmd + Q" still works!
+            raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
+        }
 
         // Embed Font file
         let font_data = include_bytes!("font.ttf");
@@ -74,7 +74,7 @@ impl RaylibBackend {
             bg_color: Color::new(32, 32, 32, 255),
             ray,
             display_debug: true,
-            display_debug_scale: 1,
+            display_debug_scale: 2,
             thread,
             pixels,
             debug_pixels,
@@ -138,8 +138,7 @@ impl RaylibBackend {
         }
     }
 
-    pub fn render(&mut self, t: &mut Tato) {
-        let time = std::time::Instant::now();
+    pub fn render(&mut self, t: &mut Tato, bg_banks: &[&dyn DynamicBGMap]) {
         let mouse_x = self.ray.get_mouse_x();
         let mouse_y = self.ray.get_mouse_y();
 
@@ -157,19 +156,19 @@ impl RaylibBackend {
 
         // ---------------------- Copy from framebuffer to raylib texture ----------------------
 
-        for (color, coords) in t.iter_pixels() {
+        let time = std::time::Instant::now();
+        for (color, coords) in t.iter_pixels(bg_banks) {
             let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
             self.pixels[i] = color.r;
             self.pixels[i + 1] = color.g;
             self.pixels[i + 2] = color.b;
             self.pixels[i + 3] = color.a;
         }
-
-        self.render_texture.update_texture(&self.pixels).unwrap();
-
         t.update_time_acc
             .push(time.elapsed().as_secs_f64() * 1000.0);
         println!("iter time: {:.2} ms", t.update_time_acc.average());
+
+        self.render_texture.update_texture(&self.pixels).unwrap();
 
         let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
         let tiles_w = (tiles_per_row * TILE_SIZE as usize) as i32;
@@ -221,6 +220,12 @@ impl RaylibBackend {
             // Process each video memory bank
             for bank_index in 0..TILE_BANK_COUNT {
                 let bank = &t.banks[bank_index];
+                if bank.tile_count() == 0
+                    && bank.color_count() == 0
+                    && bank.sub_palette_count() == 0
+                {
+                    continue;
+                }
 
                 // Label
                 let h = font_size / self.display_debug_scale;
