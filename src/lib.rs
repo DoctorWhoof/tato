@@ -32,6 +32,8 @@ pub use video_mem::*;
 mod video_chip;
 pub use video_chip::*;
 
+pub use tato_math as math;
+
 /// A callback used to modify the iterator, called once on every line at
 /// an X position determined by [VideoChip::irq_x_position].
 /// The parameters are:
@@ -83,5 +85,5 @@ pub const SUBPALETTE_COUNT: u8 = 16;
 /// Maximum number of BG Tiles
 pub const BG_LEN: usize = 1024;
 
-pub const BG_BANK_COUNT:usize = 2;
-pub const TILE_BANK_COUNT:usize = 2;
+pub const BG_BANK_COUNT:usize = 8;
+pub const TILE_BANK_COUNT:usize = 8;

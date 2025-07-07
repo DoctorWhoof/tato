@@ -1,6 +1,7 @@
 use crate::*;
+use tato_math::rect::Rect;
 
-/// This trait allows references to BGMaps of different sizes to be used by the Pixel Iterator.
+/// This trait allows references to BGMaps of different sizes.
 pub trait DynamicBGMap: core::fmt::Debug {
     fn cells(&self) -> &[Cell];
     fn cells_mut(&mut self) -> &mut [Cell];
@@ -9,11 +10,7 @@ pub trait DynamicBGMap: core::fmt::Debug {
     fn width(&self) -> u16;
     fn height(&self) -> u16;
     fn len(&self) -> usize;
-    fn set_cell(&mut self, op: BgOp);
-    fn set_id(&mut self, col: u16, row: u16, tile_id: TileID);
-    fn set_flags(&mut self, col: u16, row: u16, flags: TileFlags);
-    fn get_id(&self, col: u16, row: u16) -> Option<TileID>;
-    fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags>;
+    fn set_size(&mut self, columns: u16, rows: u16);
 }
 
 /// A simple collection of Cells, split into a number of columns and rows that can never exceed the
@@ -59,28 +56,6 @@ impl<const CELL_COUNT: usize> BGMap<CELL_COUNT> {
             rows,
         }
     }
-
-    pub fn set_size(&mut self, columns: u16, rows: u16) {
-        assert!(
-            columns as usize * rows as usize <= CELL_COUNT,
-            err!("Invalid column count")
-        );
-        assert!(
-            columns > 0 && rows > 0,
-            err!("BGMap dimensions can't be zero")
-        );
-        self.columns = columns;
-        self.rows = rows;
-    }
-
-    /// Returns None if coords are out of map. not sure if useful yet
-    /// since the Pixel Iterator uses its own, wrapping coordinates.
-    pub fn get_index(&self, col: u16, row: u16) -> Option<usize> {
-        if col as usize >= self.columns as usize || row as usize >= self.rows as usize {
-            return None;
-        }
-        Some((row as usize * self.columns as usize) + col as usize)
-    }
 }
 
 impl<const CELL_COUNT: usize> DynamicBGMap for BGMap<CELL_COUNT> {
@@ -112,32 +87,119 @@ impl<const CELL_COUNT: usize> DynamicBGMap for BGMap<CELL_COUNT> {
         CELL_COUNT
     }
 
-    fn set_cell(&mut self, op: BgOp) {
-        if let Some(index) = self.get_index(op.col, op.row) {
-            self.cells[index].id = op.tile_id;
-            self.cells[index].flags = op.flags;
+    fn set_size(&mut self, columns: u16, rows: u16) {
+        assert!(
+            columns as usize * rows as usize <= self.cells().len(),
+            err!("Invalid column count")
+        );
+        assert!(
+            columns > 0 && rows > 0,
+            err!("BGMap dimensions can't be zero")
+        );
+        self.columns = columns;
+        self.rows = rows;
+    }
+}
+
+// Standalone functions. Unfortunately I ran into borrow checker issues when
+// using trait object methods!
+
+#[inline(always)]
+pub fn bg_get_index(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<usize> {
+    if col as usize >= map.columns() as usize || row as usize >= map.rows() as usize {
+        return None;
+    }
+    Some((row as usize * map.columns() as usize) + col as usize)
+}
+
+pub fn bg_set_cell(map: &mut dyn DynamicBGMap, op: BgOp) {
+    if let Some(index) = bg_get_index(map, op.col, op.row) {
+        map.cells_mut()[index].id = op.tile_id;
+        map.cells_mut()[index].flags = op.flags;
+    }
+}
+
+pub fn bg_set_id(map: &mut dyn DynamicBGMap, col: u16, row: u16, tile_id: TileID) {
+    if let Some(index) = bg_get_index(map, col, row) {
+        map.cells_mut()[index].id = tile_id;
+    }
+}
+
+pub fn bg_set_flags(map: &mut dyn DynamicBGMap, col: u16, row: u16, flags: TileFlags) {
+    if let Some(index) = bg_get_index(map, col, row) {
+        map.cells_mut()[index].flags = flags;
+    }
+}
+
+pub fn bg_get_id(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<TileID> {
+    let index = bg_get_index(map, col, row)?;
+    Some(map.cells()[index].id)
+}
+
+pub fn bg_get_flags(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<TileFlags> {
+    let index = bg_get_index(map, col, row)?;
+    Some(map.cells()[index].flags)
+}
+
+/// Copies a rectangular region from a src tilemap to this tilemap.
+/// - If `src_rect` is None, attempts to copy the entire source tilemap.
+/// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
+/// - Negative destination coordinates are handled by clipping the source region.
+pub fn bg_copy(
+    src: &dyn DynamicBGMap,
+    src_rect: Option<Rect<u16>>,
+    dst: &mut dyn DynamicBGMap,
+    dst_rect: Option<Rect<u16>>,
+) {
+    // Determine source rectangle
+    let src_x = src_rect.map_or(0, |r| r.x) as i16;
+    let src_y = src_rect.map_or(0, |r| r.y) as i16;
+    let src_w = src_rect.map_or(src.columns(), |r| r.w) as i16;
+    let src_h = src_rect.map_or(src.rows(), |r| r.h) as i16;
+
+    // Make sure source rectangle is within bounds
+    let src_w = i16::min(src_w, src.columns() as i16 - src_x);
+    let src_h = i16::min(src_h, src.rows() as i16 - src_y);
+
+    // Determine destination rectangle
+    let dst_x = dst_rect.map_or(0, |r| r.x) as i16;
+    let dst_y = dst_rect.map_or(0, |r| r.y) as i16;
+
+    // Calculate clipping for negative coordinates
+    let clip_x = if dst_x < 0 { -dst_x } else { 0 };
+    let clip_y = if dst_y < 0 { -dst_y } else { 0 };
+
+    // Adjust source and destination starting points
+    let effective_dst_x = i16::max(0, dst_x);
+    let effective_dst_y = i16::max(0, dst_y);
+
+    // Calculate effective width and height after clipping
+    let effective_width = i16::max(
+        0,
+        i16::min(src_w - clip_x, dst.columns() as i16 - effective_dst_x),
+    );
+    let effective_height = i16::max(
+        0,
+        i16::min(src_h - clip_y, dst.rows() as i16 - effective_dst_y),
+    );
+
+    // If there's nothing to copy (zero width or height), return early
+    if effective_width <= 0 || effective_height <= 0 {
+        return;
+    }
+
+    // Calculate effective src positions (accounting for clipping)
+    let effective_src_x = clip_x;
+    let effective_src_y = clip_y;
+
+    // Copy the tiles row by row
+    for y in 0..effective_height {
+        for x in 0..effective_width {
+            let src_index = (effective_src_y + y) as usize * src.columns() as usize
+                + (effective_src_x + x) as usize;
+            let dst_index = (effective_dst_y + y) as usize * dst.columns() as usize
+                + (effective_dst_x + x) as usize;
+            dst.cells_mut()[dst_index] = src.cells()[src_index];
         }
-    }
-
-    fn set_id(&mut self, col: u16, row: u16, tile_id: TileID) {
-        if let Some(index) = self.get_index(col, row) {
-            self.cells[index].id = tile_id;
-        }
-    }
-
-    fn set_flags(&mut self, col: u16, row: u16, flags: TileFlags) {
-        if let Some(index) = self.get_index(col, row) {
-            self.cells[index].flags = flags;
-        }
-    }
-
-    fn get_id(&self, col: u16, row: u16) -> Option<TileID> {
-        let index = self.get_index(col, row)?;
-        Some(self.cells[index].id)
-    }
-
-    fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags> {
-        let index = self.get_index(col, row)?;
-        Some(self.cells[index].flags)
     }
 }

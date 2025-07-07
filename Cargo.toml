@@ -7,3 +7,6 @@ license = "MIT"
 repository = "https://github.com/DoctorWhoof/tato_video"
 documentation = "https://docs.rs/padstate/latest/tato_video/"
 categories = ["no-std"]
+
+[dependencies]
+tato_math = { path = "../tato_math"}

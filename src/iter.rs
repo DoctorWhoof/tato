@@ -25,7 +25,7 @@ pub struct PixelIter<'a> {
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
     pub tile_banks: [&'a VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
-    pub bg_banks: [Option<&'a dyn DynamicBGMap>; BG_BANK_COUNT], // BG map banks are optional
+    pub bg_banks: [&'a dyn DynamicBGMap; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline, // current sprite scanline
@@ -40,12 +40,25 @@ pub struct ScreenCoords {
 impl<'a> PixelIter<'a> {
     pub fn new(
         vid: &'a VideoChip,
-        video_mem: [&'a VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
-        bg_maps: [Option<&'a dyn DynamicBGMap>; BG_BANK_COUNT],
+        video_mem: &[&'a VideoMemory<TILE_COUNT>],
+        bg_maps: &[&'a dyn DynamicBGMap],
     ) -> Self {
         assert!(
             !video_mem.is_empty(),
             err!("Video Memory bank can't be empty")
+        );
+        assert!(
+            video_mem.len() <= TILE_BANK_COUNT,
+            err!("Video Memory bank count ({}) exceeds maximum ({})"),
+            video_mem.len(),
+            TILE_BANK_COUNT
+        );
+        assert!(!bg_maps.is_empty(), err!("BG Maps can't be empty"));
+        assert!(
+            bg_maps.len() <= BG_BANK_COUNT,
+            err!("BG Maps count ({}) exceeds maximum ({})"),
+            bg_maps.len(),
+            BG_BANK_COUNT
         );
         let mut result = Self {
             vid,
@@ -56,7 +69,13 @@ impl<'a> PixelIter<'a> {
                     video_mem[0]
                 }
             }),
-            bg_banks: bg_maps,
+            bg_banks: from_fn(|i| {
+                if i < bg_maps.len() {
+                    bg_maps[i]
+                } else {
+                    bg_maps[0]
+                }
+            }),
             fg_tile_bank: vid.fg_tile_bank,
             bg_tile_bank: vid.bg_tile_bank,
             bg_map_bank: 0,
@@ -80,13 +99,10 @@ impl<'a> PixelIter<'a> {
         // Run Y IRQ on first line before anything else
         result.call_line_irq();
         // Check if we're outside the BG map at initialization
-        if let Some(bg) = result.bg_banks[result.bg_map_bank as usize] {
-            result.force_bg_color = !result.wrap_bg && result.is_outside(bg);
-            // Update bg data before first pixel is rendered
-            result.update_bg_cluster();
-        } else {
-            result.force_bg_color = true;
-        }
+        let bg = result.bg_banks[result.bg_map_bank as usize];
+        result.force_bg_color = !result.wrap_bg && result.is_outside(bg);
+        // Update bg data before first pixel is rendered
+        result.update_bg_cluster();
         result
     }
 
@@ -101,22 +117,14 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
-            if let Some(bg_map) = self.bg_banks[self.bg_map_bank as usize] {
-                func(self, self.vid, bg_map);
-            } else {
-                // Create a dummy BGMap for the IRQ call when bg_maps is None
-                // This is a workaround - ideally the IRQ signature should be updated
-                // to handle None bg_maps case
-                return;
-            }
+            let bg_map = self.bg_banks[self.bg_map_bank as usize];
+            func(self, self.vid, bg_map);
         }
     }
 
     #[inline]
     fn update_bg_cluster(&mut self) {
-        let Some(bg) = self.bg_banks[self.bg_map_bank as usize] else {
-            return;
-        };
+        let bg = self.bg_banks[self.bg_map_bank as usize];
 
         // Calculate effective bg pixel index (which BG pixel this screen pixel "sees")
         let bg_x = (self.x as i16 + self.scroll_x).rem_euclid(bg.width() as i16) as u16;
@@ -152,7 +160,7 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn get_pixel_color(&self) -> RGBA12 {
         // If BG Tile is set to FG and is not zero, return early
-        if self.bg_flags.is_fg() && !self.force_bg_color && self.bg_banks[self.bg_map_bank as usize].is_some() {
+        if self.bg_flags.is_fg() && !self.force_bg_color {
             let sub_palette = self.bg_flags.palette().0 as usize;
             let color = self.bg_cluster.get_subpixel(self.subpixel_index);
             // if color > 0 {
@@ -213,8 +221,8 @@ impl<'a> PixelIter<'a> {
         // Color result - FG has priority if not transparent
         if fg_color.a() > 0 {
             fg_color
-        } else if self.force_bg_color || self.bg_banks[self.bg_map_bank as usize].is_none() {
-            // Use background color if we're outside bounds or no bg maps
+        } else if self.force_bg_color {
+            // Use background color if we're outside bounds
             self.bg_color
         } else {
             // Get pixel from current cluster
@@ -321,15 +329,12 @@ impl<'a> Iterator for PixelIter<'a> {
         if reload_cluster {
             // Previous state - were we outside before?
             let was_outside = self.force_bg_color || self.x == 0;
-            if let Some(bg) = self.bg_banks[self.bg_map_bank as usize] {
-                self.force_bg_color = !self.wrap_bg && self.is_outside(bg);
+            let bg = self.bg_banks[self.bg_map_bank as usize];
+            self.force_bg_color = !self.wrap_bg && self.is_outside(bg);
 
-                // Only do tile calculations if we're using the actual background
-                if !self.force_bg_color || was_outside {
-                    self.update_bg_cluster();
-                }
-            } else {
-                self.force_bg_color = true;
+            // Only do tile calculations if we're using the actual background
+            if !self.force_bg_color || was_outside {
+                self.update_bg_cluster();
             }
         }
 
