@@ -14,9 +14,9 @@
     [ ] Mouse over video output:
 ------->[ ] Inspect any BG tile being displayed by tato_video.
         [ ] Inspect Sprites.
-    [ ] Shrink tile view to used tiles Only
-    [ ] Shrink subpalettes size
-    [ ] Indicate colors added Vs. default colors
+    [x] Shrink tile view to used tiles Only
+    [x] Shrink subpalettes size
+    [.] Indicate colors added Vs. default colors
     [ ] Indicate bank usage (as FG, BG bank or unused)
 
 [ ] Dual chip setup for multiple video layers
@@ -36,13 +36,15 @@
     [x] Write directly to the BG Map
     [?] Let the function accept a user defined slice of characters so that simple and complex fonts may be used freely.
 
---->[ ] Load & Unload Tilesets
+--->[ ] Load & Unload Tilesets.
+        . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
 
 [ ] Tilemaps
     [?] Correctly map subpalettes when loading into Assets.
         . Looks done? Needs more testing
 
 [ ] Anims: Update to latest Assets struct
+    . Frames should just be Tilemaps?
 
 [ ] Fonts: Replace text rendering using Anim to use Fonts. Update: maybe tilemaps, to allow flags?
 

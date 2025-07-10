@@ -15,7 +15,7 @@ impl SceneA {
     // Initialize and retuns a new scene
     pub fn new(t: &mut Tato, state: &mut State) -> Self {
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
-        t.video.bg_color = RGBA12::new(3, 1, 1, 7);
+        t.video.bg_color = RGBA12::new(2, 1, 0, 7);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
 
