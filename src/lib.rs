@@ -1,13 +1,11 @@
 #![no_std]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/readme.md"))]
 
-mod num;
-pub use num::*;
-
-mod rect;
-pub use rect::*;
-
 use core::marker::PhantomData;
+use tato_math::{num::Num, rect::Rect};
+
+/// Math utilities
+pub use tato_math as math;
 
 /// Shortens signature for a mutable frame reference
 macro_rules! child {

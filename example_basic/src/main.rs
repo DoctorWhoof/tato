@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use tato_layout::{Align::*, Edge::*, Fitting, Frame};
+use tato_layout::{Align::*, Edge::*, Fitting, Frame, math::Rect};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {
@@ -10,14 +10,14 @@ async fn main() {
 
         // Drawing helper function. Converts Rect types between
         // tato_layout's and macroquad's, then draws it.
-        fn draw_rect(rect: &tato_layout::Rect<f32>, thickness: f32) {
+        fn draw_rect(rect: &Rect<f32>, thickness: f32) {
             let rect = macroquad::math::Rect::new(rect.x, rect.y, rect.w, rect.h);
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, thickness, BLACK);
         }
 
         // Init Layout. Prevents negative values.
         // You can optionally clamp it to  a minimum UI size.
-        let mut root = Frame::new(tato_layout::Rect {
+        let mut root = Frame::new(Rect {
             x: 10.0,
             y: 10.0,
             w: (width - 20.0).clamp(0.0, 8192.0),

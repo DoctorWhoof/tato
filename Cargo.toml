@@ -11,5 +11,5 @@ categories = ["no-std"]
 [workspace]
 members = ["example_basic", "example_mquad", "example_sdl"]
 
-# [dependencies]
-# normal_float = { path = "../normal_float" }
+[dependencies]
+tato_math = { path = "../tato_math" }
