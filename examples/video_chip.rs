@@ -1,13 +1,11 @@
 //! Video Chip Emulator Example
-//!
-//! This example demonstrates how to use the arena for a retro video chip
-//! emulator where different configurations need different memory layouts.
+#![allow(unused)]
 
 use tato_arena::{Arena, ArenaId, Pool};
 
 /// A simple RGB color (3 bytes)
 #[derive(Debug, Clone, Copy)]
-struct Color {
+pub struct Color {
     r: u8,
     g: u8,
     b: u8,
@@ -15,7 +13,7 @@ struct Color {
 
 /// A sprite definition (8 bytes)
 #[derive(Debug, Clone, Copy, Default)]
-struct Sprite {
+pub struct Sprite {
     x: u8,
     y: u8,
     tile_id: u8,
@@ -26,7 +24,7 @@ struct Sprite {
 
 /// An 8x8 tile (64 bytes of pixel data)
 #[derive(Debug, Clone, Copy)]
-struct Tile {
+pub struct Tile {
     pixels: [u8; 64], // 8x8 pixels, each pixel is palette index
 }
 
@@ -40,7 +38,7 @@ impl Default for Tile {
 
 /// Video chip configuration
 #[derive(Debug, Clone, Copy)]
-struct VideoConfig {
+pub struct VideoConfig {
     screen_width: u16,
     screen_height: u16,
     max_sprites: u8,
@@ -50,16 +48,16 @@ struct VideoConfig {
 
 /// Our video chip with 16KB of memory
 pub struct VideoChip {
-    arena: Arena<16384>, // 16KB total
+    arena: Arena<16384, u16>, // 16KB total
 
     // Configuration
-    config: ArenaId<VideoConfig>,
+    config: ArenaId<VideoConfig, u16>,
 
     // Video data
-    palette: Option<ArenaId<[Color; 256]>>,
-    sprites: Option<Pool<Sprite>>, // Runtime-sized sprite collection
-    tiles: Option<Pool<Tile>>,     // Runtime-sized tile collection
-    scanline_buffer: Option<ArenaId<[u8; 256]>>, // One scanline buffer
+    palette: Option<ArenaId<[Color; 256], u16>>,
+    sprites: Option<Pool<Sprite, u16>>, // Runtime-sized sprite collection
+    tiles: Option<Pool<Tile, u16>>,     // Runtime-sized tile collection
+    scanline_buffer: Option<ArenaId<[u8; 256], u16>>, // One scanline buffer
 }
 
 
@@ -89,19 +87,19 @@ impl VideoChip {
 
     fn init_components(&mut self) -> Option<()> {
         let config = *self.arena.get(&self.config);
-        
+
         // Allocate color palette
         let palette = [Color { r: 0, g: 0, b: 0 }; 256];
         self.palette = Some(self.arena.alloc(palette)?);
-        
+
         // Allocate sprite and tile collections based on config
         self.sprites = Some(self.arena.alloc_pool::<Sprite>(config.max_sprites as usize)?);
         self.tiles = Some(self.arena.alloc_pool::<Tile>(config.tile_count as usize)?);
-        
+
         // Allocate scanline buffer
         let scanline = [0u8; 256];
         self.scanline_buffer = Some(self.arena.alloc(scanline)?);
-        
+
         Some(())
     }
 
@@ -117,7 +115,7 @@ impl VideoChip {
     pub fn add_sprite(&mut self, sprite: Sprite) -> Result<usize, &'static str> {
         if let Some(sprites_vec) = &self.sprites {
             let sprites = self.arena.get_pool_mut(sprites_vec);
-            
+
             // Find first empty slot (sprite with x=0, y=0 is considered empty)
             for (i, existing_sprite) in sprites.iter_mut().enumerate() {
                 if existing_sprite.x == 0 && existing_sprite.y == 0 {
@@ -125,7 +123,7 @@ impl VideoChip {
                     return Ok(i);
                 }
             }
-            
+
             Err("No free sprite slots")
         } else {
             Err("Sprites not initialized")
@@ -136,7 +134,7 @@ impl VideoChip {
     pub fn add_tile(&mut self, tile: Tile, index: usize) -> Result<(), &'static str> {
         if let Some(tiles_vec) = &self.tiles {
             let tiles = self.arena.get_pool_mut(tiles_vec);
-            
+
             if index < tiles.len() {
                 tiles[index] = tile;
                 Ok(())
@@ -157,7 +155,7 @@ impl VideoChip {
             None
         }
     }
-    
+
     /// Get a mutable sprite by index
     pub fn get_sprite_mut(&mut self, index: usize) -> Option<&mut Sprite> {
         if let Some(sprites_vec) = &self.sprites {
@@ -174,35 +172,35 @@ impl VideoChip {
             // Collect sprite data first to avoid borrowing conflicts
             let mut sprites_to_render = [Sprite { x: 0, y: 0, tile_id: 0, palette: 0, flags: 0, _padding: [0; 3] }; 128];
             let mut sprite_count = 0;
-            
+
             let sprites = self.arena.get_pool(sprites_vec);
             for sprite in sprites.iter() {
                 // Check if sprite is on this scanline (and not empty)
-                if sprite.y <= line && line < sprite.y + 8 && sprite_count < 128 && 
+                if sprite.y <= line && line < sprite.y + 8 && sprite_count < 128 &&
                    !(sprite.x == 0 && sprite.y == 0) {
                     sprites_to_render[sprite_count] = *sprite;
                     sprite_count += 1;
                 }
             }
-            
+
             // Now render to buffer
             let buffer = self.arena.get_mut(buffer_id);
-            
+
             // Clear the scanline
             buffer.fill(0);
-            
+
             // Render sprites on this scanline
             for i in 0..sprite_count {
                 let sprite = sprites_to_render[i];
                 let _sprite_line = line - sprite.y;
-                
+
                 // In a real implementation, you'd:
                 // 1. Get the tile data
                 // 2. Get the correct line of pixels
                 // 3. Apply palette
                 // 4. Handle transparency
                 // 5. Composite onto scanline buffer
-                
+
                 // For demo, just mark the sprite's X position
                 if (sprite.x as usize) < buffer.len() {
                     buffer[sprite.x as usize] = sprite.palette;

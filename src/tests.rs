@@ -1,9 +1,3 @@
-//! Comprehensive tests for the TatoArena crate
-//!
-//! This module contains all tests for the arena allocator, pools, and IDs.
-//! Tests are organized by functionality and include both unit tests and
-//! integration tests.
-
 use super::*;
 
 
@@ -274,7 +268,7 @@ mod pool_tests {
 
         // Create pool with closure initialization
         let pool = arena.alloc_pool_from_fn(5, |i| i as u32 * 10).unwrap();
-        
+
         let slice = arena.get_pool(&pool);
         assert_eq!(slice, &[0, 10, 20, 30, 40]);
     }
@@ -334,7 +328,7 @@ mod integration_tests {
 
         // Initialize data
         *arena.get_mut(&single1) = 100;
-        
+
         let slice1 = arena.get_pool_mut(&pool1);
         for (i, val) in slice1.iter_mut().enumerate() {
             *val = i as u8;
@@ -350,10 +344,10 @@ mod integration_tests {
         // Verify all data is correct
         assert_eq!(*arena.get(&single1), 100);
         assert_eq!(*arena.get(&single2), 2.718);
-        
+
         let slice1 = arena.get_pool(&pool1);
         assert_eq!(slice1, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        
+
         let slice2 = arena.get_pool(&pool2);
         assert_eq!(slice2, &[0, 1000, 2000, 3000, 4000]);
     }
@@ -365,7 +359,7 @@ mod integration_tests {
         // Phase 1: Initial allocations
         let id1 = arena.alloc(42u32).unwrap();
         let pool1 = arena.alloc_pool::<u8>(10).unwrap();
-        
+
         assert_eq!(arena.allocation_count(), 2);
         assert_eq!(*arena.get(&id1), 42);
         assert_eq!(pool1.len(), 10);
@@ -378,7 +372,7 @@ mod integration_tests {
         // Phase 3: New allocations should work
         let id2 = arena.alloc(100u32).unwrap();
         let pool2 = arena.alloc_pool::<u16>(5).unwrap();
-        
+
         assert_eq!(arena.allocation_count(), 2);
         assert_eq!(*arena.get(&id2), 100);
         assert_eq!(pool2.len(), 5);
@@ -422,7 +416,7 @@ mod integration_tests {
 
         let mut ids = [None; 1024];
         let mut count = 0;
-        
+
         // Allocate as many u8s as possible
         for i in 0..255 {
             if let Some(id) = arena.alloc(i as u8) {
@@ -443,6 +437,212 @@ mod integration_tests {
         // Should have allocated quite a few
         assert!(count > 200);
     }
+
+    #[test]
+    fn test_small_arena_u16() {
+        let mut arena: Arena<1024, u16> = Arena::new();
+
+        let id = arena.alloc(42u32).unwrap();
+        assert_eq!(*arena.get(&id), 42u32);
+
+        // Verify the ID is using u16 size (4 bytes for offset + size, vs 16 bytes for usize on 64-bit)
+        // PhantomData is zero-sized, so we just have 2 * size_of::<u16>()
+        assert_eq!(core::mem::size_of_val(&id), 4);
+
+        // Verify the ArenaId fields are u16
+        assert_eq!(core::mem::size_of_val(&id.offset), 2);
+        assert_eq!(core::mem::size_of_val(&id.size), 2);
+    }
+
+    /// Tests specifically for smaller index types
+    mod small_index_tests {
+        use super::*;
+
+
+        #[test]
+        fn test_index_type_sizes() {
+            // Test that different index types result in different ArenaId sizes
+            let mut arena_usize: Arena<1024, usize> = Arena::new();
+            let mut arena_u16: Arena<1024, u16> = Arena::new();
+            let mut arena_u8: Arena<256, u8> = Arena::new();
+
+            let id_usize = arena_usize.alloc(42u32).unwrap();
+            let id_u16 = arena_u16.alloc(42u32).unwrap();
+            let id_u8 = arena_u8.alloc(42u32).unwrap();
+
+            // Verify each has different size based on index type
+            // PhantomData is zero-sized
+            assert_eq!(core::mem::size_of_val(&id_usize), 2 * core::mem::size_of::<usize>());
+            assert_eq!(core::mem::size_of_val(&id_u16), 2 * core::mem::size_of::<u16>());
+            assert_eq!(core::mem::size_of_val(&id_u8), 2 * core::mem::size_of::<u8>());
+        }
+
+        #[test]
+        fn test_u8_arena_limits() {
+            // u8 can only address up to 255 bytes
+            let mut arena: Arena<255, u8> = Arena::new();
+
+            // Should be able to allocate most of the space
+            let id1 = arena.alloc([0u8; 250]).unwrap();
+            assert_eq!(arena.get(&id1).len(), 250);
+
+            // Should fail to allocate more (only 5 bytes left)
+            let result = arena.alloc([0u8; 10]);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_mixed_types_small_arena() {
+            let mut arena: Arena<256, u8> = Arena::new();
+
+            // First, test that alignment works correctly with u8 indices
+            // Allocate a u8 first to offset alignment
+            let u8_id = arena.alloc(1u8).unwrap();
+            assert_eq!(*arena.get(&u8_id), 1u8);
+
+            // Now allocate a u64 which requires 8-byte alignment
+            // The arena should properly align this even with u8 indices
+            let u64_id = arena.alloc(0x123456789ABCDEFu64).unwrap();
+
+            // Verify the u64 is properly aligned
+            assert_eq!(u64_id.offset() % align_of::<u64>(), 0);
+            assert_eq!(*arena.get(&u64_id), 0x123456789ABCDEFu64);
+
+            // Allocate a u16 array
+            let array_id = arena.alloc([1u16; 8]).unwrap();
+            assert_eq!(array_id.offset() % align_of::<u16>(), 0);
+            assert_eq!(*arena.get(&array_id), [1u16; 8]);
+
+            // Check stats
+            assert!(arena.used() < 256);
+            assert!(arena.allocation_count() == 3);
+        }
+
+        #[test]
+        fn test_alignment_with_small_indices() {
+            // Test that the arena handles alignment correctly even with small index types
+            let mut arena: Arena<256, u8> = Arena::new();
+
+            // Allocate types with different alignment requirements
+            let u8_id = arena.alloc(1u8).unwrap();
+            let u16_id = arena.alloc(2u16).unwrap();
+            let u32_id = arena.alloc(3u32).unwrap();
+            let u64_id = arena.alloc(4u64).unwrap();
+
+            // Verify all are properly aligned
+            assert_eq!(u8_id.offset() % align_of::<u8>(), 0);
+            assert_eq!(u16_id.offset() % align_of::<u16>(), 0);
+            assert_eq!(u32_id.offset() % align_of::<u32>(), 0);
+            assert_eq!(u64_id.offset() % align_of::<u64>(), 0);
+
+            // Verify values
+            assert_eq!(*arena.get(&u8_id), 1u8);
+            assert_eq!(*arena.get(&u16_id), 2u16);
+            assert_eq!(*arena.get(&u32_id), 3u32);
+            assert_eq!(*arena.get(&u64_id), 4u64);
+        }
+    }
+
+    #[test]
+    fn test_u8_index_type() {
+        // Arena with 255 bytes, using u8 indices
+        let mut arena: Arena<255, u8> = Arena::new();
+
+        let id1 = arena.alloc(42u32).unwrap();
+        assert_eq!(*arena.get(&id1), 42u32);
+
+        // Verify the ArenaId fields are u8
+        assert_eq!(core::mem::size_of_val(&id1.offset), 1);
+        assert_eq!(core::mem::size_of_val(&id1.size), 1);
+
+        // Fill most of the arena
+        for i in 0..50 {
+            if arena.alloc(i as u32).is_none() {
+                break;
+            }
+        }
+
+        // Should still be able to retrieve values
+        assert_eq!(*arena.get(&id1), 42u32);
+    }
+
+    #[test]
+    fn test_u16_index_overflow_protection() {
+        // Arena with exactly u16::MAX bytes
+        const SIZE: usize = 65_535; // u16::MAX
+        let mut arena: Arena<SIZE, u16> = Arena::new();
+
+        // Allocate until we approach u16::MAX
+        let mut total_allocated = 0;
+        let mut count = 0;
+
+        // Allocate 1KB chunks
+        while total_allocated < 65_000 {
+            if arena.alloc([0u8; 1024]).is_some() {
+                total_allocated += 1024;
+                count += 1;
+            } else {
+                break;
+            }
+        }
+
+        // We should have allocated close to 64KB
+        assert!(total_allocated >= 60_000);
+        assert!(count > 50);
+
+        // Further large allocations should fail (would overflow u16)
+        let result = arena.alloc([0u8; 2048]);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_pool_with_small_index() {
+        let mut arena: Arena<1024, u16> = Arena::new();
+
+        let pool = arena.alloc_pool::<u32>(10).unwrap();
+
+        // Verify pool is using u16
+        assert_eq!(core::mem::size_of_val(&pool.offset), 2);
+        assert_eq!(core::mem::size_of_val(&pool.len), 2);
+
+        let slice = arena.get_pool_mut(&pool);
+        for (i, val) in slice.iter_mut().enumerate() {
+            *val = i as u32 * 100;
+        }
+
+        let slice = arena.get_pool(&pool);
+        assert_eq!(slice[0], 0);
+        assert_eq!(slice[9], 900);
+    }
+}
+
+#[test]
+fn test_verify_smaller_index_types() {
+    // This test explicitly verifies that ArenaId uses smaller types
+
+    // Standard arena with usize indices
+    let mut arena_usize: Arena<1024, usize> = Arena::new();
+    let id_usize = arena_usize.alloc(42u32).unwrap();
+
+    // Arena with u16 indices (for up to 64KB)
+    let mut arena_u16: Arena<1024, u16> = Arena::new();
+    let id_u16 = arena_u16.alloc(42u32).unwrap();
+
+    // Arena with u8 indices (for up to 256 bytes)
+    let mut arena_u8: Arena<256, u8> = Arena::new();
+    let id_u8 = arena_u8.alloc(42u32).unwrap();
+
+    // Verify sizes
+    assert_eq!(core::mem::size_of_val(&id_usize), 2 * core::mem::size_of::<usize>());
+    assert_eq!(core::mem::size_of_val(&id_u16), 2 * core::mem::size_of::<u16>());
+    assert_eq!(core::mem::size_of_val(&id_u8), 2 * core::mem::size_of::<u8>());
+
+    // On 64-bit systems:
+    // - ArenaId<T, usize> is 16 bytes (8 + 8)
+    // - ArenaId<T, u16> is 4 bytes (2 + 2)
+    // - ArenaId<T, u8> is 2 bytes (1 + 1)
+
+    // This is a 4x-8x reduction in handle size!
 }
 
 /// Edge case and error condition tests

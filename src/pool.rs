@@ -3,15 +3,15 @@
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pool<T> {
-    pub(crate) offset: usize,
-    pub(crate) len: usize,
+pub struct Pool<T, SizeType = usize> {
+    pub(crate) offset: SizeType,
+    pub(crate) len: SizeType,
     pub(crate) _marker: PhantomData<T>,
 }
 
-impl<T> Pool<T> {
+impl<T, SizeType> Pool<T, SizeType> {
     /// Create a new pool (internal use)
-    pub(crate) fn new(offset: usize, len: usize) -> Self {
+    pub(crate) fn new(offset: SizeType, len: SizeType) -> Self {
         Self {
             offset,
             len,
@@ -20,28 +20,43 @@ impl<T> Pool<T> {
     }
 
     /// Get element count
-    pub fn len(&self) -> usize {
-        self.len
+    pub fn len(&self) -> usize
+    where
+        SizeType: Copy + Into<usize>,
+    {
+        self.len.into()
     }
 
     /// Check if empty
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
+    pub fn is_empty(&self) -> bool
+    where
+        SizeType: Copy + Into<usize>,
+    {
+        self.len.into() == 0
     }
 
     /// Get arena offset
-    pub fn offset(&self) -> usize {
-        self.offset
+    pub fn offset(&self) -> usize
+    where
+        SizeType: Copy + Into<usize>,
+    {
+        self.offset.into()
     }
 
     /// Get size in bytes
-    pub fn size_bytes(&self) -> usize {
-        self.len * core::mem::size_of::<T>()
+    pub fn size_bytes(&self) -> usize
+    where
+        SizeType: Copy + Into<usize>,
+    {
+        self.len.into() * core::mem::size_of::<T>()
     }
 
     /// Get capacity as (used, total)
-    pub fn capacity(&self) -> (usize, usize) {
-        (self.len, self.len)
+    pub fn capacity(&self) -> (usize, usize)
+    where
+        SizeType: Copy + Into<usize>,
+    {
+        (self.len.into(), self.len.into())
     }
 }
 
