@@ -62,8 +62,6 @@ impl RaylibBackend {
             let max_row = (bank.tile_count() / tiles_per_row) + 1;
             let tiles_h = max_row * TILE_SIZE as usize;
             let tiles_h = tiles_h.max(8);
-            println!("{tiles_h}");
-            // let tiles_h = ((TILE_COUNT + tiles_per_row - 1) / tiles_per_row) * TILE_SIZE as usize;
             let debug_image = Image::gen_image_color(tiles_w as i32, tiles_h as i32, Color::BLACK);
             debug_texture.push(ray.load_texture_from_image(&thread, &debug_image).unwrap());
             debug_pixels.push(vec![0u8; tiles_w * tiles_h * 4]);
