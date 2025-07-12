@@ -120,35 +120,3 @@ impl SpriteGenerator {
         self.sprite_count += 1;
     }
 }
-
-#[inline(always)]
-pub(crate) fn transform_tile_coords(
-    x: i16,
-    y: i16,
-    w: i16,
-    h: i16,
-    flags: TileFlags,
-) -> (i16, i16) {
-    // Handle both rotation and flipping
-    if flags.is_rotated() {
-        // For 90° clockwise rotation, swap x and y and flip the new x axis
-        let rotated_x = h - 1 - y;
-        let rotated_y = x;
-
-        // Apply additional flipping if needed
-        if flags.is_flipped_x() {
-            // Flipping X after 90° rotation is equivalent to flipping the new Y
-            (rotated_x, w - 1 - rotated_y)
-        } else if flags.is_flipped_y() {
-            // Flipping Y after 90° rotation is equivalent to flipping the new X
-            (h - 1 - rotated_x, rotated_y)
-        } else {
-            (rotated_x, rotated_y)
-        }
-    } else {
-        // Handle just flipping without rotation
-        let flipped_x = if flags.is_flipped_x() { w - 1 - x } else { x };
-        let flipped_y = if flags.is_flipped_y() { h - 1 - y } else { y };
-        (flipped_x, flipped_y)
-    }
-}
