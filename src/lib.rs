@@ -12,7 +12,7 @@ use core::mem::{MaybeUninit, align_of, size_of};
 use core::ptr;
 
 pub use pool::Pool;
-pub use id::ArenaId;
+pub use id::{ArenaId, RawId};
 
 /// A fixed-size, heterogeneous arena optimized for old-school constraints.
 /// LEN is the storage size in bytes, SizeType controls handle size.

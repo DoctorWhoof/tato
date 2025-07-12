@@ -310,9 +310,76 @@ mod id_tests {
         assert_eq!(id1, id2);
         assert_eq!(*arena.get(&id1), *arena.get(&id2));
     }
+
+    #[test]
+    fn test_raw_id_conversion() {
+        let mut arena: Arena<1024> = Arena::new();
+        
+        // Allocate a value and convert to RawId
+        let typed_id = arena.alloc(42u32).unwrap();
+        let raw_id = typed_id.raw();
+        
+        // Convert back to typed ID
+        let converted_id: ArenaId<u32> = raw_id.typed();
+        assert_eq!(typed_id, converted_id);
+        
+        // Verify we can still access the value
+        assert_eq!(*arena.get(&converted_id), 42u32);
+    }
+
+    #[test]
+    fn test_raw_id_mixed_storage() {
+        let mut arena: Arena<1024> = Arena::new();
+        
+        // Different types but store as RawId
+        let id1 = arena.alloc(100u32).unwrap();
+        let id2 = arena.alloc("hello").unwrap();
+        let id3 = arena.alloc([1.0f64, 2.0, 3.0]).unwrap();
+        
+        // Store all as RawId
+        let raw_ids = [id1.raw(), id2.raw(), id3.raw()];
+        
+        // Convert back and access
+        let val1: u32 = *arena.get(&raw_ids[0].typed());
+        let val2: &str = *arena.get(&raw_ids[1].typed());
+        let val3: [f64; 3] = *arena.get(&raw_ids[2].typed());
+        
+        assert_eq!(val1, 100);
+        assert_eq!(val2, "hello");
+        assert_eq!(val3, [1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    #[should_panic(expected = "Type size mismatch")]
+    #[cfg(debug_assertions)]
+    fn test_raw_id_type_mismatch() {
+        let mut arena: Arena<1024> = Arena::new();
+        
+        // Allocate u32 (4 bytes)
+        let id = arena.alloc(42u32).unwrap();
+        let raw_id = id.raw();
+        
+        // Try to convert to u64 (8 bytes) - should panic in debug mode
+        let _wrong_id: ArenaId<u64> = raw_id.typed();
+    }
+
+    #[test]
+    fn test_raw_id_same_size_types() {
+        let mut arena: Arena<1024> = Arena::new();
+        
+        // u32 and f32 have same size (4 bytes)
+        let id = arena.alloc(42u32).unwrap();
+        let raw_id = id.raw();
+        
+        // This will pass the size check (both are 4 bytes)
+        // but would be undefined behavior if actually used
+        let _float_id: ArenaId<f32> = raw_id.typed();
+        
+        // This test just shows the limitation of size-based checking
+    }
 }
 
-/// Integration tests combining multiple features
+#[cfg(test)]
 mod integration_tests {
     use super::*;
 
