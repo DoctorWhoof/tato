@@ -14,6 +14,7 @@ tato_audio = { path = "../tato_audio" }
 tato_video = { path = "../tato_video" }
 tato_math = { path = "../tato_math" }
 smooth-buffer = { path = "../smooth_buffer" }
+# tato_arena = { path = "../tato_arena" }
 
 [build-dependencies]
 tato_pipe = { path = "../tato_pipe" }

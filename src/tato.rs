@@ -13,6 +13,7 @@ pub struct Tato {
     pub assets: Assets,
     // Internals
     pub update_time_acc: SmoothBuffer<10, f64>,
+    // arena: tato_arena::Arena<64536, u16>,
 }
 
 impl Tato {
@@ -25,6 +26,7 @@ impl Tato {
             video: tato_video::VideoChip::new(w, h),
             banks: core::array::from_fn(|_| VideoMemory::new()),
             update_time_acc: SmoothBuffer::default(),
+            // arena: tato_arena::Arena::new()
         }
     }
 

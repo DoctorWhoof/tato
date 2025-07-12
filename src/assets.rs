@@ -6,13 +6,14 @@ pub use anim::*;
 
 mod tileset;
 pub use tileset::*;
+// use tato_arena::{Arena, ArenaId, Pool};
 
 mod tilemap;
 pub use tilemap::*;
 
 /// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
 /// tileset and its tiles currently loaded in a video memory bank
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Assets {
     pub tilesets: [Tileset; 256],
     // Asset types
@@ -32,6 +33,9 @@ pub struct Assets {
     pub(crate) map_head: u8,
     pub(crate) color_head: u8,
     pub(crate) sub_palette_head: u8,
+
+    // arena: tato_arena::Arena<65536, u16>,
+    // bg_ids: [ArenaId<Pool<Cell, u16>>; 256],
 }
 
 impl Assets {
@@ -53,6 +57,8 @@ impl Assets {
             map_head: 0,
             color_head: 0,
             sub_palette_head: 0,
+            // arena: Arena::new(),
+            // bg_ids:
         }
     }
 
@@ -232,6 +238,53 @@ impl Tato {
             rows: entry.rows,
         }
     }
+
+    // pub fn arena_test(
+    //     &mut self,
+    //     tileset_id: TilesetID,
+    //     data: &[Cell],
+    //     columns: u16,
+    //     rows: u16,
+    // ) -> MapID {
+    //     // Acquire tile offset for desired tileset
+    //     let assets = &mut self.assets;
+    //     let tileset = &assets.tilesets[tileset_id.0 as usize];
+    //     let tileset_offset = tileset.tile_start;
+    //     let bank_id = tileset.bank_id;
+
+    //     if assets.map_head as usize >= assets.map_entries.len() {
+    //         panic!(err!("Map capacity exceeded on bank {}"), bank_id);
+    //     }
+
+    //     // Add metadata
+    //     let map_idx = assets.map_head;
+    //     let data_start = assets.cell_head;
+    //     let data_len = u16::try_from(data.len()).unwrap();
+
+    //     assert!(
+    //         data_len % columns == 0,
+    //         err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
+    //     );
+
+    //     // Map entry
+    //     assets.map_entries[assets.map_head as usize] =
+    //         TilemapEntry { bank_id, columns, rows, data_start, data_len };
+
+    //     // Add tile entries, mapping the original tile ids to the current tile bank positions
+    //     for (i, &cell) in data.iter().enumerate() {
+    //         let mut flags = cell.flags;
+    //         flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
+    //         assets.cells[data_start as usize + i] = Cell {
+    //             id: TileID(cell.id.0 + tileset_offset), //
+    //             flags,
+    //         };
+    //     }
+
+    //     // Advance and return
+    //     assets.map_head += 1;
+    //     assets.cell_head += data_len;
+    //     MapID(map_idx)
+    // }
 
     // /// Adds an animation entry
     // /// Returns the index of the animation
