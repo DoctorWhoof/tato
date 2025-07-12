@@ -120,13 +120,20 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_sprites(&mut self, width: u16) {
-        // Clear sprite buffer
-        for x in 0..width as usize {
-            self.sprite_buffer[x] = RGBA12::BG;
+        // Pre-calculate viewport bounds
+        let viewport_start = self.vid.view_left.max(0) as usize;
+        let viewport_end = (self.vid.view_right + 1).min(width) as usize;
+
+        // Clear sprite buffer only in viewport
+        unsafe {
+            let ptr = self.sprite_buffer.as_mut_ptr();
+            for x in viewport_start..viewport_end {
+                *ptr.add(x) = RGBA12::BG;
+            }
         }
 
-        // Early exit if no sprites
-        if self.scanline.mask == 0 {
+        // Early exit if no sprites or no viewport
+        if self.scanline.mask == 0 || viewport_start >= viewport_end {
             return;
         }
 
@@ -143,9 +150,13 @@ impl<'a> PixelIter<'a> {
                 continue;
             }
 
-            // Calculate sprite bounds
-            let start_x = sprite.x.max(0) as usize;
-            let end_x = ((sprite.x + TILE_SIZE as i16).min(width as i16)) as usize;
+            // Calculate sprite bounds clamped to viewport
+            let sprite_start = sprite.x.max(0) as usize;
+            let sprite_end = ((sprite.x + TILE_SIZE as i16).min(width as i16)) as usize;
+
+            // Clamp to viewport
+            let start_x = sprite_start.max(viewport_start);
+            let end_x = sprite_end.min(viewport_end);
 
             if start_x >= end_x {
                 continue;
@@ -154,15 +165,21 @@ impl<'a> PixelIter<'a> {
             // Check if sprite overlaps any active slots
             let start_slot = (start_x as f32 / self.slot_width) as u16;
             let end_slot = ((end_x - 1) as f32 / self.slot_width) as u16;
-            let mut sprite_in_active_slot = false;
-            for slot in start_slot..=end_slot {
-                if self.scanline.mask & (1 << slot) != 0 {
-                    sprite_in_active_slot = true;
-                    break;
-                }
-            }
 
-            if !sprite_in_active_slot {
+            // Quick check if any slots are active in range
+            let slot_mask = if end_slot >= start_slot {
+                let span = end_slot - start_slot + 1;
+                if span >= 16 {
+                    !0u16  // All bits set if span covers all slots
+                } else {
+                    let mask = (1u16 << span) - 1;
+                    mask << start_slot
+                }
+            } else {
+                0
+            };
+
+            if self.scanline.mask & slot_mask == 0 {
                 continue;
             }
 
@@ -230,76 +247,165 @@ impl<'a> PixelIter<'a> {
         let line_y = self.y as i16;
         let bank = self.tile_banks[self.bg_tile_bank as usize];
 
-        // Cache tile data
-        let mut cached_bg_col = u16::MAX;
-        let mut cached_bg_flags = TileFlags::default();
-        let mut cached_bg_cluster = Cluster::<2>::default();
+        // Pre-calculate viewport bounds
+        let viewport_start = self.vid.view_left.max(0) as usize;
+        let viewport_end = (self.vid.view_right + 1).min(width) as usize;
 
-        // Process background
-        for x in 0..width {
-            // Check viewport
-            let in_viewport = x >= self.vid.view_left && x <= self.vid.view_right;
+        // Fast fill non-viewport areas with bg_color
+        unsafe {
+            let bg_color = self.bg_color;
+            // Fill start
+            if viewport_start > 0 {
+                let ptr = self.bg_buffer.as_mut_ptr();
+                for i in 0..viewport_start {
+                    *ptr.add(i) = bg_color;
+                }
+            }
+            // Fill end
+            if viewport_end < width as usize {
+                let ptr = self.bg_buffer.as_mut_ptr();
+                for i in viewport_end..width as usize {
+                    *ptr.add(i) = bg_color;
+                }
+            }
+        }
 
-            if !in_viewport {
-                self.bg_buffer[x as usize] = self.bg_color;
-                continue;
+        // Early exit if no viewport pixels
+        if viewport_start >= viewport_end {
+            return;
+        }
+
+        // Pre-calculate Y coordinates once
+        let bg_y_base = line_y + self.scroll_y;
+        let bg_height = bg.height() as i16;
+        let bg_width = bg.width() as i16;
+
+        // Check Y bounds once for entire line (when wrap_bg is false)
+        if !self.wrap_bg && (bg_y_base < 0 || bg_y_base >= bg_height) {
+            let bg_color = self.bg_color;
+            for x in viewport_start..viewport_end {
+                self.bg_buffer[x] = bg_color;
+            }
+            return;
+        }
+
+        let bg_y = bg_y_base.rem_euclid(bg_height) as u16;
+        let bg_row = bg_y / TILE_SIZE as u16;
+        let tile_y = (bg_y % TILE_SIZE as u16) as u8;
+        let bg_columns = bg.columns() as usize;
+
+        // Process viewport pixels in tile-aligned batches
+        let mut x = viewport_start;
+
+        while x < viewport_end {
+            // Calculate starting BG X coordinate
+            let bg_x_base = x as i16 + self.scroll_x;
+
+            // Handle horizontal out of bounds
+            if !self.wrap_bg {
+                if bg_x_base < 0 {
+                    // Skip negative pixels
+                    let skip = (-bg_x_base).min((viewport_end - x) as i16) as usize;
+                    let bg_color = self.bg_color;
+                    for i in 0..skip {
+                        self.bg_buffer[x + i] = bg_color;
+                    }
+                    x += skip;
+                    continue;
+                } else if bg_x_base >= bg_width {
+                    // Fill rest with bg_color and exit
+                    let bg_color = self.bg_color;
+                    for i in x..viewport_end {
+                        self.bg_buffer[i] = bg_color;
+                    }
+                    break;
+                }
             }
 
-            // Calculate effective bg pixel position
-            let bg_x = (x as i16 + self.scroll_x).rem_euclid(bg.width() as i16) as u16;
-            let bg_y = (line_y + self.scroll_y).rem_euclid(bg.height() as i16) as u16;
-
-            // Check if outside BG map bounds
-            let raw_x = x as i16 + self.scroll_x;
-            let raw_y = line_y + self.scroll_y;
-            let outside_bg = !self.wrap_bg
-                && (raw_x < 0
-                    || raw_y < 0
-                    || raw_x >= bg.width() as i16
-                    || raw_y >= bg.height() as i16);
-
-            if outside_bg {
-                self.bg_buffer[x as usize] = self.bg_color;
-                continue;
-            }
-
-            // Calculate BG map coordinates
+            let bg_x = bg_x_base.rem_euclid(bg_width) as u16;
             let bg_col = bg_x / TILE_SIZE as u16;
-            let bg_row = bg_y / TILE_SIZE as u16;
+            let tile_x_start = (bg_x % TILE_SIZE as u16) as u8;
 
-            // Only recalculate tile data if we've moved to a different tile column
-            if bg_col != cached_bg_col {
-                cached_bg_col = bg_col;
+            // Get tile data
+            let bg_map_index = (bg_row as usize * bg_columns) + bg_col as usize;
+            let bg_cell = bg.cells()[bg_map_index];
+            let bg_flags = bg_cell.flags;
+            let bg_tile_id = bg_cell.id.0 as usize;
 
-                let bg_map_index = (bg_row as usize * bg.columns() as usize) + bg_col as usize;
-                let bg_cell = bg.cells()[bg_map_index];
-                cached_bg_flags = bg_cell.flags;
-                let bg_tile_id = bg_cell.id.0;
+            // Get the tile cluster for this row
+            let tile = &bank.tiles[bg_tile_id];
+            let bg_cluster = Cluster::from_tile(&tile.clusters, bg_flags, tile_y, TILE_SIZE);
 
-                // Calculate local tile Y coordinate
-                let tile_y = (bg_y % TILE_SIZE as u16) as u8;
+            // Pre-fetch palette data
+            let palette_idx = bg_flags.palette().0 as usize;
+            let sub_palette = &bank.sub_palettes[palette_idx];
+            let palette = &bank.palette;
+            let is_fg = bg_flags.is_fg();
+            let bg_color = self.bg_color;
 
-                // Get the tile cluster
-                let tile_clusters = &bank.tiles[bg_tile_id as usize].clusters;
-                cached_bg_cluster =
-                    Cluster::from_tile(tile_clusters, cached_bg_flags, tile_y, TILE_SIZE);
-            }
+            // Calculate pixels to process in this tile
+            let tile_pixels_remaining = (TILE_SIZE as usize) - tile_x_start as usize;
+            let viewport_pixels_remaining = viewport_end - x;
+            let pixels_to_process = tile_pixels_remaining.min(viewport_pixels_remaining);
 
-            // Calculate local tile X coordinate
-            let tile_x = (bg_x % TILE_SIZE as u16) as u8;
-
-            // Get background color
-            let color_idx = cached_bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
-            let palette_idx = cached_bg_flags.palette().0 as usize;
-            let global_idx = bank.sub_palettes[palette_idx][color_idx as usize].0 as usize;
-            let color = bank.palette[global_idx];
-
-            // Store final color
-            if cached_bg_flags.is_fg() && color.a() > 0 {
-                self.bg_buffer[x as usize] = color;
+            // Additional constraint for wrap_bg=false
+            let pixels_to_process = if !self.wrap_bg && bg_x_base >= 0 {
+                let max_x = (bg_width - bg_x_base) as usize;
+                pixels_to_process.min(max_x)
             } else {
-                self.bg_buffer[x as usize] = if color.a() > 0 { color } else { self.bg_color };
+                pixels_to_process
+            };
+
+            // Process pixels in batch
+            unsafe {
+                let dst_ptr = self.bg_buffer.as_mut_ptr().add(x);
+
+                // Unroll by 4 when possible
+                let chunks = pixels_to_process / 4;
+                let remainder = pixels_to_process % 4;
+
+                for chunk in 0..chunks {
+                    let base_idx = chunk * 4;
+                    for i in 0..4 {
+                        let tile_x = tile_x_start + (base_idx + i) as u8;
+                        let color_idx =
+                            bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
+                        let global_idx = sub_palette[color_idx].0 as usize;
+                        let color = palette[global_idx];
+
+                        let final_color = if is_fg && color.a() > 0 {
+                            color
+                        } else if color.a() > 0 {
+                            color
+                        } else {
+                            bg_color
+                        };
+
+                        *dst_ptr.add(base_idx + i) = final_color;
+                    }
+                }
+
+                // Handle remainder
+                for i in 0..remainder {
+                    let idx = chunks * 4 + i;
+                    let tile_x = tile_x_start + idx as u8;
+                    let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
+                    let global_idx = sub_palette[color_idx].0 as usize;
+                    let color = palette[global_idx];
+
+                    let final_color = if is_fg && color.a() > 0 {
+                        color
+                    } else if color.a() > 0 {
+                        color
+                    } else {
+                        bg_color
+                    };
+
+                    *dst_ptr.add(idx) = final_color;
+                }
             }
+
+            x += pixels_to_process;
         }
     }
 
@@ -307,9 +413,9 @@ impl<'a> PixelIter<'a> {
     fn pre_render_line(&mut self) {
         let width = self.vid.width().min(512);
 
-        // Render both buffers independently
-        self.pre_render_sprites(width);
+        // Render both buffers independently (I hope CPU parallelism kicks in!)
         self.pre_render_background(width);
+        self.pre_render_sprites(width);
 
         // Reset x position for iteration
         self.x = 0;
