@@ -71,8 +71,8 @@ impl RaylibBackend {
         Self {
             bg_color: Color::new(32, 32, 32, 255),
             ray,
-            display_debug: true,
-            display_debug_scale: 2,
+            display_debug: false,
+            display_debug_scale: 1,
             thread,
             pixels,
             debug_pixels,
