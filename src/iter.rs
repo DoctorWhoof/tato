@@ -170,7 +170,7 @@ impl<'a> PixelIter<'a> {
             let slot_mask = if end_slot >= start_slot {
                 let span = end_slot - start_slot + 1;
                 if span >= 16 {
-                    !0u16  // All bits set if span covers all slots
+                    !0u16 // All bits set if span covers all slots
                 } else {
                     let mask = (1u16 << span) - 1;
                     mask << start_slot
@@ -436,13 +436,30 @@ impl<'a> Iterator for PixelIter<'a> {
         let bg = self.bg_buffer[self.x as usize];
 
         // Check viewport in y
-        let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
+        // let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
+        // // Simple alpha check - sprite wins if it has any alpha
+        // let final_color = if in_viewport {
+        //     if sprite.a() > 0 { sprite } else { bg }
+        // } else {
+        //     self.bg_color
+        // };
 
-        // Simple alpha check - sprite wins if it has any alpha
-        let final_color = if in_viewport {
-            if sprite.a() > 0 { sprite } else { bg }
-        } else {
-            self.bg_color
+        // Experimental: Nested branchless selection. Assumes RGBA12 is always 16 bit
+        let in_viewport = ((self.y >= self.vid.view_top) & (self.y <= self.vid.view_bottom)) as u16;
+        let final_color = {
+            // Convert bools to masks: true -> 0xFFFF, false -> 0x0000
+            // Then Compute final color without branches
+            let has_sprite = (sprite.a() > 0) as u16;
+            let sprite_or_bg = {
+                let sprite_mask = has_sprite.wrapping_neg();
+                RGBA12 {
+                    data: (sprite.data & sprite_mask) | (bg.data & !sprite_mask),
+                }
+            };
+            let viewport_mask = in_viewport.wrapping_neg();
+            RGBA12 {
+                data: (sprite_or_bg.data & viewport_mask) | (self.bg_color.data & !viewport_mask),
+            }
         };
 
         // results

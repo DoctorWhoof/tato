@@ -10,3 +10,7 @@ categories = ["no-std"]
 
 [dependencies]
 tato_math = { path = "../tato_math"}
+
+# For perf testing, remove when done
+[profile.release]
+debug = true
