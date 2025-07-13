@@ -1,6 +1,6 @@
 #![no_std]
 
-//! A zero-allocation, fixed-size arena allocator.
+//! Fixed-size arena allocator.
 
 pub mod id;
 pub mod pool;
@@ -14,8 +14,7 @@ use core::ptr;
 pub use pool::Pool;
 pub use id::{ArenaId, RawId};
 
-/// A fixed-size, heterogeneous arena optimized for old-school constraints.
-/// LEN is the storage size in bytes, SizeType controls handle size.
+/// Fixed-size arena. LEN = bytes, SizeType = handle size.
 #[repr(C, align(16))]
 #[derive(Debug)]
 pub struct Arena<const LEN: usize, SizeType = usize> {
@@ -32,7 +31,7 @@ where
     SizeType: Copy + TryFrom<usize> + Into<usize> + PartialOrd + core::ops::Add<Output = SizeType>,
 {
     pub fn new() -> Self {
-        // Safety: MaybeUninit<u8> doesn't need initialization
+        // MaybeUninit doesn't need initialization
         let storage = unsafe { MaybeUninit::uninit().assume_init() };
         Self {
             storage,
@@ -41,7 +40,7 @@ where
         }
     }
 
-    /// Allocate space for a value of type T and store it
+    /// Allocate and store a value
     pub fn alloc<T>(&mut self, value: T) -> Option<ArenaId<T, SizeType>>
     where
         T: 'static,
@@ -50,7 +49,7 @@ where
         let align = align_of::<T>();
         let offset_usize: usize = self.offset.into();
 
-        // Align the offset
+        // Align offset
         let misalignment = offset_usize % align;
         let aligned_offset = if misalignment != 0 {
             offset_usize + align - misalignment
@@ -58,14 +57,14 @@ where
             offset_usize
         };
 
-        // Check if we have enough space
+        // Check space
         if aligned_offset + size > LEN {
             return None;
         }
 
         self.offset = SizeType::try_from(aligned_offset).map_err(|_| ()).ok()?;
 
-        // Store the value
+        // Store value
         unsafe {
             let dst = self.storage.as_mut_ptr().add(aligned_offset) as *mut T;
             ptr::write(dst, value);
@@ -79,7 +78,7 @@ where
         Some(id)
     }
 
-    /// Allocate pool using closure to initialize each element
+    /// Allocate pool with initialization function
     pub fn alloc_pool_from_fn<T, F>(&mut self, count: usize, mut f: F) -> Option<Pool<T, SizeType>>
     where
         F: FnMut(usize) -> T,
@@ -93,7 +92,7 @@ where
         let total_size = size * count;
         let offset_usize: usize = self.offset.into();
 
-        // Align the offset
+        // Align offset
         let misalignment = offset_usize % align;
         let aligned_offset = if misalignment != 0 {
             offset_usize + align - misalignment
@@ -101,14 +100,14 @@ where
             offset_usize
         };
 
-        // Check if we have enough space
+        // Check space
         if aligned_offset + total_size > LEN {
             return None;
         }
 
         self.offset = SizeType::try_from(aligned_offset).map_err(|_| ()).ok()?;
 
-        // Initialize each element using the closure
+        // Initialize elements
         unsafe {
             let dst = self.storage.as_mut_ptr().add(aligned_offset) as *mut T;
             for i in 0..count {
@@ -124,7 +123,7 @@ where
         Some(pool)
     }
 
-    /// Allocate pool with Default::default() for each element
+    /// Allocate pool with default values
     pub fn alloc_pool<T>(&mut self, count: usize) -> Option<Pool<T, SizeType>>
     where
         T: Default,
@@ -132,7 +131,7 @@ where
         self.alloc_pool_from_fn(count, |_| T::default())
     }
 
-    /// Get a reference to the allocated value
+    /// Get reference to value
     #[inline]
     pub fn get<T>(&self, id: &ArenaId<T, SizeType>) -> &T {
         let id_end: usize = id.offset.into() + id.size.into();
@@ -146,7 +145,7 @@ where
         }
     }
 
-    /// Get a mutable reference to the allocated value
+    /// Get mutable reference to value
     #[inline]
     pub fn get_mut<T>(&mut self, id: &ArenaId<T, SizeType>) -> &mut T {
         let id_end: usize = id.offset.into() + id.size.into();
@@ -160,7 +159,7 @@ where
         }
     }
 
-    /// Get a slice reference to the allocated pool
+    /// Get pool as slice
     #[inline]
     pub fn get_pool<T>(&self, pool: &Pool<T, SizeType>) -> &[T] {
         let pool_end: usize = pool.offset.into() + pool.len.into() * size_of::<T>();
@@ -177,7 +176,7 @@ where
         }
     }
 
-    /// Get a mutable slice reference to the allocated pool
+    /// Get pool as mutable slice
     #[inline]
     pub fn get_pool_mut<T>(&mut self, pool: &Pool<T, SizeType>) -> &mut [T] {
         let pool_end: usize = pool.offset.into() + pool.len.into() * size_of::<T>();
@@ -194,23 +193,23 @@ where
         }
     }
 
-    /// Reset the arena to empty state (doesn't drop values - use carefully!)
+    /// Clear arena (doesn't drop values!)
     pub fn clear(&mut self) {
         self.offset = SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small"));
         self.count = SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small"));
     }
 
-    /// Get the current number of bytes used
+    /// Bytes used
     pub fn used(&self) -> usize {
         self.offset.into()
     }
 
-    /// Get the number of bytes remaining
+    /// Bytes remaining
     pub fn remaining(&self) -> usize {
         LEN - self.offset.into()
     }
 
-    /// Get the number of allocations made
+    /// Number of allocations
     pub fn allocation_count(&self) -> usize {
         self.count.into()
     }
@@ -218,7 +217,7 @@ where
 
 
 
-// Convenience implementations
+// Default implementation
 impl<const LEN: usize, SizeType> Default for Arena<LEN, SizeType>
 where
     SizeType: Copy + TryFrom<usize> + Into<usize> + PartialOrd + core::ops::Add<Output = SizeType>,

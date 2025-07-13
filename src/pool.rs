@@ -1,4 +1,4 @@
-//! Pool - Fixed-size collections
+//! Pools for arena allocations
 
 use core::marker::PhantomData;
 
