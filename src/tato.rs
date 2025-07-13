@@ -12,7 +12,7 @@ pub struct Tato {
     // pub bg: [Option<&'a mut dyn DynamicBGMap>; 8],
     pub assets: Assets,
     // Internals
-    pub update_time_acc: SmoothBuffer<10, f64>,
+    pub update_time_acc: SmoothBuffer<20, f64>,
     // arena: tato_arena::Arena<64536, u16>,
 }
 

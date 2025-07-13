@@ -1,7 +1,7 @@
 #![no_std]
 
 pub mod num;
-pub use num::Num;
+pub use num::{Num, Float};
 
 pub mod rect;
 pub use rect::Rect;

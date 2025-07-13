@@ -13,7 +13,7 @@ tato_layout = { path = "crates/layout" }
 tato_audio = { path = "crates/audio" }
 tato_video = { path = "crates/video" }
 tato_math = { path = "crates/math" }
-smooth-buffer = { path = "../smooth_buffer" }
+smooth-buffer = { path = "crates/smooth_buffer" }
 # tato_arena = { path = "arena" }
 
 [build-dependencies]
@@ -27,4 +27,9 @@ members = [
     "examples/tilemap",
     "examples/palette_save",
     # "examples/pipe",
+]
+exclude = [
+    "crates/layout/example_basic",
+    "crates/layout/example_mquad",
+    "crates/layout/example_sdl",
 ]
