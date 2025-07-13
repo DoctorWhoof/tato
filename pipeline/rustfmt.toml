@@ -1,0 +1,22 @@
+# Keep structs in single line if possible
+use_small_heuristics = "Max"
+struct_lit_single_line = true
+struct_field_align_threshold = 100
+
+max_width = 100
+chain_width = 100
+fn_call_width = 100
+match_block_trailing_comma = true
+single_line_let_else_max_width = 100
+struct_lit_width = 60
+# match_arm_leading_pipes = "Always"
+
+# Unstable as of Rust 1.82
+indent_style = "Visual"
+fn_single_line = true
+imports_layout = "HorizontalVertical"
+spaces_around_ranges = true
+binop_separator = "Back"
+brace_style = "PreferSameLine"
+trailing_semicolon = false
+condense_wildcard_suffixes = true
