@@ -1,0 +1,16 @@
+[package]
+name = "tato_video"
+version = "0.1.21"
+edition = "2024"
+description = "A Fantasy video chip that runs on any potato powered computers. Bring your own back-end!"
+license = "MIT"
+repository = "https://github.com/DoctorWhoof/tato_video"
+documentation = "https://docs.rs/padstate/latest/tato_video/"
+categories = ["no-std"]
+
+[dependencies]
+tato_math = { path = "../tato_math"}
+
+# For perf testing, remove when done
+[profile.release]
+debug = true
