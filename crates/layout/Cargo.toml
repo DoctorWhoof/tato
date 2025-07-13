@@ -8,6 +8,9 @@ repository = "https://github.com/DoctorWhoof/tato_layout"
 documentation = "https://docs.rs/tato_layout/latest/tato_layout/"
 categories = ["no-std"]
 
+# Note: these had to be removed after merging with main Tato crate.
+# Simply navigate to each example and run them individually,
+# instead of running "cargo run -p example"
 # [workspace]
 # members = ["example_basic", "example_mquad", "example_sdl"]
 

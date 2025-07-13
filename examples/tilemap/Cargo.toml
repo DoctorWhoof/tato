@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 tato = { path = "../../" }
-tato_raylib = { path = "../../raylib"}
+tato_raylib = { path = "../../crates/backend_raylib"}
 
 [build-dependencies]
-tato_pipe = { path = "../../pipeline" }
+tato_pipe = { path = "../../crates/pipeline" }
