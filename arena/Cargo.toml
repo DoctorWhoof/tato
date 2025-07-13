@@ -1,0 +1,22 @@
+[package]
+name = "tato_arena"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[[example]]
+name = "pool_demo"
+path = "examples/pool_demo.rs"
+
+[[example]]
+name = "video_chip"
+path = "examples/video_chip.rs"
+
+[[example]]
+name = "smaller_indices"
+path = "examples/smaller_indices.rs"
+
+[[example]]
+name = "generic_storage"
+path = "examples/generic_storage.rs"
