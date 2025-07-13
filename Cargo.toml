@@ -8,16 +8,16 @@ repository = "https://github.com/DoctorWhoof/tato"
 categories = ["no-std"]
 
 [dependencies]
-tato_pad = { path = "../tato_pad" }
-tato_layout = { path = "../tato_layout" }
-tato_audio = { path = "../tato_audio" }
-tato_video = { path = "../tato_video" }
-tato_math = { path = "../tato_math" }
+tato_pad = { path = "pad" }
+tato_layout = { path = "layout" }
+tato_audio = { path = "audio" }
+tato_video = { path = "video" }
+tato_math = { path = "math" }
 smooth-buffer = { path = "../smooth_buffer" }
-# tato_arena = { path = "../tato_arena" }
+# tato_arena = { path = "arena" }
 
 [build-dependencies]
-tato_pipe = { path = "../tato_pipe" }
+tato_pipe = { path = "pipeline" }
 
 [workspace]
 members = [

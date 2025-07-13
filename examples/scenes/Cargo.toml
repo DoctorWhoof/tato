@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 tato = { path = "../../"}
 rand = {version = "0.9.0" }
-tato_raylib = { path = "../../../tato_raylib"}
+tato_raylib = { path = "../../raylib"}
 
 # For audio debugging
 # hound = "3.5.1"

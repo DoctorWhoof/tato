@@ -9,7 +9,7 @@ documentation = "https://docs.rs/padstate/latest/tato_video/"
 categories = ["no-std"]
 
 [dependencies]
-tato_math = { path = "../tato_math"}
+tato_math = { path = "../math"}
 
 # For perf testing, remove when done
 [profile.release]

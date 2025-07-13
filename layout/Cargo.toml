@@ -8,8 +8,8 @@ repository = "https://github.com/DoctorWhoof/tato_layout"
 documentation = "https://docs.rs/tato_layout/latest/tato_layout/"
 categories = ["no-std"]
 
-[workspace]
-members = ["example_basic", "example_mquad", "example_sdl"]
+# [workspace]
+# members = ["example_basic", "example_mquad", "example_sdl"]
 
 [dependencies]
-tato_math = { path = "../tato_math" }
+tato_math = { path = "../math" }

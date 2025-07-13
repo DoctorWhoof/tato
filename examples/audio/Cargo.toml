@@ -7,4 +7,4 @@ edition = "2024"
 rand = {version = "0.9.0" }
 tato = { path = "../../"}
 backend_cpal = { path = "../../cpal"}
-tato_raylib = { path = "../../../tato_raylib"}
+tato_raylib = { path = "../../raylib"}

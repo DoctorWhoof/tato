@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 # image = { path = "0.25.6", default-features = false, features = ["png"] }
 image = "0.25.6"
-tato_video = { path = "../tato_video" }
+tato_video = { path = "../video" }
