@@ -5,8 +5,8 @@ mod anim;
 pub use anim::*;
 
 mod tileset;
-pub use tileset::*;
 // use tato_arena::{Arena, ArenaId, Pool};
+pub use tileset::*;
 
 mod tilemap;
 pub use tilemap::*;
@@ -115,7 +115,6 @@ impl Tato {
         let mut color_count = 0;
         let colors_start = assets.color_head;
 
-        // 'color_process:{
         if let Some(data_colors) = data.colors {
             for (i, color) in data_colors.iter().enumerate() {
                 let mut reused_color = false;
@@ -130,26 +129,18 @@ impl Tato {
                     }
                 }
                 if !reused_color {
-                    // index = colors_start + color_count;
-                    // if index >= COLORS_PER_PALETTE {
-                    //     // TODO: Should it panic? Result? Need to think about it.
-                    //     break 'color_process;
-                    // }
                     // Immediately also set the color in the bank
                     index = bank.push_color(*color).0;
                     // Increment count since we added a new one
                     color_count += 1;
-                    // println!("{}: {}", index, *color);
-                } else {
                 }
                 // Store color entry for management
                 color_entries[i] = ColorEntry { reused_color, index, value: *color };
             }
         }
-        // }
 
-        // Sub palette processing
-        // Maps indices starting at zero to the actual current color positions in the bank
+        // Sub palette processing. Maps indices starting at zero
+        // to the actual current color positions in the bank
         let sub_palettes_start = bank.sub_palette_count();
         let mut sub_palettes_len = 0;
         if let Some(sub_palettes) = data.sub_palettes {
@@ -180,12 +171,25 @@ impl Tato {
         Some(TilesetID(id))
     }
 
-    // TODO: Make private, loading tilesets should load all associated assets?
-    // In that case, how would I obtain the MapID? Doesn't seem to work...
 
-    /// Adds a tilemap entry that refers to already loaded tiles in a tileset.
-    /// Returns the index of the map
-    pub fn new_tilemap(&mut self, tileset_id: TilesetID, data: &dyn DynamicBGMap) -> MapID {
+    pub fn get_tilemap<const LEN: usize>(&mut self, map_id: MapID) -> BGMapRef {
+        let entry = &self.assets.map_entries[map_id.0 as usize];
+        let start = entry.data_start as usize;
+        let end = start + entry.data_len as usize;
+        BGMapRef {
+            cells: &mut self.assets.cells[start..end],
+            columns: entry.columns,
+            rows: entry.rows,
+        }
+    }
+
+    /// Adds a tilemap entry that refers to an existing tileset,
+    /// and returns the index of the map
+    pub fn load_tilemap<const LEN: usize>(
+        &mut self,
+        tileset_id: TilesetID,
+        map: &BGMap<LEN>,
+    ) -> MapID {
         // Acquire tile offset for desired tileset
         let assets = &mut self.assets;
         let tileset = &assets.tilesets[tileset_id.0 as usize];
@@ -199,21 +203,24 @@ impl Tato {
         // Add metadata
         let map_idx = assets.map_head;
         let data_start = assets.cell_head;
-        let data_len = u16::try_from(data.len()).unwrap();
-        let columns = data.columns();
-        let rows = data_len / data.columns();
+        let data_len = u16::try_from(map.len()).unwrap();
 
         assert!(
-            data_len % data.columns() == 0,
+            data_len % map.columns == 0,
             err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
         );
 
         // Map entry
-        assets.map_entries[assets.map_head as usize] =
-            TilemapEntry { bank_id, columns, rows, data_start, data_len };
+        assets.map_entries[assets.map_head as usize] = TilemapEntry {
+            bank_id,
+            columns: map.columns,
+            rows: map.rows,
+            data_start,
+            data_len,
+        };
 
         // Add tile entries, mapping the original tile ids to the current tile bank positions
-        for (i, &cell) in data.cells().iter().enumerate() {
+        for (i, &cell) in map.cells.iter().enumerate() {
             let mut flags = cell.flags;
             flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
             assets.cells[data_start as usize + i] = Cell {
@@ -227,64 +234,6 @@ impl Tato {
         assets.cell_head += data_len;
         MapID(map_idx)
     }
-
-    pub fn tilemap<const LEN: usize>(&mut self, map_id: MapID) -> BGMapRef {
-        let entry = &self.assets.map_entries[map_id.0 as usize];
-        let start = entry.data_start as usize;
-        let end = start + entry.data_len as usize;
-        BGMapRef {
-            cells: &mut self.assets.cells[start..end],
-            columns: entry.columns,
-            rows: entry.rows,
-        }
-    }
-
-    // pub fn arena_test(
-    //     &mut self,
-    //     tileset_id: TilesetID,
-    //     data: &[Cell],
-    //     columns: u16,
-    //     rows: u16,
-    // ) -> MapID {
-    //     // Acquire tile offset for desired tileset
-    //     let assets = &mut self.assets;
-    //     let tileset = &assets.tilesets[tileset_id.0 as usize];
-    //     let tileset_offset = tileset.tile_start;
-    //     let bank_id = tileset.bank_id;
-
-    //     if assets.map_head as usize >= assets.map_entries.len() {
-    //         panic!(err!("Map capacity exceeded on bank {}"), bank_id);
-    //     }
-
-    //     // Add metadata
-    //     let map_idx = assets.map_head;
-    //     let data_start = assets.cell_head;
-    //     let data_len = u16::try_from(data.len()).unwrap();
-
-    //     assert!(
-    //         data_len % columns == 0,
-    //         err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
-    //     );
-
-    //     // Map entry
-    //     assets.map_entries[assets.map_head as usize] =
-    //         TilemapEntry { bank_id, columns, rows, data_start, data_len };
-
-    //     // Add tile entries, mapping the original tile ids to the current tile bank positions
-    //     for (i, &cell) in data.iter().enumerate() {
-    //         let mut flags = cell.flags;
-    //         flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
-    //         assets.cells[data_start as usize + i] = Cell {
-    //             id: TileID(cell.id.0 + tileset_offset), //
-    //             flags,
-    //         };
-    //     }
-
-    //     // Advance and return
-    //     assets.map_head += 1;
-    //     assets.cell_head += data_len;
-    //     MapID(map_idx)
-    // }
 
     // /// Adds an animation entry
     // /// Returns the index of the animation

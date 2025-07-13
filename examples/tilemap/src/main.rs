@@ -22,16 +22,16 @@ fn main() {
     let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
 
     let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
-    let map_smileys = tato.new_tilemap(tileset_smileys, &SMILEYS_MAP);
+    let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP);
     bg_copy(
-        &tato.tilemap::<160>(map_smileys),
+        &tato.get_tilemap::<160>(map_smileys),
         None,
         &mut bg_map,
         Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
     );
 
     let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
-    let map_patch = tato.new_tilemap(tileset_patch, &PATCH_MAP);
+    let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP);
     tato.draw_patch(&mut bg_map, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
 
     // Backend
