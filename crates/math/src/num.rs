@@ -1,10 +1,8 @@
 //! Number traits to allow generic code to use any number type.
-//! Does not cover all cases, only what this crate needs!
+//! Does not cover all cases!
 
-use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use core::ops::Neg;
-
-
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// A Number trait.
 /// Automatically implemented for primitive number types (i32, f32, etc).
@@ -34,8 +32,6 @@ pub trait Num:
     fn saturating_add(self, rhs: Self) -> Self;
     fn from_f32(value: f32) -> Self;
     fn to_f32(self) -> f32;
-    // fn round_up(self) -> Self;
-    // fn round_down(self) -> Self;
 }
 
 /// A Float trait that narrows Num to floating point types only.
@@ -44,6 +40,8 @@ pub trait Float: Num + Neg<Output = Self> {
     fn floor(self) -> Self;
     fn ceil(self) -> Self;
     fn round(self) -> Self;
+    // fn round_up(self) -> Self;
+    // fn round_down(self) -> Self;
     fn exp(self) -> Self;
 }
 
@@ -79,11 +77,7 @@ mod macros {
 
                 #[inline(always)]
                 fn from_usize_checked(value: usize) -> Option<Self> {
-                    if value <= Self::MAX as usize {
-                        Some(value as Self)
-                    } else {
-                        None
-                    }
+                    if value <= Self::MAX as usize { Some(value as Self) } else { None }
                 }
 
                 // #[inline(always)]
@@ -179,11 +173,7 @@ mod macros {
 
                 #[inline(always)]
                 fn from_usize_checked(value: usize) -> Option<Self> {
-                    if value <= Self::MAX as usize {
-                        Some(value as Self)
-                    } else {
-                        None
-                    }
+                    if value <= Self::MAX as usize { Some(value as Self) } else { None }
                 }
 
                 // #[inline(always)]
@@ -222,11 +212,7 @@ mod macros {
                     };
 
                     if frac > 0.5 {
-                        if value >= 0.0 {
-                            (truncated + 1) as Self
-                        } else {
-                            (truncated - 1) as Self
-                        }
+                        if value >= 0.0 { (truncated + 1) as Self } else { (truncated - 1) as Self }
                     } else if frac < 0.5 {
                         truncated as Self
                     } else {
@@ -247,25 +233,10 @@ mod macros {
                 fn to_f32(self) -> f32 {
                     self as f32
                 }
-
-                // #[inline(always)]
-                // fn round_up(self) -> Self {
-                //     self
-                // }
-
-                // fn round_down(self) -> Self {
-                //     self
-                // }
             }
         };
     }
 
-    // /// Takes in the type and the necessary exponential function for that type.
-    // macro_rules! impl_signed_num {
-    //     ($t:ty) => {
-    //         impl SignedNum for $t {}
-    //     };
-    // }
 
     /// Implements Num for float types
     macro_rules! impl_float_num {
@@ -336,28 +307,6 @@ mod macros {
                 fn to_f32(self) -> f32 {
                     self as f32
                 }
-
-                // #[inline(always)]
-                // fn round_down(self) -> Self {
-                //     // Floor function: largest integer <= self
-                //     let truncated = self as i64 as Self;
-                //     if self >= 0.0 || self == truncated {
-                //         truncated
-                //     } else {
-                //         truncated - 1.0
-                //     }
-                // }
-
-                // #[inline(always)]
-                // fn round_up(self) -> Self {
-                //     // Ceil function: smallest integer >= self
-                //     let truncated = self as i64 as Self;
-                //     if self <= 0.0 || self == truncated {
-                //         truncated
-                //     } else {
-                //         truncated + 1.0
-                //     }
-                // }
             }
         };
     }
@@ -398,6 +347,28 @@ mod macros {
         fn exp(self) -> Self {
             libm::expf(self)
         }
+
+        // #[inline(always)]
+        // fn round_down(self) -> Self {
+        //     // Floor function: largest integer <= self
+        //     let truncated = self as i64 as Self;
+        //     if self >= 0.0 || self == truncated {
+        //         truncated
+        //     } else {
+        //         truncated - 1.0
+        //     }
+        // }
+
+        // #[inline(always)]
+        // fn round_up(self) -> Self {
+        //     // Ceil function: smallest integer >= self
+        //     let truncated = self as i64 as Self;
+        //     if self <= 0.0 || self == truncated {
+        //         truncated
+        //     } else {
+        //         truncated + 1.0
+        //     }
+        // }
     }
 
     impl super::Float for f64 {
@@ -604,12 +575,12 @@ mod tests {
         // Test floor - rounds down
         assert_eq!(3.7f32.floor(), 3.0);
         assert_eq!((-3.7f32).floor(), -4.0);
-        assert_eq!(5.0f64.floor(), 5.0);  // Already integer
+        assert_eq!(5.0f64.floor(), 5.0); // Already integer
 
         // Test ceil - rounds up
         assert_eq!(3.2f32.ceil(), 4.0);
         assert_eq!((-3.2f64).ceil(), -3.0);
-        assert_eq!(5.0f32.ceil(), 5.0);  // Already integer
+        assert_eq!(5.0f32.ceil(), 5.0); // Already integer
 
         // Test round - rounds to nearest (0.5 rounds away from zero)
         assert_eq!(3.4f32.round(), 3.0);
@@ -620,12 +591,12 @@ mod tests {
         let e = 2.718281828f32;
         assert!((1.0f32.exp() - e).abs() < 0.00001);
         assert!((0.0f64.exp() - 1.0).abs() < 0.000001);
-        
+
         // Test in generic context
         fn test_generic_math<T: Float>(x: T) -> (T, T, T, T) {
             (x.floor(), x.ceil(), x.round(), x.exp())
         }
-        
+
         let (f, c, r, _) = test_generic_math(3.7f32);
         assert_eq!(f, 3.0);
         assert_eq!(c, 4.0);
