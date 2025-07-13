@@ -1,0 +1,12 @@
+[package]
+name = "tato_pad"
+version = "0.2.5"
+edition = "2024"
+description = "Tiny structs that hold a game controller's state"
+license = "MIT"
+repository = "https://github.com/DoctorWhoof/padstate"
+documentation = "https://docs.rs/padstate/latest/padstate/"
+categories = ["no-std"]
+
+[dependencies]
+# None!
