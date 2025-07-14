@@ -21,7 +21,7 @@ fn main() {
     let _transparent = tato.banks[0].push_color(RGBA12::new(0, 0, 0, 0));
     let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
 
-    let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
+    let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET).unwrap();
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP);
     bg_copy(
         &tato.get_tilemap(map_smileys),
@@ -30,7 +30,7 @@ fn main() {
         Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
     );
 
-    let tileset_patch = tato.new_tileset(0, PATCH_TILESET).unwrap();
+    let tileset_patch = tato.push_tileset(0, PATCH_TILESET).unwrap();
     let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP);
     tato.draw_patch(&mut bg_map, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
 

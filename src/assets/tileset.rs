@@ -1,3 +1,5 @@
+use core::array::from_fn;
+
 use tato_video::*;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -13,19 +15,15 @@ pub(crate) struct ColorEntry {
     pub value: RGBA12,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct Tileset {
-    pub(crate) bank_id: u8,
+    pub bank_id: u8,
     // pub palette_id: PaletteID,
-    pub(crate) tile_start: u8,
-    pub(crate) tiles_count: u8,
-    pub(crate) color_entries: [ColorEntry; COLORS_PER_PALETTE as usize],
-    pub(crate) color_count: u8,
-
-    // TODO: Get rid of these once color entry management is in!
-    // pub colors_start: u8,
-    // pub colors_len: u8,
-
+    pub tile_start: u8,
+    pub colors: [RGBA12; COLORS_PER_PALETTE as usize],
+    pub color_count:u8,
+    pub sub_palettes: [[u8; 4]; SUBPALETTE_COUNT as usize],
+    pub sub_palette_count:u8,
     pub sub_palettes_start: u8,
     pub sub_palettes_len: u8,
 }
@@ -38,4 +36,19 @@ pub struct TilesetData<'a> {
     // pub maps: Option< &'a [&'a [Cell; 9]]>,
     // pub anims: Option< &'a [&'a [Cell; 9]]>,
     // pub fonts: Option< &'a [&'a [Cell; 9]]>,
+}
+
+impl Default for Tileset {
+    fn default() -> Self {
+        Self {
+            bank_id: 0,
+            tile_start: 0,
+            colors: from_fn(|_| RGBA12::default()),
+            sub_palettes: from_fn(|_| Default::default()),
+            sub_palettes_start: 0,
+            sub_palettes_len: 0,
+            color_count: 0,
+            sub_palette_count: 0,
+        }
+    }
 }

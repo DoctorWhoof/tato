@@ -36,8 +36,12 @@
     [x] Write directly to the BG Map
     [?] Let the function accept a user defined slice of characters so that simple and complex fonts may be used freely.
 
---->[ ] Load & Unload Tilesets.
+    [.] Load & Unload Tilesets.
         . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
+------->[ ] Arena approach!
+            [ ] Basic push/pop implemented, needs testing!
+            [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
+            [ ] Once tilesets + tilemaps are working, implement Anims!
 
 [ ] Tilemaps
     [?] Correctly map subpalettes when loading into Assets.

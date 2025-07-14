@@ -46,8 +46,8 @@ impl SceneA {
         }
 
         // Define new tiles
-        let _tileset_fg = t.new_tileset(0, DEFAULT_TILESET).unwrap();
-        let _tileset_bg = t.new_tileset(1, DEFAULT_TILESET).unwrap();
+        let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET).unwrap();
+        let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET).unwrap();
         // let _tileset = t.add_tileset(0, &TILESET_DEFAULT).unwrap();
         let smiley = TILE_SMILEY;
         let arrow = TILE_ARROW;

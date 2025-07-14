@@ -9,7 +9,7 @@ pub struct SceneC {
 
 impl SceneC {
     pub fn new(t: &mut Tato, state: &mut State) -> Self {
-        let _tileset = t.new_tileset(0, DEFAULT_TILESET);
+        let _tileset = t.push_tileset(0, DEFAULT_TILESET);
         let solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
