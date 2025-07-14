@@ -4,12 +4,13 @@ use crate::*;
 
 impl Tato {
     pub fn draw_patch(&mut self, bg: &mut dyn DynamicBGMap, map_id: MapID, rect: Rect<u16>) {
-        let map = &self.assets.map_entries[map_id.0 as usize];
+        // let map = &self.assets.map_entries[map_id.0 as usize];
+        let map = self.get_tilemap(map_id);
 
         assert!(map.columns == 3, err!("Patch tilemaps must be 3 columns wide."));
         assert!(map.rows == 3, err!("Patch rows must be 3 rows tall."));
 
-        let top_left = self.assets.cells[map.data_start as usize];
+        let top_left = map.cells[0];
         bg_set_cell(
             bg,
             BgOp {
@@ -20,12 +21,12 @@ impl Tato {
             },
         );
 
-        let top = self.assets.cells[map.data_start as usize + 1];
+        let top = map.cells[1];
         for col in rect.x + 1..rect.x + rect.w {
             bg_set_cell(bg, BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
         }
 
-        let top_right = self.assets.cells[map.data_start as usize + 2];
+        let top_right = map.cells[2];
         bg_set_cell(
             bg,
             BgOp {
@@ -36,19 +37,19 @@ impl Tato {
             },
         );
 
-        let left = self.assets.cells[map.data_start as usize + 3];
+        let left = map.cells[3];
         for row in rect.y + 1..rect.y + rect.h {
             bg_set_cell(bg, BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
         }
 
-        let center = self.assets.cells[map.data_start as usize + 4];
+        let center = map.cells[4];
         for row in rect.y + 1..rect.y + rect.h {
             for col in rect.x + 1..rect.x + rect.w {
                 bg_set_cell(bg, BgOp { col, row, tile_id: center.id, flags: center.flags });
             }
         }
 
-        let right = self.assets.cells[map.data_start as usize + 5];
+        let right = map.cells[5];
         for row in rect.y + 1..rect.y + rect.h {
             bg_set_cell(
                 bg,
@@ -61,7 +62,7 @@ impl Tato {
             );
         }
 
-        let bottom_left = self.assets.cells[map.data_start as usize + 6];
+        let bottom_left = map.cells[6];
         bg_set_cell(
             bg,
             BgOp {
@@ -72,7 +73,7 @@ impl Tato {
             },
         );
 
-        let bottom = self.assets.cells[map.data_start as usize + 7];
+        let bottom = map.cells[7];
         for col in rect.x + 1..rect.x + rect.w {
             bg_set_cell(
                 bg,
@@ -85,7 +86,7 @@ impl Tato {
             );
         }
 
-        let bottom_right = self.assets.cells[map.data_start as usize + 8];
+        let bottom_right = map.cells[8];
         bg_set_cell(
             bg,
             BgOp {

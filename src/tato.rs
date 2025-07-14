@@ -9,8 +9,7 @@ pub struct Tato {
     // Video
     pub video: tato_video::VideoChip,
     pub banks: [tato_video::VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
-    // pub bg: [Option<&'a mut dyn DynamicBGMap>; 8],
-    pub assets: Assets,
+    pub assets: Assets<65536>, // 64Kb asset memory
     // Internals
     pub update_time_acc: SmoothBuffer<20, f64>,
     // arena: tato_arena::Arena<64536, u16>,

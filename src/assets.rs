@@ -1,55 +1,50 @@
 use crate::prelude::*;
 use core::array::from_fn;
+use tato_arena::Arena;
 
 mod anim;
 pub use anim::*;
 
 mod tileset;
-// use tato_arena::{Arena, ArenaId, Pool};
 pub use tileset::*;
 
 mod tilemap;
 pub use tilemap::*;
 
+mod bg_map_ref;
+pub use bg_map_ref::*;
+
 /// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
 /// tileset and its tiles currently loaded in a video memory bank
 #[derive(Debug)]
-pub struct Assets {
+pub struct Assets<const CAP:usize> {
+    // Main storage
+    arena: tato_arena::Arena<CAP, u16>,
     pub tilesets: [Tileset; 256],
-    // Asset types
-    pub anims: [AnimEntry; 256],
-    pub map_entries: [TilemapEntry; 256],
-    // pub palettes: [Palette; 256],
-    // pub fonts: [Font; 256],
-    // "flat" storage for cells used by any asset type.
-    pub cells: [Cell; 2048],
-
     pub colors: [RGBA12; 256],
     pub sub_palettes: [[u8; 4]; 256],
     // Everything that needs to be counted.
     pub(crate) cell_head: u16,
     pub(crate) tileset_head: u8,
     pub(crate) anim_head: u8,
-    pub(crate) map_head: u8,
     pub(crate) color_head: u8,
     pub(crate) sub_palette_head: u8,
 
-    // arena: tato_arena::Arena<65536, u16>,
-    // bg_ids: [ArenaId<Pool<Cell, u16>>; 256],
+    // Asset types
+    // pub anims: [AnimEntry; 256],
+    map_head: u8,
+    map_entries: [TilemapEntry; 256],
 }
 
-impl Assets {
+impl<const CAP:usize> Assets<CAP> {
     pub fn new() -> Self {
         Self {
             // Metadata
             tilesets: from_fn(|_| Tileset::default()),
-            anims: from_fn(|_| AnimEntry::default()),
-            map_entries: from_fn(|_| TilemapEntry::default()),
+            // anims: from_fn(|_| AnimEntry::default()),
+            // map_entries: from_fn(|_| TilemapEntry::default()),
             colors: from_fn(|_| RGBA12::default()),
             sub_palettes: from_fn(|_| Default::default()),
-            // "Flat" entry data for maps, anims and fonts
-            cells: from_fn(|_| Cell::default()),
-
             // Counters
             cell_head: 0,
             tileset_head: 0,
@@ -57,8 +52,9 @@ impl Assets {
             map_head: 0,
             color_head: 0,
             sub_palette_head: 0,
-            // arena: Arena::new(),
+            arena: Arena::new(),
             // bg_ids:
+            map_entries: core::array::from_fn(|_| TilemapEntry::default())
         }
     }
 
@@ -66,9 +62,10 @@ impl Assets {
         self.cell_head = 0;
         self.tileset_head = 0;
         self.anim_head = 0;
-        self.map_head = 0;
+        // self.map_head = 0;
         self.color_head = 0;
         self.sub_palette_head = 0;
+        self.arena.clear();
     }
 }
 
@@ -171,26 +168,11 @@ impl Tato {
         Some(TilesetID(id))
     }
 
-
-    pub fn get_tilemap<const LEN: usize>(&mut self, map_id: MapID) -> BGMapRef {
-        let entry = &self.assets.map_entries[map_id.0 as usize];
-        let start = entry.data_start as usize;
-        let end = start + entry.data_len as usize;
-        BGMapRef {
-            cells: &mut self.assets.cells[start..end],
-            columns: entry.columns,
-            rows: entry.rows,
-        }
-    }
-
-    /// Adds a tilemap entry that refers to an existing tileset,
-    /// and returns the index of the map
     pub fn load_tilemap<const LEN: usize>(
         &mut self,
         tileset_id: TilesetID,
         map: &BGMap<LEN>,
     ) -> MapID {
-        // Acquire tile offset for desired tileset
         let assets = &mut self.assets;
         let tileset = &assets.tilesets[tileset_id.0 as usize];
         let tileset_offset = tileset.tile_start;
@@ -200,40 +182,45 @@ impl Tato {
             panic!(err!("Map capacity exceeded on bank {}"), bank_id);
         }
 
-        // Add metadata
-        let map_idx = assets.map_head;
-        let data_start = assets.cell_head;
-        let data_len = u16::try_from(map.len()).unwrap();
-
         assert!(
-            data_len % map.columns == 0,
+            map.len() % map.columns as usize == 0,
             err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
         );
 
-        // Map entry
-        assets.map_entries[assets.map_head as usize] = TilemapEntry {
-            bank_id,
-            columns: map.columns,
-            rows: map.rows,
-            data_start,
-            data_len,
-        };
-
-        // Add tile entries, mapping the original tile ids to the current tile bank positions
-        for (i, &cell) in map.cells.iter().enumerate() {
+        // Allocate remapped cells in arena
+        let cells_pool = assets.arena.alloc_pool_from_fn(map.len(), |i| {
+            let cell = &map.cells[i];
             let mut flags = cell.flags;
             flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
-            assets.cells[data_start as usize + i] = Cell {
-                id: TileID(cell.id.0 + tileset_offset), //
+            Cell {
+                id: TileID(cell.id.0 + tileset_offset),
                 flags,
-            };
-        }
+            }
+        }).expect("Arena out of space");
 
-        // Advance and return
+        // Store entry
+        let map_idx = assets.map_head;
+        assets.map_entries[map_idx as usize] = TilemapEntry {
+            cells: cells_pool,
+            columns: map.columns,
+            rows: map.rows,
+        };
+
         assets.map_head += 1;
-        assets.cell_head += data_len;
         MapID(map_idx)
     }
+
+    pub fn get_tilemap(&mut self, map_id: MapID) -> BGMapRef {
+        let entry = &self.assets.map_entries[map_id.0 as usize];
+        let cells = self.assets.arena.get_pool_mut(&entry.cells);
+
+        BGMapRef {
+            cells,
+            columns: entry.columns,
+            rows: entry.rows,
+        }
+    }
+
 
     // /// Adds an animation entry
     // /// Returns the index of the animation

@@ -1,6 +1,7 @@
 //! Pools for arena allocations
 
 use core::marker::PhantomData;
+use tato_math::Num;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Pool<T, SizeType = usize> {
@@ -12,11 +13,7 @@ pub struct Pool<T, SizeType = usize> {
 impl<T, SizeType> Pool<T, SizeType> {
     /// Create a new pool (internal use)
     pub(crate) fn new(offset: SizeType, len: SizeType) -> Self {
-        Self {
-            offset,
-            len,
-            _marker: PhantomData,
-        }
+        Self { offset, len, _marker: PhantomData }
     }
 
     /// Get element count
@@ -57,6 +54,19 @@ impl<T, SizeType> Pool<T, SizeType> {
         SizeType: Copy + Into<usize>,
     {
         (self.len.into(), self.len.into())
+    }
+}
+
+impl<T, SizeType> Default for Pool<T, SizeType>
+where
+    SizeType: Num,
+{
+    fn default() -> Self {
+        Self {
+            offset: SizeType::zero(),
+            len: SizeType::zero(),
+            _marker: PhantomData,
+        }
     }
 }
 

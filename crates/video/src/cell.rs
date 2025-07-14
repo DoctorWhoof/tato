@@ -1,7 +1,7 @@
 use crate::*;
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Hash)]
 pub struct Cell {
     pub id: TileID,
     pub flags: TileFlags,

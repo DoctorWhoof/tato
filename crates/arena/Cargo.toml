@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tato_math = { path = "../math"}
 
 [[example]]
 name = "pool_demo"

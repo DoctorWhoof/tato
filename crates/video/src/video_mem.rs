@@ -115,6 +115,22 @@ impl<const TILES: usize> VideoMemory<TILES> {
         TILES
     }
 
+    /// Restore tile counter to a previous state (for checkpoint/restore)
+    /// Warning: Caller must ensure this is a valid previous state!
+    pub fn restore_tile_count(&mut self, count: u8) {
+        assert!(count as usize <= TILES, "Invalid tile count");
+        self.tile_head = count;
+    }
+
+    /// Restore palette counters to previous state (for checkpoint/restore)
+    /// Warning: Caller must ensure these are valid previous states!
+    pub fn restore_palette_state(&mut self, color_count: u8, sub_palette_count: u8) {
+        assert!(color_count <= COLORS_PER_PALETTE as u8, "Invalid color count");
+        assert!(sub_palette_count <= SUBPALETTE_COUNT, "Invalid sub-palette count");
+        self.palette_head = color_count;
+        self.sub_palette_head = sub_palette_count;
+    }
+
     /// Adds a single tile, returns a TileID
     pub fn add_tile(&mut self, tile: &Tile<2>) -> TileID {
         assert!(

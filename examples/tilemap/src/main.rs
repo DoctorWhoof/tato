@@ -24,7 +24,7 @@ fn main() {
     let tileset_smileys = tato.new_tileset(0, SMILEYS_TILESET).unwrap();
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP);
     bg_copy(
-        &tato.get_tilemap::<160>(map_smileys),
+        &tato.get_tilemap(map_smileys),
         None,
         &mut bg_map,
         Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
