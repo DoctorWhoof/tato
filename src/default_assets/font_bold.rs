@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub const FONT_TILESET: TilesetData =
     TilesetData { tiles: &FONT_TILES, colors: None, sub_palettes: None };
 
-pub const FONT_BOLD_MAP: BGMap<90> = BGMap {
+pub const FONT_BOLD_MAP: Tilemap<90> = Tilemap {
     columns: 10,
     rows: 9,
     cells: [

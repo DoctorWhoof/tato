@@ -11,7 +11,7 @@ const MAP_LEN: usize = 1024;
 
 // Rects use "number of tiles" as the dimensions
 fn main() {
-    let mut bg_map = BGMap::<MAP_LEN>::new(32, 32);
+    let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
 
     let mut tato = Tato::new(240, 180);
     tato.video.bg_color = RGBA12::new(1, 2, 3, 7);

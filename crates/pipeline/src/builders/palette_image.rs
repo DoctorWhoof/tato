@@ -33,34 +33,22 @@ impl PalettizedImg {
         println!("cargo:warning=Converting image {}", asset_name);
         let mut img_rgba = ImageReader::open(file_name).unwrap().decode().unwrap();
         if let DynamicImage::ImageRgba8 { .. } = img_rgba {
-            println!(
-                "cargo:warning= Image for '{}' is Rgba8, proceeding... ",
-                asset_name
-            );
+            println!("cargo:warning= Image for '{}' is Rgba8, proceeding... ", asset_name);
         } else {
-            println!(
-                "cargo:warning= Image for '{}' is not Rgba8, converting... ",
-                asset_name
-            );
+            println!("cargo:warning= Image for '{}' is not Rgba8, converting... ", asset_name);
             img_rgba = DynamicImage::from(img_rgba.to_rgba8());
         }
 
         let (width, height) = (img_rgba.width() as usize, img_rgba.height() as usize);
         if ((width % TILE_SIZE as usize) != 0) || ((height % TILE_SIZE as usize) != 0) {
-            panic!(
-                "Build error: PNG image cannot fit into {}x{} tiles!",
-                TILE_SIZE, TILE_SIZE
-            )
+            panic!("Build error: PNG image cannot fit into {}x{} tiles!", TILE_SIZE, TILE_SIZE)
         }
 
         let cols_per_frame = (img_rgba.width() / frames_h as u32) / TILE_SIZE as u32;
         let rows_per_frame = (img_rgba.height() / frames_v as u32) / TILE_SIZE as u32;
 
         println!("cargo:warning= Tilifying '{}'", asset_name);
-        println!(
-            "cols per frame: {}, rows per frame: {}",
-            cols_per_frame, rows_per_frame
-        );
+        println!("cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
         println!("frames_h: {}, frames_v: {}", frames_h, frames_v);
 
         PalettizedImg {

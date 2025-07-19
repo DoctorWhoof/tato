@@ -17,7 +17,7 @@ impl<const TILES: usize> VideoMemory<TILES> {
     pub fn new() -> Self {
         Self {
             tiles: from_fn(|_| Tile::default()),
-            // bg: BGMap::new(32, 32),
+            // bg: Tilemap::new(32, 32),
             palette: PALETTE_DEFAULT,
             sub_palettes: from_fn(|_| from_fn(|i| ColorID(i as u8))),
             tile_head: 0,

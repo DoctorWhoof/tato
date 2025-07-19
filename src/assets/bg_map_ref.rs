@@ -41,7 +41,7 @@ impl<'a> DynamicBGMap for BGMapRef<'a> {
             columns as usize * rows as usize <= self.cells().len(),
             err!("Invalid column count")
         );
-        assert!(columns > 0 && rows > 0, err!("BGMap dimensions can't be zero"));
+        assert!(columns > 0 && rows > 0, err!("Tilemap dimensions can't be zero"));
         self.columns = columns;
         self.rows = rows;
     }

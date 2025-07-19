@@ -6,7 +6,7 @@ fn main() {
     println!("Generating RGBA12 palette with 512 colors...");
 
     // Create the .gpl file
-    let mut file = File::create("rgb_512_colors.gpl").expect("Failed to create rgb_512_colors.gpl");
+    let mut file = File::create("examples/palette_save/rgb_512_colors.gpl").expect("Failed to create rgb_512_colors.gpl");
 
     // Write the header
     writeln!(file, "GIMP Palette").expect("Failed to write to file");

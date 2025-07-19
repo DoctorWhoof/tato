@@ -53,7 +53,7 @@ pub const SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 10, 5, 0];
 
 pub const SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 11, 5, 0];
 
-pub const SMILEYS_MAP: BGMap<160> = BGMap {
+pub const SMILEYS_MAP: Tilemap<160> = Tilemap {
     columns: 16,
     rows: 10,
     cells: [

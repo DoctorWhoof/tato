@@ -80,9 +80,11 @@ impl Pipeline {
         let img = PalettizedImg::from_image(path, 1, 1, palette);
         assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
 
-        let tile = tileset.add_tiles(&img, palette); //, group, false);
+        let frames = tileset.add_tiles(&img, palette); //, group, false);
 
-        tileset.single_tiles.push(SingleTileBuilder { name: strip_path_name(path), cell: tile[0] });
+        tileset
+            .single_tiles
+            .push(SingleTileBuilder { name: strip_path_name(path), cell: frames[0][0] });
     }
 
     /// Initializes a new animation sequence from a .png file. It will:
@@ -103,23 +105,21 @@ impl Pipeline {
 
         let palette = self.palettes.get_mut(tileset.palette_id.0 as usize).unwrap();
         let img = PalettizedImg::from_image(path, frames_h, frames_v, palette);
-        // let cells = tileset.add_tiles(&img, palette); //, group, false);
-        // let cells_per_frame = img.cols_per_frame as usize * img.rows_per_frame as usize;
+        let cells = tileset.add_tiles(&img, palette);
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
         assert!(frame_count > 0);
-
         let anim = AnimBuilder {
             name: strip_path_name(path),
             fps,
-            // columns: u8::try_from(img.cols_per_frame).unwrap(),
-            // rows: u8::try_from(img.rows_per_frame).unwrap(),
-            // frames: (0..frame_count)
-            //     .map(|i| {
-            //         let index = i * cells_per_frame;
-            //         FrameBuilder { tiles: cells[index..index + cells_per_frame].into() }
-            //     })
-            //     .collect(),
+            frames: (0..frame_count)
+                .map(|i| MapBuilder {
+                    name: format!("frame_{:02}", i),
+                    columns: u8::try_from(img.cols_per_frame).unwrap(),
+                    rows: u8::try_from(img.rows_per_frame).unwrap(),
+                    cells: cells[i].clone(),
+                })
+                .collect(),
         };
 
         tileset.anims.push(anim);
@@ -133,12 +133,13 @@ impl Pipeline {
         let palette = self.palettes.get_mut(tileset.palette_id.0 as usize).unwrap();
         let img = PalettizedImg::from_image(path, 1, 1, palette);
         let cells = tileset.add_tiles(&img, palette); //, group, false);
+        assert!(cells.len() == 1);
 
         let map = MapBuilder {
             name: strip_path_name(path),
             columns: u8::try_from(img.cols_per_frame).unwrap(),
             rows: u8::try_from(img.rows_per_frame).unwrap(),
-            cells,
+            cells: cells[0].clone(), // just the first frame, there's only 1 anyway!
         };
 
         tileset.maps.push(map);
@@ -313,15 +314,37 @@ impl Pipeline {
         for anim in &tileset.anims {
             // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
-                "pub const {}_ANIM: Anim = Anim {{",
+                "pub const {}_ANIM: Anim<{}, {}> = Anim {{",
                 anim.name.to_uppercase(),
+                anim.frames.len(),
+                anim.frames[0].cells.len()
             ));
 
-            code.write_line(&format!("    fps: {},", anim.fps));
-            code.write_line(&format!("    columns_per_frame: {},", anim.fps));
-            code.write_line(&format!("    rows_per_frame: {},", anim.fps));
-            code.write_line(&format!("    data_start: {},", anim.fps));
-            code.write_line(&format!("    data_len: {},", anim.fps));
+            code.write_line(&format!("fps:{},", anim.fps));
+            code.write_line("frames:[");
+
+            for frame in &anim.frames {
+                code.write_line("Tilemap{");
+                code.write_line("cells:[");
+
+                // Write cells in rows
+                for row in 0..frame.rows {
+                    code.write("                ");
+                    for col in 0..frame.columns {
+                        let index = (row as usize * frame.columns as usize) + col as usize;
+                        let cell = &frame.cells[index];
+                        code.write_line(&format!("    {:?},", cell));
+                    }
+                    code.write_line("");
+                }
+
+                code.write_line("],");
+                code.write_line(&format!("columns:{},", frame.columns));
+                code.write_line(&format!("rows:{},", frame.rows));
+                code.write_line("},");
+            }
+
+            code.write_line("],");
             code.write_line("};");
             code.write_line("");
         }
@@ -331,7 +354,7 @@ impl Pipeline {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for map in &tileset.maps {
             code.write_line(&format!(
-                "pub const {}_MAP: BGMap<{}> = BGMap {{",
+                "pub const {}_MAP: Tilemap<{}> = Tilemap {{",
                 map.name.to_uppercase(),
                 map.cells.len(),
             ));
@@ -346,40 +369,6 @@ impl Pipeline {
             code.write_line("");
         }
     }
-
-    // fn append_anims(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
-    //     // Tilesets
-    //     let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
-    //     for anim in &tileset.anims {
-    //         // println!("Anim: {:#?}", anim);
-    //         code.write_line(&format!(
-    //             // "pub const ANIM_{}: Anim<{}, {}> = Anim {{ fps: {}, tileset_id:None, frames: [",
-    //             "pub const ANIM_{}: Anim<{}, {}> = Anim {{ fps: {}, frames: [",
-    //             anim.name.to_uppercase(),
-    //             anim.frames.len(),
-    //             anim.columns as usize * anim.rows as usize,
-    //             anim.fps,
-    //             // anim.columns,
-    //         ));
-
-    //         for frame in &anim.frames {
-    //             code.write_line(&format!("Tilemap::<{}> {{", anim.columns as usize * anim.rows as usize));
-    //             code.write_line(&format!("columns: {},", anim.columns));
-    //             code.write_line("data: [");
-
-    //             for cell in &frame.tiles {
-    //                 code.write_line(&format!("{:?},", *cell));
-    //             }
-
-    //             code.write_line("],");
-    //             code.write_line("},\n");
-    //         }
-
-    //         code.write_line("]");
-    //         code.write_line("};");
-    //         code.write_line("");
-    //     }
-    // }
 
     fn append_single_tile_ids(&mut self, tileset_id: TilesetBuilderID, code: &mut CodeWriter) {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();

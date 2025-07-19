@@ -2,7 +2,7 @@ use tato::{Tato, prelude::*};
 use tato_raylib::*;
 
 fn main() {
-    let mut bg_map = BGMap::<896>::new(32, 28);
+    let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180);
 
     // Graphics setup

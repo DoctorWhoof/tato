@@ -13,24 +13,6 @@ pub use tilemap::*;
 mod bg_map_ref;
 pub use bg_map_ref::*;
 
-/// Checkpoint for stack-based tileset management
-#[derive(Debug, Clone, Copy, Default)]
-struct TilesetCheckpoint {
-    // Arena state
-    arena_offset: u16,
-    // Asset counters
-    cell_head: u16,
-    tileset_head: u8,
-    anim_head: u8,
-    map_head: u8,
-    color_head: u8,
-    sub_palette_head: u8,
-    // Bank states (tile and palette counts)
-    bank_tile_counts: [u8; TILE_BANK_COUNT],
-    bank_palette_counts: [u8; TILE_BANK_COUNT],
-    bank_sub_palette_counts: [u8; TILE_BANK_COUNT],
-}
-
 /// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
 /// tileset and its tiles currently loaded in a video memory bank
 #[derive(Debug)]
@@ -52,6 +34,24 @@ pub struct Assets<const CAP: usize> {
     // Checkpoint system
     checkpoints: [TilesetCheckpoint; 32],
     checkpoint_head: u8,
+}
+
+/// Checkpoint for stack-based tileset management
+#[derive(Debug, Clone, Copy, Default)]
+struct TilesetCheckpoint {
+    // Arena state
+    arena_offset: u16,
+    // Asset counters
+    cell_head: u16,
+    tileset_head: u8,
+    anim_head: u8,
+    map_head: u8,
+    color_head: u8,
+    sub_palette_head: u8,
+    // Bank states (tile and palette counts)
+    bank_tile_counts: [u8; TILE_BANK_COUNT],
+    bank_palette_counts: [u8; TILE_BANK_COUNT],
+    bank_sub_palette_counts: [u8; TILE_BANK_COUNT],
 }
 
 impl<const CAP: usize> Assets<CAP> {
@@ -110,12 +110,54 @@ impl Tato {
     /// Adds a tileset as a batch of tiles to the bank
     /// Returns the tileset id.
     pub fn push_tileset(&mut self, bank_id: u8, data: TilesetData) -> Option<TilesetID> {
-        // Save checkpoint before loading
-        self.push_checkpoint();
+        // Check if bank_id is valid before storing checkpoint
+        if bank_id as usize >= self.banks.len() {
+            return None;
+        }
 
-        let bank = self.banks.get_mut(bank_id as usize)?;
+        // Save checkpoint before loading
+        {
+            let assets = &mut self.assets;
+            assert!(assets.checkpoint_head < 32, "Checkpoint stack overflow (max 32 tilesets)");
+
+            // Save bank states
+            let mut bank_tile_counts = [0u8; TILE_BANK_COUNT];
+            let mut bank_palette_counts = [0u8; TILE_BANK_COUNT];
+            let mut bank_sub_palette_counts = [0u8; TILE_BANK_COUNT];
+            for (i, bank) in self.banks.iter().enumerate().take(TILE_BANK_COUNT) {
+                bank_tile_counts[i] = bank.tile_count() as u8;
+                bank_palette_counts[i] = bank.color_count();
+                bank_sub_palette_counts[i] = bank.sub_palette_count();
+            }
+
+            assets.checkpoints[assets.checkpoint_head as usize] = TilesetCheckpoint {
+                arena_offset: assets.arena.used() as u16,
+                cell_head: assets.cell_head,
+                tileset_head: assets.tileset_head,
+                anim_head: assets.anim_head,
+                map_head: assets.map_head,
+                color_head: assets.color_head,
+                sub_palette_head: assets.sub_palette_head,
+                bank_tile_counts,
+                bank_palette_counts,
+                bank_sub_palette_counts,
+            };
+
+            assets.checkpoint_head += 1;
+        }
+
+        let bank = match self.banks.get_mut(bank_id as usize) {
+            Some(bank) => bank,
+            None => {
+                // Rollback checkpoint
+                self.assets.checkpoint_head -= 1;
+                return None;
+            },
+        };
         let assets = &mut self.assets;
         if bank.tile_count() + data.tiles.len() > bank.tile_capacity() {
+            // Rollback checkpoint
+            assets.checkpoint_head -= 1;
             return None;
         }
         let id = assets.tileset_head;
@@ -166,7 +208,7 @@ impl Tato {
         // Sub palette processing
         let sub_palettes_start = bank.sub_palette_count();
         let mut sub_palettes_len = 0;
-        let mut tileset_sub_palettes = [[0u8; 4]; SUBPALETTE_COUNT as usize];  // Initialize tileset sub_palettes array
+        let mut tileset_sub_palettes = [[0u8; 4]; SUBPALETTE_COUNT as usize]; // Initialize tileset sub_palettes array
 
         if let Some(sub_palettes) = data.sub_palettes {
             for (i, sub_palette) in sub_palettes.iter().enumerate() {
@@ -201,37 +243,6 @@ impl Tato {
         Some(TilesetID(id))
     }
 
-    /// Save current state before loading a new tileset
-    fn push_checkpoint(&mut self) {
-        let assets = &mut self.assets;
-        assert!(assets.checkpoint_head < 32, "Checkpoint stack overflow (max 32 tilesets)");
-
-        // Save bank states
-        let mut bank_tile_counts = [0u8; TILE_BANK_COUNT];
-        let mut bank_palette_counts = [0u8; TILE_BANK_COUNT];
-        let mut bank_sub_palette_counts = [0u8; TILE_BANK_COUNT];
-        for (i, bank) in self.banks.iter().enumerate().take(TILE_BANK_COUNT) {
-            bank_tile_counts[i] = bank.tile_count() as u8;
-            bank_palette_counts[i] = bank.color_count();
-            bank_sub_palette_counts[i] = bank.sub_palette_count();
-        }
-
-        assets.checkpoints[assets.checkpoint_head as usize] = TilesetCheckpoint {
-            arena_offset: assets.arena.used() as u16,
-            cell_head: assets.cell_head,
-            tileset_head: assets.tileset_head,
-            anim_head: assets.anim_head,
-            map_head: assets.map_head,
-            color_head: assets.color_head,
-            sub_palette_head: assets.sub_palette_head,
-            bank_tile_counts,
-            bank_palette_counts,
-            bank_sub_palette_counts,
-        };
-
-        assets.checkpoint_head += 1;
-    }
-
     /// Restore to previous checkpoint, unloading the last tileset
     pub fn pop_tileset(&mut self) {
         let assets = &mut self.assets;
@@ -264,7 +275,7 @@ impl Tato {
     pub fn load_tilemap<const LEN: usize>(
         &mut self,
         tileset_id: TilesetID,
-        map: &BGMap<LEN>,
+        map: &Tilemap<LEN>,
     ) -> MapID {
         // Validate that maps can only be loaded for the current tileset
         let assets = &mut self.assets;

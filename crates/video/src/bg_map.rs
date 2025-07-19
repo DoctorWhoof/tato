@@ -16,7 +16,7 @@ pub trait DynamicBGMap: core::fmt::Debug {
 /// A simple collection of Cells, split into a number of columns and rows that can never exceed the
 /// constant CELL_COUNT capacity.
 #[derive(Debug, Clone)]
-pub struct BGMap<const CELL_COUNT: usize> {
+pub struct Tilemap<const CELL_COUNT: usize> {
     pub cells: [Cell; CELL_COUNT],
     pub columns: u16,
     pub rows: u16,
@@ -31,11 +31,11 @@ pub struct BgOp {
     pub flags: TileFlags,
 }
 
-impl<const CELL_COUNT: usize> BGMap<CELL_COUNT> {
+impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
     pub fn new(columns: u16, rows: u16) -> Self {
         assert!(
             CELL_COUNT < u16::MAX as usize,
-            err!("Invalid BGMap CELL_COUNT (maximum number of tiles), must be lower than {}"),
+            err!("Invalid Tilemap CELL_COUNT (maximum number of tiles), must be lower than {}"),
             u16::MAX
         );
         assert!(
@@ -48,7 +48,7 @@ impl<const CELL_COUNT: usize> BGMap<CELL_COUNT> {
         );
         assert!(
             columns > 0 && rows > 0,
-            err!("BGMap dimensions can't be zero")
+            err!("Tilemap dimensions can't be zero")
         );
         Self {
             cells: core::array::from_fn(|_| Cell::default()),
@@ -58,7 +58,7 @@ impl<const CELL_COUNT: usize> BGMap<CELL_COUNT> {
     }
 }
 
-impl<const CELL_COUNT: usize> DynamicBGMap for BGMap<CELL_COUNT> {
+impl<const CELL_COUNT: usize> DynamicBGMap for Tilemap<CELL_COUNT> {
     fn cells(&self) -> &[Cell] {
         &self.cells
     }
@@ -94,7 +94,7 @@ impl<const CELL_COUNT: usize> DynamicBGMap for BGMap<CELL_COUNT> {
         );
         assert!(
             columns > 0 && rows > 0,
-            err!("BGMap dimensions can't be zero")
+            err!("Tilemap dimensions can't be zero")
         );
         self.columns = columns;
         self.rows = rows;
