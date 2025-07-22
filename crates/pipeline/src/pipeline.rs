@@ -91,9 +91,10 @@ impl Pipeline {
     /// - "Palettize" the image, adding its colors to the palette if needed
     /// - Divide the animation into tiles, added to the tileset
     /// - Create a new const Anim in the output file that carries the necessary data.
-    pub fn new_anim(
+    pub fn new_frames(
         &mut self,
         path: &str,
+        name: &str,
         fps: u8,
         frames_h: u8,
         frames_v: u8,
@@ -110,7 +111,7 @@ impl Pipeline {
 
         assert!(frame_count > 0);
         let anim = AnimBuilder {
-            name: strip_path_name(path),
+            name: String::from(name),
             fps,
             frames: (0..frame_count)
                 .map(|i| MapBuilder {
@@ -125,7 +126,7 @@ impl Pipeline {
         tileset.anims.push(anim);
     }
 
-    pub fn new_map(&mut self, path: &str, tileset_id: TilesetBuilderID) {
+    pub fn new_map(&mut self, path: &str, name: &str, tileset_id: TilesetBuilderID) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
@@ -136,7 +137,7 @@ impl Pipeline {
         assert!(cells.len() == 1);
 
         let map = MapBuilder {
-            name: strip_path_name(path),
+            name: String::from(name),
             columns: u8::try_from(img.cols_per_frame).unwrap(),
             rows: u8::try_from(img.rows_per_frame).unwrap(),
             cells: cells[0].clone(), // just the first frame, there's only 1 anyway!
@@ -314,14 +315,14 @@ impl Pipeline {
         for anim in &tileset.anims {
             // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
-                "pub const {}_ANIM: Anim<{}, {}> = Anim {{",
+                "pub const {}: [Tilemap<{}>; {}] = [",
                 anim.name.to_uppercase(),
+                anim.frames[0].cells.len(),
                 anim.frames.len(),
-                anim.frames[0].cells.len()
             ));
 
-            code.write_line(&format!("fps:{},", anim.fps));
-            code.write_line("frames:[");
+            // code.write_line(&format!("fps:{},", anim.fps));
+            // code.write_line("frames:[");
 
             for frame in &anim.frames {
                 code.write_line("Tilemap{");
@@ -344,8 +345,8 @@ impl Pipeline {
                 code.write_line("},");
             }
 
-            code.write_line("],");
-            code.write_line("};");
+            code.write_line("];");
+            // code.write_line("};");
             code.write_line("");
         }
     }
@@ -354,7 +355,7 @@ impl Pipeline {
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for map in &tileset.maps {
             code.write_line(&format!(
-                "pub const {}_MAP: Tilemap<{}> = Tilemap {{",
+                "pub const {}: Tilemap<{}> = Tilemap {{",
                 map.name.to_uppercase(),
                 map.cells.len(),
             ));

@@ -1,8 +1,9 @@
-
-const REGENERATE_DEFAULT_ASSETS:bool = false;
+const REGENERATE_DEFAULT_ASSETS: bool = false;
 
 fn main() {
-    if ! REGENERATE_DEFAULT_ASSETS { return }
+    if !REGENERATE_DEFAULT_ASSETS {
+        return;
+    }
     use tato_pipe::*;
     let mut pipe = Pipeline::new();
     pipe.allow_unused = true;
@@ -13,7 +14,7 @@ fn main() {
     let palette_font = pipe.new_palette("font");
     let tileset_font = pipe.new_tileset("font", palette_font);
     pipe.disable_tile_transform_detection(tileset_font);
-    pipe.new_map("assets/font_bold.png", tileset_font);
+    pipe.new_map("assets/font_bold.png", "FONT_MAP", tileset_font);
     pipe.write_tileset(tileset_font, "src/default_assets/font_bold.rs");
 
     // Default basic tiles

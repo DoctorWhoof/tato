@@ -131,6 +131,11 @@ pub fn bg_set_flags(map: &mut dyn DynamicBGMap, col: u16, row: u16, flags: TileF
     }
 }
 
+pub fn bg_get_cell(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<Cell> {
+    let index = bg_get_index(map, col, row)?;
+    Some(map.cells()[index])
+}
+
 pub fn bg_get_id(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<TileID> {
     let index = bg_get_index(map, col, row)?;
     Some(map.cells()[index].id)

@@ -175,7 +175,7 @@ impl SceneA {
 
         // Draw shadows first (lowest priority).
         let mut sprite_shadow = |entity: &Entity| {
-            t.video.draw_sprite(DrawBundle {
+            t.video.draw_fg_tile(DrawBundle {
                 x: entity.x as i16,
                 y: entity.y as i16,
                 id: entity.tile,
@@ -192,7 +192,7 @@ impl SceneA {
         // Draw Sprites with hover animation
         let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = ((phase * speed).sin() + 1.0) * height;
-            t.video.draw_sprite(DrawBundle {
+            t.video.draw_fg_tile(DrawBundle {
                 x: (entity.x - 1.0) as i16,
                 y: (entity.y - 1.0 - hover) as i16,
                 id: entity.tile,
@@ -213,7 +213,7 @@ impl SceneA {
         sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
 
         // Flashing Smiley at the origin
-        t.video.draw_sprite(DrawBundle {
+        t.video.draw_fg_tile(DrawBundle {
             x: 0,
             y: 0,
             id: TILE_SMILEY,

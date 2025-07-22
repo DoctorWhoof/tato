@@ -56,7 +56,7 @@ impl SceneC {
             let wave = ((time * 4.0).sin() + 1.0) / 2.0;
             let y = (wave * 8.0) as i16 + 60;
             offset += 0.1;
-            t.video.draw_sprite(DrawBundle {
+            t.video.draw_fg_tile(DrawBundle {
                 x: x * 8,
                 y,
                 id: self.smiley,

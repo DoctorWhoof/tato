@@ -46,10 +46,7 @@ pub struct VideoChip {
 impl VideoChip {
     /// Creates a new drawing context with default settings.
     pub fn new(w: u16, h: u16) -> Self {
-        assert!(
-            h > 7 && h <= MAX_LINES as u16,
-            err!("Screen height range is 8 to MAX_LINES")
-        );
+        assert!(h > 7 && h <= MAX_LINES as u16, err!("Screen height range is 8 to MAX_LINES"));
 
         let mut result = Self {
             bg_color: RGBA12::new(0, 0, 0, 7), // TODO: replace with RGBA12::BLACK
@@ -142,9 +139,27 @@ impl VideoChip {
         self.sprite_gen.reset();
     }
 
+    /// A sprite is in reality a Tilemap, since it is a collection of tiles! This function
+    /// will draw all the tiles in the FG layer at cordinates x and y.
+    pub fn draw_sprite<const LEN: usize>(&mut self, x: i16, y: i16, sprite: &Tilemap<LEN>) {
+        for row in 0..sprite.rows {
+            for col in 0..sprite.columns {
+                let Some(cell) = bg_get_cell(sprite, col, row) else {
+                    continue;
+                };
+                self.draw_fg_tile(DrawBundle {
+                    x: (col as i16 * TILE_SIZE as i16) + x,
+                    y: (row as i16 * TILE_SIZE as i16) + y,
+                    id: cell.id,
+                    flags: cell.flags,
+                });
+            }
+        }
+    }
+
     /// Draws a tile anywhere on the screen using i16 coordinates for convenience. You can
     /// also provide various tile flags, like flipping, and specify a palette id.
-    pub fn draw_sprite(&mut self, data: DrawBundle) {
+    pub fn draw_fg_tile(&mut self, data: DrawBundle) {
         let size = TILE_SIZE as i16;
 
         // Handle wrapping
@@ -185,8 +200,7 @@ impl VideoChip {
             }
         }
 
-        self.sprite_gen
-            .insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id);
+        self.sprite_gen.insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id);
     }
 
     pub fn start_frame(&mut self) {

@@ -64,7 +64,7 @@ impl SceneB {
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
             entity.x -= speed;
             entity.y += speed;
-            t.video.draw_sprite(DrawBundle {
+            t.video.draw_fg_tile(DrawBundle {
                 x: entity.x as i16,
                 y: entity.y as i16,
                 id: entity.tile,
@@ -72,7 +72,7 @@ impl SceneB {
             });
         }
 
-        t.video.draw_sprite(DrawBundle {
+        t.video.draw_fg_tile(DrawBundle {
             x: self.player.x as i16,
             y: self.player.y as i16,
             id: self.player.tile,

@@ -17,10 +17,6 @@ fn test_anim() {
     let tileset_font = pipe.new_tileset("font_simple", palette_bg);
     pipe.disable_tile_transform_detection(tileset_font);
 
-    // A "font" is merely an animation where each frame is a letter!
-    pipe.new_anim("test/spy_idle.png", 8, 4, 1, tileset_chars);
-    pipe.new_anim("test/font_simple.png", 1, 10, 4, tileset_font);
-
     // Write output file
     // TODO: Maybe separate output file per tileset?
     pipe.write_tileset(tileset_chars, "test/output.rs");

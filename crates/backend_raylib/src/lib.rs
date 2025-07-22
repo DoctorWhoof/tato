@@ -42,9 +42,7 @@ impl RaylibBackend {
 
         // Embed Font file
         let font_data = include_bytes!("font.ttf");
-        let font = ray
-            .load_font_from_memory(&thread, ".ttf", font_data, 32, None)
-            .unwrap();
+        let font = ray.load_font_from_memory(&thread, ".ttf", font_data, 32, None).unwrap();
 
         // Create texture for rendering
         let pixels = vec![0u8; w as usize * h as usize * 4];
@@ -162,8 +160,7 @@ impl RaylibBackend {
             self.pixels[i + 2] = color.b;
             self.pixels[i + 3] = color.a;
         }
-        t.update_time_acc
-            .push(time.elapsed().as_secs_f64() * 1000.0);
+        t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
         println!("iter time: {:.2} ms", t.update_time_acc.average());
 
         self.render_texture.update_texture(&self.pixels).unwrap();
@@ -401,9 +398,7 @@ impl RaylibBackend {
 
             // Mouse over
             if !mouse_over_text.is_empty() {
-                let size = self
-                    .font
-                    .measure_text(&mouse_over_text, font_size as f32, 1.0);
+                let size = self.font.measure_text(&mouse_over_text, font_size as f32, 1.0);
                 let text_x = mouse_x - size.x as i32 - 12;
                 let text_y = mouse_y + 12;
                 let pad = self.display_debug_scale;
