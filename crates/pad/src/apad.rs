@@ -32,14 +32,14 @@ impl AnaloguePad {
     }
 
     /// Whether the given button has just been pressed this frame. Requires
-    /// [copy_current_to_previous_state] to have been called at the beginning of the frame
+    /// AnaloguePad::copy_current_to_previous_state() to have been called at the beginning of the frame
     #[inline(always)]
     pub fn is_just_pressed(&self, button: Button) -> bool {
         self.buttons.is_just_pressed(button)
     }
 
     /// Whether the given button has just been released this frame. Requires
-    /// [copy_current_to_previous_state] to have been called at the beginning of the frame
+    /// AnaloguePad::copy_current_to_previous_state() to have been called at the beginning of the frame
     #[inline(always)]
     pub fn is_just_released(&self, button: Button) -> bool {
         self.buttons.is_just_released(button)

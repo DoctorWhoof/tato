@@ -120,6 +120,26 @@ impl TileFlags {
         }
     }
 
+    /// Toggles the horizontal flip state
+    pub const fn toggle_flip_x(self) -> Self {
+        Self(self.0 ^ 0b_1000_0000)
+    }
+
+    /// Toggles the vertical flip state
+    pub const fn toggle_flip_y(self) -> Self {
+        Self(self.0 ^ 0b_0100_0000)
+    }
+
+    /// Toggles the rotation state
+    pub const fn toggle_rotation(self) -> Self {
+        Self(self.0 ^ 0b_0010_0000)
+    }
+
+    /// Toggles the foreground state (BG tiles only)
+    pub const fn toggle_fg(self) -> Self {
+        Self(self.0 ^ 0b_0001_0000)
+    }
+
     pub const fn rotate_up(&mut self) {
         self.0 &= 0b_0001_1111; // clear flags
         self.0 |= 0b_0000_0000; // set flags

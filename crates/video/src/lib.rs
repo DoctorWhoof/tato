@@ -34,8 +34,7 @@ pub use video_chip::*;
 
 pub use tato_math as math;
 
-/// A callback used to modify the iterator, called once on every line at
-/// an X position determined by [VideoChip::irq_x_position].
+/// A callback used to modify the iterator, called once on every new scanline.
 /// The parameters are:
 /// - Mutable reference to the iterator
 /// - Read-only reference to the VideoChip

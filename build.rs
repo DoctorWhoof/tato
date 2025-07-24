@@ -21,7 +21,7 @@ fn main() {
     let palette_default = pipe.new_palette("default");
     let tileset_default = pipe.new_tileset("default", palette_default);
     pipe.new_tile("assets/tile_empty.png", tileset_default);
-    // Checkers goes first to assure 4 colors in subpalette in right order
+    // Checkers goes first to assure 4 colors in subpalette in the desired order
     pipe.new_tile("assets/tile_checkers.png", tileset_default);
     pipe.new_tile("assets/tile_solid.png", tileset_default);
     pipe.new_tile("assets/tile_crosshairs.png", tileset_default);

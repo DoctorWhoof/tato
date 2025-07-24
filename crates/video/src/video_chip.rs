@@ -1,12 +1,22 @@
 use crate::*;
 
-/// A convenient packet of data used to draw a tile as a sprite.
+/// A convenient packet of data used to draw a single tile as a sprite.
 #[derive(Debug, Clone, Copy)]
 pub struct DrawBundle {
     pub x: i16,
     pub y: i16,
     pub id: TileID,
     pub flags: TileFlags,
+}
+
+/// A convenient packet of data used to draw a tilemap as a sprite.
+#[derive(Debug, Clone, Copy)]
+pub struct SpriteBundle {
+    pub x: i16,
+    pub y: i16,
+    pub flip_x: bool,
+    pub flip_y: bool,
+    pub fps: u8,
 }
 
 /// Main drawing context that manages the screen, tiles, and palette.
@@ -141,17 +151,29 @@ impl VideoChip {
 
     /// A sprite is in reality a Tilemap, since it is a collection of tiles! This function
     /// will draw all the tiles in the FG layer at cordinates x and y.
-    pub fn draw_sprite<const LEN: usize>(&mut self, x: i16, y: i16, sprite: &Tilemap<LEN>) {
+    pub fn draw_sprite<const LEN: usize>(&mut self, bundle: SpriteBundle, sprite: &Tilemap<LEN>) {
         for row in 0..sprite.rows {
             for col in 0..sprite.columns {
                 let Some(cell) = bg_get_cell(sprite, col, row) else {
                     continue;
                 };
+
+                let draw_col = if bundle.flip_x { sprite.columns - col - 1 } else { col };
+                let draw_row = if bundle.flip_y { sprite.rows - row - 1 } else { row };
+
+                let mut flags = cell.flags;
+                if bundle.flip_x {
+                    flags = cell.flags.toggle_flip_x();
+                };
+                if bundle.flip_y {
+                    flags = flags.toggle_flip_y();
+                };
+
                 self.draw_fg_tile(DrawBundle {
-                    x: (col as i16 * TILE_SIZE as i16) + x,
-                    y: (row as i16 * TILE_SIZE as i16) + y,
+                    x: (draw_col as i16 * TILE_SIZE as i16) + bundle.x,
+                    y: (draw_row as i16 * TILE_SIZE as i16) + bundle.y,
                     id: cell.id,
-                    flags: cell.flags,
+                    flags,
                 });
             }
         }

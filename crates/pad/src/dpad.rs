@@ -31,14 +31,14 @@ impl DPad {
     }
 
     /// Whether the given button has just been pressed this frame. Requires
-    /// [copy_current_to_previous_state] to have been called at the beginning of the frame
+    /// Dpad::copy_current_to_previous_state() to have been called at the beginning of the frame
     #[inline(always)]
     pub fn is_just_pressed(&self, button: Button) -> bool {
         self.is_down(button) && (self.previous & button as u16 == 0)
     }
 
     /// Whether the given button has just been released this frame. Requires
-    /// [copy_current_to_previous_state] to have been called at the beginning of the frame
+    /// Dpad::copy_current_to_previous_state() to have been called at the beginning of the frame
     #[inline(always)]
     pub fn is_just_released(&self, button: Button) -> bool {
         !self.is_down(button) && (self.previous & button as u16 != 0)

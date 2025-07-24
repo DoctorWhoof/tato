@@ -14,3 +14,10 @@ tato_raylib = { path = "../../crates/backend_raylib"}
 
 ## Other backends, currently not used
 # mini_sdl = { path = "../../../mini_sdl"}
+
+[profile.release]
+# debug = true
+opt-level = 3
+lto = true          # Link-time optimization
+codegen-units = 1   # Better optimization at cost of compile time
+panic = "abort"     # Smaller binaries, faster code

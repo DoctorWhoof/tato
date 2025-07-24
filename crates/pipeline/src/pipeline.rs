@@ -95,11 +95,11 @@ impl Pipeline {
         &mut self,
         path: &str,
         name: &str,
-        fps: u8,
+        // fps: u8,
         frames_h: u8,
         frames_v: u8,
         tileset_id: TilesetBuilderID,
-    ) {
+    ) -> AnimBuilderID {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
@@ -110,9 +110,10 @@ impl Pipeline {
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
         assert!(frame_count > 0);
+        let id = tileset.anims.len();
         let anim = AnimBuilder {
             name: String::from(name),
-            fps,
+            // fps,
             frames: (0..frame_count)
                 .map(|i| MapBuilder {
                     name: format!("frame_{:02}", i),
@@ -121,9 +122,33 @@ impl Pipeline {
                     cells: cells[i].clone(),
                 })
                 .collect(),
+            tags: vec![],
         };
 
         tileset.anims.push(anim);
+        AnimBuilderID(id)
+    }
+
+    pub fn new_anim(
+        &mut self,
+        tileset_id: TilesetBuilderID,
+        anim_id: AnimBuilderID,
+        name: &str,
+        fps: u8,
+        frames: &[u8],
+    ) {
+        let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
+            panic!("Invalid Tileset ID: {:?}", tileset_id);
+        };
+        let Some(anim) = &mut tileset.anims.get_mut(anim_id.0) else {
+            panic!("Invalid AnimBuilder ID: {:?}", tileset_id);
+        };
+        let duration = ((1.0 / fps as f32) * 1000.0) as u16;
+        let tag = AnimTag {
+            name: String::from(name),
+            steps: frames.iter().map(|i| FrameStep { index: *i, duration }).collect(),
+        };
+        anim.tags.push(tag)
     }
 
     pub fn new_map(&mut self, path: &str, name: &str, tileset_id: TilesetBuilderID) {
@@ -313,7 +338,6 @@ impl Pipeline {
         // Tilesets
         let tileset = &mut self.tilesets.get(tileset_id.0 as usize).unwrap();
         for anim in &tileset.anims {
-            // println!("Anim: {:#?}", anim);
             code.write_line(&format!(
                 "pub const {}: [Tilemap<{}>; {}] = [",
                 anim.name.to_uppercase(),
@@ -321,16 +345,13 @@ impl Pipeline {
                 anim.frames.len(),
             ));
 
-            // code.write_line(&format!("fps:{},", anim.fps));
-            // code.write_line("frames:[");
-
+            // Frames
             for frame in &anim.frames {
                 code.write_line("Tilemap{");
                 code.write_line("cells:[");
 
                 // Write cells in rows
                 for row in 0..frame.rows {
-                    code.write("                ");
                     for col in 0..frame.columns {
                         let index = (row as usize * frame.columns as usize) + col as usize;
                         let cell = &frame.cells[index];
@@ -344,9 +365,24 @@ impl Pipeline {
                 code.write_line(&format!("rows:{},", frame.rows));
                 code.write_line("},");
             }
-
             code.write_line("];");
-            // code.write_line("};");
+
+            // Anims
+            for tag in &anim.tags {
+                code.write_line(&format!(
+                    "pub const {}:[FrameStep; {}] = [",
+                    tag.name,
+                    tag.steps.len(),
+                ));
+                for step in &tag.steps {
+                    code.write("FrameStep::HoldMillisecs {");
+                    code.write(&format!("frame: {},", step.index));
+                    code.write(&format!("duration: {},", step.duration));
+                    code.write("},");
+                    code.write("");
+                }
+                code.write_line("];");
+            }
             code.write_line("");
         }
     }

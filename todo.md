@@ -12,7 +12,7 @@
     [x] Use tato_layout, positioning everything manually is a pain!
     [x] Mouse over display debug
     [ ] Mouse over video output:
-------->[ ] Inspect any BG tile being displayed by tato_video.
+        [ ] Inspect any BG tile being displayed by tato_video.
         [ ] Inspect Sprites.
     [x] Shrink tile view to used tiles Only
     [x] Shrink subpalettes size
@@ -38,7 +38,7 @@
 
     [.] Load & Unload Tilesets.
         . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
-------->[ ] Arena approach!
+------->[.] Arena approach!
             [ ] Basic push/pop implemented, needs testing!
             [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
             [ ] Once tilesets + tilemaps are working, implement Anims!
@@ -48,7 +48,8 @@
         . Looks done? Needs more testing
 
 [ ] Anims: Update to latest Assets struct
-    . Frames should just be Tilemaps?
+    [x] Frames should just be Tilemaps?
+--->[ ] Create Anims out of a "frame array"
 
 [ ] Fonts: Replace text rendering using Anim to use Fonts. Update: maybe tilemaps, to allow flags?
 

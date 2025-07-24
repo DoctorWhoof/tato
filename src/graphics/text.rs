@@ -1,4 +1,4 @@
-use crate::{Tato, TilesetID};
+use crate::TilesetID;
 use tato_video::{color::PaletteID, *};
 
 pub struct TextOp {
@@ -9,56 +9,10 @@ pub struct TextOp {
     pub palette: PaletteID,
 }
 
-impl Tato {
-    /// "Draws" a text string to the BG Map, returns the resulting height (in rows), if any.
-    pub fn draw_text(&mut self, bg: &mut dyn DynamicBGMap, text: &str, op: TextOp) -> Option<u16> {
-        debug_assert!(text.is_ascii());
-        let tileset = self.assets.tilesets.get(op.id.0 as usize)?;
-        let tile_start = tileset.tile_start;
-
-        let mut cursor_x = 0;
-        let mut cursor_y = 0;
-        for word in text.split(' ') {
-            if cursor_x + (word.len() as u16) > op.width {
-                cursor_x = 0;
-                cursor_y += 1;
-            }
-            for ch in word.chars() {
-                bg_set_cell(
-                    bg,
-                    BgOp {
-                        col: op.col + cursor_x,
-                        row: op.row + cursor_y,
-                        tile_id: TileID(char_to_id_ex(ch) + tile_start),
-                        flags: op.palette.into(),
-                    },
-                );
-                cursor_x += 1;
-            }
-            if cursor_x >= op.width {
-                cursor_x = 0;
-                cursor_y += 1;
-            } else {
-                bg_set_cell(
-                    bg,
-                    BgOp {
-                        col: op.col + cursor_x,
-                        row: op.row + cursor_y,
-                        tile_id: TileID(char_to_id_ex(' ') + tile_start),
-                        flags: op.palette.into(),
-                    },
-                );
-                cursor_x += 1;
-            }
-        }
-        // If successful, return number of lines written
-        Some(cursor_y + 1)
-    }
-}
 
 /// Extended from the previous functions to include lowercase letters and additional punctuation.
 #[allow(dead_code)]
-fn char_to_id_ex(ch: char) -> u8 {
+pub(crate) fn char_to_id_ex(ch: char) -> u8 {
     match ch {
         // Tightly packed ASCII chars in their original order can
         // result in fast optimizations by the compiler
@@ -159,7 +113,7 @@ fn char_to_id_ex(ch: char) -> u8 {
 /// Intended for extremely simple, early 80's arcade text containing
 /// only numbers and upper case letters and basic punctuation.
 #[allow(dead_code)] // Function is defined but never used
-fn char_to_id(ch: char) -> u8 {
+pub(crate) fn char_to_id(ch: char) -> u8 {
     match ch {
         // Tightly packed ASCII chars in their original order can
         // result in fast optimizations by the compiler

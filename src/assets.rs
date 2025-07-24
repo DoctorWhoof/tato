@@ -5,6 +5,7 @@ mod anim;
 pub use anim::*;
 
 mod tileset;
+use tato_arena::Pool;
 pub use tileset::*;
 
 mod tilemap;
@@ -27,7 +28,7 @@ pub struct Assets<const CAP: usize> {
     sub_palette_head: u8,
     // Asset types
     pub tilesets: [Tileset; 256],
-    pub anims: [AnimEntry; 256],
+    // pub anims: [Pool<FrameStep>; 256],
     map_head: u8,
     map_entries: [TilemapEntry; 256],
 
@@ -69,7 +70,7 @@ impl<const CAP: usize> Assets<CAP> {
             color_head: 0,
             sub_palette_head: 0,
             // Arena and checkpoint system
-            anims: from_fn(|_| AnimEntry::default()),
+            // anims: from_fn(|_| Pool::default()),
             checkpoints: from_fn(|_| TilesetCheckpoint::default()),
             checkpoint_head: 0,
         }
