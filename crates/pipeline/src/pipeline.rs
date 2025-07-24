@@ -99,7 +99,7 @@ impl Pipeline {
         frames_h: u8,
         frames_v: u8,
         tileset_id: TilesetBuilderID,
-    ) -> AnimBuilderID {
+    ) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
             panic!("Invalid tileset id: {:?}", tileset_id);
         };
@@ -110,7 +110,7 @@ impl Pipeline {
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
         assert!(frame_count > 0);
-        let id = tileset.anims.len();
+        // let id = tileset.anims.len();
         let anim = AnimBuilder {
             name: String::from(name),
             // fps,
@@ -126,7 +126,7 @@ impl Pipeline {
         };
 
         tileset.anims.push(anim);
-        AnimBuilderID(id)
+        // AnimBuilderID(id)
     }
 
     pub fn new_anim(
