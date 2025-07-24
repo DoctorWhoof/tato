@@ -44,7 +44,7 @@ pub enum Scene {
 fn main() {
     // Tato setup + initial scene
     let mut scene = Scene::None;
-    let mut t = Tato::new(240, 180);
+    let mut t = Tato::new(240, 180, 60);
 
     let mut state = State {
         pad: t.pad,
@@ -62,7 +62,7 @@ fn main() {
 
     // Backend
     let target_fps = 60.0;
-    let mut back = RaylibBackend::new(&t, target_fps);
+    let mut back = RaylibBackend::new(&t);
     while !back.ray.window_should_close() {
         back.update_gamepad(&mut t.pad);
         state.time = back.ray.get_time();

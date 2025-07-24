@@ -10,7 +10,7 @@ pub enum SoundType {
 }
 
 fn main() {
-    let mut tato = Tato::new(240, 180);
+    let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
 
     // Tato Video Setup
@@ -42,7 +42,7 @@ fn main() {
 
     // Audio setup
     let mut audio = AudioChip::default();
-    let mut audio_backend = backend_cpal::AudioBackend::new(60.0);
+    let mut audio_backend = backend_cpal::AudioBackend::new(&tato);
 
     audio.sample_rate = audio_backend.sample_rate();
     audio.channels[0].set_volume(15);
@@ -54,7 +54,7 @@ fn main() {
     let time = Instant::now();
 
     // Main Loop
-    let mut backend = RaylibBackend::new(&tato, 60.0);
+    let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
         // "Envelopes"
         let env_len = 2.0;

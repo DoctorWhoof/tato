@@ -2,6 +2,7 @@ use crate::*;
 
 #[derive(Debug)]
 pub struct Tato {
+    pub target_fps: u8,
     // Input
     pub pad: tato_pad::AnaloguePad,
     // Audio
@@ -16,8 +17,9 @@ pub struct Tato {
 }
 
 impl Tato {
-    pub fn new(w: u16, h: u16) -> Self {
+    pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         Self {
+            target_fps,
             // bg: core::array::from_fn(|_| None),
             assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
@@ -38,7 +40,8 @@ impl Tato {
     }
 
     pub fn iter_pixels<'a>(&'a self, bg_banks: &[&'a dyn DynamicBGMap]) -> PixelIter<'a> {
-        let video_banks: [&'a VideoMemory<256>; TILE_BANK_COUNT] = core::array::from_fn(|i| &self.banks[i]);
+        let video_banks: [&'a VideoMemory<256>; TILE_BANK_COUNT] =
+            core::array::from_fn(|i| &self.banks[i]);
         self.video.iter_pixels(&video_banks[..], bg_banks)
     }
 }

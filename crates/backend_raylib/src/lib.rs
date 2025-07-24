@@ -21,7 +21,7 @@ pub struct RaylibBackend {
 }
 
 impl RaylibBackend {
-    pub fn new(tato: &Tato, target_fps: f32) -> Self {
+    pub fn new(tato: &Tato) -> Self {
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
         let (mut ray, thread) = raylib::init()
@@ -33,7 +33,7 @@ impl RaylibBackend {
             .build();
 
         // Config raylib
-        ray.set_target_fps(target_fps as u32);
+        ray.set_target_fps(tato.target_fps as u32);
         unsafe {
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
             // Disable ESC to close window. "Cmd + Q" still works!

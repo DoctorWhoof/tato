@@ -13,7 +13,7 @@ const MAP_LEN: usize = 1024;
 fn main() {
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
 
-    let mut tato = Tato::new(240, 180);
+    let mut tato = Tato::new(240, 180, 60);
     tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
 
     // Populate tilesets
@@ -35,7 +35,7 @@ fn main() {
     tato.draw_patch(&mut bg_map, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
 
     // Backend
-    let mut backend = RaylibBackend::new(&tato, 60.0);
+    let mut backend = RaylibBackend::new(&tato);
     backend.bg_color = raylib::prelude::Color::BLACK;
     while !backend.ray.window_should_close() {
         backend.update_gamepad(&mut tato.pad);

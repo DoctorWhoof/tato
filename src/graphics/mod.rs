@@ -5,9 +5,9 @@ use crate::prelude::*;
 
 impl Tato {
     #[inline(always)]
-    pub fn get_anim_frame<const LEN: usize>(&mut self, anim: &Anim<LEN>, fps:u8) -> usize {
+    pub fn get_anim_frame<const LEN: usize>(&mut self, anim: &Anim<LEN>) -> usize {
         let current_frame = self.video.frame_count() as f32;
-        let time = current_frame * (1.0 / fps as f32);
+        let time = current_frame * (1.0 / self.target_fps as f32);
         let frame_duration = 1.0 / anim.fps as f32;
         ((time / frame_duration) % anim.frames.len() as f32) as usize
     }
@@ -18,7 +18,7 @@ impl Tato {
         anim: &Anim<ANIM_LEN>,
         bundle: SpriteBundle,
     ) {
-        let index = self.get_anim_frame(anim, bundle.fps);
+        let index = self.get_anim_frame(anim);
         let mapped_index = anim.frames[index] as usize;
         self.video.draw_sprite(bundle, &frames[mapped_index]);
     }

@@ -1,7 +1,7 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Receiver, Sender};
-use tato::audio::AudioChip;
+use tato::{Tato, audio::AudioChip};
 
 mod wave_writer;
 use wave_writer::WaveWriter;
@@ -16,14 +16,14 @@ pub struct AudioBackend {
 }
 
 impl AudioBackend {
-    pub fn new(target_fps: f64) -> Self {
+    pub fn new(tato:&Tato) -> Self {
         let host = cpal::default_host();
         let device = host.default_output_device().expect("No output device");
         let config = device.default_output_config().unwrap();
         let sample_rate = config.sample_rate().0;
 
         // Calculate exact sample count (no +100 buffer)
-        let exact_samples_per_frame = (sample_rate as f64 / target_fps) as usize;
+        let exact_samples_per_frame = (sample_rate as f64 / tato.target_fps as f64) as usize;
 
         println!("Audio sample rate: {}", sample_rate);
         println!("Samples per frame: {}", exact_samples_per_frame);

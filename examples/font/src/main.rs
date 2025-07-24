@@ -3,7 +3,7 @@ use tato_raylib::*;
 
 fn main() {
     let mut bg_map = Tilemap::<896>::new(32, 28);
-    let mut tato = Tato::new(240, 180);
+    let mut tato = Tato::new(240, 180, 60);
 
     // Graphics setup
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
@@ -66,7 +66,7 @@ fn main() {
     // Main Loop
     let mut cycle = 1.0;
     tato.video.wrap_bg = true;
-    let mut backend = RaylibBackend::new(&tato, 60.0);
+    let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
         // Input
         tato.video.start_frame();
