@@ -41,7 +41,7 @@ pub use tato_math as math;
 /// - Read only reference to the FG tile bank (pixels).
 /// - Read only reference to the BG tile bank (pixels).
 /// - Read only reference to the current tilemap
-pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &dyn DynamicBGMap);
+pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &dyn DynTilemap);
 
 // -------------------------------- Constants --------------------------------
 

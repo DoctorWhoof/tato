@@ -39,7 +39,7 @@ impl Tato {
         }
     }
 
-    pub fn iter_pixels<'a>(&'a self, bg_banks: &[&'a dyn DynamicBGMap]) -> PixelIter<'a> {
+    pub fn iter_pixels<'a>(&'a self, bg_banks: &[&'a dyn DynTilemap]) -> PixelIter<'a> {
         let video_banks: [&'a VideoMemory<256>; TILE_BANK_COUNT] =
             core::array::from_fn(|i| &self.banks[i]);
         self.video.iter_pixels(&video_banks[..], bg_banks)

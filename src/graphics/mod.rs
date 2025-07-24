@@ -23,7 +23,7 @@ impl Tato {
         self.video.draw_sprite(bundle, &frames[mapped_index]);
     }
 
-    pub fn draw_patch(&mut self, bg: &mut dyn DynamicBGMap, map_id: MapID, rect: Rect<u16>) {
+    pub fn draw_patch(&mut self, bg: &mut dyn DynTilemap, map_id: MapID, rect: Rect<u16>) {
         // let map = &self.assets.map_entries[map_id.0 as usize];
         let map = self.get_tilemap(map_id);
 
@@ -119,56 +119,50 @@ impl Tato {
     }
 
     /// "Draws" a text string to the BG Map, returns the resulting height (in rows), if any.
-    pub fn draw_text(&mut self, bg: &mut dyn DynamicBGMap, text: &str, op: TextOp) -> Option<u16> {
+    pub fn draw_text(&mut self, bg: &mut dyn DynTilemap, text: &str, op: TextOp) -> Option<u16> {
         debug_assert!(text.is_ascii());
         let tileset = self.assets.tilesets.get(op.id.0 as usize)?;
         let tile_start = tileset.tile_start;
-
         let mut cursor_x = 0;
         let mut cursor_y = 0;
+
+        // Helper to draw a single character
+        let mut draw_char = |ch: char, cursor_x: u16, cursor_y: u16| {
+            let char_index = char_to_id_ex(ch) as usize;
+            let font_cols = op.font.columns() as usize;
+            let col = char_index % font_cols;
+            let row = char_index / font_cols;
+            if let Some(cell) = bg_get_cell(op.font, col as u16, row as u16) {
+                bg_set_cell(
+                    bg,
+                    BgOp {
+                        col: op.col + cursor_x,
+                        row: op.row + cursor_y,
+                        tile_id: TileID(cell.id.0 + tile_start),
+                        flags: cell.flags.with_palette(op.palette),
+                    },
+                );
+            }
+        };
+
         for word in text.split(' ') {
             if cursor_x + (word.len() as u16) > op.width {
                 cursor_x = 0;
                 cursor_y += 1;
             }
             for ch in word.chars() {
-                let char_index = char_to_id_ex(ch) as usize;
-                let font_cols = op.font.columns() as usize;
-                let col = char_index % font_cols;
-                let row = char_index / font_cols;
-                let Some(cell) = bg_get_cell(op.font, col as u16, row as u16) else { continue };
-                bg_set_cell(
-                    bg,
-                    BgOp {
-                        col: op.col + cursor_x,
-                        row: op.row + cursor_y,
-                        tile_id: TileID(cell.id.0 + tile_start),
-                        flags: op.palette.into(),
-                    },
-                );
+                draw_char(ch, cursor_x, cursor_y);
                 cursor_x += 1;
             }
             if cursor_x >= op.width {
                 cursor_x = 0;
                 cursor_y += 1;
             } else {
-                let char_index = char_to_id_ex(' ') as usize;
-                let font_cols = op.font.columns() as usize;
-                let col = char_index % font_cols;
-                let row = char_index / font_cols;
-                let Some(cell) = bg_get_cell(op.font, col as u16, row as u16) else { continue };
-                bg_set_cell(
-                    bg,
-                    BgOp {
-                        col: op.col + cursor_x,
-                        row: op.row + cursor_y,
-                        tile_id: TileID(cell.id.0 + tile_start),
-                        flags: op.palette.into(),
-                    },
-                );
+                draw_char(' ', cursor_x, cursor_y);
                 cursor_x += 1;
             }
         }
+
         // If successful, return number of lines written
         Some(cursor_y + 1)
     }

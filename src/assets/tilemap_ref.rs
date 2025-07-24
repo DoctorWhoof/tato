@@ -7,7 +7,7 @@ pub struct TilemapRef<'a> {
     pub rows: u16,
 }
 
-impl<'a> DynamicBGMap for TilemapRef<'a> {
+impl<'a> DynTilemap for TilemapRef<'a> {
     fn cells(&self) -> &[Cell] {
         self.cells
     }

@@ -234,7 +234,7 @@ impl VideoChip {
     pub fn iter_pixels<'a>(
         &'a self,
         video_banks: &[&'a VideoMemory<TILE_COUNT>],
-        bg_banks: &[&'a dyn DynamicBGMap],
+        bg_banks: &[&'a dyn DynTilemap],
     ) -> PixelIter<'a> {
         PixelIter::new(self, video_banks, bg_banks)
     }

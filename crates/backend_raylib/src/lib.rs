@@ -134,7 +134,7 @@ impl RaylibBackend {
         }
     }
 
-    pub fn render(&mut self, t: &mut Tato, bg_banks: &[&dyn DynamicBGMap]) {
+    pub fn render(&mut self, t: &mut Tato, bg_banks: &[&dyn DynTilemap]) {
         let mouse_x = self.ray.get_mouse_x();
         let mouse_y = self.ray.get_mouse_y();
 

@@ -2,7 +2,7 @@ use crate::*;
 use tato_math::rect::Rect;
 
 /// This trait allows references to BGMaps of different sizes.
-pub trait DynamicBGMap: core::fmt::Debug {
+pub trait DynTilemap: core::fmt::Debug {
     fn cells(&self) -> &[Cell];
     fn cells_mut(&mut self) -> &mut [Cell];
     fn columns(&self) -> u16;
@@ -58,7 +58,7 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
     }
 }
 
-impl<const CELL_COUNT: usize> DynamicBGMap for Tilemap<CELL_COUNT> {
+impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
     fn cells(&self) -> &[Cell] {
         &self.cells
     }
@@ -105,7 +105,7 @@ impl<const CELL_COUNT: usize> DynamicBGMap for Tilemap<CELL_COUNT> {
 // using trait object methods!
 
 #[inline(always)]
-pub fn bg_get_index(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<usize> {
+pub fn bg_get_index(map: &dyn DynTilemap, col: u16, row: u16) -> Option<usize> {
     if col as usize >= map.columns() as usize || row as usize >= map.rows() as usize {
         return None;
     }
@@ -113,7 +113,7 @@ pub fn bg_get_index(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<usize>
 }
 
 #[inline(always)]
-pub fn bg_get_coords(map: &dyn DynamicBGMap, index: usize) -> Option<(u16, u16)> {
+pub fn bg_get_coords(map: &dyn DynTilemap, index: usize) -> Option<(u16, u16)> {
     if index >= (map.columns() as usize * map.rows() as usize) {
         return None;
     }
@@ -122,36 +122,36 @@ pub fn bg_get_coords(map: &dyn DynamicBGMap, index: usize) -> Option<(u16, u16)>
     Some((col, row))
 }
 
-pub fn bg_set_cell(map: &mut dyn DynamicBGMap, op: BgOp) {
+pub fn bg_set_cell(map: &mut dyn DynTilemap, op: BgOp) {
     if let Some(index) = bg_get_index(map, op.col, op.row) {
         map.cells_mut()[index].id = op.tile_id;
         map.cells_mut()[index].flags = op.flags;
     }
 }
 
-pub fn bg_set_id(map: &mut dyn DynamicBGMap, col: u16, row: u16, tile_id: TileID) {
+pub fn bg_set_id(map: &mut dyn DynTilemap, col: u16, row: u16, tile_id: TileID) {
     if let Some(index) = bg_get_index(map, col, row) {
         map.cells_mut()[index].id = tile_id;
     }
 }
 
-pub fn bg_set_flags(map: &mut dyn DynamicBGMap, col: u16, row: u16, flags: TileFlags) {
+pub fn bg_set_flags(map: &mut dyn DynTilemap, col: u16, row: u16, flags: TileFlags) {
     if let Some(index) = bg_get_index(map, col, row) {
         map.cells_mut()[index].flags = flags;
     }
 }
 
-pub fn bg_get_cell(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<Cell> {
+pub fn bg_get_cell(map: &dyn DynTilemap, col: u16, row: u16) -> Option<Cell> {
     let index = bg_get_index(map, col, row)?;
     Some(map.cells()[index])
 }
 
-pub fn bg_get_id(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<TileID> {
+pub fn bg_get_id(map: &dyn DynTilemap, col: u16, row: u16) -> Option<TileID> {
     let index = bg_get_index(map, col, row)?;
     Some(map.cells()[index].id)
 }
 
-pub fn bg_get_flags(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<TileFlags> {
+pub fn bg_get_flags(map: &dyn DynTilemap, col: u16, row: u16) -> Option<TileFlags> {
     let index = bg_get_index(map, col, row)?;
     Some(map.cells()[index].flags)
 }
@@ -161,9 +161,9 @@ pub fn bg_get_flags(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<TileFl
 /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
 /// - Negative destination coordinates are handled by clipping the source region.
 pub fn bg_copy(
-    src: &dyn DynamicBGMap,
+    src: &dyn DynTilemap,
     src_rect: Option<Rect<u16>>,
-    dst: &mut dyn DynamicBGMap,
+    dst: &mut dyn DynTilemap,
     dst_rect: Option<Rect<u16>>,
 ) {
     // Determine source rectangle

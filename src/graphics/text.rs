@@ -1,8 +1,8 @@
 use crate::TilesetID;
-use tato_video::{color::PaletteID, DynamicBGMap};
+use tato_video::{color::PaletteID, DynTilemap};
 
 pub struct TextOp<'a> {
-    pub font: &'a dyn DynamicBGMap,
+    pub font: &'a dyn DynTilemap,
     pub id: TilesetID,
     pub col: u16,
     pub row: u16,

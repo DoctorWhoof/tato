@@ -21,7 +21,7 @@ pub struct PixelIter<'a> {
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
     pub tile_banks: [&'a VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
-    pub bg_banks: [&'a dyn DynamicBGMap; BG_BANK_COUNT],
+    pub bg_banks: [&'a dyn DynTilemap; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline, // current sprite scanline
@@ -41,7 +41,7 @@ impl<'a> PixelIter<'a> {
     pub fn new(
         vid: &'a VideoChip,
         video_mem: &[&'a VideoMemory<TILE_COUNT>],
-        bg_maps: &[&'a dyn DynamicBGMap],
+        bg_maps: &[&'a dyn DynTilemap],
     ) -> Self {
         assert!(
             !video_mem.is_empty(),
