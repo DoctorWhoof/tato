@@ -132,12 +132,17 @@ impl Tato {
                 cursor_y += 1;
             }
             for ch in word.chars() {
+                let char_index = char_to_id_ex(ch) as usize;
+                let font_cols = op.font.columns() as usize;
+                let col = char_index % font_cols;
+                let row = char_index / font_cols;
+                let Some(cell) = bg_get_cell(op.font, col as u16, row as u16) else { continue };
                 bg_set_cell(
                     bg,
                     BgOp {
                         col: op.col + cursor_x,
                         row: op.row + cursor_y,
-                        tile_id: TileID(char_to_id_ex(ch) + tile_start),
+                        tile_id: TileID(cell.id.0 + tile_start),
                         flags: op.palette.into(),
                     },
                 );
@@ -147,12 +152,17 @@ impl Tato {
                 cursor_x = 0;
                 cursor_y += 1;
             } else {
+                let char_index = char_to_id_ex(' ') as usize;
+                let font_cols = op.font.columns() as usize;
+                let col = char_index % font_cols;
+                let row = char_index / font_cols;
+                let Some(cell) = bg_get_cell(op.font, col as u16, row as u16) else { continue };
                 bg_set_cell(
                     bg,
                     BgOp {
                         col: op.col + cursor_x,
                         row: op.row + cursor_y,
-                        tile_id: TileID(char_to_id_ex(' ') + tile_start),
+                        tile_id: TileID(cell.id.0 + tile_start),
                         flags: op.palette.into(),
                     },
                 );

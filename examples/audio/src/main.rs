@@ -26,6 +26,7 @@ fn main() {
         &mut bg_map,
         "SOUND TEST",
         TextOp {
+            font: &FONT_MAP,
             id: font,
             col: 2,
             row: 2,
@@ -37,7 +38,7 @@ fn main() {
     tato.draw_text(
         &mut bg_map,
         "Currently playing:",
-        TextOp { id: font, col: 2, row: 6, width: 20, palette: palette_light },
+        TextOp { font:&FONT_MAP, id: font, col: 2, row: 6, width: 20, palette: palette_light },
     );
 
     // Audio setup
@@ -88,13 +89,14 @@ fn main() {
                     format!("Wave Type: White Noise        ")
                 }
             },
-            TextOp { id: font, col: 2, row: 8, width: 100, palette: palette_light },
+            TextOp { font:&FONT_MAP, id: font, col: 2, row: 8, width: 100, palette: palette_light },
         );
 
         tato.draw_text(
             &mut bg_map,
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextOp {
+                font: &FONT_MAP,
                 id: font,
                 col: 2,
                 row: 10,
@@ -107,6 +109,7 @@ fn main() {
             &mut bg_map,
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextOp {
+                font: &FONT_MAP,
                 id: font,
                 col: 2,
                 row: 12,

@@ -112,6 +112,16 @@ pub fn bg_get_index(map: &dyn DynamicBGMap, col: u16, row: u16) -> Option<usize>
     Some((row as usize * map.columns() as usize) + col as usize)
 }
 
+#[inline(always)]
+pub fn bg_get_coords(map: &dyn DynamicBGMap, index: usize) -> Option<(u16, u16)> {
+    if index >= (map.columns() as usize * map.rows() as usize) {
+        return None;
+    }
+    let col = (index % map.columns() as usize) as u16;
+    let row = (index / map.columns() as usize) as u16;
+    Some((col, row))
+}
+
 pub fn bg_set_cell(map: &mut dyn DynamicBGMap, op: BgOp) {
     if let Some(index) = bg_get_index(map, op.col, op.row) {
         map.cells_mut()[index].id = op.tile_id;

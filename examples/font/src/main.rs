@@ -7,7 +7,7 @@ fn main() {
 
     // Graphics setup
     let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let font = tato.push_tileset(0, FONT_TILESET).unwrap();
+    let ts_font = tato.push_tileset(0, FONT_TILESET).unwrap();
 
     let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
@@ -23,7 +23,14 @@ fn main() {
             &mut bg_map,
             "\"draw_text\" simply sets BG Map tiles, so they will scroll with \
         the rest of the map! Use the arrow keys to try it out.",
-            TextOp { id: font, col, row: line, width: 27, palette: plt_light },
+            TextOp {
+                font: &FONT_MAP,
+                id: ts_font,
+                col,
+                row: line,
+                width: 27,
+                palette: plt_light,
+            },
         )
         .unwrap();
 
@@ -31,28 +38,56 @@ fn main() {
     tato.draw_text(
         &mut bg_map,
         "0123456789",
-        TextOp { id: font, col, row: line, width: 26, palette: plt_light },
+        TextOp {
+            font: &FONT_MAP,
+            id: ts_font,
+            col,
+            row: line,
+            width: 26,
+            palette: plt_light,
+        },
     );
 
     line += 2;
     tato.draw_text(
         &mut bg_map,
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-        TextOp { id: font, col, row: line, width: 26, palette: plt_default },
+        TextOp {
+            font: &FONT_MAP,
+            id: ts_font,
+            col,
+            row: line,
+            width: 26,
+            palette: plt_default,
+        },
     );
 
     line += 2;
     tato.draw_text(
         &mut bg_map,
         "abcdefghijklmnopqrstuvwxyz",
-        TextOp { id: font, col, row: line, width: 26, palette: plt_light },
+        TextOp {
+            font: &FONT_MAP,
+            id: ts_font,
+            col,
+            row: line,
+            width: 26,
+            palette: plt_light,
+        },
     );
 
     line += 2;
     tato.draw_text(
         &mut bg_map,
         ":;<=>? !\"#$%&\'()*+,-./",
-        TextOp { id: font, col, row: line, width: 26, palette: plt_default },
+        TextOp {
+            font: &FONT_MAP,
+            id: ts_font,
+            col,
+            row: line,
+            width: 26,
+            palette: plt_default,
+        },
     );
 
     // Animated text
@@ -60,7 +95,14 @@ fn main() {
     tato.draw_text(
         &mut bg_map,
         "Animated palette",
-        TextOp { id: font, col, row: line, width: 26, palette: plt_cycle },
+        TextOp {
+            font: &FONT_MAP,
+            id: ts_font,
+            col,
+            row: line,
+            width: 26,
+            palette: plt_cycle,
+        },
     );
 
     // Main Loop

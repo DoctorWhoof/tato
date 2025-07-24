@@ -13,7 +13,6 @@ fn main() {
     // Default font
     let palette_font = pipe.new_palette("font");
     let tileset_font = pipe.new_tileset("font", palette_font);
-    pipe.disable_tile_transform_detection(tileset_font);
     pipe.new_map("assets/font_bold.png", "FONT_MAP", tileset_font);
     pipe.write_tileset(tileset_font, "src/default_assets/font_bold.rs");
 
