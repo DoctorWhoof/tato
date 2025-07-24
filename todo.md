@@ -49,9 +49,10 @@
 
 [ ] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?
---->[ ] Create Anims out of a "frame array"
+    [x] Create Anims out of a "frame array"
 
-[ ] Fonts: Replace text rendering using Anim to use Fonts. Update: maybe tilemaps, to allow flags?
+[x] Fonts: Replace text rendering using Anim to use Fonts.
+    . Update: Fonts are just tilemaps, to allow flags
 
 [.] Finish converting Anim data to array of tilemaps in tato_pipe
     [x] "draw_patch" will then take a map as a parameter, which will bring in tile flags.

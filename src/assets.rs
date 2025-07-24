@@ -1,18 +1,21 @@
 use crate::prelude::*;
 use core::array::from_fn;
+// use tato_arena::Pool;
 
 mod anim;
 pub use anim::*;
 
+mod color_entry;
+use color_entry::*;
+
 mod tileset;
-use tato_arena::Pool;
 pub use tileset::*;
 
-mod tilemap;
-pub use tilemap::*;
+mod tilemap_entry;
+pub use tilemap_entry::*;
 
-mod bg_map_ref;
-pub use bg_map_ref::*;
+mod tilemap_ref;
+pub use tilemap_ref::*;
 
 /// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
 /// tileset and its tiles currently loaded in a video memory bank
@@ -24,14 +27,12 @@ pub struct Assets<const CAP: usize> {
     cell_head: u16,
     tileset_head: u8,
     anim_head: u8,
+    map_head: u8,
     color_head: u8,
     sub_palette_head: u8,
     // Asset types
-    pub tilesets: [Tileset; 256],
-    // pub anims: [Pool<FrameStep>; 256],
-    map_head: u8,
+    pub(crate) tilesets: [Tileset; 256],
     map_entries: [TilemapEntry; 256],
-
     // Checkpoint system
     checkpoints: [TilesetCheckpoint; 32],
     checkpoint_head: u8,
@@ -320,44 +321,10 @@ impl Tato {
         MapID(map_idx)
     }
 
-    pub fn get_tilemap(&mut self, map_id: MapID) -> BGMapRef {
+    pub fn get_tilemap(&mut self, map_id: MapID) -> TilemapRef {
         let entry = &self.assets.map_entries[map_id.0 as usize];
         let cells = self.assets.arena.get_pool_mut(&entry.cells);
 
-        BGMapRef { cells, columns: entry.columns, rows: entry.rows }
+        TilemapRef { cells, columns: entry.columns, rows: entry.rows }
     }
-
-    // /// Adds an animation entry
-    // /// Returns the index of the animation
-    // pub fn add_anim<const LEN: usize>(
-    //     &mut self,
-    //     tileset_id: TilesetID,
-    //     fps: u8,
-    //     columns: u8,
-    //     data: &[Cell],
-    // ) -> Option<AnimID> {
-    //     if self.anim_head as usize >= self.anims.len() {
-    //         return None;
-    //     }
-
-    //     // Add metadata
-    //     let anim_idx = self.anim_head;
-    //     let data_start = self.tile_entry_head;
-    //     let data_len = u16::try_from(data.len()).ok()?;
-    //     self.anims[self.anim_head as usize] = Anim { fps, columns, data_start, data_len };
-
-    //     // Acquire tile offset for desired tileset
-    //     let tileset = &self.tileset_entries[tileset_id.0 as usize];
-    //     let tileset_offset = tileset.tile_start;
-
-    //     // Add tile entries, mapping the original tile ids to the current tile bank positions
-    //     for (i, &entry) in data.iter().enumerate() {
-    //         self.bg.data[data_start as usize + i] =
-    //             Cell { id: TileID(entry.id.0 + tileset_offset), ..entry };
-    //     }
-
-    //     // Advance and return
-    //     self.anim_head += 1;
-    //     Some(AnimID(anim_idx))
-    // }
 }

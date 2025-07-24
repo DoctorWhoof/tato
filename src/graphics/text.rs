@@ -1,5 +1,5 @@
 use crate::TilesetID;
-use tato_video::{color::PaletteID, *};
+use tato_video::color::PaletteID;
 
 pub struct TextOp {
     pub id: TilesetID,

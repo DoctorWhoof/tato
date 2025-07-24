@@ -1,13 +1,13 @@
 use tato_video::*;
 
 #[derive(Debug)]
-pub struct BGMapRef<'a> {
+pub struct TilemapRef<'a> {
     pub cells: &'a mut [Cell],
     pub columns: u16,
     pub rows: u16,
 }
 
-impl<'a> DynamicBGMap for BGMapRef<'a> {
+impl<'a> DynamicBGMap for TilemapRef<'a> {
     fn cells(&self) -> &[Cell] {
         self.cells
     }
