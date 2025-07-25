@@ -153,7 +153,7 @@ impl VideoChip {
     pub fn draw_sprite<const LEN: usize>(&mut self, bundle: SpriteBundle, sprite: &Tilemap<LEN>) {
         for row in 0..sprite.rows {
             for col in 0..sprite.columns {
-                let Some(cell) = bg_get_cell(sprite, col, row) else {
+                let Some(cell) = sprite.get_cell(col, row) else {
                     continue;
                 };
 

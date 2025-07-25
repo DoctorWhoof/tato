@@ -10,17 +10,17 @@ pub struct Tato {
     // Video
     pub video: tato_video::VideoChip,
     pub banks: [tato_video::VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
-    pub assets: Assets<65536>, // 64Kb asset memory
+    // 16Kb asset memory. Currently only stores remapped tilemaps -
+    // the tiles are stored in the memory banks
+    pub assets: Assets<16384>,
     // Internals
     pub update_time_acc: SmoothBuffer<20, f64>,
-    // arena: tato_arena::Arena<64536, u16>,
 }
 
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         Self {
             target_fps,
-            // bg: core::array::from_fn(|_| None),
             assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),

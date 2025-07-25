@@ -18,28 +18,22 @@ impl SceneC {
 
         for col in 0..state.bg.columns() {
             for row in 0..state.bg.rows() {
-                bg_set_cell(
-                    &mut state.bg,
-                    BgOp {
-                        col,
-                        row,
-                        tile_id: cross,
-                        flags: TileFlags::from(PaletteID(1)).with_fg(),
-                    },
-                );
+                state.bg.set_cell(BgOp {
+                    col,
+                    row,
+                    tile_id: cross,
+                    flags: TileFlags::from(PaletteID(1)).with_fg(),
+                });
             }
         }
 
         for id in 0..16 as u8 {
-            bg_set_cell(
-                &mut state.bg,
-                BgOp {
-                    col: id as u16,
-                    row: 0,
-                    tile_id: solid,
-                    flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
-                },
-            );
+            state.bg.set_cell(BgOp {
+                col: id as u16,
+                row: 0,
+                tile_id: solid,
+                flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
+            });
             t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
         }
 

@@ -61,15 +61,12 @@ impl SceneA {
                     // Adds 2 to avoid colors 0 and 1 in the BG
                     let adjusted_palette = PaletteID(2 + index as u8);
 
-                    bg_set_cell(
-                        &mut state.bg,
-                        BgOp {
-                            col,
-                            row,
-                            tile_id: arrow,
-                            flags: TileFlags::from(adjusted_palette).with_rotation(),
-                        },
-                    );
+                    state.bg.set_cell(BgOp {
+                        col,
+                        row,
+                        tile_id: arrow,
+                        flags: TileFlags::from(adjusted_palette).with_rotation(),
+                    });
                 }
             }
             (state.bg.width() as i16, state.bg.height() as i16)
@@ -163,13 +160,13 @@ impl SceneA {
 
         for col in 0..state.bg.columns() {
             for row in 0..state.bg.rows() {
-                let Some(mut flags) = bg_get_flags(&state.bg, col, row) else {
+                let Some(mut flags) = state.bg.get_flags(col, row) else {
                     continue;
                 };
                 flags.set_rotation(self.player.flags.is_rotated());
                 flags.set_flip_x(self.player.flags.is_flipped_x());
                 flags.set_flip_y(self.player.flags.is_flipped_y());
-                bg_set_flags(&mut state.bg, col, row, flags);
+                state.bg.set_flags(col, row, flags);
             }
         }
 

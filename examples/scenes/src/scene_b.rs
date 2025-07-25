@@ -23,7 +23,7 @@ impl SceneB {
         let _tileset = t.push_tileset(0, DEFAULT_TILESET);
         let tile = TILE_SMILEY;
 
-        for cell in state.bg.cells_mut() {
+        for cell in &mut state.bg.cells {
             cell.id = tile;
             cell.flags = palette_bg.into();
         }

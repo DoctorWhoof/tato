@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use core::array::from_fn;
-// use tato_arena::Pool;
 
 mod anim;
 pub use anim::*;
@@ -86,6 +85,10 @@ impl<const CAP: usize> Assets<CAP> {
         self.sub_palette_head = 0;
         self.arena.clear();
         self.checkpoint_head = 0;
+    }
+
+    pub fn used_memory(&self) -> usize {
+        self.arena.used()
     }
 }
 
@@ -254,7 +257,9 @@ impl Tato {
         let checkpoint = assets.checkpoints[assets.checkpoint_head as usize];
 
         // Restore arena state
-        assets.arena.restore_to(checkpoint.arena_offset as usize);
+        unsafe {
+            assets.arena.restore_to(checkpoint.arena_offset as usize);
+        }
 
         // Restore all counters
         assets.cell_head = checkpoint.cell_head;
@@ -321,10 +326,9 @@ impl Tato {
         MapID(map_idx)
     }
 
-    pub fn get_tilemap(&mut self, map_id: MapID) -> TilemapRef {
+    pub fn get_tilemap(&self, map_id: MapID) -> TilemapRef {
         let entry = &self.assets.map_entries[map_id.0 as usize];
-        let cells = self.assets.arena.get_pool_mut(&entry.cells);
-
+        let cells = self.assets.arena.get_pool(&entry.cells);
         TilemapRef { cells, columns: entry.columns, rows: entry.rows }
     }
 }
