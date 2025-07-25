@@ -1,6 +1,6 @@
 #![no_std]
 
-use smooth_buffer::SmoothBuffer;
+// use smooth_buffer::SmoothBuffer;
 pub use tato_audio as audio;
 pub use tato_layout as layout;
 pub use tato_pad as pad;

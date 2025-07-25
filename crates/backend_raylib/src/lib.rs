@@ -134,7 +134,10 @@ impl RaylibBackend {
         }
     }
 
-    pub fn render(&mut self, t: &mut Tato, bg_banks: &[&dyn DynTilemap]) {
+    pub fn render<'a, T>(&mut self, t: &'a Tato, bg_banks: &[&'a T])
+    where
+        &'a T: Into<TilemapRef<'a>>,
+    {
         let mouse_x = self.ray.get_mouse_x();
         let mouse_y = self.ray.get_mouse_y();
 
@@ -160,8 +163,7 @@ impl RaylibBackend {
             self.pixels[i + 2] = color.b;
             self.pixels[i + 3] = color.a;
         }
-        t.update_time_acc.push(time.elapsed().as_secs_f64() * 1000.0);
-        println!("iter time: {:.2} ms", t.update_time_acc.average());
+        println!("iter time: {:.1} ms", time.elapsed().as_secs_f64() * 1000.0);
 
         self.render_texture.update_texture(&self.pixels).unwrap();
 

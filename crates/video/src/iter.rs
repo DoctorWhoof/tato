@@ -21,7 +21,7 @@ pub struct PixelIter<'a> {
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
     pub tile_banks: [&'a VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
-    pub bg_banks: [&'a dyn DynTilemap; BG_BANK_COUNT],
+    pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub scanline: Scanline, // current sprite scanline
@@ -38,15 +38,15 @@ pub struct ScreenCoords {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new(
+    pub fn new<T>(
         vid: &'a VideoChip,
         video_mem: &[&'a VideoMemory<TILE_COUNT>],
-        bg_maps: &[&'a dyn DynTilemap],
-    ) -> Self {
-        assert!(
-            !video_mem.is_empty(),
-            err!("Video Memory bank can't be empty")
-        );
+        bg_maps: &[&'a T],
+    ) -> Self
+    where
+        &'a T: Into<TilemapRef<'a>>,
+    {
+        assert!(!video_mem.is_empty(), err!("Video Memory bank can't be empty"));
         assert!(
             video_mem.len() <= TILE_BANK_COUNT,
             err!("Video Memory bank count ({}) exceeds maximum ({})"),
@@ -62,20 +62,8 @@ impl<'a> PixelIter<'a> {
         );
         let mut result = Self {
             vid,
-            tile_banks: from_fn(|i| {
-                if i < video_mem.len() {
-                    video_mem[i]
-                } else {
-                    video_mem[0]
-                }
-            }),
-            bg_banks: from_fn(|i| {
-                if i < bg_maps.len() {
-                    bg_maps[i]
-                } else {
-                    bg_maps[0]
-                }
-            }),
+            tile_banks: from_fn(|i| if i < video_mem.len() { video_mem[i] } else { video_mem[0] }),
+            bg_banks: from_fn(|i| if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }),
             fg_tile_bank: vid.fg_tile_bank,
             bg_tile_bank: vid.bg_tile_bank,
             bg_map_bank: 0,
@@ -114,7 +102,7 @@ impl<'a> PixelIter<'a> {
     fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
             let bg_map = self.bg_banks[self.bg_map_bank as usize];
-            func(self, self.vid, bg_map);
+            func(self, self.vid, &bg_map);
         }
     }
 
@@ -217,16 +205,8 @@ impl<'a> PixelIter<'a> {
                         (rotated_x, rotated_y)
                     }
                 } else {
-                    let tx = if flip_x {
-                        TILE_SIZE as i16 - 1 - sprite_x
-                    } else {
-                        sprite_x
-                    };
-                    let ty = if flip_y {
-                        TILE_SIZE as i16 - 1 - sprite_y
-                    } else {
-                        sprite_y
-                    };
+                    let tx = if flip_x { TILE_SIZE as i16 - 1 - sprite_x } else { sprite_x };
+                    let ty = if flip_y { TILE_SIZE as i16 - 1 - sprite_y } else { sprite_y };
                     (tx, ty)
                 };
 
@@ -452,9 +432,7 @@ impl<'a> Iterator for PixelIter<'a> {
             let has_sprite = (sprite.a() > 0) as u16;
             let sprite_or_bg = {
                 let sprite_mask = has_sprite.wrapping_neg();
-                RGBA12 {
-                    data: (sprite.data & sprite_mask) | (bg.data & !sprite_mask),
-                }
+                RGBA12 { data: (sprite.data & sprite_mask) | (bg.data & !sprite_mask) }
             };
             let viewport_mask = in_viewport.wrapping_neg();
             RGBA12 {
@@ -464,10 +442,7 @@ impl<'a> Iterator for PixelIter<'a> {
 
         // results
         let color = RGBA32::from(final_color);
-        let coords = ScreenCoords {
-            x: self.x as i32,
-            y: self.y as i32,
-        };
+        let coords = ScreenCoords { x: self.x as i32, y: self.y as i32 };
 
         // Increment screen position
         self.x += 1;

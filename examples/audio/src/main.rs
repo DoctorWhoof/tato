@@ -120,7 +120,7 @@ fn main() {
 
         // Update backends
         audio_backend.process_frame(&mut audio);
-        backend.render(&mut tato, &[&bg_map]);
+        backend.render(&tato, &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

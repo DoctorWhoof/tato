@@ -1,16 +1,16 @@
 use crate::*;
 use tato_math::rect::Rect;
 
-/// This trait allows references to BGMaps of different sizes.
+/// This trait allows read-only references to BGMaps of different sizes.
+/// Also allows function to take either "Tilemap" or "TilemapRef"
 pub trait DynTilemap: core::fmt::Debug {
     fn cells(&self) -> &[Cell];
-    // fn cells_mut(&mut self) -> &mut [Cell];
     fn columns(&self) -> u16;
     fn rows(&self) -> u16;
     fn width(&self) -> u16;
     fn height(&self) -> u16;
     fn len(&self) -> usize;
-    fn set_size(&mut self, columns: u16, rows: u16);
+    // fn set_size(&mut self, columns: u16, rows: u16);
     fn get_index(&self, col: u16, row: u16) -> Option<usize>;
     fn get_coords(&self, index: usize) -> Option<(u16, u16)>;
     fn get_cell(&self, col: u16, row: u16) -> Option<Cell>;
@@ -57,6 +57,16 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
             columns,
             rows,
         }
+    }
+
+    pub fn set_size(&mut self, columns: u16, rows: u16) {
+        assert!(
+            columns as usize * rows as usize <= self.cells().len(),
+            err!("Invalid column count")
+        );
+        assert!(columns > 0 && rows > 0, err!("Tilemap dimensions can't be zero"));
+        self.columns = columns;
+        self.rows = rows;
     }
 
     pub fn set_cell(&mut self, op: BgOp) {
@@ -198,16 +208,6 @@ impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
 
     fn len(&self) -> usize {
         CELL_COUNT
-    }
-
-    fn set_size(&mut self, columns: u16, rows: u16) {
-        assert!(
-            columns as usize * rows as usize <= self.cells().len(),
-            err!("Invalid column count")
-        );
-        assert!(columns > 0 && rows > 0, err!("Tilemap dimensions can't be zero"));
-        self.columns = columns;
-        self.rows = rows;
     }
 }
 

@@ -13,7 +13,7 @@ tato_layout = { path = "crates/layout" }
 tato_audio = { path = "crates/audio" }
 tato_video = { path = "crates/video" }
 tato_math = { path = "crates/math" }
-smooth-buffer = { path = "crates/smooth_buffer" }
+# smooth-buffer = { path = "crates/smooth_buffer" }
 tato_arena = { path = "crates/arena" }
 
 [build-dependencies]

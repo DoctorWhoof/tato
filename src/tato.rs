@@ -14,7 +14,7 @@ pub struct Tato {
     // the tiles are stored in the memory banks
     pub assets: Assets<16384>,
     // Internals
-    pub update_time_acc: SmoothBuffer<20, f64>,
+    // pub update_time_acc: SmoothBuffer<20, f64>,
 }
 
 impl Tato {
@@ -26,7 +26,7 @@ impl Tato {
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
             banks: core::array::from_fn(|_| VideoMemory::new()),
-            update_time_acc: SmoothBuffer::default(),
+            // update_time_acc: SmoothBuffer::default(),
             // arena: tato_arena::Arena::new()
         }
     }
@@ -39,7 +39,9 @@ impl Tato {
         }
     }
 
-    pub fn iter_pixels<'a>(&'a self, bg_banks: &[&'a dyn DynTilemap]) -> PixelIter<'a> {
+    pub fn iter_pixels<'a, T>(&'a self, bg_banks: &[&'a T]) -> PixelIter<'a>
+    where &'a T: Into<TilemapRef<'a>>
+    {
         let video_banks: [&'a VideoMemory<256>; TILE_BANK_COUNT] =
             core::array::from_fn(|i| &self.banks[i]);
         self.video.iter_pixels(&video_banks[..], bg_banks)

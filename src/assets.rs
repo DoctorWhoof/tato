@@ -13,8 +13,8 @@ pub use tileset::*;
 mod tilemap_entry;
 pub use tilemap_entry::*;
 
-mod tilemap_ref;
-pub use tilemap_ref::*;
+// mod tilemap_ref;
+// pub use tilemap_ref::*;
 
 /// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
 /// tileset and its tiles currently loaded in a video memory bank
@@ -40,7 +40,9 @@ pub struct Assets<const CAP: usize> {
 /// Checkpoint for stack-based tileset management
 #[derive(Debug, Clone, Copy, Default)]
 struct TilesetCheckpoint {
-    // Arena state
+    // This Arena caches tilemaps with remapped values (i.e. they start
+    // with an offset that matches the data loaded in the video bank,
+    // instead of starting from zero).
     arena_offset: u16,
     // Asset counters
     cell_head: u16,
@@ -285,19 +287,19 @@ impl Tato {
         map: &Tilemap<LEN>,
     ) -> MapID {
         // Validate that maps can only be loaded for the current tileset
-        let assets = &mut self.assets;
+        // let assets = &mut self.assets;
         assert_eq!(
             tileset_id.0,
-            assets.tileset_head.saturating_sub(1),
+            self.assets.tileset_head.saturating_sub(1),
             "Can only load maps for the current (most recent) tileset"
         );
 
         // Acquire tile offset for desired tileset
-        let tileset = &assets.tilesets[tileset_id.0 as usize];
+        let tileset = &self.assets.tilesets[tileset_id.0 as usize];
         let tileset_offset = tileset.tile_start;
         let bank_id = tileset.bank_id;
 
-        if assets.map_head as usize >= assets.map_entries.len() {
+        if self.assets.map_head as usize >= self.assets.map_entries.len() {
             panic!(err!("Map capacity exceeded on bank {}"), bank_id);
         }
 
@@ -307,7 +309,8 @@ impl Tato {
         );
 
         // Allocate remapped cells in arena
-        let cells_pool = assets
+        let cells_pool = self
+            .assets
             .arena
             .alloc_pool_from_fn(map.len(), |i| {
                 let cell = &map.cells[i];
@@ -318,17 +321,20 @@ impl Tato {
             .expect("Arena out of space");
 
         // Store entry
-        let map_idx = assets.map_head;
-        assets.map_entries[map_idx as usize] =
+        let map_idx = self.assets.map_head;
+        self.assets.map_entries[map_idx as usize] =
             TilemapEntry { cells: cells_pool, columns: map.columns, rows: map.rows };
 
-        assets.map_head += 1;
+        self.assets.map_head += 1;
         MapID(map_idx)
     }
 
     pub fn get_tilemap(&self, map_id: MapID) -> TilemapRef {
         let entry = &self.assets.map_entries[map_id.0 as usize];
-        let cells = self.assets.arena.get_pool(&entry.cells);
-        TilemapRef { cells, columns: entry.columns, rows: entry.rows }
+        TilemapRef {
+            cells: self.assets.arena.get_pool(&entry.cells),
+            columns: entry.columns,
+            rows: entry.rows,
+        }
     }
 }

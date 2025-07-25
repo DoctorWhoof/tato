@@ -230,12 +230,15 @@ impl VideoChip {
     }
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
-    /// Requires a reference to the Tile array.
-    pub fn iter_pixels<'a>(
+    /// Requires a reference to the Tile array and one for the BG Tilemap array.
+    pub fn iter_pixels<'a, T>(
         &'a self,
         video_banks: &[&'a VideoMemory<TILE_COUNT>],
-        bg_banks: &[&'a dyn DynTilemap],
-    ) -> PixelIter<'a> {
+        bg_banks: &[&'a T],
+    ) -> PixelIter<'a>
+    where
+        &'a T: Into<TilemapRef<'a>>,
+    {
         PixelIter::new(self, video_banks, bg_banks)
     }
 }

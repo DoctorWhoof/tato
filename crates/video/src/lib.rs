@@ -23,6 +23,9 @@ pub use tile::*;
 mod tilemap;
 pub use tilemap::*;
 
+mod tilemap_ref;
+pub use tilemap_ref::*;
+
 mod tile_flags;
 pub use tile_flags::*;
 
@@ -41,7 +44,7 @@ pub use tato_math as math;
 /// - Read only reference to the FG tile bank (pixels).
 /// - Read only reference to the BG tile bank (pixels).
 /// - Read only reference to the current tilemap
-pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &dyn DynTilemap);
+pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &TilemapRef);
 
 // -------------------------------- Constants --------------------------------
 

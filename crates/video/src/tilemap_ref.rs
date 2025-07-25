@@ -1,10 +1,25 @@
-use tato_video::*;
+use crate::*;
 
-#[derive(Debug)]
+/// A Fast (no "dyn" required), read-only reference of a Tilemap with any size
+/// that allows erasing the "CELL_COUNT" const generic from a Tilema.).
+/// You can easily convert from a Tilemap to a TilemapRef using ".into()"
+/// in any field that requires a TilemapRef.
+#[derive(Debug, Clone, Copy)]
 pub struct TilemapRef<'a> {
     pub cells: &'a [Cell],
     pub columns: u16,
     pub rows: u16,
+}
+
+// Conversion from Tilemap reference to TilemapRef
+impl<'a, const CELL_COUNT: usize> From<&'a Tilemap<CELL_COUNT>> for TilemapRef<'a> {
+    fn from(tilemap: &'a Tilemap<CELL_COUNT>) -> Self {
+        Self {
+            cells: &tilemap.cells[..((tilemap.columns as usize) * (tilemap.rows as usize))],
+            columns: tilemap.columns,
+            rows: tilemap.rows,
+        }
+    }
 }
 
 impl<'a> DynTilemap for TilemapRef<'a> {
@@ -30,16 +45,6 @@ impl<'a> DynTilemap for TilemapRef<'a> {
 
     fn len(&self) -> usize {
         self.cells.len()
-    }
-
-    fn set_size(&mut self, columns: u16, rows: u16) {
-        assert!(
-            columns as usize * rows as usize <= self.cells().len(),
-            err!("Invalid column count")
-        );
-        assert!(columns > 0 && rows > 0, err!("Tilemap dimensions can't be zero"));
-        self.columns = columns;
-        self.rows = rows;
     }
 
     #[inline(always)]
