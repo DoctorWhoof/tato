@@ -91,7 +91,7 @@ impl Pipeline {
     /// - "Palettize" the image, adding its colors to the palette if needed
     /// - Divide the animation into tiles, added to the tileset
     /// - Create a new const Anim in the output file that carries the necessary data.
-    pub fn new_frames(
+    pub fn new_animation_strip(
         &mut self,
         path: &str,
         name: &str,
@@ -129,27 +129,27 @@ impl Pipeline {
         // AnimBuilderID(id)
     }
 
-    pub fn new_anim(
-        &mut self,
-        tileset_id: TilesetBuilderID,
-        anim_id: AnimBuilderID,
-        name: &str,
-        fps: u8,
-        frames: &[u8],
-    ) {
-        let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
-            panic!("Invalid Tileset ID: {:?}", tileset_id);
-        };
-        let Some(anim) = &mut tileset.anims.get_mut(anim_id.0) else {
-            panic!("Invalid AnimBuilder ID: {:?}", tileset_id);
-        };
-        let duration = ((1.0 / fps as f32) * 1000.0) as u16;
-        let tag = AnimTag {
-            name: String::from(name),
-            steps: frames.iter().map(|i| FrameStep { index: *i, duration }).collect(),
-        };
-        anim.tags.push(tag)
-    }
+    // pub fn new_anim(
+    //     &mut self,
+    //     tileset_id: TilesetBuilderID,
+    //     anim_id: AnimBuilderID,
+    //     name: &str,
+    //     fps: u8,
+    //     frames: &[u8],
+    // ) {
+    //     let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {
+    //         panic!("Invalid Tileset ID: {:?}", tileset_id);
+    //     };
+    //     let Some(anim) = &mut tileset.anims.get_mut(anim_id.0) else {
+    //         panic!("Invalid AnimBuilder ID: {:?}", tileset_id);
+    //     };
+    //     let duration = ((1.0 / fps as f32) * 1000.0) as u16;
+    //     let tag = AnimTag {
+    //         name: String::from(name),
+    //         steps: frames.iter().map(|i| FrameStep { index: *i, duration }).collect(),
+    //     };
+    //     anim.tags.push(tag)
+    // }
 
     pub fn new_map(&mut self, path: &str, name: &str, tileset_id: TilesetBuilderID) {
         let Some(tileset) = self.tilesets.get_mut(tileset_id.0 as usize) else {

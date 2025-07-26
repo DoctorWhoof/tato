@@ -21,17 +21,18 @@ pub use tilemap_entry::*;
 #[derive(Debug)]
 pub struct Assets<const CAP: usize> {
     // Main storage
-    arena: tato_arena::Arena<CAP, u16>,
+    pub(crate) arena: tato_arena::Arena<CAP, u16>,
     // Everything that needs to be counted.
     cell_head: u16,
     tileset_head: u8,
-    anim_head: u8,
+    strip_head: u8,
     map_head: u8,
     color_head: u8,
     sub_palette_head: u8,
     // Asset types
     pub(crate) tilesets: [Tileset; 256],
-    map_entries: [TilemapEntry; 256],
+    pub(crate) map_entries: [TilemapEntry; 256],
+    pub(crate) strip_entries: [StripEntry; 256],
     // Checkpoint system
     checkpoints: [TilesetCheckpoint; 32],
     checkpoint_head: u8,
@@ -47,7 +48,7 @@ struct TilesetCheckpoint {
     // Asset counters
     cell_head: u16,
     tileset_head: u8,
-    anim_head: u8,
+    strip_head: u8,
     map_head: u8,
     color_head: u8,
     sub_palette_head: u8,
@@ -64,10 +65,11 @@ impl<const CAP: usize> Assets<CAP> {
             // Metadata
             tilesets: from_fn(|_| Tileset::default()),
             map_entries: from_fn(|_| TilemapEntry::default()),
+            strip_entries: from_fn(|_| StripEntry::default()),
             // Counters
             cell_head: 0,
             tileset_head: 0,
-            anim_head: 0,
+            strip_head: 0,
             map_head: 0,
             color_head: 0,
             sub_palette_head: 0,
@@ -81,7 +83,7 @@ impl<const CAP: usize> Assets<CAP> {
     pub fn reset(&mut self) {
         self.cell_head = 0;
         self.tileset_head = 0;
-        self.anim_head = 0;
+        self.strip_head = 0;
         self.map_head = 0;
         self.color_head = 0;
         self.sub_palette_head = 0;
@@ -141,7 +143,7 @@ impl Tato {
                 arena_offset: assets.arena.used() as u16,
                 cell_head: assets.cell_head,
                 tileset_head: assets.tileset_head,
-                anim_head: assets.anim_head,
+                strip_head: assets.strip_head,
                 map_head: assets.map_head,
                 color_head: assets.color_head,
                 sub_palette_head: assets.sub_palette_head,
@@ -263,10 +265,18 @@ impl Tato {
             assets.arena.restore_to(checkpoint.arena_offset as usize);
         }
 
+        // Clear animation and tilemap entries that were created after the checkpoint
+        for i in checkpoint.strip_head..assets.strip_head {
+            assets.strip_entries[i as usize] = StripEntry::default();
+        }
+        for i in checkpoint.map_head..assets.map_head {
+            assets.map_entries[i as usize] = TilemapEntry::default();
+        }
+
         // Restore all counters
         assets.cell_head = checkpoint.cell_head;
         assets.tileset_head = checkpoint.tileset_head;
-        assets.anim_head = checkpoint.anim_head;
+        assets.strip_head = checkpoint.strip_head;
         assets.map_head = checkpoint.map_head;
         assets.color_head = checkpoint.color_head;
         assets.sub_palette_head = checkpoint.sub_palette_head;
@@ -285,7 +295,7 @@ impl Tato {
         &mut self,
         tileset_id: TilesetID,
         map: &Tilemap<LEN>,
-    ) -> MapID {
+    ) -> Option<MapID> {
         // Validate that maps can only be loaded for the current tileset
         // let assets = &mut self.assets;
         assert_eq!(
@@ -295,7 +305,7 @@ impl Tato {
         );
 
         // Acquire tile offset for desired tileset
-        let tileset = &self.assets.tilesets[tileset_id.0 as usize];
+        let tileset = &self.assets.tilesets.get(tileset_id.0 as usize)?;
         let tileset_offset = tileset.tile_start;
         let bank_id = tileset.bank_id;
 
@@ -325,8 +335,43 @@ impl Tato {
         self.assets.map_entries[map_idx as usize] =
             TilemapEntry { cells: cells_pool, columns: map.columns, rows: map.rows };
 
-        self.assets.map_head += 1;
-        MapID(map_idx)
+        if self.assets.map_head == 255 {
+            panic!(err!("Tilemap capacity reached"))
+        } else {
+            self.assets.map_head += 1;
+            Some(MapID(map_idx))
+        }
+    }
+
+    pub fn load_animation_strip<const FRAME_LEN: usize, const FRAME_COUNT: usize>(
+        &mut self,
+        tileset_id: TilesetID,
+        frames: &[Tilemap<FRAME_LEN>; FRAME_COUNT],
+    ) -> Option<StripID> {
+        // Acquire tile offset for desired tileset
+        let frames_idx = self.assets.strip_head;
+        let start_index = self.assets.map_head;
+        let frame_count = u8::try_from(FRAME_COUNT).expect("Frame count must be less than 256");
+        let available = 255 - start_index;
+        assert!(
+            available >= frame_count,
+            err!("Not enough space to fit {} animation frames, only {} left"),
+            FRAME_COUNT,
+            available
+        );
+        // Load frames
+        for map in frames {
+            self.load_tilemap(tileset_id, map)?;
+        }
+        // Store entry
+        self.assets.strip_entries[frames_idx as usize] = StripEntry { start_index, frame_count };
+        // Advance and return
+        if self.assets.strip_head == 255 {
+            panic!(err!("Animation frames capacity reached"))
+        } else {
+            self.assets.strip_head += 1;
+            Some(StripID(frames_idx))
+        }
     }
 
     pub fn get_tilemap(&self, map_id: MapID) -> TilemapRef {

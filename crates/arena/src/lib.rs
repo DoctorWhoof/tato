@@ -216,7 +216,7 @@ where
 
     /// Restore arena to a previous state (for checkpoint/restore)
     /// Warning: This doesn't drop values - caller must ensure safety!
-    pub fn restore_to(&mut self, offset: usize) {
+    pub unsafe fn restore_to(&mut self, offset: usize) {
         self.offset = SizeType::try_from(offset).unwrap_or_else(|_| panic!("Invalid restore offset"));
         // Note: Not resetting count as it tracks total allocations made
     }

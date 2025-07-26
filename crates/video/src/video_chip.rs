@@ -150,15 +150,15 @@ impl VideoChip {
 
     /// A sprite is in reality a Tilemap, since it is a collection of tiles! This function
     /// will draw all the tiles in the FG layer at cordinates x and y.
-    pub fn draw_sprite<const LEN: usize>(&mut self, bundle: SpriteBundle, sprite: &Tilemap<LEN>) {
-        for row in 0..sprite.rows {
-            for col in 0..sprite.columns {
+    pub fn draw_sprite(&mut self, bundle: SpriteBundle, sprite: &dyn DynTilemap) {
+        for row in 0..sprite.rows() {
+            for col in 0..sprite.columns() {
                 let Some(cell) = sprite.get_cell(col, row) else {
                     continue;
                 };
 
-                let draw_col = if bundle.flip_x { sprite.columns - col - 1 } else { col };
-                let draw_row = if bundle.flip_y { sprite.rows - row - 1 } else { row };
+                let draw_col = if bundle.flip_x { sprite.columns() - col - 1 } else { col };
+                let draw_row = if bundle.flip_y { sprite.rows() - row - 1 } else { row };
 
                 let mut flags = cell.flags;
                 if bundle.flip_x {

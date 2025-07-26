@@ -5,22 +5,37 @@ use crate::prelude::*;
 
 impl Tato {
     #[inline(always)]
-    pub fn get_anim_frame<const LEN: usize>(&mut self, anim: &Anim<LEN>) -> usize {
+    pub fn get_anim_frame<const LEN: usize>(&self, anim: &Anim<LEN>) -> usize {
+        debug_assert!(anim.fps > 0); // prevents division by zero
         let current_frame = self.video.frame_count() as f32;
         let time = current_frame * (1.0 / self.target_fps as f32);
         let frame_duration = 1.0 / anim.fps as f32;
         ((time / frame_duration) % anim.frames.len() as f32) as usize
     }
 
-    pub fn draw_anim<const MAP_LEN: usize, const ANIM_LEN: usize>(
+    pub fn draw_anim<const ANIM_LEN: usize>(
         &mut self,
-        frames: &[Tilemap<MAP_LEN>],
+        frames: StripID,
         anim: &Anim<ANIM_LEN>,
         bundle: SpriteBundle,
     ) {
-        let index = self.get_anim_frame(anim);
-        let mapped_index = anim.frames[index] as usize;
-        self.video.draw_sprite(bundle, &frames[mapped_index]);
+        let Some(entry) = self.assets.strip_entries.get(frames.0 as usize) else {
+            return;
+        };
+        let base_index = self.get_anim_frame(anim);
+        let Some(anim_index) = anim.frames.get(base_index) else { return };
+        let start_index = entry.start_index;
+        let index = start_index + anim_index;
+        let Some(map_entry) = self.assets.map_entries.get(index as usize) else { return };
+
+        self.video.draw_sprite(
+            bundle,
+            &TilemapRef {
+                cells: self.assets.arena.get_pool(&map_entry.cells),
+                columns: map_entry.columns,
+                rows: map_entry.rows,
+            },
+        );
     }
 
     pub fn draw_patch<const LEN: usize>(
@@ -43,6 +58,7 @@ impl Tato {
             flags: top_left.flags,
         });
 
+        debug_assert!((rect.x as usize + rect.w as usize) < u16::MAX as usize);
         let top = map.cells[1];
         for col in rect.x + 1..rect.x + rect.w {
             bg.set_cell(BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
@@ -57,10 +73,12 @@ impl Tato {
         });
 
         let left = map.cells[3];
+
         for row in rect.y + 1..rect.y + rect.h {
             bg.set_cell(BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
         }
 
+        debug_assert!((rect.y as usize + rect.h as usize) < u16::MAX as usize);
         let center = map.cells[4];
         for row in rect.y + 1..rect.y + rect.h {
             for col in rect.x + 1..rect.x + rect.w {

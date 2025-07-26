@@ -50,7 +50,7 @@ fn main() {
         pad: t.pad,
         time: 0.0,
         elapsed: 0.0,
-        bg: Tilemap::<1024>::new(32, 32),
+        bg: Tilemap::<1024>::new(28, 28),
     };
 
     // Line scrolling effect, adjusts scroll on every line

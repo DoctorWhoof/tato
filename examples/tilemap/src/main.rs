@@ -22,7 +22,7 @@ fn main() {
     let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
 
     let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET).unwrap();
-    let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP);
+    let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP).unwrap();
     bg_map.copy_from(
         &tato.get_tilemap(map_smileys), //
         None,
@@ -30,7 +30,7 @@ fn main() {
     );
 
     let tileset_patch = tato.push_tileset(0, PATCH_TILESET).unwrap();
-    let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP);
+    let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP).unwrap();
     tato.draw_patch(&mut bg_map, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
 
     println!("Asset arena: {} Bytes", tato.assets.used_memory());
