@@ -1,7 +1,7 @@
 use crate::MapBuilder;
 
-#[derive(Debug, Clone, Copy)]
-pub struct AnimBuilderID(pub usize);
+// #[derive(Debug, Clone, Copy)]
+// pub struct AnimBuilderID(pub usize);
 
 #[derive(Debug, Clone)]
 pub(crate) struct AnimBuilder {
