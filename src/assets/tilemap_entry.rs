@@ -1,6 +1,7 @@
 use tato_arena::Pool;
 use tato_video::Cell;
 
+/// A reference to a tilemap associated with a tileset.
 #[derive(Debug, Clone, Copy, Hash, PartialEq)]
 pub struct MapID(pub u8);
 

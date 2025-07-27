@@ -18,6 +18,7 @@
     [x] Shrink subpalettes size
     [.] Indicate colors added Vs. default colors
     [ ] Indicate bank usage (as FG, BG bank or unused)
+    [ ] Display FPS, average pixel iteration time (will need a simple SmoothBuffer).
 
 [ ] Dual chip setup for multiple video layers
 
@@ -39,17 +40,18 @@
 [.] Load & Unload Tilesets.
     . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
     [.] Arena approach!
-        [ ] Basic push/pop implemented, needs testing!
+        [.] Basic push/pop implemented, needs testing!
         [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
-------->[ ] Once tilesets + tilemaps are working, implement Anims!
+        [x] Once tilesets + tilemaps are working, implement Anims!
         . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
         . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
+        [ ] Detect and prevent loading "empty" animation frames
 
 [ ] Tilemaps
     [?] Correctly map subpalettes when loading into Assets.
         . Looks done? Needs more testing
 
-[ ] Anims: Update to latest Assets struct
+[x] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?
     [x] Create Anims out of a "frame array"
 

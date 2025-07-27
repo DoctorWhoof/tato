@@ -10,3 +10,5 @@ pub mod prelude {
     pub use crate::num::*;
     pub use crate::rect::*;
 }
+
+pub use libm;

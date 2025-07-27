@@ -1,6 +1,8 @@
 use crate::*;
 use core::array::from_fn;
 
+/// A "Memory Bank" that contains the actual tile pixels, a color palette
+/// and the subpalettes associated with the main color palette.
 #[derive(Debug, Clone)]
 pub struct VideoMemory<const TILES: usize> {
     pub tiles: [Tile<2>; TILES],

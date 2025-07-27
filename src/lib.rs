@@ -2,9 +2,11 @@
 
 // use smooth_buffer::SmoothBuffer;
 pub use tato_audio as audio;
+pub use tato_audio::rng as rng;
 pub use tato_layout as layout;
 pub use tato_pad as pad;
 pub use tato_video as video;
+pub use tato_math as math;
 
 pub mod assets;
 pub use assets::*;
@@ -18,12 +20,15 @@ pub use tato::*;
 
 pub mod default_assets;
 
+// pub use libm;
+
 pub mod prelude {
     pub use crate::*;
     pub use crate::graphics::*;
     pub use crate::default_assets::*;
     pub use tato_audio::waveform::*;
     pub use tato_audio::*;
+    pub use tato_audio::rng::*;
     pub use tato_layout::*;
     pub use tato_pad::*;
     pub use tato_video::*;

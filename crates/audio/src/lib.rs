@@ -2,7 +2,7 @@
 mod channel;
 mod math;
 mod note;
-mod rng;
+pub mod rng;
 
 pub mod iter;
 pub mod waveform;
@@ -31,7 +31,7 @@ const MAX_I4: i8 = SIZE_I4 - 1;
 const CHANNEL_COUNT: usize = 4;
 const TONE_FREQ_STEPS: u16 = 4096;
 
-// VOlume specs
+// Volume specs
 const VOLUME_ATTENUATION: f32 = 0.0025;
 const VOLUME_EXPONENT: f32 = 2.5;
 

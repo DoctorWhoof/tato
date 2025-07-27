@@ -32,9 +32,9 @@ pub struct PixelIter<'a> {
     bg_buffer: [RGBA12; 512],     // Background layer (tiles + bg_color)
 }
 
-pub struct ScreenCoords {
-    pub x: i32,
-    pub y: i32,
+pub struct Coords {
+    pub x: i16,
+    pub y: i16,
 }
 
 impl<'a> PixelIter<'a> {
@@ -63,7 +63,9 @@ impl<'a> PixelIter<'a> {
         let mut result = Self {
             vid,
             tile_banks: from_fn(|i| if i < video_mem.len() { video_mem[i] } else { video_mem[0] }),
-            bg_banks: from_fn(|i| if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }),
+            bg_banks: from_fn(|i| {
+                if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }
+            }),
             fg_tile_bank: vid.fg_tile_bank,
             bg_tile_bank: vid.bg_tile_bank,
             bg_map_bank: 0,
@@ -403,7 +405,7 @@ impl<'a> PixelIter<'a> {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (RGBA32, ScreenCoords);
+    type Item = (RGBA32, Coords);
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -442,7 +444,7 @@ impl<'a> Iterator for PixelIter<'a> {
 
         // results
         let color = RGBA32::from(final_color);
-        let coords = ScreenCoords { x: self.x as i32, y: self.y as i32 };
+        let coords = Coords { x: self.x as i16, y: self.y as i16 };
 
         // Increment screen position
         self.x += 1;

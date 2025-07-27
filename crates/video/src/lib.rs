@@ -41,8 +41,6 @@ pub use tato_math as math;
 /// The parameters are:
 /// - Mutable reference to the iterator
 /// - Read-only reference to the VideoChip
-/// - Read only reference to the FG tile bank (pixels).
-/// - Read only reference to the BG tile bank (pixels).
 /// - Read only reference to the current tilemap
 pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &TilemapRef);
 

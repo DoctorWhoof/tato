@@ -1,7 +1,7 @@
 use crate::*;
 
-/// A Fast (no "dyn" required), read-only reference of a Tilemap with any size
-/// that allows erasing the "CELL_COUNT" const generic from a Tilema.).
+/// A fast (no "dyn" required), read-only reference of a Tilemap with any size
+/// that allows erasing the "CELL_COUNT" const generic from a Tilemap.
 /// You can easily convert from a Tilemap to a TilemapRef using ".into()"
 /// in any field that requires a TilemapRef.
 #[derive(Debug, Clone, Copy)]

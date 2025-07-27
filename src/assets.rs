@@ -16,8 +16,10 @@ pub use tilemap_entry::*;
 // mod tilemap_ref;
 // pub use tilemap_ref::*;
 
-/// Stores metadata associating assets (Tilemaps, Animations and Fonts) to a
-/// tileset and its tiles currently loaded in a video memory bank
+/// Allows loading tilesets and their associated assets like Tilemaps and Animations.
+/// The tileset's tiles and colors are stored in a memory bank, while the assets
+/// are kept internally. All asset's tile indices are remapped to match the actual
+/// tile indices currently in the memory bank.
 #[derive(Debug)]
 pub struct Assets<const CAP: usize> {
     // Main storage
