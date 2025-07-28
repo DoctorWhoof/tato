@@ -1,4 +1,4 @@
-// Auto-generated code. Do not edit manually! Generated: 2025-07-27 18:40:19
+// Auto-generated code. Do not edit manually! Generated: 2025-07-27 18:57:18
 use tato::prelude::*;
 
 pub const SMILEYS_TILESET: TilesetData = TilesetData {
