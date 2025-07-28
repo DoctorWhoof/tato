@@ -1,4 +1,4 @@
-// Auto-generated code. Do not edit manually! Generated: 2025-07-27 15:32:33
+// Auto-generated code. Do not edit manually!
 #![allow(unused)]
 use crate::prelude::*;
 

@@ -1,3 +1,11 @@
+// This script converts PNG images into rust source code using
+// Tato's data structs.
+//
+// In this case it generates the default assets, available to any
+// project using Tato. Check out the "src/default_assets" folder
+// to see the output.
+//
+// It is disabled by default to speed up build times.
 const REGENERATE_DEFAULT_ASSETS: bool = false;
 
 fn main() {
