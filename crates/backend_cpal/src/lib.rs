@@ -63,8 +63,8 @@ impl AudioBackend {
 
         _stream.play().unwrap();
 
-        let wav_file = None;
-        // let wav_file = Some(WaveWriter::new(sample_rate));
+        // let wav_file = None;
+        let wav_file = Some(WaveWriter::new(sample_rate));
 
         AudioBackend {
             tx,

@@ -1,4 +1,4 @@
-// Auto-generated code. Do not edit manually! Generated: 2025-07-27 18:57:35
+// Auto-generated code. Do not edit manually!
 #![allow(unused)]
 use tato::prelude::*;
 

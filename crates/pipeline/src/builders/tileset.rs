@@ -141,8 +141,7 @@ impl<'a> TilesetBuilder<'a> {
 
         // Write maps if any
         for map in &self.maps {
-            code.write_tilemap_constant(&map.name, map.columns, map.rows, map.cells.len());
-            code.write_cell_array(&map.name, &map.cells);
+            code.write_tilemap_constant(&map.name, map.columns, map.rows, &map.cells);
         }
 
         // Write single tiles

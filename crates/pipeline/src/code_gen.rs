@@ -1,6 +1,6 @@
+use crate::builders::MapBuilder;
 use std::fs::File;
 use std::io::Write;
-use crate::builders::MapBuilder;
 
 pub struct CodeWriter {
     output_file: File,
@@ -20,12 +20,14 @@ impl CodeWriter {
     }
 
     pub fn write_header(&mut self, allow_unused: bool, use_crate_assets: bool) {
-        let timestamp = generate_timestamp();
 
-        self.write_line(&format!(
-            "// Auto-generated code. Do not edit manually! Generated: {}",
-            timestamp
-        ));
+        // Removed timestamp to prevent too many unnecessary git changes
+        // let timestamp = generate_timestamp();
+        // self.write_line(&format!(
+        //     "// Auto-generated code. Do not edit manually! Generated: {}",
+        //     timestamp
+        // ));
+        self.write_line(&format!("// Auto-generated code. Do not edit manually!"));
 
         if allow_unused {
             self.write_line("#![allow(unused)]");
@@ -41,7 +43,12 @@ impl CodeWriter {
         self.write_line("");
     }
 
-    pub fn write_tileset_data_struct(&mut self, name: &str, save_colors: bool, sub_palette_count: usize) {
+    pub fn write_tileset_data_struct(
+        &mut self,
+        name: &str,
+        save_colors: bool,
+        sub_palette_count: usize,
+    ) {
         self.write_line(&format!(
             "pub const {}_TILESET: TilesetData = TilesetData{{",
             name.to_uppercase(),
@@ -57,11 +64,7 @@ impl CodeWriter {
         if save_colors && sub_palette_count > 0 {
             self.write_line(&format!("    sub_palettes: Some(&["));
             for i in 0..sub_palette_count {
-                self.write_line(&format!(
-                    "        &{}_SUBPALETTE_{},",
-                    name.to_uppercase(),
-                    i
-                ));
+                self.write_line(&format!("        &{}_SUBPALETTE_{},", name.to_uppercase(), i));
             }
             self.write_line("    ]),");
         } else {
@@ -113,43 +116,36 @@ impl CodeWriter {
         self.write_line("");
     }
 
-    pub fn write_tilemap_constant(&mut self, name: &str, columns: u8, rows: u8, cell_count: usize) {
+    pub fn write_tilemap_constant(
+        &mut self,
+        name: &str,
+        columns: u8,
+        rows: u8,
+        cells: &[tato_video::Cell],
+    ) {
         self.write_line(&format!(
             "pub const {}: Tilemap<{}> = Tilemap {{",
             name.to_uppercase(),
-            cell_count
+            cells.len()
         ));
         self.write_line(&format!("    columns: {},", columns));
         self.write_line(&format!("    rows: {},", rows));
-        self.write_line(&format!("    cells: {}_CELLS,", name.to_uppercase()));
-        self.write_line("};");
-        self.write_line("");
-    }
-
-    pub fn write_cell_array(&mut self, name: &str, cells: &[tato_video::Cell]) {
-        self.write_line(&format!(
-            "const {}_CELLS: [Cell; {}] = [",
-            name.to_uppercase(),
-            cells.len()
-        ));
+        self.write_line("    cells: [");
 
         for cell in cells {
             self.write_line(&format!(
-                "    Cell {{ id: TileID({}), flags: TileFlags({}) }},",
+                "        Cell {{ id: TileID({}), flags: TileFlags({}) }},",
                 cell.id.0, cell.flags.0
             ));
         }
 
-        self.write_line("];");
+        self.write_line("    ],");
+        self.write_line("};");
         self.write_line("");
     }
 
     pub fn write_tile_id_constant(&mut self, name: &str, id: u8) {
-        self.write_line(&format!(
-            "pub const {}: TileID = TileID({});",
-            name.to_uppercase(),
-            id
-        ));
+        self.write_line(&format!("pub const {}: TileID = TileID({});", name.to_uppercase(), id));
     }
 
     pub fn write_cell_constant(&mut self, name: &str, id: u8, flags: u8) {
@@ -170,10 +166,7 @@ impl CodeWriter {
     }
 
     pub fn write_tile_cluster(&mut self, byte0: u8, byte1: u8) {
-        self.write_line(&format!(
-            "            Cluster {{ data: [{}, {}] }},",
-            byte0, byte1
-        ));
+        self.write_line(&format!("            Cluster {{ data: [{}, {}] }},", byte0, byte1));
     }
 
     pub fn write_animation_strip(&mut self, name: &str, frames: &[MapBuilder]) {
@@ -205,8 +198,6 @@ impl CodeWriter {
         self.write_line("");
     }
 
-
-
     pub fn format_output(&self, file_path: &str) {
         use std::process::Command;
         let output = Command::new("rustfmt").arg(file_path).output();
@@ -216,28 +207,28 @@ impl CodeWriter {
     }
 }
 
-/// Generates a timestamp string for code generation headers
-pub fn generate_timestamp() -> String {
-    use std::process::Command;
+// /// Generates a timestamp string for code generation headers
+// pub fn generate_timestamp() -> String {
+//     use std::process::Command;
 
-    // Try to get local date and time using system date command
-    if let Ok(output) = Command::new("date").arg("+%Y-%m-%d %H:%M:%S").output() {
-        if output.status.success() {
-            if let Ok(timestamp) = String::from_utf8(output.stdout) {
-                return timestamp.trim().to_string();
-            }
-        }
-    }
+//     // Try to get local date and time using system date command
+//     if let Ok(output) = Command::new("date").arg("+%Y-%m-%d %H:%M:%S").output() {
+//         if output.status.success() {
+//             if let Ok(timestamp) = String::from_utf8(output.stdout) {
+//                 return timestamp.trim().to_string();
+//             }
+//         }
+//     }
 
-    // Fallback to basic UTC time if system date command fails
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| {
-            let seconds = duration.as_secs();
-            let hours = (seconds / 3600) % 24;
-            let minutes = (seconds / 60) % 60;
-            let secs = seconds % 60;
-            format!("{:02}:{:02}:{:02} UTC", hours, minutes, secs)
-        })
-        .unwrap_or_else(|_| "build time".to_string())
-}
+//     // Fallback to basic UTC time if system date command fails
+//     std::time::SystemTime::now()
+//         .duration_since(std::time::UNIX_EPOCH)
+//         .map(|duration| {
+//             let seconds = duration.as_secs();
+//             let hours = (seconds / 3600) % 24;
+//             let minutes = (seconds / 60) % 60;
+//             let secs = seconds % 60;
+//             format!("{:02}:{:02}:{:02} UTC", hours, minutes, secs)
+//         })
+//         .unwrap_or_else(|_| "build time".to_string())
+// }

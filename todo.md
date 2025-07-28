@@ -1,7 +1,14 @@
+### General Engine
+
+[ ] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
+
+[ ] Draw Animations to BG Maps!
+    . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
+    . Will be useful to create BG interactions (i.e. door opening)
 
 ### Backend and examples
 
-[.] Use LIRQ (Line interrupt) to draw GUI
+[.] Use LIRQ (Line interrupt) to draw Game GUI
     . Will need to switch Tile bank halfway through
     . Will also need external BG Maps
 
@@ -29,26 +36,29 @@
 
 [ ] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
 
+[ ] "Build Kit", temporary tiles to generate procedural tilemaps
+    . This is essential to iterate fast on map designs.
+
 ### Assets
 
-[.] Text and Fonts
+[x] Text and Fonts
     [/] Fonts will be Cell-based assets, like Anim and Tilemaps
-        . May not be needed at all! Using Tilemaps as fonts seems to work fine, and allows easy detection of flipped tiles, etc.
+        . Using Tilemaps as fonts seems to work better, allows easy detection of flipped tiles, etc.
     [x] Write directly to the BG Map
-    [?] Let the function accept a user defined slice of characters so that simple and complex fonts may be used freely.
+    [ ] Let the function accept a user defined slice of characters so that fonts of any length may be used. I.e. Very basic games may only need numbers.
 
 [.] Load & Unload Tilesets.
     . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
     [.] Arena approach!
         [.] Basic push/pop implemented, needs testing!
-        [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
         [x] Once tilesets + tilemaps are working, implement Anims!
         . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
         . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
         [ ] Detect and prevent loading "empty" animation frames
+        [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
 
-[ ] Tilemaps
-    [?] Correctly map subpalettes when loading into Assets.
+[x] Tilemaps
+    [x] Correctly map subpalettes when loading into Assets.
         . Looks done? Needs more testing
 
 [x] Anims: Update to latest Assets struct
@@ -58,7 +68,7 @@
 [x] Fonts: Replace text rendering using Anim to use Fonts.
     . Update: Fonts are just tilemaps, to allow flags
 
-[.] Finish converting Anim data to array of tilemaps in tato_pipe
+[x] Finish converting Anim data to array of tilemaps in tato_pipe
     [x] "draw_patch" will then take a map as a parameter, which will bring in tile flags.
 
 [?] Treat Palettes and SubPalettes as assets

@@ -2,7 +2,7 @@
 mod channel;
 mod math;
 mod note;
-pub mod rng;
+mod rng;
 
 pub mod iter;
 pub mod waveform;

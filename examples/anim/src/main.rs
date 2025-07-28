@@ -4,6 +4,7 @@ use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
 use tato::prelude::*;
 use tato_raylib::RaylibBackend;
 
+// An entity that fits in 64 bits! :-)
 struct Entity {
     x: i16,
     y: i16,
@@ -22,11 +23,14 @@ fn main() {
     // Init
     let bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(W, H, 60);
+    let mut backend = RaylibBackend::new(&tato);
+
     tato.video.bg_color = RGBA12::new(2, 3, 4, 7);
     tato.video.bg_tile_bank = BANK_BG;
     tato.video.fg_tile_bank = BANK_FG;
 
-    // Animation
+    // Animations
+    // TODO: These operations should return a Result with a TatoError.
     let astro = tato.push_tileset(BANK_FG, ASTRO_TILESET).unwrap();
     let strip_astro = tato.load_animation_strip(astro, &STRIP_ASTRO).unwrap();
     let anims = [
@@ -46,7 +50,7 @@ fn main() {
     let max_y = H as i16 - sprite_h;
     let mut rng = tato::rng::Rng::new(32, 123);
 
-    let mut entities: [Entity; 32] = core::array::from_fn(|_| {
+    let mut entities: [Entity; 20] = core::array::from_fn(|_| {
         let mut vel_x = rng.range_i32(-1, 1) as i8;
         let vel_y = rng.range_i32(-1, 1) as i8;
         // Velocity is never (0,0)
@@ -64,10 +68,8 @@ fn main() {
     });
 
     // Main loop
-    let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
         tato.video.start_frame();
-
         for entity in &mut entities {
             // Velocity control
             entity.x += entity.vel_x as i16;
@@ -97,13 +99,23 @@ fn main() {
                 }
             }
 
+            // Draw!
             tato.draw_anim(
                 strip_astro,
                 &anims[entity.anim as usize],
                 SpriteBundle { x: entity.x, y: entity.y, flip_x: entity.flip, flip_y: false },
             );
         }
-
         backend.render(&tato, &[&bg_map]);
     }
 }
+
+// Curiosity! To flicker sprites that go above the sprites-per-scanline
+// limit, you can do this:
+// let frame_offset = tato.video.frame_count() % 2;
+// for priority_group in 0..2 {
+//     let actual_group = (priority_group + frame_offset) % 2;
+//     for i in (0..entities.len()).filter(|&i| i % 2 == actual_group) {
+//         // Draw code
+//     }
+// }
