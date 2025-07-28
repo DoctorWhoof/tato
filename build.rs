@@ -5,26 +5,30 @@ fn main() {
         return;
     }
     use tato_pipe::*;
-    let mut pipe = Pipeline::new();
-    pipe.allow_unused = true;
-    pipe.save_palettes = false; // Sticks with default palette
-    pipe.use_crate_assets = true; // Only true when used by this crate
+    init_build();
 
     // Default font
-    let palette_font = pipe.new_palette("font");
-    let tileset_font = pipe.new_tileset("font", palette_font);
-    pipe.new_map("assets/font_bold.png", "FONT_MAP", tileset_font);
-    pipe.write_tileset(tileset_font, "src/default_assets/font_bold.rs");
+    let mut palette_font = PaletteBuilder::new("font");
+    let mut tileset_font = TilesetBuilder::new("font", &mut palette_font);
+    tileset_font.allow_unused = true;
+    tileset_font.save_colors = false; // Sticks with default palette
+    tileset_font.use_crate_assets = true; // Only true when used by this crate
+    tileset_font.new_map("assets/font_bold.png", "FONT_MAP");
+    tileset_font.write("src/default_assets/font_bold.rs");
 
     // Default basic tiles
-    let palette_default = pipe.new_palette("default");
-    let tileset_default = pipe.new_tileset("default", palette_default);
-    pipe.new_tile("assets/tile_empty.png", tileset_default);
+    let mut palette_default = PaletteBuilder::new("default");
+    let mut tileset_default = TilesetBuilder::new("default", &mut palette_default);
+    tileset_default.allow_unused = true;
+    tileset_default.save_colors = false; // Sticks with default palette
+    tileset_default.use_crate_assets = true; // Only true when used by this crate
+    // Add single tiles for default assets
+    tileset_default.new_tile("assets/tile_empty.png");
     // Checkers goes first to assure 4 colors in subpalette in the desired order
-    pipe.new_tile("assets/tile_checkers.png", tileset_default);
-    pipe.new_tile("assets/tile_solid.png", tileset_default);
-    pipe.new_tile("assets/tile_crosshairs.png", tileset_default);
-    pipe.new_tile("assets/tile_arrow.png", tileset_default);
-    pipe.new_tile("assets/tile_smiley.png", tileset_default);
-    pipe.write_tileset(tileset_default, "src/default_assets/default_tiles.rs");
+    tileset_default.new_tile("assets/tile_checkers.png");
+    tileset_default.new_tile("assets/tile_solid.png");
+    tileset_default.new_tile("assets/tile_crosshairs.png");
+    tileset_default.new_tile("assets/tile_arrow.png");
+    tileset_default.new_tile("assets/tile_smiley.png");
+    tileset_default.write("src/default_assets/default_tiles.rs");
 }

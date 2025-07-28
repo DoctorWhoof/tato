@@ -9,29 +9,32 @@ const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 type TileData = [u8; TILE_LEN];
 type CanonicalTile = [u8; TILE_LEN]; // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
 
-#[derive(Debug, Clone, Copy)]
-pub struct TilesetBuilderID(pub u8);
-
-pub struct TilesetBuilder {
+pub struct TilesetBuilder<'a> {
     pub allow_tile_transforms: bool,
+    pub allow_unused: bool,
+    pub use_crate_assets: bool,
+    pub save_colors: bool,
     pub name: String,
     pub pixels: Vec<u8>,
     pub tile_hash: HashMap<CanonicalTile, Cell>,
-    pub sub_palette_name_hash: HashMap<[u8; SUB_PALETTE_COLOR_COUNT], String>,
-    pub sub_palettes: Vec<[u8; SUB_PALETTE_COLOR_COUNT]>,
-    pub anims: Vec<AnimBuilder>,
-    pub maps: Vec<MapBuilder>,
-    pub single_tiles: Vec<SingleTileBuilder>,
-    pub palette_id: PaletteID,
+    pub sub_palette_name_hash: HashMap<[u8; COLORS_PER_TILE as usize], String>,
+    pub sub_palettes: Vec<[u8; COLORS_PER_TILE as usize]>,
+    anims: Vec<AnimBuilder>,
+    maps: Vec<MapBuilder>,
+    single_tiles: Vec<SingleTileBuilder>,
+    palette: &'a mut PaletteBuilder,
     next_tile: u8,
     sub_palette_head: usize,
 }
 
-impl TilesetBuilder {
-    pub fn new(name: String, palette_id: PaletteID) -> Self {
+impl<'a> TilesetBuilder<'a> {
+    pub fn new(name: &str, palette: &'a mut PaletteBuilder) -> Self {
         Self {
             allow_tile_transforms: true,
-            name,
+            allow_unused: false,
+            use_crate_assets: false,
+            save_colors: true,
+            name: String::from(name),
             pixels: vec![],
             tile_hash: HashMap::new(),
             sub_palette_name_hash: HashMap::new(),
@@ -39,13 +42,171 @@ impl TilesetBuilder {
             anims: vec![],
             maps: vec![],
             single_tiles: vec![],
-            palette_id,
+            palette,
             sub_palettes: Vec::new(),
             sub_palette_head: 0,
         }
     }
 
-    pub fn add_tiles(&mut self, img: &PalettizedImg, palette: &PaletteBuilder) -> Vec<Vec<Cell>> {
+    /// Creates a new single tile from a .png file
+    pub fn new_tile(&mut self, path: &str) {
+        let img = PalettizedImg::from_image(path, 1, 1, self.palette);
+        assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
+        assert!(
+            img.cols_per_frame == 1 && img.rows_per_frame == 1,
+            "Single tile must be 1x1 tile (8x8 pixels)"
+        );
+
+        let cells = self.add_tiles(&img);
+        assert!(
+            cells.len() == 1 && cells[0].len() == 1,
+            "Single tile should produce exactly one cell"
+        );
+
+        let tile_name = crate::strip_path_name(path);
+        self.single_tiles.push(SingleTileBuilder { name: tile_name, cell: cells[0][0] });
+    }
+
+    /// Creates a new map from a .png file
+    pub fn new_map(&mut self, path: &str, name: &str) {
+        let img = if self.save_colors {
+            PalettizedImg::from_image(path, 1, 1, self.palette)
+        } else {
+            PalettizedImg::from_image(path, 1, 1, self.palette)
+        };
+        let cells = self.add_tiles(&img);
+        assert!(cells.len() == 1);
+
+        let map = MapBuilder {
+            name: String::from(name),
+            columns: u8::try_from(img.cols_per_frame).unwrap(),
+            rows: u8::try_from(img.rows_per_frame).unwrap(),
+            cells: cells[0].clone(), // just the first frame, there's only 1 anyway!
+        };
+
+        self.maps.push(map);
+    }
+
+    /// Creates a new animation strip from a .png file
+    pub fn new_animation_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
+        let img = PalettizedImg::from_image(path, frames_h, frames_v, self.palette);
+        let cells = self.add_tiles(&img);
+        let frame_count = img.frames_h as usize * img.frames_v as usize;
+
+        assert!(frame_count > 0);
+        let anim = AnimBuilder {
+            name: String::from(name),
+            frames: (0..frame_count)
+                .map(|i| MapBuilder {
+                    name: format!("frame_{:02}", i),
+                    columns: u8::try_from(img.cols_per_frame).unwrap(),
+                    rows: u8::try_from(img.rows_per_frame).unwrap(),
+                    cells: cells[i].clone(),
+                })
+                .collect(),
+            // tags: vec![],
+        };
+
+        self.anims.push(anim);
+    }
+
+    /// Writes the tileset constants to a file
+    pub fn write(&self, file_path: &str) {
+        let mut code = CodeWriter::new(file_path);
+
+        // Write header
+        code.write_header(self.allow_unused, self.use_crate_assets);
+
+        // Write tileset data structure
+        code.write_tileset_data_struct(&self.name, self.save_colors, self.sub_palettes.len());
+
+        // Write palette colors
+        if self.save_colors {
+            code.write_color_array(&self.name, &self.palette.colors);
+        }
+
+        // Write sub-palettes
+        if self.save_colors {
+            for (i, sub_palette) in self.sub_palettes.iter().enumerate() {
+                code.write_sub_palette(&self.name, i, sub_palette);
+            }
+        }
+
+        // Write animation strips if any
+        if !self.anims.is_empty() {
+            for anim in &self.anims {
+                code.write_animation_strip(&anim.name, &anim.frames);
+            }
+        }
+
+        // Write maps if any
+        for map in &self.maps {
+            code.write_tilemap_constant(&map.name, map.columns, map.rows, map.cells.len());
+            code.write_cell_array(&map.name, &map.cells);
+        }
+
+        // Write single tiles
+        for tile in &self.single_tiles {
+            if self.name == "default" {
+                // For default tileset, generate TileID constants for type safety
+                code.write_tile_id_constant(&tile.name, tile.cell.id.0);
+            } else {
+                code.write_cell_constant(&tile.name, tile.cell.id.0, tile.cell.flags.0);
+            }
+        }
+        if !self.single_tiles.is_empty() {
+            code.write_line("");
+        }
+
+        // Write tile pixel data
+        if !self.pixels.is_empty() {
+            let tiles_count = self.pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize);
+            code.write_tile_array_header(&self.name, tiles_count);
+
+            for i in 0..tiles_count {
+                let start = i * (TILE_SIZE as usize * TILE_SIZE as usize);
+                let end = start + (TILE_SIZE as usize * TILE_SIZE as usize);
+                let tile_pixels = &self.pixels[start..end];
+
+                code.write_line("    Tile {");
+                code.write_line("        clusters: [");
+
+                // Generate 8 clusters (one per row), each with 8 pixels packed into 2 bytes
+                for row in 0..8 {
+                    let row_start = row * 8;
+                    let row_end = row_start + 8;
+                    let row_pixels = &tile_pixels[row_start..row_end];
+
+                    // Pack 8 pixels (2 bits each) into 2 bytes
+                    // 4 pixels per byte: pixels 0-3 in byte0, pixels 4-7 in byte1
+                    let mut byte0 = 0u8;
+                    let mut byte1 = 0u8;
+
+                    for (i, &pixel) in row_pixels.iter().enumerate() {
+                        let pixel = pixel & 0x3; // Ensure pixel fits in 2 bits
+                        if i < 4 {
+                            // Pack into first byte (pixels 0-3)
+                            byte0 |= pixel << (6 - (i * 2));
+                        } else {
+                            // Pack into second byte (pixels 4-7)
+                            byte1 |= pixel << (6 - ((i - 4) * 2));
+                        }
+                    }
+
+                    code.write_tile_cluster(byte0, byte1);
+                }
+
+                code.write_line("        ],");
+                code.write_line("    },");
+            }
+            code.write_line("];");
+        }
+
+        // Format the output
+        code.format_output(file_path);
+    }
+
+    fn add_tiles(&mut self, img: &PalettizedImg) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
         // Main detection routine.
@@ -72,14 +233,14 @@ impl TilesetBuilder {
                         // Create canonical representation
                         let (canonical_tile, color_mapping) = create_canonical_tile(&tile_data);
 
-                        if color_mapping.len() > SUB_PALETTE_COLOR_COUNT {
+                        if color_mapping.len() > SUBPALETTE_COUNT as usize {
                             panic!(
                                 "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
                                 \tFrame: ({}, {})\n\
                                 \tTile within frame: row {}, col {}\n\
                                 \tAbsolute tile position: row {}, col {}\n\
                                 \tFound {} unique colors\x1b[0m",
-                                SUB_PALETTE_COLOR_COUNT,
+                                SUBPALETTE_COUNT,
                                 frame_h,
                                 frame_v,
                                 row,
@@ -92,7 +253,7 @@ impl TilesetBuilder {
 
                         // Find or create sub-palette once and reuse for both hash lookup and storage
                         let (sub_palette_id, remapping) =
-                            self.find_or_create_compatible_sub_palette(&color_mapping, palette);
+                            self.find_or_create_compatible_sub_palette(&color_mapping);
 
                         // Check if this canonical tile (or any transformation) exists
                         let mut found_cell = None;
@@ -245,11 +406,7 @@ impl TilesetBuilder {
         frames
     }
 
-    fn find_or_create_compatible_sub_palette(
-        &mut self,
-        colors: &[u8],
-        palette: &PaletteBuilder,
-    ) -> (u8, Vec<u8>) {
+    fn find_or_create_compatible_sub_palette(&mut self, colors: &[u8]) -> (u8, Vec<u8>) {
         // Work with unique colors only to avoid issues with repeated colors
         let unique_colors: Vec<u8> = {
             let mut seen = HashSet::new();
@@ -257,8 +414,9 @@ impl TilesetBuilder {
         };
 
         // Check for exact match first (cheapest check)
-        let target_palette_array =
+        let target_palette_array: [u8; COLORS_PER_TILE as usize] =
             from_fn(|i| if i < unique_colors.len() { unique_colors[i] } else { 0 });
+
         for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
             if *sub_pal == target_palette_array {
                 // Create identity remapping for our original colors (including duplicates)
@@ -289,8 +447,8 @@ impl TilesetBuilder {
         }
 
         // Create new sub-palette with unique colors only
-        if self.sub_palette_head >= SUB_PALETTE_COUNT {
-            panic!("Sub-palette capacity {} exceeded", SUB_PALETTE_COUNT);
+        if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
+            panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
         }
 
         self.sub_palettes.push(target_palette_array);
@@ -298,7 +456,7 @@ impl TilesetBuilder {
         self.sub_palette_head += 1;
 
         // Set name
-        let name = format!("{}_{}", palette.name, palette_id);
+        let name = format!("{}_{}", self.palette.name, palette_id);
         self.sub_palette_name_hash.insert(target_palette_array, name);
 
         // Create identity remapping for our original colors (including duplicates)
@@ -307,6 +465,7 @@ impl TilesetBuilder {
             let unique_index = unique_colors.iter().position(|&c| c == color).unwrap_or(0);
             remapping.push(unique_index as u8);
         }
+
         (palette_id, remapping)
     }
 }

@@ -6,7 +6,7 @@ fn main() {
     let mut tato = Tato::new(240, 180, 60);
 
     // Graphics setup
-    let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
+    let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let ts_font = tato.push_tileset(0, FONT_TILESET).unwrap();
 
     let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);

@@ -1,4 +1,4 @@
-// Auto-generated code - do not edit manually
+// Auto-generated code. Do not edit manually! Generated: 2025-07-27 18:40:19
 use tato::prelude::*;
 
 pub const PATCH_TILESET: TilesetData = TilesetData {
@@ -18,21 +18,19 @@ pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
 
 pub const PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
 
-pub const PATCH_MAP: Tilemap<9> = Tilemap {
-    columns: 3,
-    rows: 3,
-    cells: [
-        Cell { id: TileID(0), flags: TileFlags(0) },
-        Cell { id: TileID(1), flags: TileFlags(0) },
-        Cell { id: TileID(2), flags: TileFlags(1) },
-        Cell { id: TileID(1), flags: TileFlags(32) },
-        Cell { id: TileID(3), flags: TileFlags(0) },
-        Cell { id: TileID(4), flags: TileFlags(1) },
-        Cell { id: TileID(2), flags: TileFlags(97) },
-        Cell { id: TileID(4), flags: TileFlags(97) },
-        Cell { id: TileID(5), flags: TileFlags(1) },
-    ],
-};
+pub const PATCH_MAP: Tilemap<9> = Tilemap { columns: 3, rows: 3, cells: PATCH_MAP_CELLS };
+
+const PATCH_MAP_CELLS: [Cell; 9] = [
+    Cell { id: TileID(0), flags: TileFlags(0) },
+    Cell { id: TileID(1), flags: TileFlags(0) },
+    Cell { id: TileID(2), flags: TileFlags(1) },
+    Cell { id: TileID(1), flags: TileFlags(32) },
+    Cell { id: TileID(3), flags: TileFlags(0) },
+    Cell { id: TileID(4), flags: TileFlags(1) },
+    Cell { id: TileID(2), flags: TileFlags(97) },
+    Cell { id: TileID(4), flags: TileFlags(97) },
+    Cell { id: TileID(5), flags: TileFlags(1) },
+];
 
 pub const PATCH_TILES: [Tile<2>; 6] = [
     Tile {

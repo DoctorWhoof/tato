@@ -25,7 +25,7 @@ members = [
     "examples/audio",
     "examples/font",
     "examples/tilemap",
-    "examples/palette_save",
+    "examples/palette_save", "examples/anim",
     # "examples/pipe",
 ]
 exclude = [

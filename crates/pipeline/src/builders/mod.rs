@@ -4,14 +4,11 @@ pub(crate) use anim::*;
 mod map;
 pub(crate) use map::*;
 
-mod palette;
-pub(crate) use palette::*;
-
-mod palette_image;
-pub(crate) use palette_image::*;
-
 mod single_tile;
 pub(crate) use single_tile::*;
 
+mod palette;
+pub use palette::*;
+
 mod tileset;
-pub(crate) use tileset::*;
+pub use tileset::*;

@@ -1,17 +1,17 @@
 use tato_pipe::*;
 
 fn main() {
-    let mut pipe = Pipeline::new();
+    init_build();
 
     // 9 Patch
-    let palette_patch = pipe.new_palette("patch");
-    let tileset_patch = pipe.new_tileset("patch", palette_patch);
-    pipe.new_map("../../assets/patch.png", "PATCH_MAP", tileset_patch);
-    pipe.write_tileset(tileset_patch, "src/patch.rs");
+    let mut palette_patch = PaletteBuilder::new("patch");
+    let mut tileset_patch = TilesetBuilder::new("patch", &mut palette_patch);
+    tileset_patch.new_map("../../assets/patch.png", "PATCH_MAP");
+    tileset_patch.write("src/patch.rs");
 
     // Smileys
-    let palette_smileys = pipe.new_palette("smileys");
-    let tileset_smileys = pipe.new_tileset("smileys", palette_smileys);
-    pipe.new_map("assets/smileys.png", "SMILEYS_MAP", tileset_smileys);
-    pipe.write_tileset(tileset_smileys, "src/smileys.rs");
+    let mut palette_smileys = PaletteBuilder::new("smileys");
+    let mut tileset_smileys = TilesetBuilder::new("smileys", &mut palette_smileys);
+    tileset_smileys.new_map("assets/smileys.png", "SMILEYS_MAP");
+    tileset_smileys.write("src/smileys.rs");
 }

@@ -18,7 +18,7 @@ fn main() {
     let palette_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let palette_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
 
-    let _empty = tato.new_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
+    let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
     let font = tato.push_tileset(0, FONT_TILESET).unwrap();
 
     // Pre-draw fixed text (writes to BG Map)

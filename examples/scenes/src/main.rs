@@ -13,7 +13,7 @@ pub struct State {
     pub pad: AnaloguePad,
     pub time: f64,
     pub elapsed: f64,
-    pub bg: Tilemap<1024>,
+    pub bg: Tilemap<1600>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -50,7 +50,7 @@ fn main() {
         pad: t.pad,
         time: 0.0,
         elapsed: 0.0,
-        bg: Tilemap::<1024>::new(28, 28),
+        bg: Tilemap::<1600>::new(42, 28),
     };
 
     // Line scrolling effect, adjusts scroll on every line

@@ -101,7 +101,7 @@ impl<const CAP: usize> Assets<CAP> {
 impl Tato {
     /// Adds a single tile, returns a TileID
     #[inline]
-    pub fn new_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
+    pub fn push_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
         self.banks[bank_id as usize].add_tile(tile)
     }
 
