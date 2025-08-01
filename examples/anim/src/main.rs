@@ -10,7 +10,7 @@ struct Entity {
     y: i16,
     vel_x: i8,
     vel_y: i8,
-    anim: u8,
+    anim: AnimID,
     flip: bool,
 }
 
@@ -32,12 +32,16 @@ fn main() {
     // Animations
     // TODO: These operations should return a Result with a TatoError.
     let astro = tato.push_tileset(BANK_FG, ASTRO_TILESET).unwrap();
-    let strip_astro = tato.load_animation_strip(astro, &STRIP_ASTRO).unwrap();
-    let anims = [
-        Anim { fps: 8, repeat: true, frames: [12, 13, 14, 13] }, // right
-        Anim { fps: 8, repeat: true, frames: [4, 5, 6, 5] },     // down
-        Anim { fps: 8, repeat: true, frames: [8, 9, 10, 9] },    // up
-    ];
+    let strip = tato.load_animation_strip(astro, &STRIP_ASTRO).unwrap();
+
+    let anim_right =
+        tato.init_anim(strip, Anim { fps: 8, repeat: true, frames: [12, 13, 14, 13] }).unwrap();
+
+    let anim_down =
+        tato.init_anim(strip, Anim { fps: 8, repeat: true, frames: [4, 5, 6, 5] }).unwrap();
+
+    let anim_up =
+        tato.init_anim(strip, Anim { fps: 8, repeat: true, frames: [8, 9, 10, 9] }).unwrap();
 
     // Entities.
     // TODO: Obtain anims from tileset, so that we can probe a frame
@@ -62,7 +66,7 @@ fn main() {
             y: rng.range_i32(min_y as i32, max_y as i32) as i16,
             vel_x,
             vel_y,
-            anim: 0,
+            anim: anim_right,
             flip: vel_x < 0,
         }
     });
@@ -85,7 +89,7 @@ fn main() {
 
             // Anim control
             if entity.vel_x.abs() > entity.vel_y.abs() {
-                entity.anim = 0; // RIGHT
+                entity.anim = anim_right;
                 if entity.vel_x > 0 {
                     entity.flip = false;
                 } else {
@@ -93,16 +97,15 @@ fn main() {
                 }
             } else {
                 if entity.vel_y > 0 {
-                    entity.anim = 1 // DOWN;
+                    entity.anim = anim_down;
                 } else {
-                    entity.anim = 2; //UP
+                    entity.anim = anim_up;
                 }
             }
 
             // Draw!
             tato.draw_anim(
-                strip_astro,
-                &anims[entity.anim as usize],
+                entity.anim,
                 SpriteBundle { x: entity.x, y: entity.y, flip_x: entity.flip, flip_y: false },
             );
         }
@@ -116,6 +119,6 @@ fn main() {
 // for priority_group in 0..2 {
 //     let actual_group = (priority_group + frame_offset) % 2;
 //     for i in (0..entities.len()).filter(|&i| i % 2 == actual_group) {
-//         // Draw code
+//         // Draw entities in this group
 //     }
 // }

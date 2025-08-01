@@ -34,7 +34,7 @@
 [x] Load individual named tiles into a tileset, each will be exported as a const
     . On the other end, insert single tiles into TileBank (returns TileID)
 
-[ ] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
+[.] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
 
 [ ] "Build Kit", temporary tiles to generate procedural tilemaps
     . This is essential to iterate fast on map designs.
@@ -64,6 +64,7 @@
 [x] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?
     [x] Create Anims out of a "frame array"
+--->[ ] Add and use "tato.time" to draw animations, instead of video.frame_count(), to ensure frame rate independence.
 
 [x] Fonts: Replace text rendering using Anim to use Fonts.
     . Update: Fonts are just tilemaps, to allow flags

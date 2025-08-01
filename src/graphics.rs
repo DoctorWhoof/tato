@@ -4,8 +4,10 @@ pub use text::*;
 use crate::prelude::*;
 
 impl Tato {
+
+    // Internal way to get the current frame from an already obtained AnimEntry
     #[inline(always)]
-    pub fn get_anim_frame<const LEN: usize>(&self, anim: &Anim<LEN>) -> usize {
+    fn get_frame_from_anim_entry(&self, anim: &AnimEntry) -> usize {
         debug_assert!(anim.fps > 0, "Animation FPS must be higher than zero");
         let current_frame = self.video.frame_count() as f32;
         let time = current_frame * (1.0 / self.target_fps as f32);
@@ -13,23 +15,35 @@ impl Tato {
         ((time / frame_duration) % anim.frames.len() as f32) as usize
     }
 
-    pub fn draw_anim<const ANIM_LEN: usize>(
-        &mut self,
-        strip: StripID,
-        anim: &Anim<ANIM_LEN>,
-        bundle: SpriteBundle,
-    ) {
-        let Some(entry) = self.assets.strip_entries.get(strip.0 as usize) else {
+    // Public way to obtain the animation frame
+    /// Obtains the frame index on a given Animation based on the video chip's
+    /// internal frame counter.
+    #[inline(always)]
+    pub fn get_anim_frame(&self, anim:AnimID) -> usize {
+        let anim_entry = self.assets.anim_entries.get(anim.0 as usize).unwrap();
+        self.get_frame_from_anim_entry(anim_entry)
+    }
+
+    /// Draws a sprite's frame, which is calculated using the video chip's
+    /// internal frame counter.
+    pub fn draw_anim(&mut self, anim: AnimID, bundle: SpriteBundle) {
+        let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
             return;
         };
-        let base_index = self.get_anim_frame(anim);
-        let Some(anim_index) = anim.frames.get(base_index) else { return };
-        let start_index = entry.start_index;
+        let Some(strip_entry) = self.assets.strip_entries.get(anim_entry.strip_id.0 as usize)
+        else {
+            return;
+        };
+
+        let base_index = self.get_frame_from_anim_entry(anim_entry);
+        let frames = self.assets.arena.get_pool(&anim_entry.frames);
+        let Some(anim_index) = frames.get(base_index) else { return };
+        let start_index = strip_entry.start_index;
         let index = start_index + anim_index;
         let Some(map_entry) = self.assets.map_entries.get(index as usize) else { return };
 
         debug_assert!(
-            (index as usize) < entry.start_index as usize + entry.frame_count as usize,
+            (index as usize) < strip_entry.start_index as usize + strip_entry.frame_count as usize,
             err!("Animation frame exceeds strip length")
         );
 
