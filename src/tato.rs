@@ -16,7 +16,8 @@ pub struct Tato {
     // pub update_time_acc: SmoothBuffer<20, f64>,
     pub target_fps: u8,
     pub(crate) time: f64,
-    pub(crate) elapsed_time:f32,
+    pub(crate) delta: f32,
+    pub(crate) elapsed_time: f32,
 }
 
 impl Tato {
@@ -29,7 +30,8 @@ impl Tato {
             banks: core::array::from_fn(|_| VideoMemory::new()),
             target_fps,
             time: 0.0,
-            elapsed_time: 1.0 / target_fps as f32
+            delta: 1.0,
+            elapsed_time: 1.0 / target_fps as f32,
         }
     }
 
@@ -50,17 +52,20 @@ impl Tato {
         self.elapsed_time as f32
     }
 
-    // Delta time multiplier where 1.0 means "running at target frame rate".
-    // It assumer a fixed reference speed where 1 = 1 pixel per frame at 60 fps.
+    /// Delta time multiplier where 1.0 means "running at target frame rate".
+    /// It assumes a fixed reference where speed 1.0 = 1 pixel per frame at 60 fps.
     pub fn delta(&self) -> f32 {
-        let reference_frame_time = 1.0 / 60.0;  // Fixed 60 FPS reference
-        (self.elapsed_time as f64 / reference_frame_time) as f32
+        self.delta
     }
 
-    pub fn start_frame(&mut self, elapsed:f32) {
+    pub fn start_frame(&mut self, elapsed: f32) {
         self.video.start_frame();
         self.time += elapsed as f64;
         self.elapsed_time = elapsed;
+        // Delta timing based on 60 fps reference,
+        // can still run higher or lower preserving game speed.
+        let reference_frame_time = 1.0 / 60.0;
+        self.delta = self.elapsed_time / reference_frame_time;
     }
 
     pub fn iter_pixels<'a, T>(&'a self, bg_banks: &[&'a T]) -> PixelIter<'a>
