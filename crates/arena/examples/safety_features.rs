@@ -1,6 +1,4 @@
-//! Safety Features Demo
-//!
-//! This example demonstrates the key safety features that make the arena reliable:
+//! This example demonstrates the key safety features:
 //! - Generational safety (prevents use-after-restore)
 //! - Cross-arena safety (prevents mixing handles between arenas)
 //! - Automatic validation

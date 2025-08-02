@@ -1,5 +1,3 @@
-//! Basic Arena Usage - Start Here!
-//!
 //! This example shows the fundamental operations of the arena allocator:
 //! - Allocating values
 //! - Accessing values safely
