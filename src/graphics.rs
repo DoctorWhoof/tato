@@ -18,11 +18,9 @@ impl Tato {
     // Internal way to get the current frame from an already obtained AnimEntry
     #[inline(always)]
     fn get_frame_from_anim_entry(&self, anim: &AnimEntry) -> usize {
-        debug_assert!(anim.fps > 0, "Animation FPS must be higher than zero");
-        let current_frame = self.video.frame_count() as f32;
-        let time = current_frame * (1.0 / self.target_fps as f32);
+        assert!(anim.fps > 0, "Animation FPS must be higher than zero");
         let frame_duration = 1.0 / anim.fps as f32;
-        ((time / frame_duration) % anim.frames.len() as f32) as usize
+        ((self.time as f32 / frame_duration) % anim.frames.len() as f32) as usize
     }
 
     // Public way to obtain the animation frame

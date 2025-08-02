@@ -41,8 +41,6 @@ impl SceneC {
     }
 
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
-        t.video.start_frame();
-
         // Draw the sprite directly, no Entity
         let mut offset = 0.0;
         for x in 0..16 {

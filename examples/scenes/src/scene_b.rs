@@ -42,7 +42,6 @@ impl SceneB {
     }
 
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
-        t.video.start_frame();
         let speed = 1.0;
 
         // Input

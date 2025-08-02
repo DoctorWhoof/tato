@@ -99,8 +99,6 @@ impl SceneA {
 
     // Process the scene on each frame
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
-        t.video.start_frame();
-
         // ------------------------------ Input ------------------------------
 
         if state.pad.is_just_pressed(Button::Start) {

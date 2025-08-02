@@ -447,6 +447,10 @@ impl Tato {
         Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
+    // pub fn get_anim_frame(&self, anim_id:AnimID, frame: u8) {
+
+    // }
+
     // pub fn get_animation(&self, anim_id: AnimID) -> AnimRef {
     //     let entry = &self.assets.anim_entries[anim_id.0 as usize];
     //     AnimRef {

@@ -72,7 +72,7 @@ fn main() -> TatoResult<()> {
 
     // Main loop
     while !backend.ray.window_should_close() {
-        tato.video.start_frame();
+        tato.start_frame(backend.ray.get_frame_time());
         for entity in &mut entities {
             // Velocity control
             entity.x += entity.vel_x as i16;

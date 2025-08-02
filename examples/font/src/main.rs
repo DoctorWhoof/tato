@@ -111,7 +111,7 @@ fn main() -> TatoResult<()> {
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
         // Input
-        tato.video.start_frame();
+        tato.start_frame(backend.ray.get_frame_time());
         backend.update_gamepad(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {

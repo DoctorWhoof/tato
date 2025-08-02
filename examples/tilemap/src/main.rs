@@ -34,6 +34,7 @@ fn main() -> TatoResult<()> {
     let mut backend = RaylibBackend::new(&tato);
     backend.bg_color = raylib::prelude::Color::BLACK;
     while !backend.ray.window_should_close() {
+        tato.start_frame(backend.ray.get_frame_time());
         backend.update_gamepad(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {
