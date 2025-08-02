@@ -56,10 +56,11 @@ impl RaylibBackend {
         let mut debug_pixels = vec![];
         let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
         let tiles_w = tiles_per_row * TILE_SIZE as usize;
-        for bank in &tato.banks {
-            let max_row = (bank.tile_count() / tiles_per_row) + 1;
-            let tiles_h = max_row * TILE_SIZE as usize;
-            let tiles_h = tiles_h.max(8);
+        for _bank in &tato.banks {
+            // Allocate for maximum possible tiles (TILE_COUNT) instead of current tile count
+            // since tiles may be loaded after backend initialization
+            let max_rows = (TILE_COUNT / tiles_per_row) + 1;
+            let tiles_h = max_rows * TILE_SIZE as usize;
             let debug_image = Image::gen_image_color(tiles_w as i32, tiles_h as i32, Color::BLACK);
             debug_texture.push(ray.load_texture_from_image(&thread, &debug_image).unwrap());
             debug_pixels.push(vec![0u8; tiles_w * tiles_h * 4]);
@@ -364,6 +365,8 @@ impl RaylibBackend {
                             let pixel_x = tile_x * TILE_SIZE as usize + x;
                             let pixel_y = tile_y * TILE_SIZE as usize + y;
                             let pixel_offset = (pixel_y * tiles_w as usize + pixel_x) * 4;
+
+
 
                             // Set RGBA values
                             self.debug_pixels[bank_index][pixel_offset] = gray_value; // R
