@@ -4,6 +4,16 @@ pub use text::*;
 use crate::prelude::*;
 
 impl Tato {
+    pub fn draw_tilemap_to<const LEN:usize>(
+        &self,
+        dest: &mut Tilemap<LEN>,
+        dest_rect: Option<Rect<u16>>,
+        src: MapID,
+        src_rect: Option<Rect<u16>>,
+    ) {
+        let Some(src) = self.get_tilemap(src) else {return };
+        dest.copy_from(&src, src_rect, dest_rect);
+    }
 
     // Internal way to get the current frame from an already obtained AnimEntry
     #[inline(always)]
@@ -19,7 +29,7 @@ impl Tato {
     /// Obtains the frame index on a given Animation based on the video chip's
     /// internal frame counter.
     #[inline(always)]
-    pub fn get_anim_frame(&self, anim:AnimID) -> usize {
+    pub fn get_anim_frame(&self, anim: AnimID) -> usize {
         let anim_entry = self.assets.anim_entries.get(anim.0 as usize).unwrap();
         self.get_frame_from_anim_entry(anim_entry)
     }
@@ -36,7 +46,7 @@ impl Tato {
         };
 
         let base_index = self.get_frame_from_anim_entry(anim_entry);
-        let frames = self.assets.arena.get_pool(&anim_entry.frames);
+        let Some(frames) = self.assets.arena.get_pool(&anim_entry.frames) else { return };
         let Some(anim_index) = frames.get(base_index) else { return };
         let start_index = strip_entry.start_index;
         let index = start_index + anim_index;
@@ -47,68 +57,65 @@ impl Tato {
             err!("Animation frame exceeds strip length")
         );
 
+        let Some(cells) = self.assets.arena.get_pool(&map_entry.cells) else { return };
         self.video.draw_sprite(
             bundle,
-            &TilemapRef {
-                cells: self.assets.arena.get_pool(&map_entry.cells),
-                columns: map_entry.columns,
-                rows: map_entry.rows,
-            },
+            &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },
         );
     }
 
     pub fn draw_patch<const LEN: usize>(
         &mut self,
         bg: &mut Tilemap<LEN>,
+        bg_rect: Rect<u16>,
         map_id: MapID,
-        rect: Rect<u16>,
     ) {
         // let map = &self.assets.map_entries[map_id.0 as usize];
-        let map = self.get_tilemap(map_id);
+        let Some(map) = self.get_tilemap(map_id) else { return };
 
         assert!(map.columns == 3, err!("Patch tilemaps must be 3 columns wide."));
         assert!(map.rows == 3, err!("Patch rows must be 3 rows tall."));
 
         let top_left = map.cells[0];
         bg.set_cell(BgOp {
-            col: rect.x,
-            row: rect.y,
+            col: bg_rect.x,
+            row: bg_rect.y,
             tile_id: top_left.id,
             flags: top_left.flags,
         });
 
-        debug_assert!((rect.x as usize + rect.w as usize) < u16::MAX as usize);
+        debug_assert!((bg_rect.x as usize + bg_rect.w as usize) < u16::MAX as usize);
         let top = map.cells[1];
-        for col in rect.x + 1..rect.x + rect.w {
-            bg.set_cell(BgOp { col, row: rect.y, tile_id: top.id, flags: top.flags });
+        for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
+            bg.set_cell(BgOp { col, row: bg_rect.y, tile_id: top.id, flags: top.flags });
         }
 
         let top_right = map.cells[2];
         bg.set_cell(BgOp {
-            col: rect.x + rect.w,
-            row: rect.y,
+            col: bg_rect.x + bg_rect.w,
+            row: bg_rect.y,
             tile_id: top_right.id,
             flags: top_right.flags,
         });
 
         let left = map.cells[3];
 
-        for row in rect.y + 1..rect.y + rect.h {
-            bg.set_cell(BgOp { col: rect.x, row, tile_id: left.id, flags: left.flags });
+        for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
+            bg.set_cell(BgOp { col: bg_rect.x, row, tile_id: left.id, flags: left.flags });
         }
 
-        debug_assert!((rect.y as usize + rect.h as usize) < u16::MAX as usize);
+        debug_assert!((bg_rect.y as usize + bg_rect.h as usize) < u16::MAX as usize);
         let center = map.cells[4];
-        for row in rect.y + 1..rect.y + rect.h {
-            for col in rect.x + 1..rect.x + rect.w {
+        for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
+            for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
                 bg.set_cell(BgOp { col, row, tile_id: center.id, flags: center.flags });
             }
         }
 
         let right = map.cells[5];
-        for row in rect.y + 1..rect.y + rect.h {
+        for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
             bg.set_cell(BgOp {
-                col: rect.x + rect.w,
+                col: bg_rect.x + bg_rect.w,
                 row,
                 tile_id: right.id,
                 flags: right.flags,
@@ -117,17 +124,17 @@ impl Tato {
 
         let bottom_left = map.cells[6];
         bg.set_cell(BgOp {
-            col: rect.x,
-            row: rect.y + rect.h,
+            col: bg_rect.x,
+            row: bg_rect.y + bg_rect.h,
             tile_id: bottom_left.id,
             flags: bottom_left.flags,
         });
 
         let bottom = map.cells[7];
-        for col in rect.x + 1..rect.x + rect.w {
+        for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
             bg.set_cell(BgOp {
                 col,
-                row: rect.y + rect.h,
+                row: bg_rect.y + bg_rect.h,
                 tile_id: bottom.id,
                 flags: bottom.flags,
             });
@@ -135,8 +142,8 @@ impl Tato {
 
         let bottom_right = map.cells[8];
         bg.set_cell(BgOp {
-            col: rect.x + rect.w,
-            row: rect.y + rect.h,
+            col: bg_rect.x + bg_rect.w,
+            row: bg_rect.y + bg_rect.h,
             tile_id: bottom_right.id,
             flags: bottom_right.flags,
         });

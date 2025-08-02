@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 tato_math = { path = "../math"}
+tato_rng = { path = "../rng"}
 
 [[example]]
 name = "pool_demo"

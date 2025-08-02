@@ -1,6 +1,7 @@
 //! Arena ID - Handle to values allocated in the arena.
 
 use core::marker::PhantomData;
+use crate::ArenaIndex;
 
 /// Type-erased arena handle. Use `typed()` to convert back.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -11,15 +12,19 @@ pub struct RawId<SizeType = usize> {
     pub(crate) size: SizeType,
     /// Size of the original type in bytes (for type checking)
     pub(crate) type_size: SizeType,
+    /// Generation when this ID was created
+    pub(crate) generation: u32,
+    /// Arena ID for cross-arena safety
+    pub(crate) arena_id: u32,
 }
 
 impl<SizeType> RawId<SizeType>
 where
-    SizeType: Copy + PartialEq + TryFrom<usize> + Into<usize>,
+    SizeType: ArenaIndex + PartialEq,
 {
     /// Convert to typed ID. Panics in debug if size mismatch.
     /// Will NOT catch all problems, i.e. if types are different but have same size.
-    pub fn typed<T>(self) -> ArenaId<T, SizeType> {
+    pub fn typed<T, Marker>(self) -> ArenaId<T, SizeType, Marker> {
         let expected_size = core::mem::size_of::<T>();
         let stored_size: usize = self.type_size.into();
         debug_assert_eq!(
@@ -34,36 +39,54 @@ where
         ArenaId {
             offset: self.offset,
             size: self.size,
-            _marker: PhantomData,
+            generation: self.generation,
+            arena_id: self.arena_id,
+            _phantom: PhantomData,
         }
+    }
+
+    /// Get generation
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Get arena ID
+    pub fn arena_id(&self) -> u32 {
+        self.arena_id
     }
 }
 
 /// Handle to a value in the arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct ArenaId<T, SizeType = usize> {
+pub struct ArenaId<T, SizeType = usize, Marker = ()> {
     /// Offset within the arena's storage
     pub(crate) offset: SizeType,
     /// Size of the allocation in bytes
     pub(crate) size: SizeType,
+    /// Generation when this ID was created
+    pub(crate) generation: u32,
+    /// Arena ID for cross-arena safety
+    pub(crate) arena_id: u32,
     /// Zero-sized type marker for compile-time type safety
-    pub(crate) _marker: PhantomData<T>,
+    pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
-impl<T, SizeType> ArenaId<T, SizeType> {
+impl<T, SizeType, Marker> ArenaId<T, SizeType, Marker> {
     /// Create a new ArenaId (internal use)
-    pub(crate) fn new(offset: SizeType, size: SizeType) -> Self {
+    pub(crate) fn new(offset: SizeType, size: SizeType, generation: u32, arena_id: u32) -> Self {
         Self {
             offset,
             size,
-            _marker: PhantomData,
+            generation,
+            arena_id,
+            _phantom: PhantomData,
         }
     }
 
     /// Get byte offset in arena
     pub fn offset(&self) -> usize
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.offset.into()
     }
@@ -71,15 +94,25 @@ impl<T, SizeType> ArenaId<T, SizeType> {
     /// Get allocation size in bytes
     pub fn size(&self) -> usize
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.size.into()
+    }
+
+    /// Get generation
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Get arena ID
+    pub fn arena_id(&self) -> u32 {
+        self.arena_id
     }
 
     /// Get (offset, size) tuple
     pub fn info(&self) -> (usize, usize)
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         (self.offset.into(), self.size.into())
     }
@@ -87,7 +120,7 @@ impl<T, SizeType> ArenaId<T, SizeType> {
     /// Check if ID has non-zero size
     pub fn is_valid(&self) -> bool
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.size.into() > 0
     }
@@ -95,41 +128,33 @@ impl<T, SizeType> ArenaId<T, SizeType> {
     /// Convert to type-erased RawId
     pub fn raw(self) -> RawId<SizeType>
     where
-        SizeType: TryFrom<usize>,
+        SizeType: ArenaIndex,
     {
         RawId {
             offset: self.offset,
             size: self.size,
             type_size: SizeType::try_from(core::mem::size_of::<T>())
                 .unwrap_or_else(|_| panic!("Type size too large for SizeType")),
+            generation: self.generation,
+            arena_id: self.arena_id,
         }
     }
 }
 
-/// ArenaIds are equal if they have the same offset and size
-impl<T, SizeType> PartialEq for ArenaId<T, SizeType>
+/// ArenaIds are equal if they have the same offset, size, and generation
+impl<T, SizeType, Marker> PartialEq for ArenaId<T, SizeType, Marker>
 where
     SizeType: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.offset == other.offset && self.size == other.size
+        self.offset == other.offset 
+            && self.size == other.size 
+            && self.generation == other.generation
+            && self.arena_id == other.arena_id
     }
 }
 
-impl<T, SizeType> Eq for ArenaId<T, SizeType>
+impl<T, SizeType, Marker> Eq for ArenaId<T, SizeType, Marker>
 where
     SizeType: Eq,
 {}
-
-// /// Hash implementation for ArenaId
-// ///
-// /// Allows ArenaId to be used as keys in hash maps/sets.
-// impl<T, SizeType> core::hash::Hash for ArenaId<T, SizeType>
-// where
-//     SizeType: core::hash::Hash,
-// {
-//     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-//         self.offset.hash(state);
-//         self.size.hash(state);
-//     }
-// }

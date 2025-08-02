@@ -269,9 +269,7 @@ impl Tato {
         let checkpoint = assets.checkpoints[assets.checkpoint_head as usize];
 
         // Restore arena state
-        unsafe {
-            assets.arena.restore_to(checkpoint.arena_offset as usize);
-        }
+        assets.arena.restore_to(checkpoint.arena_offset as usize);
 
         // Clear animation and tilemap entries that were created after the checkpoint
         for i in checkpoint.strip_head..assets.strip_head {
@@ -422,13 +420,10 @@ impl Tato {
         }
     }
 
-    pub fn get_tilemap(&self, map_id: MapID) -> TilemapRef {
-        let entry = &self.assets.map_entries[map_id.0 as usize];
-        TilemapRef {
-            cells: self.assets.arena.get_pool(&entry.cells),
-            columns: entry.columns,
-            rows: entry.rows,
-        }
+    pub fn get_tilemap(&self, map_id: MapID) -> Option<TilemapRef> {
+        let entry = &self.assets.map_entries.get(map_id.0 as usize)?;
+        let cells = self.assets.arena.get_pool(&entry.cells)?;
+        Some(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
     // pub fn get_animation(&self, anim_id: AnimID) -> AnimRef {

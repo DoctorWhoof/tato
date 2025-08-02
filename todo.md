@@ -2,9 +2,14 @@
 
 [ ] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
 
-[ ] Draw Animations to BG Maps!
-    . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
-    . Will be useful to create BG interactions (i.e. door opening)
+[ ] Drawing
+    [x] Tilemap to Tilemap
+    [x] Patch to Tilemap
+    [x] Anim to Sprite Layer
+    [ ] Tilemap to Sprite Layer (basic sprite, no anim. Just a wrapper)
+    [ ] Animations to Tilemaps
+        . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
+        . Will be useful to create BG interactions (i.e. door opening)
 
 ### Backend and examples
 

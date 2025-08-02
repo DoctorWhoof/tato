@@ -1,25 +1,33 @@
 //! Pools for arena allocations
 
 use core::marker::PhantomData;
-use tato_math::Num;
+use crate::ArenaIndex;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pool<T, SizeType = usize> {
+pub struct Pool<T, SizeType = usize, Marker = ()> {
     pub(crate) offset: SizeType,
     pub(crate) len: SizeType,
-    pub(crate) _marker: PhantomData<T>,
+    pub(crate) generation: u32,
+    pub(crate) arena_id: u32,
+    pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
-impl<T, SizeType> Pool<T, SizeType> {
+impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     /// Create a new pool (internal use)
-    pub(crate) fn new(offset: SizeType, len: SizeType) -> Self {
-        Self { offset, len, _marker: PhantomData }
+    pub(crate) fn new(offset: SizeType, len: SizeType, generation: u32, arena_id: u32) -> Self {
+        Self { 
+            offset, 
+            len, 
+            generation,
+            arena_id,
+            _phantom: PhantomData 
+        }
     }
 
     /// Get element count
     pub fn len(&self) -> usize
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.len.into()
     }
@@ -27,7 +35,7 @@ impl<T, SizeType> Pool<T, SizeType> {
     /// Check if empty
     pub fn is_empty(&self) -> bool
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.len.into() == 0
     }
@@ -35,15 +43,25 @@ impl<T, SizeType> Pool<T, SizeType> {
     /// Get arena offset
     pub fn offset(&self) -> usize
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.offset.into()
+    }
+
+    /// Get generation
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Get arena ID
+    pub fn arena_id(&self) -> u32 {
+        self.arena_id
     }
 
     /// Get size in bytes
     pub fn size_bytes(&self) -> usize
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         self.len.into() * core::mem::size_of::<T>()
     }
@@ -51,21 +69,23 @@ impl<T, SizeType> Pool<T, SizeType> {
     /// Get capacity as (used, total)
     pub fn capacity(&self) -> (usize, usize)
     where
-        SizeType: Copy + Into<usize>,
+        SizeType: ArenaIndex,
     {
         (self.len.into(), self.len.into())
     }
 }
 
-impl<T, SizeType> Default for Pool<T, SizeType>
+impl<T, SizeType, Marker> Default for Pool<T, SizeType, Marker>
 where
-    SizeType: Num,
+    SizeType: ArenaIndex,
 {
     fn default() -> Self {
         Self {
             offset: SizeType::zero(),
             len: SizeType::zero(),
-            _marker: PhantomData,
+            generation: 0,
+            arena_id: 0,
+            _phantom: PhantomData,
         }
     }
 }
@@ -79,6 +99,8 @@ pub enum PoolError {
     Empty,
     /// Pool not initialized
     NotInitialized,
+    /// Stale handle (generation mismatch)
+    StaleHandle,
 }
 
 impl core::fmt::Display for PoolError {
@@ -87,6 +109,7 @@ impl core::fmt::Display for PoolError {
             PoolError::IndexOutOfBounds => write!(f, "Index out of bounds"),
             PoolError::Empty => write!(f, "Pool is empty"),
             PoolError::NotInitialized => write!(f, "Pool is not initialized"),
+            PoolError::StaleHandle => write!(f, "Stale handle (generation mismatch)"),
         }
     }
 }

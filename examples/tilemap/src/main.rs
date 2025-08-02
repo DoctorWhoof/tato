@@ -23,15 +23,11 @@ fn main() {
 
     let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET).unwrap();
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP).unwrap();
-    bg_map.copy_from(
-        &tato.get_tilemap(map_smileys), //
-        None,
-        Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
-    );
+    tato.draw_tilemap_to(&mut bg_map, Some(Rect { x: 3, y: 5, w: 16, h: 10 }), map_smileys, None);
 
     let tileset_patch = tato.push_tileset(0, PATCH_TILESET).unwrap();
     let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP).unwrap();
-    tato.draw_patch(&mut bg_map, map_patch, Rect { x: 1, y: 1, w: 20, h: 4 });
+    tato.draw_patch(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, map_patch);
 
     println!("Asset arena: {} Bytes", tato.assets.used_memory());
     // Backend
