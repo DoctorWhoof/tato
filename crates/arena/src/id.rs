@@ -5,7 +5,7 @@ use crate::ArenaIndex;
 
 /// Type-erased arena handle. Use `typed()` to convert back.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct RawId<SizeType = usize> {
+pub struct RawId<SizeType = u16> {
     /// Offset within the arena's storage
     pub(crate) offset: SizeType,
     /// Size of the allocation in bytes
@@ -13,9 +13,9 @@ pub struct RawId<SizeType = usize> {
     /// Size of the original type in bytes (for type checking)
     pub(crate) type_size: SizeType,
     /// Generation when this ID was created
-    pub(crate) generation: u32,
+    pub(crate) generation: u16,
     /// Arena ID for cross-arena safety
-    pub(crate) arena_id: u32,
+    pub(crate) arena_id: u16,
 }
 
 impl<SizeType> RawId<SizeType>
@@ -46,34 +46,34 @@ where
     }
 
     /// Get generation
-    pub fn generation(&self) -> u32 {
+    pub fn generation(&self) -> u16 {
         self.generation
     }
 
     /// Get arena ID
-    pub fn arena_id(&self) -> u32 {
+    pub fn arena_id(&self) -> u16 {
         self.arena_id
     }
 }
 
 /// Handle to a value in the arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct ArenaId<T, SizeType = usize, Marker = ()> {
+pub struct ArenaId<T, SizeType = u16, Marker = ()> {
     /// Offset within the arena's storage
     pub(crate) offset: SizeType,
     /// Size of the allocation in bytes
     pub(crate) size: SizeType,
     /// Generation when this ID was created
-    pub(crate) generation: u32,
+    pub(crate) generation: u16,
     /// Arena ID for cross-arena safety
-    pub(crate) arena_id: u32,
+    pub(crate) arena_id: u16,
     /// Zero-sized type marker for compile-time type safety
     pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
 impl<T, SizeType, Marker> ArenaId<T, SizeType, Marker> {
     /// Create a new ArenaId (internal use)
-    pub(crate) fn new(offset: SizeType, size: SizeType, generation: u32, arena_id: u32) -> Self {
+    pub(crate) fn new(offset: SizeType, size: SizeType, generation: u16, arena_id: u16) -> Self {
         Self {
             offset,
             size,
@@ -100,12 +100,12 @@ impl<T, SizeType, Marker> ArenaId<T, SizeType, Marker> {
     }
 
     /// Get generation
-    pub fn generation(&self) -> u32 {
+    pub fn generation(&self) -> u16 {
         self.generation
     }
 
     /// Get arena ID
-    pub fn arena_id(&self) -> u32 {
+    pub fn arena_id(&self) -> u16 {
         self.arena_id
     }
 
@@ -147,8 +147,8 @@ where
     SizeType: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.offset == other.offset 
-            && self.size == other.size 
+        self.offset == other.offset
+            && self.size == other.size
             && self.generation == other.generation
             && self.arena_id == other.arena_id
     }

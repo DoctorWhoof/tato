@@ -1,96 +1,56 @@
+# API Overview
+
+```rust
+// Create arena (u16 index by default, can be higher if needed)
+let mut arena: Arena<1024> = Arena::new();
+
+// Allocate values
+let id = arena.alloc(42u32)?;
+let pool = arena.alloc_pool::<i32>(10)?;
+
+// Access safely (returns Option)
+let value = arena.get(&id)?;
+let slice = arena.get_pool(&pool)?;
+
+// Memory management
+println!("Used: {} bytes", arena.used());
+arena.clear(); // Invalidates all handles safely
+
+// For different capacities:
+let tiny: Arena<255, u8> = Arena::new();     // 6-byte handles, up to 255 bytes
+let default: Arena<65536> = Arena::new();    // 8-byte handles, up to 64KB ⭐
+let huge: Arena<1048576, usize> = Arena::new(); // 24-byte handles, unlimited
+```
+
 # Arena Examples
 
-This directory contains simple examples demonstrating the key features of the `tato_arena` crate.
-
-## Examples
-
-### `generational_safety.rs`
-Demonstrates the generational safety system that prevents use-after-restore bugs:
-- Basic generational safety with `clear()`
-- Safe `restore_to()` operations
-- Type marker safety between different arenas
-- Pool generational safety
+### 1. `basic_usage.rs` - **Start with this one!**
+The essential introduction to arena usage:
+- Single value allocation with `alloc()`
+- Safe access with `get()` and `get_mut()`
+- Pool allocation with `alloc_pool()` and `alloc_pool_from_fn()`
+- Memory management with `clear()`
 
 ```bash
-cargo run --example generational_safety
+cargo run --example basic_usage
 ```
 
-### `pool_demo.rs`
-Shows basic pool allocation for runtime-sized arrays:
-- Creating pools with `alloc_pool()`
-- Initializing pools with functions using `alloc_pool_from_fn()`
-- Accessing pool data safely
+### 2. `safety_features.rs` - **Why the arena is reliable**
+Demonstrates the automatic safety features:
+- **Generational safety**: Handles become invalid after `clear()`/`restore_to()`
+- **Cross-arena safety**: Can't mix handles between different arenas
+- **Restore-to safety**: Checkpoint/restore functionality
 
 ```bash
-cargo run --example pool_demo
+cargo run --example safety_features
 ```
 
-### `video_chip.rs`
-Simulates a simple video chip using arena pools:
-- Color palette management
-- Sprite management with pools
-- Scanline rendering simulation
+### 3. `memory_optimization.rs` - **Save memory with smaller indices**
+Shows how to use smaller index types for memory efficiency:
+- Handle size comparison (`u8`, `u16`, `usize`)
+- Capacity limits for different index types
+- Practical memory savings calculations
 
 ```bash
-cargo run --example video_chip
+cargo run --example memory_optimization
 ```
-
-### `generic_storage.rs`
-Demonstrates type marker safety and generic storage:
-- Using type markers to prevent cross-arena access
-- Storing different generic types safely
-- Raw ID conversion for serialization
-
-```bash
-cargo run --example generic_storage
-```
-
-### `smaller_indices.rs`
-Shows memory savings from using smaller index types:
-- Comparing `usize`, `u16`, and `u8` index sizes
-- Practical capacity limits for different index types
-- Memory usage optimization
-
-```bash
-cargo run --example smaller_indices
-```
-
-## Key Features Demonstrated
-
-- **Generational Safety**: Handles become invalid after `restore_to()` or `clear()`
-- **Type Markers**: Compile-time prevention of cross-arena handle usage
-- **Pool Allocation**: Runtime-sized arrays with lightweight handles
-- **Custom Index Types**: Use `u8`, `u16` instead of `usize` to save memory (via `ArenaIndex` trait)
-- **No-std Support**: All examples work without the standard library
-- **Clean API**: `ArenaIndex` trait consolidates type constraints for readable signatures
-
-## API Changes from v0.1.0
-
-The main change is that access methods now return `Option<>` for safety:
-
-```rust
-// Old API
-let value = arena.get(&id);
-
-// New API  
-let value = arena.get(&id)?;  // or .unwrap()
-```
-
-This ensures stale handles are caught at runtime rather than causing undefined behavior.
-
-## ArenaIndex Trait
-
-The `ArenaIndex` trait consolidates all requirements for index types, making function signatures much cleaner:
-
-```rust
-// Before: Verbose type constraints
-where SizeType: Copy + TryFrom<usize> + Into<usize> + PartialOrd + core::ops::Add<Output = SizeType>
-
-// After: Clean and simple
-where SizeType: ArenaIndex
-```
-
-Supported index types:
-- `u8`: 0-255 bytes (8-byte handles)
-- `u16`: 0-65,535 bytes (8-byte handles) 
-- `usize`: Full system capacity (24-byte handles on 64-bit)

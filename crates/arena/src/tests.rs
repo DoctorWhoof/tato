@@ -73,17 +73,14 @@ mod arena_tests {
 
         assert_eq!(arena.used(), 0);
         assert_eq!(arena.remaining(), 1024);
-        assert_eq!(arena.allocation_count(), 0);
 
         let _id1 = arena.alloc(42u64).unwrap();
         assert_eq!(arena.used(), 8);
         assert_eq!(arena.remaining(), 1016);
-        assert_eq!(arena.allocation_count(), 1);
 
         let _id2 = arena.alloc(24u32).unwrap();
         assert_eq!(arena.used(), 12);
         assert_eq!(arena.remaining(), 1012);
-        assert_eq!(arena.allocation_count(), 2);
     }
 
     #[test]
@@ -100,7 +97,6 @@ mod arena_tests {
         // Generation should have incremented
         assert_eq!(arena.generation(), gen_before + 1);
         assert_eq!(arena.used(), 0);
-        assert_eq!(arena.allocation_count(), 0);
 
         // Old ID should be invalid
         assert!(arena.get(&id).is_none());
@@ -326,7 +322,7 @@ mod raw_id_tests {
 
         let id = arena.alloc(42u32).unwrap();
         let raw = id.raw();
-        let typed_back: ArenaId<u32, usize, ()> = raw.typed();
+        let typed_back: ArenaId<u32, u16, ()> = raw.typed();
 
         assert_eq!(id.offset(), typed_back.offset());
         assert_eq!(id.size(), typed_back.size());
@@ -352,7 +348,7 @@ mod raw_id_tests {
         let raw = id.raw();
 
         // This should work (correct size)
-        let _typed_u64: ArenaId<u64, usize, ()> = raw.typed();
+        let _typed_u64: ArenaId<u64, u16, ()> = raw.typed();
 
         // This should panic in debug mode (wrong size)
         // let _typed_u32: ArenaId<u32, usize, ()> = raw.typed(); // Would panic

@@ -5,20 +5,15 @@ edition = "2024"
 
 [dependencies]
 tato_math = { path = "../math"}
-tato_rng = { path = "../rng"}
 
 [[example]]
-name = "pool_demo"
-path = "examples/pool_demo.rs"
+name = "basic_usage"
+path = "examples/basic_usage.rs"
 
 [[example]]
-name = "video_chip"
-path = "examples/video_chip.rs"
+name = "safety_features"
+path = "examples/safety_features.rs"
 
 [[example]]
-name = "smaller_indices"
-path = "examples/smaller_indices.rs"
-
-[[example]]
-name = "generic_storage"
-path = "examples/generic_storage.rs"
+name = "memory_optimization"
+path = "examples/memory_optimization.rs"

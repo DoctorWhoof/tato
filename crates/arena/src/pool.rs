@@ -4,17 +4,17 @@ use core::marker::PhantomData;
 use crate::ArenaIndex;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pool<T, SizeType = usize, Marker = ()> {
+pub struct Pool<T, SizeType = u16, Marker = ()> {
     pub(crate) offset: SizeType,
     pub(crate) len: SizeType,
-    pub(crate) generation: u32,
-    pub(crate) arena_id: u32,
+    pub(crate) generation: u16,
+    pub(crate) arena_id: u16,
     pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
 impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     /// Create a new pool (internal use)
-    pub(crate) fn new(offset: SizeType, len: SizeType, generation: u32, arena_id: u32) -> Self {
+    pub(crate) fn new(offset: SizeType, len: SizeType, generation: u16, arena_id: u16) -> Self {
         Self { 
             offset, 
             len, 
@@ -49,12 +49,12 @@ impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     }
 
     /// Get generation
-    pub fn generation(&self) -> u32 {
+    pub fn generation(&self) -> u16 {
         self.generation
     }
 
     /// Get arena ID
-    pub fn arena_id(&self) -> u32 {
+    pub fn arena_id(&self) -> u16 {
         self.arena_id
     }
 
@@ -90,26 +90,3 @@ where
     }
 }
 
-/// Pool errors
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PoolError {
-    /// Index out of bounds
-    IndexOutOfBounds,
-    /// Pool is empty
-    Empty,
-    /// Pool not initialized
-    NotInitialized,
-    /// Stale handle (generation mismatch)
-    StaleHandle,
-}
-
-impl core::fmt::Display for PoolError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            PoolError::IndexOutOfBounds => write!(f, "Index out of bounds"),
-            PoolError::Empty => write!(f, "Pool is empty"),
-            PoolError::NotInitialized => write!(f, "Pool is not initialized"),
-            PoolError::StaleHandle => write!(f, "Stale handle (generation mismatch)"),
-        }
-    }
-}

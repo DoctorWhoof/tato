@@ -1,29 +1,26 @@
-use core::mem::{MaybeUninit, align_of, size_of};
 use core::marker::PhantomData;
+use core::mem::{MaybeUninit, align_of, size_of};
 use core::ptr;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicU16, Ordering};
 
-use crate::{ArenaId, Pool, ArenaIndex};
+use crate::{ArenaId, ArenaIndex, Pool};
 
 // Global counter for unique arena IDs (no-std compatible)
-static ARENA_ID_COUNTER: AtomicU32 = AtomicU32::new(1);
+static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
 
 /// Fixed-size arena with generational safety.
 /// LEN = bytes, SizeType = handle size, Marker = type safety marker.
-/// Fixed-size arena with generational safety. LEN = bytes, SizeType = handle size, Marker = type safety marker.
 #[repr(C, align(16))]
 #[derive(Debug)]
-pub struct Arena<const LEN: usize, SizeType = usize, Marker = ()> {
+pub struct Arena<const LEN: usize, SizeType = u16, Marker = ()> {
     /// Raw storage for all allocations
     storage: [MaybeUninit<u8>; LEN],
     /// Current allocation offset (bump pointer)
     offset: SizeType,
-    /// Number of allocations made (for debugging/stats)
-    count: SizeType,
     /// Current generation - incremented on restore_to()
-    generation: u32,
+    generation: u16,
     /// Unique arena ID for cross-arena safety
-    arena_id: u32,
+    arena_id: u16,
     /// Zero-sized type marker for compile-time arena safety
     _marker: PhantomData<Marker>,
 }
@@ -33,7 +30,6 @@ where
     SizeType: ArenaIndex,
 {
     /// Create a new arena with automatic cross-arena safety.
-    ///
     /// Each arena gets a unique ID from an atomic counter, ensuring perfect
     /// collision resistance and automatic cross-arena safety without requiring
     /// explicit marker types.
@@ -43,27 +39,8 @@ where
         Self {
             storage,
             offset: SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small")),
-            count: SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small")),
             generation: 0,
             arena_id: ARENA_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-            _marker: PhantomData,
-        }
-    }
-
-    /// Create arena with custom RNG for arena ID generation.
-    ///
-    /// Useful for testing scenarios where you need reproducible arena IDs.
-    /// Uses the provided `tato_rng::Rng` to generate the arena ID instead
-    /// of the atomic counter.
-    pub fn new_with_rng(rng: &mut tato_rng::Rng) -> Self {
-        // MaybeUninit doesn't need initialization
-        let storage = unsafe { MaybeUninit::uninit().assume_init() };
-        Self {
-            storage,
-            offset: SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small")),
-            count: SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small")),
-            generation: 0,
-            arena_id: rng.next_u32(),
             _marker: PhantomData,
         }
     }
@@ -79,11 +56,8 @@ where
 
         // Align offset
         let misalignment = offset_usize % align;
-        let aligned_offset = if misalignment != 0 {
-            offset_usize + align - misalignment
-        } else {
-            offset_usize
-        };
+        let aligned_offset =
+            if misalignment != 0 { offset_usize + align - misalignment } else { offset_usize };
 
         // Check space
         if aligned_offset + size > LEN {
@@ -102,17 +76,20 @@ where
             self.offset,
             SizeType::try_from(size).ok()?,
             self.generation,
-            self.arena_id
+            self.arena_id,
         );
 
         self.offset = self.offset + SizeType::try_from(size).ok()?;
-        self.count = self.count + SizeType::try_from(1).ok()?;
 
         Some(id)
     }
 
     /// Allocate pool with initialization function
-    pub fn alloc_pool_from_fn<T, F>(&mut self, count: usize, mut f: F) -> Option<Pool<T, SizeType, Marker>>
+    pub fn alloc_pool_from_fn<T, F>(
+        &mut self,
+        count: usize,
+        mut f: F,
+    ) -> Option<Pool<T, SizeType, Marker>>
     where
         F: FnMut(usize) -> T,
     {
@@ -132,11 +109,8 @@ where
 
         // Align offset
         let misalignment = offset_usize % align;
-        let aligned_offset = if misalignment != 0 {
-            offset_usize + align - misalignment
-        } else {
-            offset_usize
-        };
+        let aligned_offset =
+            if misalignment != 0 { offset_usize + align - misalignment } else { offset_usize };
 
         // Check space
         if aligned_offset + total_size > LEN {
@@ -153,15 +127,10 @@ where
             }
         }
 
-        let pool = Pool::new(
-            self.offset,
-            SizeType::try_from(count).ok()?,
-            self.generation,
-            self.arena_id
-        );
+        let pool =
+            Pool::new(self.offset, SizeType::try_from(count).ok()?, self.generation, self.arena_id);
 
         self.offset = self.offset + SizeType::try_from(total_size).ok()?;
-        self.count = self.count + SizeType::try_from(1).ok()?;
 
         Some(pool)
     }
@@ -174,17 +143,17 @@ where
         self.alloc_pool_from_fn(count, |_| T::default())
     }
 
-    /// Get reference to value (safe - checks generation and arena)
+    /// Validate an ArenaId for safe access
     #[inline]
-    pub fn get<T>(&self, id: &ArenaId<T, SizeType, Marker>) -> Option<&T> {
+    fn validate_id<T>(&self, id: &ArenaId<T, SizeType, Marker>) -> bool {
         // Check arena ID first (cross-arena safety)
         if id.arena_id != self.arena_id {
-            return None;
+            return false;
         }
 
         // Check generation (temporal safety)
         if id.generation != self.generation {
-            return None;
+            return false;
         }
 
         let id_end: usize = id.offset.into() + id.size.into();
@@ -192,11 +161,17 @@ where
 
         // Bounds check
         if id_end > offset_usize {
-            return None;
+            return false;
         }
 
         // Size check
-        if id.size.into() != size_of::<T>() {
+        id.size.into() == size_of::<T>()
+    }
+
+    /// Get reference to value (safe - checks generation and arena)
+    #[inline]
+    pub fn get<T>(&self, id: &ArenaId<T, SizeType, Marker>) -> Option<&T> {
+        if !self.validate_id(id) {
             return None;
         }
 
@@ -209,26 +184,7 @@ where
     /// Get mutable reference to value (safe - checks generation and arena)
     #[inline]
     pub fn get_mut<T>(&mut self, id: &ArenaId<T, SizeType, Marker>) -> Option<&mut T> {
-        // Check arena ID first (cross-arena safety)
-        if id.arena_id != self.arena_id {
-            return None;
-        }
-
-        // Check generation (temporal safety)
-        if id.generation != self.generation {
-            return None;
-        }
-
-        let id_end: usize = id.offset.into() + id.size.into();
-        let offset_usize: usize = self.offset.into();
-
-        // Bounds check
-        if id_end > offset_usize {
-            return None;
-        }
-
-        // Size check
-        if id.size.into() != size_of::<T>() {
+        if !self.validate_id(id) {
             return None;
         }
 
@@ -255,31 +211,40 @@ where
     #[inline]
     pub unsafe fn get_unchecked_mut<T>(&mut self, id: &ArenaId<T, SizeType, Marker>) -> &mut T {
         debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch in get_unchecked_mut");
-        debug_assert_eq!(id.generation, self.generation, "Generation mismatch in get_unchecked_mut");
+        debug_assert_eq!(
+            id.generation, self.generation,
+            "Generation mismatch in get_unchecked_mut"
+        );
         unsafe {
             let ptr = self.storage.as_mut_ptr().add(id.offset.into()) as *mut T;
             &mut *ptr
         }
     }
 
-    /// Get pool as slice (safe - checks generation and arena)
+    /// Validate a Pool for safe access
     #[inline]
-    pub fn get_pool<T>(&self, pool: &Pool<T, SizeType, Marker>) -> Option<&[T]> {
+    fn validate_pool<T>(&self, pool: &Pool<T, SizeType, Marker>) -> bool {
         // Check arena ID first (cross-arena safety)
         if pool.arena_id != self.arena_id {
-            return None;
+            return false;
         }
 
         // Check generation (temporal safety)
         if pool.generation != self.generation {
-            return None;
+            return false;
         }
 
         let pool_end: usize = pool.offset.into() + pool.len.into() * size_of::<T>();
         let offset_usize: usize = self.offset.into();
 
         // Bounds check
-        if pool_end > offset_usize {
+        pool_end <= offset_usize
+    }
+
+    /// Get pool as slice (safe - checks generation and arena)
+    #[inline]
+    pub fn get_pool<T>(&self, pool: &Pool<T, SizeType, Marker>) -> Option<&[T]> {
+        if !self.validate_pool(pool) {
             return None;
         }
 
@@ -296,21 +261,7 @@ where
     /// Get pool as mutable slice (safe - checks generation and arena)
     #[inline]
     pub fn get_pool_mut<T>(&mut self, pool: &Pool<T, SizeType, Marker>) -> Option<&mut [T]> {
-        // Check arena ID first (cross-arena safety)
-        if pool.arena_id != self.arena_id {
-            return None;
-        }
-
-        // Check generation (temporal safety)
-        if pool.generation != self.generation {
-            return None;
-        }
-
-        let pool_end: usize = pool.offset.into() + pool.len.into() * size_of::<T>();
-        let offset_usize: usize = self.offset.into();
-
-        // Bounds check
-        if pool_end > offset_usize {
+        if !self.validate_pool(pool) {
             return None;
         }
 
@@ -329,7 +280,10 @@ where
     #[inline]
     pub unsafe fn get_pool_unchecked<T>(&self, pool: &Pool<T, SizeType, Marker>) -> &[T] {
         debug_assert_eq!(pool.arena_id, self.arena_id, "Arena ID mismatch in get_pool_unchecked");
-        debug_assert_eq!(pool.generation, self.generation, "Generation mismatch in get_pool_unchecked");
+        debug_assert_eq!(
+            pool.generation, self.generation,
+            "Generation mismatch in get_pool_unchecked"
+        );
 
         if pool.len.into() == 0 {
             return &[];
@@ -344,9 +298,18 @@ where
     /// Get pool as mutable slice (unsafe - no generation check)
     /// Only use this if you're certain the handle is valid
     #[inline]
-    pub unsafe fn get_pool_unchecked_mut<T>(&mut self, pool: &Pool<T, SizeType, Marker>) -> &mut [T] {
-        debug_assert_eq!(pool.arena_id, self.arena_id, "Arena ID mismatch in get_pool_unchecked_mut");
-        debug_assert_eq!(pool.generation, self.generation, "Generation mismatch in get_pool_unchecked_mut");
+    pub unsafe fn get_pool_unchecked_mut<T>(
+        &mut self,
+        pool: &Pool<T, SizeType, Marker>,
+    ) -> &mut [T] {
+        debug_assert_eq!(
+            pool.arena_id, self.arena_id,
+            "Arena ID mismatch in get_pool_unchecked_mut"
+        );
+        debug_assert_eq!(
+            pool.generation, self.generation,
+            "Generation mismatch in get_pool_unchecked_mut"
+        );
 
         if pool.len.into() == 0 {
             return &mut [];
@@ -361,7 +324,6 @@ where
     /// Clear arena (doesn't drop values!)
     pub fn clear(&mut self) {
         self.offset = SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small"));
-        self.count = SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small"));
         self.generation = self.generation.wrapping_add(1);
     }
 
@@ -375,13 +337,8 @@ where
         LEN - self.offset.into()
     }
 
-    /// Number of allocations
-    pub fn allocation_count(&self) -> usize {
-        self.count.into()
-    }
-
     /// Current generation
-    pub fn generation(&self) -> u32 {
+    pub fn generation(&self) -> u16 {
         self.generation
     }
 
@@ -389,29 +346,24 @@ where
     /// All handles created after this point become invalid
     pub fn restore_to(&mut self, offset: usize) {
         if offset <= LEN {
-            self.offset = SizeType::try_from(offset).unwrap_or_else(|_| panic!("Invalid restore offset"));
+            self.offset =
+                SizeType::try_from(offset).unwrap_or_else(|_| panic!("Invalid restore offset"));
             self.generation = self.generation.wrapping_add(1);
-            // Note: Not resetting count as it tracks total allocations made
         }
     }
 
     /// Check if a handle is valid for this arena
     pub fn is_valid<T>(&self, id: &ArenaId<T, SizeType, Marker>) -> bool {
-        id.arena_id == self.arena_id
-            && id.generation == self.generation
-            && id.offset.into() + id.size.into() <= self.offset.into()
-            && id.size.into() == size_of::<T>()
+        self.validate_id(id)
     }
 
     /// Check if a pool handle is valid for this arena
     pub fn is_pool_valid<T>(&self, pool: &Pool<T, SizeType, Marker>) -> bool {
-        pool.arena_id == self.arena_id
-            && pool.generation == self.generation
-            && pool.offset.into() + pool.len.into() * size_of::<T>() <= self.offset.into()
+        self.validate_pool(pool)
     }
 
     /// Get this arena's unique ID
-    pub fn arena_id(&self) -> u32 {
+    pub fn arena_id(&self) -> u16 {
         self.arena_id
     }
 }
@@ -431,14 +383,14 @@ fn test_generation_wraparound() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Set generation near max
-    arena.generation = u32::MAX - 1;
+    arena.generation = u16::MAX - 1;
 
     let id1 = arena.alloc(42u32).unwrap();
-    assert_eq!(id1.generation(), u32::MAX - 1);
+    assert_eq!(id1.generation(), u16::MAX - 1);
 
     // This should wrap around
     arena.clear();
-    assert_eq!(arena.generation(), u32::MAX);
+    assert_eq!(arena.generation(), u16::MAX);
 
     arena.clear();
     assert_eq!(arena.generation(), 0); // Wrapped around
