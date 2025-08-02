@@ -10,9 +10,12 @@ pub use tato_video as video;
 pub mod assets;
 pub use assets::*;
 
-use tato_video::*;
+mod error;
+pub use error::*;
 
 pub mod graphics;
+
+use tato_video::*;
 
 mod tato;
 pub use tato::*;

@@ -125,16 +125,18 @@ impl Tato {
 
     /// Adds a tileset as a batch of tiles to the bank
     /// Returns the tileset id.
-    pub fn push_tileset(&mut self, bank_id: u8, data: TilesetData) -> Option<TilesetID> {
+    pub fn push_tileset(&mut self, bank_id: u8, data: TilesetData) -> TatoResult<TilesetID> {
         // Check if bank_id is valid before storing checkpoint
         if bank_id as usize >= self.banks.len() {
-            return None;
+            return Err(TatoError::InvalidBankId(bank_id));
         }
 
         // Save checkpoint before loading
         {
             let assets = &mut self.assets;
-            assert!(assets.checkpoint_head < 32, "Checkpoint stack overflow (max 32 tilesets)");
+            if assets.checkpoint_head >= 32 {
+                return Err(TatoError::CheckpointStackOverflow);
+            }
 
             // Save bank states
             let mut bank_tile_counts = [0u8; TILE_BANK_COUNT];
@@ -168,14 +170,18 @@ impl Tato {
             None => {
                 // Rollback checkpoint
                 self.assets.checkpoint_head -= 1;
-                return None;
+                return Err(TatoError::InvalidBankId(bank_id));
             },
         };
         let assets = &mut self.assets;
         if bank.tile_count() + data.tiles.len() > bank.tile_capacity() {
             // Rollback checkpoint
             assets.checkpoint_head -= 1;
-            return None;
+            return Err(TatoError::TilesetCapacityExceeded {
+                bank_id,
+                requested: data.tiles.len(),
+                available: bank.tile_capacity() - bank.tile_count(),
+            });
         }
         let id = assets.tileset_head;
 
@@ -257,13 +263,15 @@ impl Tato {
         assets.color_head += color_count;
         assets.sub_palette_head += sub_palettes_len;
         assets.tileset_head += 1;
-        Some(TilesetID(id))
+        Ok(TilesetID(id))
     }
 
     /// Restore to previous checkpoint, unloading the last tileset
-    pub fn pop_tileset(&mut self) {
+    pub fn pop_tileset(&mut self) -> TatoResult<()> {
         let assets = &mut self.assets;
-        assert!(assets.checkpoint_head > 0, "No tileset to pop");
+        if assets.checkpoint_head == 0 {
+            return Err(TatoError::NoTilesetToPop);
+        }
 
         assets.checkpoint_head -= 1;
         let checkpoint = assets.checkpoints[assets.checkpoint_head as usize];
@@ -299,34 +307,39 @@ impl Tato {
                 checkpoint.bank_sub_palette_counts[i],
             );
         }
+        Ok(())
     }
 
     pub fn load_tilemap<const LEN: usize>(
         &mut self,
         tileset_id: TilesetID,
         map: &Tilemap<LEN>,
-    ) -> Option<MapID> {
+    ) -> TatoResult<MapID> {
         // Validate that maps can only be loaded for the current tileset
-        // let assets = &mut self.assets;
-        assert_eq!(
-            tileset_id.0,
-            self.assets.tileset_head.saturating_sub(1),
-            "Can only load maps for the current (most recent) tileset"
-        );
+        let expected = self.assets.tileset_head.saturating_sub(1);
+        if tileset_id.0 != expected {
+            return Err(TatoError::InvalidTilesetForMap {
+                provided: tileset_id.0,
+                expected,
+            });
+        }
 
         // Acquire tile offset for desired tileset
-        let tileset = &self.assets.tilesets.get(tileset_id.0 as usize)?;
+        let tileset = self.assets.tilesets.get(tileset_id.0 as usize)
+            .ok_or(TatoError::InvalidTilesetId(tileset_id.0))?;
         let tileset_offset = tileset.tile_start;
         let bank_id = tileset.bank_id;
 
         if self.assets.map_head as usize >= self.assets.map_entries.len() {
-            panic!(err!("Map capacity exceeded on bank {}"), bank_id);
+            return Err(TatoError::MapCapacityExceeded { bank_id });
         }
 
-        assert!(
-            map.len() % map.columns as usize == 0,
-            err!("Invalid Tilemap dimensions, data.len() must be divisible by columns")
-        );
+        if map.len() % map.columns as usize != 0 {
+            return Err(TatoError::InvalidTilemapDimensions {
+                len: map.len(),
+                columns: map.columns,
+            });
+        }
 
         // Allocate remapped cells in arena
         let cells_pool = self
@@ -338,7 +351,7 @@ impl Tato {
                 flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
                 Cell { id: TileID(cell.id.0 + tileset_offset), flags }
             })
-            .expect("Arena out of space");
+            .ok_or(TatoError::ArenaOutOfSpace)?;
 
         // Store entry
         let map_idx = self.assets.map_head;
@@ -346,10 +359,10 @@ impl Tato {
             TilemapEntry { cells: cells_pool, columns: map.columns, rows: map.rows };
 
         if self.assets.map_head == 255 {
-            panic!(err!("Tilemap capacity reached"))
+            return Err(TatoError::TilemapCapacityReached);
         } else {
             self.assets.map_head += 1;
-            Some(MapID(map_idx))
+            Ok(MapID(map_idx))
         }
     }
 
@@ -357,18 +370,19 @@ impl Tato {
         &mut self,
         tileset_id: TilesetID,
         frames: &[Tilemap<FRAME_LEN>; FRAME_COUNT],
-    ) -> Option<StripID> {
+    ) -> TatoResult<StripID> {
         // Acquire tile offset for desired tileset
         let frames_idx = self.assets.strip_head;
         let start_index = self.assets.map_head;
-        let frame_count = u8::try_from(FRAME_COUNT).expect("Frame count must be less than 256");
+        let frame_count = u8::try_from(FRAME_COUNT)
+            .map_err(|_| TatoError::FrameCountTooLarge(FRAME_COUNT))?;
         let available = 255 - start_index;
-        assert!(
-            available >= frame_count,
-            err!("Not enough space to fit {} animation frames, only {} left"),
-            FRAME_COUNT,
-            available
-        );
+        if available < frame_count {
+            return Err(TatoError::InsufficientAnimationFrameSpace {
+                requested: FRAME_COUNT,
+                available,
+            });
+        }
         // Load frames
         for map in frames {
             self.load_tilemap(tileset_id, map)?;
@@ -377,53 +391,60 @@ impl Tato {
         self.assets.strip_entries[frames_idx as usize] = StripEntry { start_index, frame_count };
         // Advance and return
         if self.assets.strip_head == 255 {
-            panic!(err!("Animation frames capacity reached"))
+            return Err(TatoError::AnimationFramesCapacityExceeded);
         } else {
             self.assets.strip_head += 1;
-            Some(StripID(frames_idx))
+            Ok(StripID(frames_idx))
         }
     }
 
     pub fn init_anim<const LEN: usize>(
         &mut self,
-        // tileset_id: TilesetID,
-        strip_id: StripID,
         anim: Anim<LEN>,
-    ) -> Option<AnimID> {
-        let strip = self.assets.strip_entries.get(strip_id.0 as usize)?;
+    ) -> TatoResult<AnimID> {
+        let strip = self.assets.strip_entries.get(anim.strip_id.0 as usize)
+            .ok_or(TatoError::InvalidStripId(anim.strip_id.0))?;
 
         // Check capacity
         if self.assets.anim_head as usize >= self.assets.anim_entries.len() {
-            panic!(err!("Animation capacity exceeded"));
+            return Err(TatoError::AnimationCapacityExceeded);
         }
 
         // Validate
         for frame in &anim.frames {
-            assert!(*frame < strip.frame_count);
+            if *frame >= strip.frame_count {
+                return Err(TatoError::InvalidFrameIndex {
+                    frame: *frame,
+                    max_frames: strip.frame_count,
+                });
+            }
         }
 
-        let frames =
-            self.assets.arena.alloc_pool_from_fn(anim.frames.len(), |i| anim.frames[i]).unwrap();
+        let frames = self.assets.arena
+            .alloc_pool_from_fn(anim.frames.len(), |i| anim.frames[i])
+            .ok_or(TatoError::ArenaOutOfSpace)?;
         self.assets.anim_entries[self.assets.anim_head as usize] = AnimEntry {
             frames,
             fps: anim.fps,
             repeat: anim.repeat,
-            strip_id, // tileset,
+            strip_id: anim.strip_id, // tileset,
         };
 
         let id = self.assets.anim_head;
         if self.assets.anim_head == 255 {
-            panic!(err!("Animation capacity reached"))
+            return Err(TatoError::AnimationCapacityReached);
         } else {
             self.assets.anim_head += 1;
-            Some(AnimID(id))
+            Ok(AnimID(id))
         }
     }
 
-    pub fn get_tilemap(&self, map_id: MapID) -> Option<TilemapRef> {
-        let entry = &self.assets.map_entries.get(map_id.0 as usize)?;
-        let cells = self.assets.arena.get_pool(&entry.cells)?;
-        Some(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
+    pub fn get_tilemap(&self, map_id: MapID) -> TatoResult<TilemapRef> {
+        let entry = self.assets.map_entries.get(map_id.0 as usize)
+            .ok_or(TatoError::InvalidMapId(map_id.0))?;
+        let cells = self.assets.arena.get_pool(&entry.cells)
+            .ok_or(TatoError::ArenaPoolRetrievalFailed)?;
+        Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
     // pub fn get_animation(&self, anim_id: AnimID) -> AnimRef {

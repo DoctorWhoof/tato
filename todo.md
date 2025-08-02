@@ -1,6 +1,6 @@
 ### General Engine
 
-[ ] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
+[x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
 
 [ ] Drawing
     [x] Tilemap to Tilemap

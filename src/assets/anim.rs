@@ -24,6 +24,7 @@ pub struct Anim<const LEN: usize> {
     pub fps: u8,
     pub repeat: bool,
     pub frames: [u8; LEN],
+    pub strip_id: StripID
 }
 
 #[derive(Debug, Clone, Default)]

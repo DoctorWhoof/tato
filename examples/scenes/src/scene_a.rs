@@ -13,7 +13,7 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(t: &mut Tato, state: &mut State) -> Self {
+    pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(2, 1, 0, 7);
         t.video.wrap_bg = false;
@@ -46,8 +46,8 @@ impl SceneA {
         }
 
         // Define new tiles
-        let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET).unwrap();
-        let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET).unwrap();
+        let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
+        let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET)?;
         // let _tileset = t.add_tileset(0, &TILESET_DEFAULT).unwrap();
         let smiley = TILE_SMILEY;
         let arrow = TILE_ARROW;
@@ -85,7 +85,7 @@ impl SceneA {
         smileys.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
 
         // Store initial state and return
-        Self {
+        Ok(Self {
             player: Entity {
                 x: (t.video.width() / 2) as f32,
                 y: (t.video.height() / 2) as f32,
@@ -94,7 +94,7 @@ impl SceneA {
             },
             smileys,
             movement_start: 0.0,
-        }
+        })
     }
 
     // Process the scene on each frame

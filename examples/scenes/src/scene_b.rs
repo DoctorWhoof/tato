@@ -8,7 +8,7 @@ pub struct SceneB {
 }
 
 impl SceneB {
-    pub fn new(t: &mut Tato, state: &mut State) -> Self {
+    pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
         // Center view
         let x = t.video.max_x() / 2;
         let y = t.video.max_y() / 2;
@@ -20,7 +20,7 @@ impl SceneB {
         let palette_bg = t.banks[0].push_subpalette([DARK_GREEN, GREEN, DARK_GREEN, DARK_GREEN]);
         let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
         let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
-        let _tileset = t.push_tileset(0, DEFAULT_TILESET);
+        let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let tile = TILE_SMILEY;
 
         for cell in &mut state.bg.cells {
@@ -28,7 +28,7 @@ impl SceneB {
             cell.flags = palette_bg.into();
         }
 
-        Self {
+        Ok(Self {
             player: Entity { x: x as f32, y: y as f32, tile, flags: palette_cycler.into() },
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
@@ -38,7 +38,7 @@ impl SceneB {
                 tile,
                 flags: palette_smiley.into(),
             }),
-        }
+        })
     }
 
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {

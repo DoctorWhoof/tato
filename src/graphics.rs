@@ -11,7 +11,7 @@ impl Tato {
         src: MapID,
         src_rect: Option<Rect<u16>>,
     ) {
-        let Some(src) = self.get_tilemap(src) else {return };
+        let Ok(src) = self.get_tilemap(src) else { return };
         dest.copy_from(&src, src_rect, dest_rect);
     }
 
@@ -71,10 +71,11 @@ impl Tato {
         map_id: MapID,
     ) {
         // let map = &self.assets.map_entries[map_id.0 as usize];
-        let Some(map) = self.get_tilemap(map_id) else { return };
+        let Ok(map) = self.get_tilemap(map_id) else { return };
 
-        assert!(map.columns == 3, err!("Patch tilemaps must be 3 columns wide."));
-        assert!(map.rows == 3, err!("Patch rows must be 3 rows tall."));
+        if map.columns != 3 || map.rows != 3 {
+            return; // Silently return for invalid patch dimensions
+        }
 
         let top_left = map.cells[0];
         bg.set_cell(BgOp {
@@ -84,7 +85,9 @@ impl Tato {
             flags: top_left.flags,
         });
 
-        debug_assert!((bg_rect.x as usize + bg_rect.w as usize) < u16::MAX as usize);
+        if (bg_rect.x as usize + bg_rect.w as usize) >= u16::MAX as usize {
+            return; // Prevent overflow
+        }
         let top = map.cells[1];
         for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
             bg.set_cell(BgOp { col, row: bg_rect.y, tile_id: top.id, flags: top.flags });
@@ -104,7 +107,9 @@ impl Tato {
             bg.set_cell(BgOp { col: bg_rect.x, row, tile_id: left.id, flags: left.flags });
         }
 
-        debug_assert!((bg_rect.y as usize + bg_rect.h as usize) < u16::MAX as usize);
+        if (bg_rect.y as usize + bg_rect.h as usize) >= u16::MAX as usize {
+            return; // Prevent overflow
+        }
         let center = map.cells[4];
         for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
             for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {

@@ -1,13 +1,13 @@
 use tato::{Tato, prelude::*};
 use tato_raylib::*;
 
-fn main() {
+fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
 
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let ts_font = tato.push_tileset(0, FONT_TILESET).unwrap();
+    let ts_font = tato.push_tileset(0, FONT_TILESET)?;
 
     let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
     let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
@@ -137,4 +137,5 @@ fn main() {
         // Update backends
         backend.render(&mut tato, &[&bg_map]);
     }
+    Ok(())
 }

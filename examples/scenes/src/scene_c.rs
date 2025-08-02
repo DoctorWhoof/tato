@@ -8,8 +8,8 @@ pub struct SceneC {
 }
 
 impl SceneC {
-    pub fn new(t: &mut Tato, state: &mut State) -> Self {
-        let _tileset = t.push_tileset(0, DEFAULT_TILESET);
+    pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
+        let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
@@ -37,7 +37,7 @@ impl SceneC {
             t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
         }
 
-        SceneC { smiley, counter: 0 }
+        Ok(SceneC { smiley, counter: 0 })
     }
 
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {

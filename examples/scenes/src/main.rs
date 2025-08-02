@@ -41,7 +41,7 @@ pub enum Scene {
     C(SceneC),
 }
 
-fn main() {
+fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut scene = Scene::None;
     let mut t = Tato::new(240, 180, 60);
@@ -85,10 +85,11 @@ fn main() {
             t.video.reset_all();
             t.reset();
             match choice {
-                SceneChange::A => scene = Scene::A(SceneA::new(&mut t, &mut state)),
-                SceneChange::B => scene = Scene::B(SceneB::new(&mut t, &mut state)),
-                SceneChange::C => scene = Scene::C(SceneC::new(&mut t, &mut state)),
+                SceneChange::A => scene = Scene::A(SceneA::new(&mut t, &mut state)?),
+                SceneChange::B => scene = Scene::B(SceneB::new(&mut t, &mut state)?),
+                SceneChange::C => scene = Scene::C(SceneC::new(&mut t, &mut state)?),
             }
         }
     }
+    Ok(())
 }

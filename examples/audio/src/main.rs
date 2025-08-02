@@ -9,7 +9,7 @@ pub enum SoundType {
     WhiteNoise,
 }
 
-fn main() {
+fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
 
@@ -19,7 +19,7 @@ fn main() {
     let palette_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
 
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
-    let font = tato.push_tileset(0, FONT_TILESET).unwrap();
+    let font = tato.push_tileset(0, FONT_TILESET)?;
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
@@ -124,4 +124,5 @@ fn main() {
     }
 
     audio_backend.write_wav_file();
+    Ok(())
 }
