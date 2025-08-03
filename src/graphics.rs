@@ -28,13 +28,23 @@ impl Tato {
     /// internal frame counter.
     #[inline(always)]
     pub fn get_anim_frame(&self, anim: AnimID) -> usize {
-        let anim_entry = self.assets.anim_entries.get(anim.0 as usize).unwrap();
+        // AnimID(0) means no animation - return 0 as default frame
+        if anim.0 == 0 {
+            return 0;
+        }
+        let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
+            return 0;
+        };
         self.get_frame_from_anim_entry(anim_entry)
     }
 
     /// Draws a sprite's frame, which is calculated using the video chip's
     /// internal frame counter.
     pub fn draw_anim(&mut self, anim: AnimID, bundle: SpriteBundle) {
+        // AnimID(0) means no animation - don't draw anything
+        if anim.0 == 0 {
+            return;
+        }
         let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
             return;
         };

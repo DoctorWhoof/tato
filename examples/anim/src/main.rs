@@ -22,7 +22,7 @@ const BANK_FG: u8 = 1;
 fn main() -> TatoResult<()> {
     // Init
     let bg_map = Tilemap::<1024>::new(32, 32);
-    let mut tato = Tato::new(W, H, 60);
+    let mut tato = Tato::new(W, H, 30);
     let mut backend = RaylibBackend::new(&tato);
 
     tato.video.bg_color = RGBA12::new(2, 3, 4, 7);

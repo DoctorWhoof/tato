@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use tato_layout::{Align::*, Edge::*, Fitting, Frame, math::{Rect, Num}};
+use tato_layout::{Align::*, Edge::*, Fitting, Frame, Rect, Num};
 
 #[macroquad::main("Frame Layout")]
 async fn main() {

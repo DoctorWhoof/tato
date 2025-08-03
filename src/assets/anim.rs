@@ -12,8 +12,11 @@ pub(crate) struct StripEntry {
     pub frame_count: u8
 }
 
-/// A Reference to an animation object
-#[derive(Debug, Clone, Copy, Hash, PartialEq)]
+/// A Reference to an animation object.
+/// 
+/// AnimID(0) represents "no animation" and is the default value.
+/// Valid animation IDs start from 1.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Default)]
 pub struct AnimID(pub u8);
 
 /// Tiny metadata to control animation playback of frames already

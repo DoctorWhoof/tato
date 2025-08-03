@@ -69,7 +69,8 @@
 [x] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?
     [x] Create Anims out of a "frame array"
---->[ ] Add and use "tato.time" to draw animations, instead of video.frame_count(), to ensure frame rate independence.
+    [x] Add and use "tato.time" to draw animations, instead of video.frame_count(), to ensure frame rate independence.
+    [x] AnimID(0) should mean "no animation"
 
 [x] Fonts: Replace text rendering using Anim to use Fonts.
     . Update: Fonts are just tilemaps, to allow flags

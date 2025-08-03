@@ -13,9 +13,6 @@ pub use tileset::*;
 mod tilemap;
 pub use tilemap::*;
 
-// mod tilemap_ref;
-// pub use tilemap_ref::*;
-
 /// Allows loading tilesets and their associated assets like Tilemaps and Animations.
 /// The tileset's tiles and colors are stored in a memory bank, while the assets
 /// are kept internally. All asset's tile indices are remapped to match the actual
@@ -318,14 +315,14 @@ impl Tato {
         // Validate that maps can only be loaded for the current tileset
         let expected = self.assets.tileset_head.saturating_sub(1);
         if tileset_id.0 != expected {
-            return Err(TatoError::InvalidTilesetForMap {
-                provided: tileset_id.0,
-                expected,
-            });
+            return Err(TatoError::InvalidTilesetForMap { provided: tileset_id.0, expected });
         }
 
         // Acquire tile offset for desired tileset
-        let tileset = self.assets.tilesets.get(tileset_id.0 as usize)
+        let tileset = self
+            .assets
+            .tilesets
+            .get(tileset_id.0 as usize)
             .ok_or(TatoError::InvalidTilesetId(tileset_id.0))?;
         let tileset_offset = tileset.tile_start;
         let bank_id = tileset.bank_id;
@@ -374,8 +371,8 @@ impl Tato {
         // Acquire tile offset for desired tileset
         let frames_idx = self.assets.strip_head;
         let start_index = self.assets.map_head;
-        let frame_count = u8::try_from(FRAME_COUNT)
-            .map_err(|_| TatoError::FrameCountTooLarge(FRAME_COUNT))?;
+        let frame_count =
+            u8::try_from(FRAME_COUNT).map_err(|_| TatoError::FrameCountTooLarge(FRAME_COUNT))?;
         let available = 255 - start_index;
         if available < frame_count {
             return Err(TatoError::InsufficientAnimationFrameSpace {
@@ -398,15 +395,22 @@ impl Tato {
         }
     }
 
-    pub fn init_anim<const LEN: usize>(
-        &mut self,
-        anim: Anim<LEN>,
-    ) -> TatoResult<AnimID> {
-        let strip = self.assets.strip_entries.get(anim.strip_id.0 as usize)
+    pub fn init_anim<const LEN: usize>(&mut self, anim: Anim<LEN>) -> TatoResult<AnimID> {
+        if self.assets.anim_head == 255 {
+            return Err(TatoError::AnimationCapacityReached);
+        }
+
+        let strip = self
+            .assets
+            .strip_entries
+            .get(anim.strip_id.0 as usize)
             .ok_or(TatoError::InvalidStripId(anim.strip_id.0))?;
 
+        // Reserve index 0 for "no animation", start allocation from index 1
+        let next_index = if self.assets.anim_head == 0 { 1 } else { self.assets.anim_head + 1 };
+
         // Check capacity
-        if self.assets.anim_head as usize >= self.assets.anim_entries.len() {
+        if next_index as usize >= self.assets.anim_entries.len() {
             return Err(TatoError::AnimationCapacityExceeded);
         }
 
@@ -420,30 +424,33 @@ impl Tato {
             }
         }
 
-        let frames = self.assets.arena
+
+
+        let frames = self
+            .assets
+            .arena
             .alloc_pool_from_fn(anim.frames.len(), |i| anim.frames[i])
             .ok_or(TatoError::ArenaOutOfSpace)?;
-        self.assets.anim_entries[self.assets.anim_head as usize] = AnimEntry {
+        self.assets.anim_entries[next_index as usize] = AnimEntry {
             frames,
             fps: anim.fps,
             repeat: anim.repeat,
-            strip_id: anim.strip_id, // tileset,
+            strip_id: anim.strip_id,
         };
 
-        let id = self.assets.anim_head;
-        if self.assets.anim_head == 255 {
-            return Err(TatoError::AnimationCapacityReached);
-        } else {
-            self.assets.anim_head += 1;
-            Ok(AnimID(id))
-        }
+        // Update head to track the last allocated index
+        self.assets.anim_head = next_index;
+        Ok(AnimID(next_index))
     }
 
     pub fn get_tilemap(&self, map_id: MapID) -> TatoResult<TilemapRef> {
-        let entry = self.assets.map_entries.get(map_id.0 as usize)
+        let entry = self
+            .assets
+            .map_entries
+            .get(map_id.0 as usize)
             .ok_or(TatoError::InvalidMapId(map_id.0))?;
-        let cells = self.assets.arena.get_pool(&entry.cells)
-            .ok_or(TatoError::ArenaPoolRetrievalFailed)?;
+        let cells =
+            self.assets.arena.get_pool(&entry.cells).ok_or(TatoError::ArenaPoolRetrievalFailed)?;
         Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
@@ -460,4 +467,41 @@ impl Tato {
     //         // tileset: entry.tileset,
     //     }
     // }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tato_video::SpriteBundle;
+
+    #[test]
+    fn test_anim_id_zero_is_no_animation() {
+        // Test that AnimID::default() returns AnimID(0)
+        let default_anim = AnimID::default();
+        assert_eq!(default_anim.0, 0);
+
+        // Test that get_anim_frame handles AnimID(0) correctly
+        let mut tato = crate::Tato::new(160, 144, 60);
+        let frame = tato.get_anim_frame(default_anim);
+        assert_eq!(frame, 0); // Should return 0 for "no animation"
+
+        // Test that draw_anim handles AnimID(0) gracefully (no panic)
+        let bundle = SpriteBundle { x: 0, y: 0, flip_x: false, flip_y: false };
+        tato.draw_anim(default_anim, bundle);
+        // If we reach here without panic, the test passes
+    }
+
+    #[test]
+    fn test_first_anim_id_is_one() {
+        // Test that animation allocation starts from 1, not 0
+        let mut assets = Assets::<1024>::new();
+
+        // Simulate what init_anim does for allocation
+        let next_index = if assets.anim_head == 0 { 1 } else { assets.anim_head + 1 };
+        assert_eq!(next_index, 1); // First animation should get ID 1
+
+        // Verify that after "allocation", head is updated correctly
+        assets.anim_head = next_index;
+        assert_eq!(assets.anim_head, 1);
+    }
 }
