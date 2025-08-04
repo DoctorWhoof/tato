@@ -4,7 +4,7 @@ use tato::prelude::*;
 pub const PATCH_TILESET: TilesetData = TilesetData {
     tiles: &PATCH_TILES,
     colors: Some(&PATCH_COLORS),
-    sub_palettes: Some(&[&PATCH_SUBPALETTE_0, &PATCH_SUBPALETTE_1]),
+    sub_palettes: Some(&[&PATCH_SUBPALETTE_0, &PATCH_SUBPALETTE_1, &PATCH_SUBPALETTE_2]),
 };
 
 pub const PATCH_COLORS: [RGBA12; 4] = [
@@ -18,6 +18,8 @@ pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
 
 pub const PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
 
+pub const PATCH_SUBPALETTE_2: [u8; 4] = [2, 0, 0, 0];
+
 pub const PATCH_MAP: Tilemap<9> = Tilemap {
     columns: 3,
     rows: 3,
@@ -26,7 +28,7 @@ pub const PATCH_MAP: Tilemap<9> = Tilemap {
         Cell { id: TileID(1), flags: TileFlags(0), group: 0 },
         Cell { id: TileID(2), flags: TileFlags(1), group: 0 },
         Cell { id: TileID(1), flags: TileFlags(32), group: 0 },
-        Cell { id: TileID(3), flags: TileFlags(0), group: 0 },
+        Cell { id: TileID(3), flags: TileFlags(2), group: 0 },
         Cell { id: TileID(4), flags: TileFlags(1), group: 0 },
         Cell { id: TileID(2), flags: TileFlags(97), group: 0 },
         Cell { id: TileID(4), flags: TileFlags(97), group: 0 },
@@ -73,14 +75,14 @@ pub const PATCH_TILES: [Tile<2>; 6] = [
     },
     Tile {
         clusters: [
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
         ],
     },
     Tile {

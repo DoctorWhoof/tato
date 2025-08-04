@@ -11,7 +11,26 @@
         . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
         . Will be useful to create BG interactions (i.e. door opening)
 
+--->[ ] Eliminate subpalettes... replace with 4 colors per tile.
+        . Simplify pipeline, reduce errors due to subpalette limit reached
+        . 4 colors per tile stays. Maybe a "Mode 1" where we can have 16 colors per tile?...
+        . Clusters can stay as is? (2 bits per pixel)
+            . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
+        . Should still allow palette swap, will need a palette override mechanism
+        . Subpalette bits can now be groups, up to 15 + None
+            . Instead of using bits, simply use named groups like WALL and DOOR
+            . This will keep Cell at 4 bytes:
+                - Id: 1 byte
+                - Flags: 1 bytes
+                - Palette: 2 bytes (4 bits per color)
+
 ### Backend and examples
+
+--->[ ] Some way to easily send information to the backend.
+    . Some static mut shenanigans? Should be OK since it won't affect gameplay. Investigate.
+        [ ] Debug rects with colors
+        [ ] Debug text
+
 
 [.] Use LIRQ (Line interrupt) to draw Game GUI
     . Will need to switch Tile bank halfway through

@@ -17,9 +17,9 @@ pub struct TilesetBuilder<'a> {
     pub name: String,
     pub pixels: Vec<u8>,
     pub tile_hash: HashMap<CanonicalTile, Cell>,
-    pub groups: GroupBuilder,
     pub sub_palette_name_hash: HashMap<[u8; COLORS_PER_TILE as usize], String>,
     pub sub_palettes: Vec<[u8; COLORS_PER_TILE as usize]>,
+    groups: GroupBuilder,
     anims: Vec<AnimBuilder>,
     maps: Vec<MapBuilder>,
     single_tiles: Vec<SingleTileBuilder>,
@@ -63,11 +63,23 @@ impl<'a> TilesetBuilder<'a> {
     /// Defines a new tile group. Adds the tiles only, does not add Tilemaps or Animations,
     /// those must be added afterwards and will be correctly marked as part of a group, if
     /// there's a match.
-    pub fn new_group(&mut self, path: &str, name: &str, group_index: u8) {
+    pub fn new_group(&mut self, path: &str, name: &str) {
+        let group_index = self.groups.names.len() + 1;
+        assert!(group_index > 0 && group_index <= 16, "Group index must be between 1-16");
+        let group_index = group_index as u8;
+
         let img = self.load_valid_image(path, 1, 1);
-        let frames = self.add_tiles(&img);
-        for cell in &frames[0] {}
+        // Ensure the names vec is large enough and store the group name
+        let vec_index = (group_index - 1) as usize; // Convert 1-based to 0-based
+        if self.groups.names.len() <= vec_index {
+            self.groups.names.resize(vec_index + 1, String::new());
+        }
+        self.groups.names[vec_index] = String::from(name);
+
+        // Process tiles and register them in the group, discard the returned cells
+        let _ = self.add_tiles(&img, Some(group_index));
     }
+
 
     /// Creates a new single tile from a .png file
     pub fn new_tile(&mut self, path: &str) {
@@ -79,7 +91,7 @@ impl<'a> TilesetBuilder<'a> {
             "Single tile must be 1x1 tile (8x8 pixels)"
         );
 
-        let cells = self.add_tiles(&img);
+        let cells = self.add_tiles(&img, None);
         assert!(
             cells.len() == 1 && cells[0].len() == 1,
             "Single tile should produce exactly one cell"
@@ -92,7 +104,7 @@ impl<'a> TilesetBuilder<'a> {
     /// Creates a new map from a .png file
     pub fn new_map(&mut self, path: &str, name: &str) {
         let img = self.load_valid_image(path, 1, 1);
-        let frames = self.add_tiles(&img);
+        let frames = self.add_tiles(&img, None);
         assert!(frames.len() == 1);
 
         let map = MapBuilder {
@@ -108,7 +120,7 @@ impl<'a> TilesetBuilder<'a> {
     /// Creates a new animation strip from a .png file
     pub fn new_animation_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
         let img = self.load_valid_image(path, frames_h, frames_v);
-        let cells = self.add_tiles(&img);
+        let cells = self.add_tiles(&img, None);
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
         assert!(frame_count > 0);
@@ -148,6 +160,17 @@ impl<'a> TilesetBuilder<'a> {
             for (i, sub_palette) in self.sub_palettes.iter().enumerate() {
                 code.write_sub_palette(&self.name, i, sub_palette);
             }
+        }
+
+        // Write group constants
+        if !self.groups.names.is_empty() {
+            for (index, name) in self.groups.names.iter().enumerate() {
+                if !name.is_empty() {
+                    let group_index = (index + 1) as u8; // Convert 0-based back to 1-based
+                    code.write_group_constant(name, group_index);
+                }
+            }
+            code.write_line("");
         }
 
         // Write animation strips if any
@@ -223,7 +246,7 @@ impl<'a> TilesetBuilder<'a> {
         code.format_output(file_path);
     }
 
-    fn add_tiles(&mut self, img: &PalettizedImg) -> Vec<Vec<Cell>> {
+    fn add_tiles(&mut self, img: &PalettizedImg, group:Option<u8>) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
         // Main detection routine.
@@ -250,6 +273,39 @@ impl<'a> TilesetBuilder<'a> {
                         // Create canonical representation
                         let (canonical_tile, color_mapping) = create_canonical_tile(&tile_data);
 
+                        // If we're registering a group, store this canonical pattern (but skip empty tiles)
+                        if let Some(group_idx) = group {
+                            // Only register multi-color tiles in groups (skip empty/single-color tiles)
+                            if color_mapping.len() > 1 {
+                                let group_bit = 1u16 << (group_idx - 1); // Convert 1-based index to bit position
+                                let current_groups = self.groups.hash.get(&canonical_tile).unwrap_or(&0);
+                                self.groups.hash.insert(canonical_tile, current_groups | group_bit);
+
+                                // Also register all transformations if enabled
+                                if self.allow_tile_transforms {
+                                    for flip_x in [false, true] {
+                                        for flip_y in [false, true] {
+                                            for rotation in [false, true] {
+                                                if !flip_x && !flip_y && !rotation {
+                                                    continue; // Skip identity transform
+                                                }
+
+                                                let transformed_tile = transform_tile(&tile_data, flip_x, flip_y, rotation);
+                                                let (transformed_canonical, transformed_colors) = create_canonical_tile(&transformed_tile);
+
+                                                // Only register if the transformed tile is also multi-color
+                                                if transformed_colors.len() > 1 {
+                                                    let current_groups = self.groups.hash.get(&transformed_canonical).unwrap_or(&0);
+                                                    self.groups.hash.insert(transformed_canonical, current_groups | group_bit);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+
                         if color_mapping.len() > SUBPALETTE_COUNT as usize {
                             panic!(
                                 "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
@@ -268,9 +324,14 @@ impl<'a> TilesetBuilder<'a> {
                             );
                         }
 
-                        // Find or create sub-palette once and reuse for both hash lookup and storage
-                        let (sub_palette_id, remapping) =
-                            self.find_or_create_compatible_sub_palette(&color_mapping);
+                        // Handle single-color tiles efficiently
+                        let (sub_palette_id, remapping) = if color_mapping.len() <= 1 {
+                            // Single color tile - find or create a simple sub-palette
+                            self.find_or_create_single_color_sub_palette(color_mapping.get(0).copied().unwrap_or(0))
+                        } else {
+                            // Multi-color tile - use normal processing
+                            self.find_or_create_compatible_sub_palette(&color_mapping)
+                        };
 
                         // Check if this canonical tile (or any transformation) exists
                         let mut found_cell = None;
@@ -327,6 +388,9 @@ impl<'a> TilesetBuilder<'a> {
                             }
                         }
 
+                        // Look up group membership for this tile pattern
+                        let group_bits = self.groups.hash.get(&canonical_tile).copied().unwrap_or(0);
+
                         let cell = match found_cell {
                             Some(existing_cell) => {
                                 // Found existing tile with same pattern
@@ -334,7 +398,7 @@ impl<'a> TilesetBuilder<'a> {
                                 let mut cell = Cell {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
-                                    group: 0,
+                                    group: group_bits,
                                 };
                                 cell.flags.set_palette(PaletteID(sub_palette_id));
                                 cell
@@ -344,7 +408,7 @@ impl<'a> TilesetBuilder<'a> {
                                 let mut new_tile = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
-                                    group: 0,
+                                    group: group_bits,
                                 };
                                 new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
@@ -487,6 +551,33 @@ impl<'a> TilesetBuilder<'a> {
         }
 
         (palette_id, remapping)
+    }
+
+    fn find_or_create_single_color_sub_palette(&mut self, color: u8) -> (u8, Vec<u8>) {
+        // Create a simple sub-palette with just this color in position 0
+        let target_palette_array: [u8; COLORS_PER_TILE as usize] = [color, 0, 0, 0];
+
+        // Check if we already have this single-color sub-palette
+        for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
+            if sub_pal[0] == color && sub_pal[1] == 0 && sub_pal[2] == 0 && sub_pal[3] == 0 {
+                return (i as u8, vec![0]); // All pixels map to index 0
+            }
+        }
+
+        // Create new single-color sub-palette
+        if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
+            panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
+        }
+
+        self.sub_palettes.push(target_palette_array);
+        let palette_id = self.sub_palette_head as u8;
+        self.sub_palette_head += 1;
+
+        // Set name
+        let name = format!("{}_{}", self.palette.name, palette_id);
+        self.sub_palette_name_hash.insert(target_palette_array, name);
+
+        (palette_id, vec![0]) // All pixels map to index 0
     }
 }
 

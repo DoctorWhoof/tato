@@ -169,7 +169,7 @@ where
         if delta > T::zero() {
             Rect { w: self.w + delta, ..self }
         } else {
-            Rect { x: self.x - delta, w: self.w + (-delta), ..self }
+            Rect { x: self.x + delta, w: self.w + (-delta), ..self }
         }
     }
 
@@ -180,7 +180,7 @@ where
         if delta > T::zero() {
             Rect { h: self.h + delta, ..self }
         } else {
-            Rect { y: self.y - delta, h: self.h + (-delta), ..self }
+            Rect { y: self.y + delta, h: self.h + (-delta), ..self }
         }
     }
 }

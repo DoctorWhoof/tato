@@ -7,12 +7,12 @@ pub const DEFAULT_TILESET: TilesetData =
 
 pub const TILE_EMPTY: TileID = TileID(0);
 pub const TILE_CHECKERS: TileID = TileID(1);
-pub const TILE_SOLID: TileID = TileID(2);
-pub const TILE_CROSSHAIRS: TileID = TileID(3);
-pub const TILE_ARROW: TileID = TileID(4);
-pub const TILE_SMILEY: TileID = TileID(5);
+pub const TILE_SOLID: TileID = TileID(0);
+pub const TILE_CROSSHAIRS: TileID = TileID(2);
+pub const TILE_ARROW: TileID = TileID(3);
+pub const TILE_SMILEY: TileID = TileID(4);
 
-pub const DEFAULT_TILES: [Tile<2>; 6] = [
+pub const DEFAULT_TILES: [Tile<2>; 5] = [
     Tile {
         clusters: [
             Cluster { data: [0, 0] },
@@ -39,26 +39,14 @@ pub const DEFAULT_TILES: [Tile<2>; 6] = [
     },
     Tile {
         clusters: [
+            Cluster { data: [5, 84] },
+            Cluster { data: [21, 85] },
             Cluster { data: [85, 85] },
             Cluster { data: [85, 85] },
             Cluster { data: [85, 85] },
             Cluster { data: [85, 85] },
             Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [80, 1] },
-            Cluster { data: [64, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [64, 0] },
+            Cluster { data: [21, 85] },
         ],
     },
     Tile {

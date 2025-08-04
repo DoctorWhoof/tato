@@ -6,6 +6,7 @@ pub use tato_math as math;
 pub use tato_pad as pad;
 pub use tato_rng as rng;
 pub use tato_video as video;
+pub use tato_collision as collision;
 
 pub mod assets;
 pub use assets::*;
@@ -33,4 +34,5 @@ pub mod prelude {
     pub use tato_pad::*;
     pub use tato_rng::*;
     pub use tato_video::*;
+    pub use tato_collision::*;
 }
