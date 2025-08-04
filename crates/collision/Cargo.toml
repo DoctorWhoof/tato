@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 tato_math = { path = "../math"}
+tato_video = { path = "../video"}

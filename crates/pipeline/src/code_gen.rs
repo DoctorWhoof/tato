@@ -1,3 +1,5 @@
+use tato_video::Cell;
+
 use crate::builders::MapBuilder;
 use std::fs::File;
 use std::io::Write;
@@ -20,7 +22,6 @@ impl CodeWriter {
     }
 
     pub fn write_header(&mut self, allow_unused: bool, use_crate_assets: bool) {
-
         // Removed timestamp to prevent too many unnecessary git changes
         // let timestamp = generate_timestamp();
         // self.write_line(&format!(
@@ -133,10 +134,7 @@ impl CodeWriter {
         self.write_line("    cells: [");
 
         for cell in cells {
-            self.write_line(&format!(
-                "        Cell {{ id: TileID({}), flags: TileFlags({}) }},",
-                cell.id.0, cell.flags.0
-            ));
+            self.write_line(&format!("        {:?},", cell));
         }
 
         self.write_line("    ],");
@@ -148,12 +146,11 @@ impl CodeWriter {
         self.write_line(&format!("pub const {}: TileID = TileID({});", name.to_uppercase(), id));
     }
 
-    pub fn write_cell_constant(&mut self, name: &str, id: u8, flags: u8) {
+    pub fn write_cell_constant(&mut self, name: &str, cell: Cell) {
         self.write_line(&format!(
-            "pub const {}: Cell = Cell {{ id: TileID({}), flags: TileFlags({}) }};",
+            "pub const {}: Cell = {:?};",
             name.to_uppercase(),
-            id,
-            flags
+            cell
         ));
     }
 
@@ -182,10 +179,7 @@ impl CodeWriter {
             self.write_line("        cells: [");
 
             for cell in &frame.cells {
-                self.write_line(&format!(
-                    "            Cell {{ id: TileID({}), flags: TileFlags({}) }},",
-                    cell.id.0, cell.flags.0
-                ));
+                self.write_line(&format!("            {:?},", cell));
             }
 
             self.write_line("        ],");

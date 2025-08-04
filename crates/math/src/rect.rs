@@ -1,4 +1,4 @@
-use crate::{Float, Num, Vec2};
+use crate::{Float, Num, SignedNum, Vec2};
 use core::ops::{Add, Mul, Sub};
 
 mod convert;
@@ -155,6 +155,33 @@ where
             && other.x <= self_right
             && self.y <= other_bottom
             && other.y <= self_bottom
+    }
+}
+
+impl<T> Rect<T>
+where
+    T: SignedNum,
+{
+    pub fn sweep_x(self, delta: T) -> Rect<T>
+    where
+        T: SignedNum,
+    {
+        if delta > T::zero() {
+            Rect { w: self.w + delta, ..self }
+        } else {
+            Rect { x: self.x - delta, w: self.w + (-delta), ..self }
+        }
+    }
+
+    pub fn sweep_y(self, delta: T) -> Rect<T>
+    where
+        T: SignedNum,
+    {
+        if delta > T::zero() {
+            Rect { h: self.h + delta, ..self }
+        } else {
+            Rect { y: self.y - delta, h: self.h + (-delta), ..self }
+        }
     }
 }
 

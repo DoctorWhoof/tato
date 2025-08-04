@@ -1,6 +1,9 @@
 mod anim;
 pub(crate) use anim::*;
 
+mod group;
+pub(crate) use group::*;
+
 mod map;
 pub(crate) use map::*;
 

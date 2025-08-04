@@ -346,7 +346,7 @@ impl Tato {
                 let cell = &map.cells[i];
                 let mut flags = cell.flags;
                 flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
-                Cell { id: TileID(cell.id.0 + tileset_offset), flags }
+                Cell { id: TileID(cell.id.0 + tileset_offset), flags, group:0 }
             })
             .ok_or(TatoError::ArenaOutOfSpace)?;
 

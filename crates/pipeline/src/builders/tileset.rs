@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 type TileData = [u8; TILE_LEN];
-type CanonicalTile = [u8; TILE_LEN]; // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
+pub(crate) type CanonicalTile = [u8; TILE_LEN]; // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
 
 pub struct TilesetBuilder<'a> {
     pub allow_tile_transforms: bool,
@@ -17,6 +17,7 @@ pub struct TilesetBuilder<'a> {
     pub name: String,
     pub pixels: Vec<u8>,
     pub tile_hash: HashMap<CanonicalTile, Cell>,
+    pub groups: GroupBuilder,
     pub sub_palette_name_hash: HashMap<[u8; COLORS_PER_TILE as usize], String>,
     pub sub_palettes: Vec<[u8; COLORS_PER_TILE as usize]>,
     anims: Vec<AnimBuilder>,
@@ -37,6 +38,7 @@ impl<'a> TilesetBuilder<'a> {
             name: String::from(name),
             pixels: vec![],
             tile_hash: HashMap::new(),
+            groups: GroupBuilder::default(),
             sub_palette_name_hash: HashMap::new(),
             next_tile: 0,
             anims: vec![],
@@ -48,9 +50,29 @@ impl<'a> TilesetBuilder<'a> {
         }
     }
 
+    fn load_valid_image(&mut self, path: &str, frames_h: u8, frames_v: u8) -> PalettizedImg {
+        let img = PalettizedImg::from_image(path, frames_h, frames_v, self.palette);
+        assert!(
+            img.width % TILE_SIZE as usize == 0,
+            "Single tile width must be multiple of {}",
+            TILE_SIZE
+        );
+        img
+    }
+
+    /// Defines a new tile group. Adds the tiles only, does not add Tilemaps or Animations,
+    /// those must be added afterwards and will be correctly marked as part of a group, if
+    /// there's a match.
+    pub fn new_group(&mut self, path: &str, name: &str, group_index: u8) {
+        let img = self.load_valid_image(path, 1, 1);
+        let frames = self.add_tiles(&img);
+        for cell in &frames[0] {}
+    }
+
     /// Creates a new single tile from a .png file
     pub fn new_tile(&mut self, path: &str) {
-        let img = PalettizedImg::from_image(path, 1, 1, self.palette);
+        let img = self.load_valid_image(path, 1, 1);
+        // Additional asserts for single tile
         assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
         assert!(
             img.cols_per_frame == 1 && img.rows_per_frame == 1,
@@ -69,19 +91,15 @@ impl<'a> TilesetBuilder<'a> {
 
     /// Creates a new map from a .png file
     pub fn new_map(&mut self, path: &str, name: &str) {
-        let img = if self.save_colors {
-            PalettizedImg::from_image(path, 1, 1, self.palette)
-        } else {
-            PalettizedImg::from_image(path, 1, 1, self.palette)
-        };
-        let cells = self.add_tiles(&img);
-        assert!(cells.len() == 1);
+        let img = self.load_valid_image(path, 1, 1);
+        let frames = self.add_tiles(&img);
+        assert!(frames.len() == 1);
 
         let map = MapBuilder {
             name: String::from(name),
             columns: u8::try_from(img.cols_per_frame).unwrap(),
             rows: u8::try_from(img.rows_per_frame).unwrap(),
-            cells: cells[0].clone(), // just the first frame, there's only 1 anyway!
+            cells: frames[0].clone(), // just the first frame, there's only 1 anyway!
         };
 
         self.maps.push(map);
@@ -89,7 +107,7 @@ impl<'a> TilesetBuilder<'a> {
 
     /// Creates a new animation strip from a .png file
     pub fn new_animation_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
-        let img = PalettizedImg::from_image(path, frames_h, frames_v, self.palette);
+        let img = self.load_valid_image(path, frames_h, frames_v);
         let cells = self.add_tiles(&img);
         let frame_count = img.frames_h as usize * img.frames_v as usize;
 
@@ -150,7 +168,7 @@ impl<'a> TilesetBuilder<'a> {
                 // For default tileset, generate TileID constants for type safety
                 code.write_tile_id_constant(&tile.name, tile.cell.id.0);
             } else {
-                code.write_cell_constant(&tile.name, tile.cell.id.0, tile.cell.flags.0);
+                code.write_cell_constant(&tile.name, tile.cell);
             }
         }
         if !self.single_tiles.is_empty() {
@@ -256,13 +274,13 @@ impl<'a> TilesetBuilder<'a> {
 
                         // Check if this canonical tile (or any transformation) exists
                         let mut found_cell = None;
-                        let mut normalized = [0u8; TILE_LEN];
+                        let mut normalized_tile = [0u8; TILE_LEN];
                         for (i, &canonical_index) in canonical_tile.iter().enumerate() {
-                            normalized[i] = remapping[canonical_index as usize];
+                            normalized_tile[i] = remapping[canonical_index as usize];
                         }
 
                         // Check original first using remapped data
-                        if let Some(existing) = self.tile_hash.get(&normalized) {
+                        if let Some(existing) = self.tile_hash.get(&normalized_tile) {
                             found_cell = Some(*existing);
                         } else if self.allow_tile_transforms {
                             // Try all 7 other transformations using remapped data
@@ -313,25 +331,28 @@ impl<'a> TilesetBuilder<'a> {
                             Some(existing_cell) => {
                                 // Found existing tile with same pattern
                                 // Use the same sub-palette mapping we used for lookup
-                                let mut cell =
-                                    Cell { id: existing_cell.id, flags: existing_cell.flags };
+                                let mut cell = Cell {
+                                    id: existing_cell.id,
+                                    flags: existing_cell.flags,
+                                    group: 0,
+                                };
                                 cell.flags.set_palette(PaletteID(sub_palette_id));
                                 cell
                             },
                             None => {
                                 // Create new tile using the sub-palette we already found/created
-
                                 let mut new_tile = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
+                                    group: 0,
                                 };
                                 new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
-                                // Store the already computed normalized tile data
-                                self.pixels.extend_from_slice(&normalized);
+                                // Store the already computed normalized_tile tile data
+                                self.pixels.extend_from_slice(&normalized_tile);
 
                                 // Store remapped tile in hash (after remapping is complete)
-                                self.tile_hash.insert(normalized, new_tile);
+                                self.tile_hash.insert(normalized_tile, new_tile);
 
                                 // Store all transformations using remapped data
                                 if self.allow_tile_transforms {

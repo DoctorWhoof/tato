@@ -153,10 +153,6 @@ impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
         &self.cells
     }
 
-    // fn cells_mut(&mut self) -> &mut [Cell] {
-    //     &mut self.cells
-    // }
-
     #[inline(always)]
     fn get_index(&self, col: u16, row: u16) -> Option<usize> {
         if col as usize >= self.columns as usize || row as usize >= self.rows as usize {

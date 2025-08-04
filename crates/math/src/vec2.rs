@@ -1,6 +1,6 @@
 use crate::{Float, Num, SignedNum};
 
-mod convert;
+// mod convert;
 mod ops;
 
 #[cfg(test)]
@@ -23,6 +23,14 @@ where
 
     pub fn zero() -> Self {
         Self { x: T::zero(), y: T::zero() }
+    }
+
+    pub fn from_f32(value: Vec2<f32>) -> Self {
+        Self { x: T::from_f32(value.x), y: T::from_f32(value.y) }
+    }
+
+    pub fn to_f32(self) -> Vec2<f32> {
+        Vec2 { x: self.x.to_f32(), y: self.y.to_f32() }
     }
 }
 
