@@ -178,7 +178,7 @@ impl<'a> PixelIter<'a> {
             let flip_y = sprite.flags.is_flipped_y();
             let rotated = sprite.flags.is_rotated();
             let tile = &bank.tiles[sprite.id.0 as usize];
-            let palette = sprite.flags.palette().id();
+            let palette = sprite.sub_palette;
 
             // Render sprite pixels - only in active slots!
             for x in start_x..end_x {
@@ -213,7 +213,7 @@ impl<'a> PixelIter<'a> {
                 };
 
                 let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
-                let index = bank.sub_palettes[palette][pixel].0;
+                let index = bank.sub_palettes[palette as usize][pixel].0;
                 let color = bank.palette[index as usize];
 
                 if color.a() > 0 {
@@ -312,6 +312,7 @@ impl<'a> PixelIter<'a> {
             let bg_map_index = (bg_row as usize * bg_columns) + bg_col as usize;
             let bg_cell = bg.cells()[bg_map_index];
             let bg_flags = bg_cell.flags;
+            let bg_palette = bg_cell.sub_palette.0 as usize;
             let bg_tile_id = bg_cell.id.0 as usize;
 
             // Get the tile cluster for this row
@@ -319,8 +320,7 @@ impl<'a> PixelIter<'a> {
             let bg_cluster = Cluster::from_tile(&tile.clusters, bg_flags, tile_y, TILE_SIZE);
 
             // Pre-fetch palette data
-            let palette_idx = bg_flags.palette().0 as usize;
-            let sub_palette = &bank.sub_palettes[palette_idx];
+            let sub_palette = &bank.sub_palettes[bg_palette];
             let palette = &bank.palette;
             let is_fg = bg_flags.is_fg();
             let bg_color = self.bg_color;

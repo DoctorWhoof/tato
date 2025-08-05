@@ -11,18 +11,26 @@
         . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
         . Will be useful to create BG interactions (i.e. door opening)
 
---->[ ] Eliminate subpalettes... replace with 4 colors per tile.
-        . Simplify pipeline, reduce errors due to subpalette limit reached
-        . 4 colors per tile stays. Maybe a "Mode 1" where we can have 16 colors per tile?...
-        . Clusters can stay as is? (2 bits per pixel)
-            . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
-        . Should still allow palette swap, will need a palette override mechanism
-        . Subpalette bits can now be groups, up to 15 + None
-            . Instead of using bits, simply use named groups like WALL and DOOR
-            . This will keep Cell at 4 bytes:
-                - Id: 1 byte
-                - Flags: 1 bytes
-                - Palette: 2 bytes (4 bits per color)
+[/] Eliminate subpalettes... replace with 4 colors per tile.
+    . Simplify pipeline, reduce errors due to subpalette limit reached
+    . 4 colors per tile stays. Maybe a "Mode 1" where we can have 16 colors per tile?...
+    . Clusters can stay as is? (2 bits per pixel)
+        . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
+    . Should still allow palette swap, will need a palette override mechanism
+    . Subpalette bits can now be groups, up to 15 + None
+        . Instead of using bits, simply use named groups like WALL and DOOR
+        . This will keep Cell at 4 bytes:
+            - Id: 1 byte
+            - Flags: 1 bytes
+            - Palette: 2 bytes (4 bits per color)
+    . UPDATE: Will simply use more subpalettes instead. Allows for more groups while still keeping Cell size to 4 bytes.
+    . May just adopt 16 color clusters in the future, with some way to override/remap colors.
+
+[ ] Collider should be a TileFlag bit, not a group
+    . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
+    . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
+    . Will be ready if i decide to implement sprite collisions
+    . Doesn't feel right: flags like "trigger" don't belong in the video chip, since they're gameplay related. Maybe just a "collider" bit, plus 3 "custom" bits that the user can choose how to use.
 
 ### Backend and examples
 
@@ -30,7 +38,6 @@
     . Some static mut shenanigans? Should be OK since it won't affect gameplay. Investigate.
         [ ] Debug rects with colors
         [ ] Debug text
-
 
 [.] Use LIRQ (Line interrupt) to draw Game GUI
     . Will need to switch Tile bank halfway through

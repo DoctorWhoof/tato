@@ -5,6 +5,8 @@ use tato::prelude::*;
 pub struct SceneB {
     player: Entity,
     smileys: [Entity; 64],
+    palette_smiley: PaletteID,
+    palette_cycler: PaletteID,
 }
 
 impl SceneB {
@@ -25,19 +27,23 @@ impl SceneB {
 
         for cell in &mut state.bg.cells {
             cell.id = tile;
-            cell.flags = palette_bg.into();
+            cell.flags = TileFlags::default();
+            cell.sub_palette = palette_bg;
         }
 
         Ok(Self {
-            player: Entity { x: x as f32, y: y as f32, tile, flags: palette_cycler.into() },
+            player: Entity { x: x as f32, y: y as f32, tile, flags: TileFlags::default(), sub_palette: palette_cycler },
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
                 // using "wrap_width" and "wrap_height"
                 x: rand::random_range(0.0..255.0), // - 32_000.0,
                 y: rand::random_range(0.0..255.0), // + 32_000.0,
                 tile,
-                flags: palette_smiley.into(),
+                flags: TileFlags::default(),
+                sub_palette: palette_smiley,
             }),
+            palette_smiley,
+            palette_cycler,
         })
     }
 
@@ -57,7 +63,7 @@ impl SceneB {
         }
 
         // Draw!
-        t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
+        t.banks[0].color_cycle(self.palette_cycler, 1, 1, 15);
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
@@ -68,6 +74,7 @@ impl SceneB {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
+                sub_palette: entity.sub_palette,
             });
         }
 
@@ -76,6 +83,7 @@ impl SceneB {
             y: self.player.y as i16,
             id: self.player.tile,
             flags: self.player.flags,
+            sub_palette: self.player.sub_palette,
         });
 
         if state.pad.is_just_pressed(Button::Start) {

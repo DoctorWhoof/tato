@@ -22,7 +22,8 @@ impl SceneC {
                     col,
                     row,
                     tile_id: cross,
-                    flags: TileFlags::from(PaletteID(1)).with_fg(),
+                    flags: TileFlags::default().with_fg(),
+                    sub_palette: PaletteID(1),
                 });
             }
         }
@@ -32,7 +33,8 @@ impl SceneC {
                 col: id as u16,
                 row: 0,
                 tile_id: solid,
-                flags: TileFlags::from(PaletteID(id % 16)).with_fg(),
+                flags: TileFlags::default().with_fg(),
+                sub_palette: PaletteID(id % 16),
             });
             t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
         }
@@ -52,7 +54,8 @@ impl SceneC {
                 x: x * 8,
                 y,
                 id: self.smiley,
-                flags: PaletteID(x as u8).into(),
+                flags: TileFlags::default(),
+                sub_palette: PaletteID(x as u8),
             });
         }
 

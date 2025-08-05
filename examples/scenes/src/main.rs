@@ -22,6 +22,7 @@ pub struct Entity {
     pub y: f32,
     tile: TileID,
     flags: TileFlags,
+    sub_palette: PaletteID,
 }
 
 // Selects a scene to change into

@@ -80,7 +80,7 @@ pub const COLORS_PER_PALETTE: u8 = 16;
 
 /// How many "local" palettes
 /// (palettes of 4 colors that map each index to the main FG and BG palettes)
-pub const SUBPALETTE_COUNT: u8 = 16;
+pub const SUBPALETTE_COUNT: u8 = 32;
 
 /// Maximum number of BG Tiles
 pub const BG_LEN: usize = 1024;

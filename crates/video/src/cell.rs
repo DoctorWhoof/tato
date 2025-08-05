@@ -5,7 +5,8 @@ use crate::*;
 pub struct Cell {
     pub id: TileID,
     pub flags: TileFlags,
-    pub group: u16,         // each bit represents a group, up to 16
+    pub sub_palette: PaletteID,
+    pub group: u8,
 
     // FUTURE USE: In case I abandon subpalettes, colors would be
     // stored as 4 numbers, 4 bits each, like this:

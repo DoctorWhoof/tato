@@ -277,7 +277,7 @@ impl<'a> TilesetBuilder<'a> {
                         if let Some(group_idx) = group {
                             // Only register multi-color tiles in groups (skip empty/single-color tiles)
                             if color_mapping.len() > 1 {
-                                let group_bit = 1u16 << (group_idx - 1); // Convert 1-based index to bit position
+                                let group_bit = 1u8 << (group_idx - 1); // Convert 1-based index to bit position
                                 let current_groups = self.groups.hash.get(&canonical_tile).unwrap_or(&0);
                                 self.groups.hash.insert(canonical_tile, current_groups | group_bit);
 
@@ -395,22 +395,21 @@ impl<'a> TilesetBuilder<'a> {
                             Some(existing_cell) => {
                                 // Found existing tile with same pattern
                                 // Use the same sub-palette mapping we used for lookup
-                                let mut cell = Cell {
+                                Cell {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
                                     group: group_bits,
-                                };
-                                cell.flags.set_palette(PaletteID(sub_palette_id));
-                                cell
+                                    sub_palette: PaletteID(sub_palette_id)
+                                }
                             },
                             None => {
                                 // Create new tile using the sub-palette we already found/created
-                                let mut new_tile = Cell {
+                                let new_tile = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
                                     group: group_bits,
+                                    sub_palette: PaletteID(sub_palette_id)
                                 };
-                                new_tile.flags.set_palette(PaletteID(sub_palette_id));
 
                                 // Store the already computed normalized_tile tile data
                                 self.pixels.extend_from_slice(&normalized_tile);

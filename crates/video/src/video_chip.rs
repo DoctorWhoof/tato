@@ -7,6 +7,7 @@ pub struct DrawBundle {
     pub y: i16,
     pub id: TileID,
     pub flags: TileFlags,
+    pub sub_palette: PaletteID,
 }
 
 /// A convenient packet of data used to draw a tilemap as a sprite.
@@ -162,7 +163,7 @@ impl VideoChip {
 
                 let mut flags = cell.flags;
                 if bundle.flip_x {
-                    flags = cell.flags.toggle_flip_x();
+                    flags = flags.toggle_flip_x();
                 };
                 if bundle.flip_y {
                     flags = flags.toggle_flip_y();
@@ -173,6 +174,7 @@ impl VideoChip {
                     y: (draw_row as i16 * TILE_SIZE as i16) + bundle.y,
                     id: cell.id,
                     flags,
+                    sub_palette: cell.sub_palette,
                 });
             }
         }
@@ -221,7 +223,7 @@ impl VideoChip {
             }
         }
 
-        self.sprite_gen.insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id);
+        self.sprite_gen.insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id, data.sub_palette);
     }
 
     pub fn start_frame(&mut self) {

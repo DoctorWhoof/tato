@@ -1,23 +1,23 @@
 use crate::*;
 
 /// A single byte struct that stores a tile's render state such as
-/// horizontal flip, vertical flip, rotation and local palette.
+/// horizontal flip, vertical flip, rotation and custom data.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Hash)]
 pub struct TileFlags(pub u8);
 
-/// A convenient way to pass a palette where TileFlags are required.
-/// flip_h and flip_v are left as "false".
-impl From<PaletteID> for TileFlags {
-    fn from(palette_id: PaletteID) -> TileFlags {
-        TileFlags::new(false, false, palette_id)
-    }
-}
+// /// A convenient way to pass a palette where TileFlags are required.
+// /// flip_h and flip_v are left as "false".
+// impl From<PaletteID> for TileFlags {
+//     fn from(palette_id: PaletteID) -> TileFlags {
+//         TileFlags::new(false, false, palette_id)
+//     }
+// }
 
 impl TileFlags {
-    pub const fn new(flip_h: bool, flip_v: bool, palette: PaletteID) -> Self {
+    pub const fn new(flip_h: bool, flip_v: bool, custom_data: u8) -> Self {
         assert!(
-            palette.0 < 16,
-            err!("Tile Palette must be in the 0 to 15 range")
+            custom_data < 16,
+            err!("Custom data must be in the 0 to 15 range")
         );
         let mut data: u8 = 0b_0000_0000;
         // Set tile flip
@@ -27,9 +27,9 @@ impl TileFlags {
         if flip_v {
             data |= 0b_0100_0000;
         }
-        // Set local palette index
-        let masked_palette = palette.0 & 0b_0000_1111;
-        data |= masked_palette;
+        // Set custom data
+        let masked_custom_data = custom_data & 0b_0000_1111;
+        data |= masked_custom_data;
 
         Self(data)
     }
@@ -54,10 +54,10 @@ impl TileFlags {
         Self(self.0 | 0b_0001_0000)
     }
 
-    /// Consumes the original flag and replaces its palette
-    pub const fn with_palette(self, palette: PaletteID) -> Self {
+    /// Consumes the original flag and replaces its custom data
+    pub const fn with_custom_data(self, custom_data: u8) -> Self {
         let data = self.0 & 0b_1111_0000;
-        Self(data | palette.0)
+        Self(data | (custom_data & 0b_0000_1111))
     }
 
     /// Consumes original, sets desired transformations
@@ -73,13 +73,13 @@ impl TileFlags {
         (self.is_flipped_x(), self.is_flipped_y(), self.is_rotated())
     }
 
-    pub const fn set_palette(&mut self, palette: PaletteID) {
+    pub const fn set_custom_data(&mut self, custom_data: u8) {
         debug_assert!(
-            palette.0 < SUBPALETTE_COUNT,
-            err!("Tile Palette must be in SUBPALETTE_COUNT")
+            custom_data < 16,
+            err!("Custom data must be in the 0 to 15 range")
         );
-        self.0 &= 0b_1111_0000; // Clear the lower 4 bits (palette bits)
-        self.0 |= palette.0 & 0b_0000_1111; // Set the new palette (mask to ensure only lower 4 bits)
+        self.0 &= 0b_1111_0000; // Clear the lower 4 bits (custom data bits)
+        self.0 |= custom_data & 0b_0000_1111; // Set the new custom data (mask to ensure only lower 4 bits)
     }
 
 
@@ -185,9 +185,9 @@ impl TileFlags {
         self.0 & 0b_0001_0000 != 0
     }
 
-    /// This flag's palette.
-    // Last four bits store the desired palette (0 to 15)
-    pub const fn palette(&self) -> PaletteID {
-        PaletteID(self.0 & 0b_0000_1111)
+    /// This flag's custom data.
+    // Last four bits store custom data (0 to 15)
+    pub const fn custom_data(&self) -> u8 {
+        self.0 & 0b_0000_1111
     }
 }

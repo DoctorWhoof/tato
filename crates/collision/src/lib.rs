@@ -14,7 +14,7 @@ pub fn line_to_tile_y<'a>(
     col: i16,
     start_row: i16,
     end_row: i16,
-    collision_group: u16,
+    collision_group: u8,
 ) -> Option<TileCollision> {
     if col < 0 || col >= map.columns as i16 {
         return None;
@@ -40,7 +40,7 @@ pub fn line_to_tile_x<'a>(
     start_col: i16,
     end_col: i16,
     row: i16,
-    collision_group: u16,
+    collision_group: u8,
 ) -> Option<TileCollision> {
     if row < 0 || row >= map.rows as i16 {
         return None;

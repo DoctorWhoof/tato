@@ -156,7 +156,7 @@ impl CodeWriter {
 
     pub fn write_group_constant(&mut self, name: &str, group_index: u8) {
         let group_value = 1u16 << (group_index - 1); // Convert 1-based index to bit value
-        self.write_line(&format!("pub const {}: u16 = {};", name.to_uppercase(), group_value));
+        self.write_line(&format!("pub const {}: u8 = {};", name.to_uppercase(), group_value));
     }
 
     pub fn write_tile_array_header(&mut self, name: &str, tile_count: usize) {

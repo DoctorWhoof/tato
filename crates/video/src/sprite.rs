@@ -10,6 +10,7 @@ pub struct SpriteEntry {
     pub x: i16,
     pub id: TileID,
     pub flags: TileFlags,
+    pub sub_palette: u8,
 }
 
 /// Holds a "presence" mask that helps the iterator figure out if any given slot
@@ -65,6 +66,7 @@ impl SpriteGenerator {
         screen_height: u16,
         flags: TileFlags,
         id: TileID,
+        sub_palette: PaletteID,
     ) {
         let w = TILE_SIZE as i16;
         let h = TILE_SIZE as i16;
@@ -87,6 +89,7 @@ impl SpriteGenerator {
         sprite.y = y;
         sprite.id = id;
         sprite.flags = flags;
+        sprite.sub_palette = sub_palette.0;
 
         // Write sprite index and mask info to scanline
         let min_x = (-x).max(0);

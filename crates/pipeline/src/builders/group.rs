@@ -3,7 +3,7 @@ use crate::CanonicalTile;
 
 #[derive(Debug, Default)]
 pub(crate) struct GroupBuilder {
-    pub hash: HashMap<CanonicalTile, u16>,  // Key: tile, value:group bits
+    pub hash: HashMap<CanonicalTile, u8>,  // Key: tile, value:group bits
     pub names: Vec<String>                  // Index is group index (0-based), value is group name
 }
 

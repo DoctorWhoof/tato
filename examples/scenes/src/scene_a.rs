@@ -65,7 +65,8 @@ impl SceneA {
                         col,
                         row,
                         tile_id: arrow,
-                        flags: TileFlags::from(adjusted_palette).with_rotation(),
+                        flags: TileFlags::default().with_rotation(),
+                        sub_palette: adjusted_palette,
                     });
                 }
             }
@@ -78,7 +79,8 @@ impl SceneA {
                 x: rand::random_range(0..w - TILE_SIZE as i16) as f32,
                 y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
                 tile: smiley,
-                flags: PaletteID(4 + (i % 12) as u8).into(), // Avoids grayscale in default palette
+                flags: TileFlags::default(),
+                sub_palette: PaletteID(4 + (i % 12) as u8), // Avoids grayscale in default palette
             }
         });
         // Sort smileys by y position only
@@ -90,7 +92,8 @@ impl SceneA {
                 x: (t.video.width() / 2) as f32,
                 y: (t.video.height() / 2) as f32,
                 tile: arrow,
-                flags: PaletteID(0).into(),
+                flags: TileFlags::default(),
+                sub_palette: PaletteID(0),
             },
             smileys,
             movement_start: 0.0,
@@ -154,7 +157,7 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        t.banks[0].color_cycle(self.player.flags.palette(), 1, 1, 15);
+        t.banks[0].color_cycle(PaletteID(0), 1, 1, 15);
 
         for col in 0..state.bg.columns() {
             for row in 0..state.bg.rows() {
@@ -175,7 +178,8 @@ impl SceneA {
                 y: entity.y as i16,
                 id: entity.tile,
                 // Remember, we generated palettes that match the color indices
-                flags: entity.flags.with_palette(PaletteID(BLACK.0)),
+                flags: entity.flags.with_custom_data(BLACK.0),
+                sub_palette: PaletteID(BLACK.0),
             });
         };
 
@@ -192,6 +196,7 @@ impl SceneA {
                 y: (entity.y - 1.0 - hover) as i16,
                 id: entity.tile,
                 flags: entity.flags,
+                sub_palette: entity.sub_palette,
             });
         };
 
@@ -213,6 +218,7 @@ impl SceneA {
             y: 0,
             id: TILE_SMILEY,
             flags: TileFlags::default(), // Player palette is zero
+            sub_palette: PaletteID(0),
         });
 
         // ------------------- Return mode switch request -------------------

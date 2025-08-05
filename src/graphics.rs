@@ -4,7 +4,7 @@ pub use text::*;
 use crate::prelude::*;
 
 impl Tato {
-    pub fn draw_tilemap_to<const LEN:usize>(
+    pub fn draw_tilemap_to<const LEN: usize>(
         &self,
         dest: &mut Tilemap<LEN>,
         dest_rect: Option<Rect<u16>>,
@@ -91,6 +91,7 @@ impl Tato {
             row: bg_rect.y,
             tile_id: top_left.id,
             flags: top_left.flags,
+            sub_palette: top_left.sub_palette,
         });
 
         if (bg_rect.x as usize + bg_rect.w as usize) >= u16::MAX as usize {
@@ -98,7 +99,13 @@ impl Tato {
         }
         let top = map.cells[1];
         for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
-            bg.set_cell(BgOp { col, row: bg_rect.y, tile_id: top.id, flags: top.flags });
+            bg.set_cell(BgOp {
+                col,
+                row: bg_rect.y,
+                tile_id: top.id,
+                flags: top.flags,
+                sub_palette: top.sub_palette,
+            });
         }
 
         let top_right = map.cells[2];
@@ -107,12 +114,19 @@ impl Tato {
             row: bg_rect.y,
             tile_id: top_right.id,
             flags: top_right.flags,
+            sub_palette: top_right.sub_palette,
         });
 
         let left = map.cells[3];
 
         for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
-            bg.set_cell(BgOp { col: bg_rect.x, row, tile_id: left.id, flags: left.flags });
+            bg.set_cell(BgOp {
+                col: bg_rect.x,
+                row,
+                tile_id: left.id,
+                flags: left.flags,
+                sub_palette: left.sub_palette,
+            });
         }
 
         if (bg_rect.y as usize + bg_rect.h as usize) >= u16::MAX as usize {
@@ -121,7 +135,13 @@ impl Tato {
         let center = map.cells[4];
         for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
             for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
-                bg.set_cell(BgOp { col, row, tile_id: center.id, flags: center.flags });
+                bg.set_cell(BgOp {
+                    col,
+                    row,
+                    tile_id: center.id,
+                    flags: center.flags,
+                    sub_palette: center.sub_palette,
+                });
             }
         }
 
@@ -132,6 +152,7 @@ impl Tato {
                 row,
                 tile_id: right.id,
                 flags: right.flags,
+                sub_palette: right.sub_palette,
             });
         }
 
@@ -141,6 +162,7 @@ impl Tato {
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_left.id,
             flags: bottom_left.flags,
+            sub_palette: bottom_left.sub_palette,
         });
 
         let bottom = map.cells[7];
@@ -150,6 +172,7 @@ impl Tato {
                 row: bg_rect.y + bg_rect.h,
                 tile_id: bottom.id,
                 flags: bottom.flags,
+                sub_palette: bottom.sub_palette,
             });
         }
 
@@ -159,6 +182,7 @@ impl Tato {
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_right.id,
             flags: bottom_right.flags,
+            sub_palette: bottom.sub_palette
         });
     }
 
@@ -186,7 +210,8 @@ impl Tato {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
                     tile_id: TileID(cell.id.0 + tile_start),
-                    flags: cell.flags.with_palette(op.palette),
+                    flags: cell.flags,
+                    sub_palette: op.palette
                 });
             }
         };
