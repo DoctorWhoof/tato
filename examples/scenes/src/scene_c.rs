@@ -10,7 +10,7 @@ pub struct SceneC {
 impl SceneC {
     pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
         let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
-        let solid = TILE_SOLID;
+        let _solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
@@ -29,14 +29,14 @@ impl SceneC {
         }
 
         for id in 0..16 as u8 {
-            state.bg.set_cell(BgOp {
-                col: id as u16,
-                row: 0,
-                tile_id: solid,
-                flags: TileFlags::default().with_fg(),
-                sub_palette: PaletteID(id % 16),
-            });
-            t.banks[0].set_subpalette(PaletteID(id), [BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
+            // state.bg.set_cell(BgOp {
+            //     col: id as u16,
+            //     row: 0,
+            //     tile_id: solid,
+            //     flags: TileFlags::default().with_fg(),
+            //     sub_palette: PaletteID(0),
+            // });
+            t.banks[0].push_subpalette([BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
         }
 
         Ok(SceneC { smiley, counter: 0 })

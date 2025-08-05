@@ -1,8 +1,8 @@
-mod color_12bit;
-pub use color_12bit::*;
+mod rgba12;
+pub use rgba12::*;
 
-mod color_32bit;
-pub use color_32bit::*;
+mod rgba32;
+pub use rgba32::*;
 
 /// Local Palette index. Each Local palette defines 4 colors out of the 16 "Main" palettes, FG and BG.
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]

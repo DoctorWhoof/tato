@@ -2,6 +2,12 @@ use core::array::from_fn;
 
 use crate::*;
 
+// Z-buffer priority constants for compositing
+const Z_BG_COLOR: u8 = 0;      // Background color (lowest priority)
+const Z_BG_TILE: u8 = 1;       // Normal background tiles
+const Z_SPRITE: u8 = 2;        // Sprites
+const Z_BG_FOREGROUND: u8 = 3; // Background tiles with is_fg() flag (highest priority)
+
 /// Renders every pixel as it iterates the entire screen.
 /// All public fields can be manipulated per line with VideoIRQ!
 #[derive(Debug, Clone)]
@@ -81,8 +87,8 @@ impl<'a> PixelIter<'a> {
             scroll_y: vid.scroll_y,
             bg_color: vid.bg_color,
             scanline: vid.sprite_gen.scanlines[0].clone(),
-            sprite_buffer: [RGBA12::BG; 512],
-            bg_buffer: [RGBA12::BG; 512],
+            sprite_buffer: [RGBA12::BG.with_z(Z_SPRITE); 512],
+            bg_buffer: [RGBA12::BG.with_z(Z_BG_COLOR); 512],
         };
         // Run Y IRQ on first line before anything else
         result.call_line_irq();
@@ -217,7 +223,7 @@ impl<'a> PixelIter<'a> {
                 let color = bank.palette[index as usize];
 
                 if color.a() > 0 {
-                    self.sprite_buffer[x] = color;
+                    self.sprite_buffer[x] = color.with_z(Z_SPRITE);
                 }
             }
         }
@@ -240,14 +246,14 @@ impl<'a> PixelIter<'a> {
             if viewport_start > 0 {
                 let ptr = self.bg_buffer.as_mut_ptr();
                 for i in 0..viewport_start {
-                    *ptr.add(i) = bg_color;
+                    *ptr.add(i) = bg_color.with_z(Z_BG_COLOR);
                 }
             }
             // Fill end
             if viewport_end < width as usize {
                 let ptr = self.bg_buffer.as_mut_ptr();
                 for i in viewport_end..width as usize {
-                    *ptr.add(i) = bg_color;
+                    *ptr.add(i) = bg_color.with_z(Z_BG_COLOR);
                 }
             }
         }
@@ -266,7 +272,7 @@ impl<'a> PixelIter<'a> {
         if !self.wrap_bg && (bg_y_base < 0 || bg_y_base >= bg_height) {
             let bg_color = self.bg_color;
             for x in viewport_start..viewport_end {
-                self.bg_buffer[x] = bg_color;
+                self.bg_buffer[x] = bg_color.with_z(Z_BG_COLOR);
             }
             return;
         }
@@ -290,7 +296,7 @@ impl<'a> PixelIter<'a> {
                     let skip = (-bg_x_base).min((viewport_end - x) as i16) as usize;
                     let bg_color = self.bg_color;
                     for i in 0..skip {
-                        self.bg_buffer[x + i] = bg_color;
+                        self.bg_buffer[x + i] = bg_color.with_z(Z_BG_COLOR);
                     }
                     x += skip;
                     continue;
@@ -298,7 +304,7 @@ impl<'a> PixelIter<'a> {
                     // Fill rest with bg_color and exit
                     let bg_color = self.bg_color;
                     for i in x..viewport_end {
-                        self.bg_buffer[i] = bg_color;
+                        self.bg_buffer[i] = bg_color.with_z(Z_BG_COLOR);
                     }
                     break;
                 }
@@ -355,12 +361,11 @@ impl<'a> PixelIter<'a> {
                         let global_idx = sub_palette[color_idx].0 as usize;
                         let color = palette[global_idx];
 
-                        let final_color = if is_fg && color.a() > 0 {
-                            color
-                        } else if color.a() > 0 {
-                            color
+                        let final_color = if color.a() > 0 {
+                            let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
+                            color.with_z(z_value)
                         } else {
-                            bg_color
+                            bg_color.with_z(Z_BG_COLOR)
                         };
 
                         *dst_ptr.add(base_idx + i) = final_color;
@@ -375,12 +380,11 @@ impl<'a> PixelIter<'a> {
                     let global_idx = sub_palette[color_idx].0 as usize;
                     let color = palette[global_idx];
 
-                    let final_color = if is_fg && color.a() > 0 {
-                        color
-                    } else if color.a() > 0 {
-                        color
+                    let final_color = if color.a() > 0 {
+                        let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
+                        color.with_z(z_value)
                     } else {
-                        bg_color
+                        bg_color.with_z(Z_BG_COLOR)
                     };
 
                     *dst_ptr.add(idx) = final_color;
@@ -426,20 +430,19 @@ impl<'a> Iterator for PixelIter<'a> {
         //     self.bg_color
         // };
 
-        // Experimental: Nested branchless selection. Assumes RGBA12 is always 16 bit
-        let in_viewport = ((self.y >= self.vid.view_top) & (self.y <= self.vid.view_bottom)) as u16;
-        let final_color = {
-            // Convert bools to masks: true -> 0xFFFF, false -> 0x0000
-            // Then Compute final color without branches
-            let has_sprite = (sprite.a() > 0) as u16;
-            let sprite_or_bg = {
-                let sprite_mask = has_sprite.wrapping_neg();
-                RGBA12 { data: (sprite.data & sprite_mask) | (bg.data & !sprite_mask) }
-            };
-            let viewport_mask = in_viewport.wrapping_neg();
-            RGBA12 {
-                data: (sprite_or_bg.data & viewport_mask) | (self.bg_color.data & !viewport_mask),
+        // Z-buffer based compositing - higher z value wins
+        let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
+        let final_color = if in_viewport {
+            // Compare z values: sprite has alpha and higher/equal z wins
+            if sprite.a() > 0 && sprite.z() >= bg.z() {
+                sprite
+            } else if bg.a() > 0 {
+                bg
+            } else {
+                self.bg_color.with_z(Z_BG_COLOR)
             }
+        } else {
+            self.bg_color.with_z(Z_BG_COLOR)
         };
 
         // results

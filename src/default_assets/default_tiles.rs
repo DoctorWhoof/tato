@@ -39,14 +39,14 @@ pub const DEFAULT_TILES: [Tile<2>; 5] = [
     },
     Tile {
         clusters: [
-            Cluster { data: [5, 84] },
-            Cluster { data: [21, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [21, 85] },
+            Cluster { data: [0, 1] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 1] },
+            Cluster { data: [64, 5] },
         ],
     },
     Tile {

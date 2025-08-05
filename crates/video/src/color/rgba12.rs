@@ -2,6 +2,7 @@ use crate::*;
 
 /// Every color in the main palettes (FG and BG palette) is stored as 3 bits-per-channel,
 /// allowing a maximum of 512 possible colors packed into 12 bits (excluding alpha).
+/// Includes a 4-bit z-buffer for rendering priority (0-15, higher values render in front).
 /// Can be converted to RGBA32 (8 bits per channel) for easy interop with graphics back-ends.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct RGBA12 {
@@ -32,8 +33,8 @@ impl RGBA12 {
         assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
         assert!(a < 8, err!("Exceeded maximum value for Alpha channel"));
 
-        // Pack the 3-bit values into the data field
-        // Alpha in bits 9-11, Red in bits 6-8, Green in bits 3-5, Blue in bits 0-2
+        // Pack the 3-bit color values into the data field (z-buffer defaults to 0)
+        // Z in bits 12-15, Alpha in bits 9-11, Red in bits 6-8, Green in bits 3-5, Blue in bits 0-2
         let packed_data = ((a as u16) << 9) | ((r as u16) << 6) | ((g as u16) << 3) | (b as u16);
         Self { data: packed_data }
     }
@@ -54,6 +55,10 @@ impl RGBA12 {
         (self.data >> 9 & 0b_0111) as u8
     }
 
+    pub fn z(&self) -> u8 {
+        (self.data >> 12 & 0b_1111) as u8
+    }
+
     pub fn set_r(&mut self, r: u8) {
         assert!(r < 8, err!("Exceeded maximum value for Red channel"));
         self.data = (self.data & !(0b_0111 << 6)) | ((r as u16) << 6);
@@ -72,6 +77,17 @@ impl RGBA12 {
     pub fn set_a(&mut self, a: u8) {
         assert!(a < 8, err!("Exceeded maximum value for Alpha channel"));
         self.data = (self.data & !(0b_0111 << 9)) | ((a as u16) << 9);
+    }
+
+    pub fn set_z(&mut self, z: u8) {
+        assert!(z < 16, err!("Z value must be less than 16 (4 bits)"));
+        self.data = (self.data & !(0b_1111 << 12)) | ((z as u16) << 12);
+    }
+
+    pub fn with_z(self, z: u8) -> Self {
+        let mut result = self;
+        result.set_z(z);
+        result
     }
 }
 
@@ -111,11 +127,12 @@ impl core::fmt::Display for RGBA12 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "RGBA12(r: {}, g: {}, b: {}, a: {})",
+            "RGBA12(r: {}, g: {}, b: {}, a: {}, z: {})",
             self.r(),
             self.g(),
             self.b(),
-            self.a()
+            self.a(),
+            self.z()
         )
     }
 }

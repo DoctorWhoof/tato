@@ -5,7 +5,7 @@ use tato::prelude::*;
 pub struct SceneB {
     player: Entity,
     smileys: [Entity; 64],
-    palette_smiley: PaletteID,
+    // palette_smiley: PaletteID,
     palette_cycler: PaletteID,
 }
 
@@ -32,7 +32,13 @@ impl SceneB {
         }
 
         Ok(Self {
-            player: Entity { x: x as f32, y: y as f32, tile, flags: TileFlags::default(), sub_palette: palette_cycler },
+            player: Entity {
+                x: x as f32,
+                y: y as f32,
+                tile,
+                flags: TileFlags::default(),
+                sub_palette: palette_cycler,
+            },
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
                 // using "wrap_width" and "wrap_height"
@@ -42,7 +48,6 @@ impl SceneB {
                 flags: TileFlags::default(),
                 sub_palette: palette_smiley,
             }),
-            palette_smiley,
             palette_cycler,
         })
     }
