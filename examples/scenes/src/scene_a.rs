@@ -54,8 +54,8 @@ impl SceneA {
 
         // Set BG tiles, acquire width and height of bg map
         let (w, h) = {
-            for col in 0..state.bg.columns() {
-                for row in 0..state.bg.rows() {
+            for col in 0..state.bg.columns() as i16 {
+                for row in 0..state.bg.rows() as i16 {
                     // Calculate palette ID based on coordinates, limits to 14 indices
                     let index = (col + row) % 14;
                     // Adds 2 to avoid colors 0 and 1 in the BG
@@ -159,8 +159,8 @@ impl SceneA {
 
         t.banks[0].color_cycle(PaletteID(0), 1, 1, 15);
 
-        for col in 0..state.bg.columns() {
-            for row in 0..state.bg.rows() {
+        for col in 0..state.bg.columns() as i16 {
+            for row in 0..state.bg.rows() as i16 {
                 let Some(mut flags) = state.bg.get_flags(col, row) else {
                     continue;
                 };

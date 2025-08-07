@@ -38,6 +38,7 @@ pub struct PixelIter<'a> {
     bg_buffer: [RGBA12; 512],     // Background layer (tiles + bg_color)
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Coords {
     pub x: i16,
     pub y: i16,

@@ -7,15 +7,15 @@ pub trait DynTilemap: core::fmt::Debug {
     fn cells(&self) -> &[Cell];
     fn columns(&self) -> u16;
     fn rows(&self) -> u16;
-    fn width(&self) -> u16;
-    fn height(&self) -> u16;
+    fn width(&self) -> i16;
+    fn height(&self) -> i16;
     fn len(&self) -> usize;
     // fn set_size(&mut self, columns: u16, rows: u16);
-    fn get_index(&self, col: u16, row: u16) -> Option<usize>;
+    fn get_index(&self, col: i16, row: i16) -> Option<usize>;
     fn get_coords(&self, index: usize) -> Option<(u16, u16)>;
-    fn get_cell(&self, col: u16, row: u16) -> Option<Cell>;
-    fn get_id(&self, col: u16, row: u16) -> Option<TileID>;
-    fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags>;
+    fn get_cell(&self, col: i16, row: i16) -> Option<Cell>;
+    fn get_id(&self, col: i16, row: i16) -> Option<TileID>;
+    fn get_flags(&self, col: i16, row: i16) -> Option<TileFlags>;
 }
 
 /// A simple collection of Cells, split into a number of columns and rows that can never exceed the
@@ -30,8 +30,8 @@ pub struct Tilemap<const CELL_COUNT: usize> {
 /// A simple packet of required cells to fully set the attributes on a BG tile.
 #[derive(Debug, Clone, Copy)]
 pub struct BgOp {
-    pub col: u16,
-    pub row: u16,
+    pub col: i16,
+    pub row: i16,
     pub tile_id: TileID,
     pub flags: TileFlags,
     pub sub_palette: PaletteID
@@ -78,19 +78,19 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    pub fn set_id(&mut self, col: u16, row: u16, tile_id: TileID) {
+    pub fn set_id(&mut self, col: i16, row: i16, tile_id: TileID) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].id = tile_id;
         }
     }
 
-    pub fn set_flags(&mut self, col: u16, row: u16, flags: TileFlags) {
+    pub fn set_flags(&mut self, col: i16, row: i16, flags: TileFlags) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].flags = flags;
         }
     }
 
-    pub fn set_sub_palette(&mut self, col: u16, row: u16, sub_palette: PaletteID) {
+    pub fn set_sub_palette(&mut self, col: i16, row: i16, sub_palette: PaletteID) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].sub_palette = sub_palette;
         }
@@ -162,7 +162,7 @@ impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
     }
 
     #[inline(always)]
-    fn get_index(&self, col: u16, row: u16) -> Option<usize> {
+    fn get_index(&self, col: i16, row: i16) -> Option<usize> {
         if col as usize >= self.columns as usize || row as usize >= self.rows as usize {
             return None;
         }
@@ -179,17 +179,17 @@ impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
         Some((col, row))
     }
 
-    fn get_cell(&self, col: u16, row: u16) -> Option<Cell> {
+    fn get_cell(&self, col: i16, row: i16) -> Option<Cell> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index])
     }
 
-    fn get_id(&self, col: u16, row: u16) -> Option<TileID> {
+    fn get_id(&self, col: i16, row: i16) -> Option<TileID> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index].id)
     }
 
-    fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags> {
+    fn get_flags(&self, col: i16, row: i16) -> Option<TileFlags> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index].flags)
     }
@@ -202,12 +202,12 @@ impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
         self.rows
     }
 
-    fn width(&self) -> u16 {
-        self.columns as u16 * TILE_SIZE as u16
+    fn width(&self) -> i16 {
+        self.columns as i16 * TILE_SIZE as i16
     }
 
-    fn height(&self) -> u16 {
-        self.rows as u16 * TILE_SIZE as u16
+    fn height(&self) -> i16 {
+        self.rows as i16 * TILE_SIZE as i16
     }
 
     fn len(&self) -> usize {

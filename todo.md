@@ -2,6 +2,8 @@
 
 [x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
 
+[ ] Use "collider" flag on tiles, figure out a way for pipeline to mark it.
+
 [ ] Drawing
     [x] Tilemap to Tilemap
     [x] Patch to Tilemap

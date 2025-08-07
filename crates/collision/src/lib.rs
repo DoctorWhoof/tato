@@ -21,7 +21,8 @@ pub fn line_to_tile_y<'a>(
     }
     let check_row = |row: i16| {
         (row >= 0)
-            .then(|| map.get_cell(col as u16, row as u16))?
+            .then(|| map.get_cell(col, row))?
+            // .filter(|cell| cell.flags.is_collider() )
             .filter(|cell| cell.group & collision_group != 0)
             .map(|_| TileCollision { col, row })
     };
@@ -47,7 +48,8 @@ pub fn line_to_tile_x<'a>(
     }
     let check_col = |col: i16| {
         (col >= 0)
-            .then(|| map.get_cell(col as u16, row as u16))?
+            .then(|| map.get_cell(col, row))?
+            // .filter(|cell| cell.flags.is_collider() )
             .filter(|cell| cell.group & collision_group != 0)
             .map(|_| TileCollision { col, row })
     };

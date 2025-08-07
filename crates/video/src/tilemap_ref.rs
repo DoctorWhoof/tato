@@ -35,12 +35,12 @@ impl<'a> DynTilemap for TilemapRef<'a> {
         self.rows
     }
 
-    fn width(&self) -> u16 {
-        self.columns as u16 * TILE_SIZE as u16
+    fn width(&self) -> i16 {
+        self.columns as i16 * TILE_SIZE as i16
     }
 
-    fn height(&self) -> u16 {
-        self.rows as u16 * TILE_SIZE as u16
+    fn height(&self) -> i16 {
+        self.rows as i16 * TILE_SIZE as i16
     }
 
     fn len(&self) -> usize {
@@ -48,7 +48,10 @@ impl<'a> DynTilemap for TilemapRef<'a> {
     }
 
     #[inline(always)]
-    fn get_index(&self, col: u16, row: u16) -> Option<usize> {
+    fn get_index(&self, col: i16, row: i16) -> Option<usize> {
+        if col < 0 || row < 0 {
+            return None;
+        }
         if col as usize >= self.columns as usize || row as usize >= self.rows as usize {
             return None;
         }
@@ -65,17 +68,17 @@ impl<'a> DynTilemap for TilemapRef<'a> {
         Some((col, row))
     }
 
-    fn get_cell(&self, col: u16, row: u16) -> Option<Cell> {
+    fn get_cell(&self, col: i16, row: i16) -> Option<Cell> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index])
     }
 
-    fn get_id(&self, col: u16, row: u16) -> Option<TileID> {
+    fn get_id(&self, col: i16, row: i16) -> Option<TileID> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index].id)
     }
 
-    fn get_flags(&self, col: u16, row: u16) -> Option<TileFlags> {
+    fn get_flags(&self, col: i16, row: i16) -> Option<TileFlags> {
         let index = self.get_index(col, row)?;
         Some(self.cells[index].flags)
     }

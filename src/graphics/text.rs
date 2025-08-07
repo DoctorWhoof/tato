@@ -4,9 +4,9 @@ use tato_video::{color::PaletteID, DynTilemap};
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
     pub id: TilesetID,
-    pub col: u16,
-    pub row: u16,
-    pub width: u16,
+    pub col: i16,
+    pub row: i16,
+    pub width: i16,
     pub palette: PaletteID,
 }
 

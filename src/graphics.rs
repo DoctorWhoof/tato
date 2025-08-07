@@ -75,7 +75,7 @@ impl Tato {
     pub fn draw_patch<const LEN: usize>(
         &mut self,
         bg: &mut Tilemap<LEN>,
-        bg_rect: Rect<u16>,
+        bg_rect: Rect<i16>,
         map_id: MapID,
     ) {
         // let map = &self.assets.map_entries[map_id.0 as usize];
@@ -192,7 +192,7 @@ impl Tato {
         bg: &mut Tilemap<LEN>,
         text: &str,
         op: TextOp,
-    ) -> Option<u16> {
+    ) -> Option<i16> {
         debug_assert!(text.is_ascii());
         let tileset = self.assets.tilesets.get(op.id.0 as usize)?;
         let tile_start = tileset.tile_start;
@@ -200,12 +200,12 @@ impl Tato {
         let mut cursor_y = 0;
 
         // Helper to draw a single character
-        let mut draw_char = |ch: char, cursor_x: u16, cursor_y: u16| {
+        let mut draw_char = |ch: char, cursor_x: i16, cursor_y: i16| {
             let char_index = char_to_id_ex(ch) as usize;
             let font_cols = op.font.columns() as usize;
             let col = char_index % font_cols;
             let row = char_index / font_cols;
-            if let Some(cell) = op.font.get_cell(col as u16, row as u16) {
+            if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
                 bg.set_cell(BgOp {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
@@ -217,7 +217,7 @@ impl Tato {
         };
 
         for word in text.split(' ') {
-            if cursor_x + (word.len() as u16) > op.width {
+            if cursor_x + (word.len() as i16) > op.width {
                 cursor_x = 0;
                 cursor_y += 1;
             }

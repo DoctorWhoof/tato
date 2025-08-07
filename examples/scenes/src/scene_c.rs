@@ -16,8 +16,8 @@ impl SceneC {
 
         t.video.bg_color = RGBA12::GRAY;
 
-        for col in 0..state.bg.columns() {
-            for row in 0..state.bg.rows() {
+        for col in 0..state.bg.columns() as i16 {
+            for row in 0..state.bg.rows() as i16 {
                 state.bg.set_cell(BgOp {
                     col,
                     row,
