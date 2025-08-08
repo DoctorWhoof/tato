@@ -34,7 +34,7 @@ fn main() -> TatoResult<()> {
     let mut backend = RaylibBackend::new(&tato);
     backend.bg_color = raylib::prelude::Color::BLACK;
     while !backend.ray.window_should_close() {
-        tato.start_frame(backend.ray.get_frame_time());
+        tato.frame_start(backend.ray.get_frame_time());
         backend.update_gamepad(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {
@@ -49,6 +49,7 @@ fn main() -> TatoResult<()> {
             tato.video.scroll_y -= 1;
         }
 
+        tato.frame_finish();
         backend.render(&mut tato, &[&bg_map]);
     }
     Ok(())

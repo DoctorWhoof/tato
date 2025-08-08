@@ -1,4 +1,5 @@
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use core::convert::TryFrom;
 
 /// Base trait for all numeric types.
 pub trait Num:
@@ -20,6 +21,12 @@ pub trait Num:
     fn two() -> Self;
     fn four() -> Self;
     fn from_usize_checked(value: usize) -> Option<Self>;
+    fn try_from_usize(value: usize) -> Result<Self, <Self as TryFrom<usize>>::Error>
+    where
+        Self: TryFrom<usize>,
+    {
+        Self::try_from(value)
+    }
     fn get_max(self, b: Self) -> Self;
     fn get_min(self, b: Self) -> Self;
     fn saturating_sub(self, rhs: Self) -> Self;

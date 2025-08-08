@@ -8,13 +8,6 @@ tato = { path = "../../"}
 rand = {version = "0.9.0" }
 tato_raylib = { path = "../../crates/backend_raylib"}
 
-# For audio debugging
-# hound = "3.5.1"
-# cpal = "0.15.3"
-
-## Other backends, currently not used
-# mini_sdl = { path = "../../../mini_sdl"}
-
 [profile.release]
 # debug = true
 opt-level = 3

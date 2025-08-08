@@ -21,6 +21,10 @@ where
         Rect { x, y, w, h }
     }
 
+    pub fn offset(self, delta_x: T, delta_y: T) -> Self {
+        Rect { x: self.x + delta_x, y: self.y + delta_y, ..self }
+    }
+
     pub fn pos(&self) -> Vec2<T> {
         Vec2 { x: self.x, y: self.y }
     }

@@ -21,6 +21,10 @@ where
         Self { x, y }
     }
 
+    pub fn offset(self, delta_x: T, delta_y: T) -> Self {
+        Self { x: self.x + delta_x, y: self.y + delta_y }
+    }
+
     pub fn zero() -> Self {
         Self { x: T::zero(), y: T::zero() }
     }

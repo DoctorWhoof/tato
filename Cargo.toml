@@ -17,6 +17,7 @@ tato_rng = { path = "crates/rng" }
 # smooth-buffer = { path = "crates/smooth_buffer" }
 tato_arena = { path = "crates/arena" }
 tato_collision = { path = "crates/collision" }
+smooth_buffer = { path = "crates/smooth_buffer" }
 
 [build-dependencies]
 tato_pipe = { path = "crates/pipeline" }

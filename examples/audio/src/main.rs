@@ -57,6 +57,8 @@ fn main() -> TatoResult<()> {
     // Main Loop
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
+        tato.frame_start(backend.ray.get_frame_time());
+
         // "Envelopes"
         let env_len = 2.0;
         let elapsed = time.elapsed().as_secs_f32() % env_len;
@@ -119,6 +121,7 @@ fn main() -> TatoResult<()> {
         );
 
         // Update backends
+        tato.frame_finish();
         audio_backend.process_frame(&mut audio);
         backend.render(&tato, &[&bg_map]);
     }

@@ -265,6 +265,7 @@ impl Integer for u64 {}
 impl Integer for usize {}
 
 
+
 // Implement Float trait for floating point types
 impl Float for f32 {
     #[inline(always)]

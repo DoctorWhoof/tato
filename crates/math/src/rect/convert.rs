@@ -80,3 +80,14 @@ impl From<Rect<i8>> for Rect<f32> {
         }
     }
 }
+
+impl From<Rect<f32>> for Rect<i16> {
+    fn from(rect: Rect<f32>) -> Self {
+        Rect {
+            x: libm::floorf(rect.x) as i16,
+            y: libm::floorf(rect.y) as i16,
+            w: libm::floorf(rect.w) as i16,
+            h: libm::floorf(rect.h) as i16,
+        }
+    }
+}

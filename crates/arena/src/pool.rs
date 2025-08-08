@@ -15,21 +15,21 @@ pub struct Pool<T, SizeType = u16, Marker = ()> {
 impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     /// Create a new pool (internal use)
     pub(crate) fn new(offset: SizeType, len: SizeType, generation: u16, arena_id: u16) -> Self {
-        Self { 
-            offset, 
-            len, 
+        Self {
+            offset,
+            len,
             generation,
             arena_id,
-            _phantom: PhantomData 
+            _phantom: PhantomData
         }
     }
 
     /// Get element count
-    pub fn len(&self) -> usize
+    pub fn len(&self) -> SizeType
     where
         SizeType: ArenaIndex,
     {
-        self.len.into()
+        self.len
     }
 
     /// Check if empty
@@ -41,11 +41,11 @@ impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     }
 
     /// Get arena offset
-    pub fn offset(&self) -> usize
+    pub fn offset(&self) -> SizeType
     where
         SizeType: ArenaIndex,
     {
-        self.offset.into()
+        self.offset
     }
 
     /// Get generation
@@ -89,4 +89,3 @@ where
         }
     }
 }
-

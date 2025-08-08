@@ -1,7 +1,7 @@
 use core::fmt;
 
 /// Convenience type alias (lets you omit "TatoError", so you can return
-/// "TatoResult<Thing>" instead of "Result<Thing, TatoError>")
+/// "TatoResult<T>" instead of "Result<T, TatoError>")
 pub type TatoResult<T> = Result<T, TatoError>;
 
 /// Error type for asset system operations

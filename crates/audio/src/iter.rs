@@ -1,6 +1,6 @@
 use crate::*;
 
-/// Iterates a specified number of samples. Use [AudioChip::iter()] to obtain this.
+/// Iterates a specified number of samples.
 pub struct SoundChipIter<'a> {
     chip: &'a mut AudioChip,
     head: usize,

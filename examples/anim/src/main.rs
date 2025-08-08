@@ -72,7 +72,7 @@ fn main() -> TatoResult<()> {
 
     // Main loop
     while !backend.ray.window_should_close() {
-        tato.start_frame(backend.ray.get_frame_time());
+        tato.frame_start(backend.ray.get_frame_time());
         for entity in &mut entities {
             // Velocity control
             entity.x += entity.vel_x as i16;
@@ -108,6 +108,8 @@ fn main() -> TatoResult<()> {
                 SpriteBundle { x: entity.x, y: entity.y, flip_x: entity.flip, flip_y: false },
             );
         }
+
+        tato.frame_finish();
         backend.render(&tato, &[&bg_map]);
     }
     Ok(())
