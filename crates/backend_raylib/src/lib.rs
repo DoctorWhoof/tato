@@ -158,8 +158,6 @@ impl RaylibBackend {
 
         // ---------------------- Copy from framebuffer to raylib texture ----------------------
 
-        let fps = self.ray.get_fps();
-        let elapsed = self.ray.get_frame_time();
         let time = std::time::Instant::now();
         for (color, coords) in t.iter_pixels(bg_banks) {
             let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
