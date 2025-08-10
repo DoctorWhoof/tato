@@ -24,7 +24,7 @@ pub use tato::*;
 
 pub mod backend;
 
-pub mod debug_ui;
+pub mod dashboard;
 
 pub mod default_assets;
 
@@ -32,7 +32,7 @@ pub mod prelude {
     pub use crate::default_assets::*;
     pub use crate::graphics::*;
     pub use crate::backend::*;
-    pub use crate::debug_ui::*;
+    pub use crate::dashboard::*;
     pub use crate::*;
     pub use tato_audio::waveform::*;
     pub use tato_audio::*;

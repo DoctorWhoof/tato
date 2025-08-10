@@ -25,24 +25,20 @@ pub struct Tato {
     frame_started: bool,
     frame_finished: bool,
 
-    // debug_renderer: DebugRenderer,
-    // #[cfg(debug_assertions)]
-    debug_arena: Arena<64536, u16>, // Persistent debug arena
-    // #[cfg(debug_assertions)]
+    debug_arena: Arena<64536, u16>, // Debug arena, cleared on every frame start
     debug_strings: FillablePool<Pool<u8, u16>, u16>,
-    // #[cfg(debug_assertions)]
+    // Each poly is a Vec2 slice
     debug_polys: FillablePool<Pool<Vec2<i16>, u16>, u16>,
+    debug_polys_world: FillablePool<Pool<Vec2<i16>, u16>, u16>,
 }
 
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         // let temp = Arena::new();
-        // #[cfg(debug_assertions)]
         let mut debug_arena = Arena::new();
-        // #[cfg(debug_assertions)]
         let debug_strings = FillablePool::new(&mut debug_arena, 256).unwrap();
-        // #[cfg(debug_assertions)]
         let debug_polys = FillablePool::new(&mut debug_arena, 256).unwrap();
+        let debug_polys_world = FillablePool::new(&mut debug_arena, 256).unwrap();
 
         Self {
             // Main parts
@@ -58,12 +54,10 @@ impl Tato {
             elapsed_time: 1.0 / target_fps as f32,
             frame_finished: true,
             frame_started: false,
-            // #[cfg(debug_assertions)]
             debug_arena,
-            // #[cfg(debug_assertions)]
             debug_strings,
-            // #[cfg(debug_assertions)]
             debug_polys,
+            debug_polys_world,
         }
     }
 
@@ -76,6 +70,7 @@ impl Tato {
         }
         self.frame_started = false;
         self.frame_finished = true;
+        ();
     }
 
     pub fn time(&self) -> f64 {
@@ -98,23 +93,21 @@ impl Tato {
                 "Frame must be finished on each main loop iteration with 'Tato::frame_finish'."
             ))
         }
-        // Delta timing based on 60 fps reference,
-        // can still run higher or lower preserving game speed.
+        // Delta timing based on 60 fps reference (delta = 1.0)
+        // can still run higher or lower while preserving game speed.
         let reference_frame_time = 1.0 / 60.0;
         self.delta = self.elapsed_time / reference_frame_time;
 
-        // self.temp.clear();
         self.video.start_frame();
         self.time += elapsed as f64;
         self.elapsed_time = elapsed;
         self.frame_finished = false;
         self.frame_started = true;
-        // #[cfg(debug_assertions)]
-        {
-            self.debug_arena.clear();
-            self.debug_strings = FillablePool::new(&mut self.debug_arena, 512).unwrap();
-            self.debug_polys = FillablePool::new(&mut self.debug_arena, 256).unwrap();
-        }
+
+        self.debug_arena.clear();
+        self.debug_strings = FillablePool::new(&mut self.debug_arena, 512).unwrap();
+        self.debug_polys = FillablePool::new(&mut self.debug_arena, 256).unwrap();
+        self.debug_polys_world = FillablePool::new(&mut self.debug_arena, 256).unwrap();
     }
 
     pub fn frame_finish(&mut self) {
@@ -124,91 +117,79 @@ impl Tato {
             ))
         }
 
-        // #[cfg(debug_assertions)]
-        {
-            self.dash_text(&format!("Debug arena size: {} Kb", self.debug_arena.used() / 1024));
-            self.dash_text(&format!("Asset arena size: {} Kb", self.assets.arena.used() / 1024));
-            self.dash_text(&format!("fps: {:.2}", 1.0 / self.elapsed_time()));
-            self.dash_text(&format!("elapsed: {:.2} ms", self.elapsed_time() * 1000.0));
-        }
+        self.dash_text(&format!("Debug arena size: {} Kb", self.debug_arena.used() / 1024));
+        self.dash_text(&format!("Asset arena size: {} Kb", self.assets.arena.used() / 1024));
+        self.dash_text(&format!("fps: {:.2}", 1.0 / self.elapsed_time()));
+        self.dash_text(&format!("elapsed: {:.2} ms", self.elapsed_time() * 1000.0));
 
         self.frame_finished = true;
         self.frame_started = false;
     }
 
+    // --------------------- Dashboard ---------------------
+
     pub fn dash_text(&mut self, text: &str) {
-        // #[cfg(debug_assertions)]
-        {
-            // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
-            assert!(text.is_ascii());
-            let handle = self.debug_arena.alloc_pool::<u8>(text.len()).unwrap();
-            let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
-            for (i, c) in text.chars().enumerate() {
-                pool[i] = c as u8;
-            }
-            let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
+        // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
+        assert!(text.is_ascii());
+        let handle = self.debug_arena.alloc_pool::<u8>(text.len()).unwrap();
+        let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
+        for (i, c) in text.chars().enumerate() {
+            pool[i] = c as u8;
         }
+        let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
     }
 
-    pub fn dash_poly(&mut self, points: &[Vec2<i16>]) {
-        // #[cfg(debug_assertions)]
-        {
-            let handle = self.debug_arena.alloc_pool::<Vec2<i16>>(points.len()).unwrap();
-            let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
-            pool.copy_from_slice(points);
+    pub fn dash_poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
+        let handle = self.debug_arena.alloc_pool::<Vec2<i16>>(points.len()).unwrap();
+        let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
+        pool.copy_from_slice(points);
+        if world_space {
+            let _ = self.debug_polys_world.push(&mut self.debug_arena, handle).unwrap();
+        } else {
             let _ = self.debug_polys.push(&mut self.debug_arena, handle).unwrap();
         }
     }
 
-    pub fn dash_rect(&mut self, rect: Rect<i16>) {
-        // #[cfg(debug_assertions)]
-        {
-            let points = [
-                rect.top_left(),
-                rect.top_right(),
-                rect.bottom_right(),
-                rect.bottom_left(),
-                rect.top_left(),
-            ];
-            self.dash_poly(&points);
-        }
+    pub fn dash_rect(&mut self, rect: Rect<i16>, world_space: bool) {
+        let points = [
+            rect.top_left(),
+            rect.top_right(),
+            rect.bottom_right(),
+            rect.bottom_left(),
+            rect.top_left(),
+        ];
+        self.dash_poly(&points, world_space);
     }
 
-    #[allow(unused)]
-    pub fn dash_pivot(&mut self, x: i16, y: i16, size: i16) {
-        // #[cfg(debug_assertions)]
-        {
-            let half = size / 2;
-            self.dash_poly(&[Vec2 { x: x - half, y: y - half }, Vec2 { x: x + half, y: y + half }]);
-            self.dash_poly(&[Vec2 { x: x - half, y: y + half }, Vec2 { x: x + half, y: y - half }]);
-        }
+    pub fn dash_pivot(&mut self, x: i16, y: i16, size: i16, world_space: bool) {
+        let half = size / 2;
+        self.dash_poly(
+            &[Vec2 { x: x - half, y: y - half }, Vec2 { x: x + half, y: y + half }],
+            world_space,
+        );
+        self.dash_poly(
+            &[Vec2 { x: x - half, y: y + half }, Vec2 { x: x + half, y: y - half }],
+            world_space,
+        );
     }
 
-    pub fn get_dash_text(&self) -> impl Iterator<Item = &str> + '_ {
-        // #[cfg(debug_assertions)]
-        {
-            let debug_handles = self.debug_strings.as_slice(&self.debug_arena).unwrap_or(&[]);
-            debug_handles.iter().filter_map(|handle| {
-                let bytes = self.debug_arena.get_pool(handle)?;
-                core::str::from_utf8(bytes).ok()
-            })
-        }
-        // #[cfg(not(debug_assertions))]
-        // {
-        //     core::iter::empty()
-        // }
+    // --------------------- Iterators ---------------------
+
+    pub fn iter_dash_text(&self) -> impl Iterator<Item = &str> + '_ {
+        let debug_handles = self.debug_strings.as_slice(&self.debug_arena).unwrap_or(&[]);
+        debug_handles.iter().filter_map(|handle| {
+            let bytes = self.debug_arena.get_pool(handle)?;
+            core::str::from_utf8(bytes).ok()
+        })
     }
 
-    pub fn get_dash_polys(&self) -> impl Iterator<Item = &[Vec2<i16>]> + '_ {
-        // #[cfg(debug_assertions)]
-        {
-            let debug_handles = self.debug_polys.as_slice(&self.debug_arena).unwrap_or(&[]);
-            debug_handles.iter().filter_map(|handle| self.debug_arena.get_pool(handle))
-        }
-        // #[cfg(not(debug_assertions))]
-        // {
-        //     core::iter::empty()
-        // }
+    pub fn iter_dash_polys(&self, world_space: bool) -> impl Iterator<Item = &[Vec2<i16>]> + '_ {
+        let debug_handles = if world_space {
+            self.debug_polys_world.as_slice(&self.debug_arena).unwrap_or(&[])
+        } else {
+            self.debug_polys.as_slice(&self.debug_arena).unwrap_or(&[])
+        };
+        debug_handles.iter().filter_map(|handle| self.debug_arena.get_pool(handle))
     }
 
     pub fn iter_pixels<'a, T>(&'a self, bg_banks: &[&'a T]) -> PixelIter<'a>

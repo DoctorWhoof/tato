@@ -80,6 +80,9 @@ pub trait Backend {
     /// Set target FPS
     fn set_target_fps(&mut self, fps: u32);
 
+    /// Set backend color where Tato pixels are transparent
+    fn set_bg_color(&mut self, color:RGBA32);
+
     // ---------------------- State ----------------------
 
     /// Toggle debug mode and return new state

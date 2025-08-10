@@ -112,7 +112,7 @@ fn main() -> TatoResult<()> {
 
         tato.frame_finish();
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_debug(&tato);
+        backend.render_dashboard(&tato);
         backend.present();
     }
     Ok(())

@@ -82,7 +82,7 @@ fn main() -> TatoResult<()> {
         // Update backend
         t.frame_finish();
         back.render_canvas(&t, &[&state.bg]);
-        back.render_debug(&t);
+        back.render_dashboard(&t);
         back.present();
 
 

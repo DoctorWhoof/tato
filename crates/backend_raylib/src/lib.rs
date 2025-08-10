@@ -3,13 +3,20 @@ use std::vec;
 pub use raylib;
 use raylib::prelude::*;
 use tato::backend::Backend;
-use tato::debug_ui::DrawOp;
+use tato::dashboard::DrawOp;
 use tato::{Tato, prelude::*, smooth_buffer::SmoothBuffer};
 
 pub use tato;
 
+const TILES_PER_ROW: i16 = 16;
+
+#[inline]
+fn rgba32_to_rl_color(color: RGBA32) -> Color {
+    Color::new(color.r, color.g, color.b, color.a)
+}
+
 pub struct RaylibBackend {
-    pub bg_color: Color,
+    bg_color: Color,
     pub ray: RaylibHandle,
     pub display_debug: bool,
     thread: RaylibThread,
@@ -18,9 +25,10 @@ pub struct RaylibBackend {
     font: Font,
     iter_time_buffer: SmoothBuffer<300, f64>,
     draw_ops: Vec<DrawOp>,
-    debug: DebugRenderer, // Performs Debug UI drawing, stores debug pixels for tile banks
+    dash: Dashboard, // Performs Debug UI drawing, stores debug pixels for tile banks
 }
 
+/// Raylib specific implementation
 impl RaylibBackend {
     pub fn new(tato: &Tato) -> Self {
         let w = tato.video.width() as i32;
@@ -57,12 +65,13 @@ impl RaylibBackend {
             font,
             iter_time_buffer: SmoothBuffer::pre_filled(1.0 / 120.0),
             draw_ops: Vec::new(),
-            debug: DebugRenderer::new(),
+            dash: Dashboard::new(),
         };
 
+        let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
         for _ in 0..TILE_BANK_COUNT {
             // Each texture ID is the same as the bank
-            result.create_texture(128, 128);
+            result.create_texture(size, size);
         }
 
         // Main render texture (ID 0)
@@ -100,21 +109,24 @@ impl RaylibBackend {
             Vec2::new(t.video.width() as i16, t.video.height() as i16),
         );
         self.draw_texture(self.canvas_texture, pos.x, pos.y, scale, RGBA32::WHITE);
+        self.dash.canvas_scale = scale;
+        self.dash.canvas_offset = pos;
     }
 
-    /// Process "DebugRenderer" draw ops
-    pub fn render_debug<'a>(&mut self, t: &'a Tato) {
+    /// Process "Dashboard" draw ops
+    pub fn render_dashboard<'a>(&mut self, t: &'a Tato) {
         if !self.debug_mode() {
             return;
         }
+
         let screen_size = self.get_screen_size();
         let mouse = self.get_mouse();
 
         // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-        self.debug.render_debug_ui(screen_size, mouse, t);
+        self.dash.render(screen_size, mouse, t);
 
         // Update GPU textures with the generated pixel data
-        let source_pixels = self.debug.tile_pixels.clone();
+        let source_pixels = self.dash.tile_pixels.clone();
         for bank_index in 0..TILE_BANK_COUNT {
             if let Some(ref pixels) = source_pixels.get(bank_index) {
                 if !pixels.is_empty() {
@@ -123,14 +135,23 @@ impl RaylibBackend {
             }
         }
 
-        for op in &self.debug.ops {
+        for op in &self.dash.ops {
             self.draw_ops.push(op.clone());
         }
     }
+}
 
-    /// Finish frame drawing and preset to window
-    pub fn present(&mut self) {
-        // Present pixels
+/// Main API, using Backend trait
+impl Backend for RaylibBackend {
+    // ---------------------- Core Rendering ----------------------
+
+    fn clear(&mut self, color: RGBA32) {
+        // This will be called in the render loop, storing for later use
+        self.bg_color = rgba32_to_rl_color(color);
+    }
+
+    /// Finish canvas and GUI drawing, present to window
+    fn present(&mut self) {
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
         // Execute draw ops
@@ -142,16 +163,6 @@ impl RaylibBackend {
                         y as i32,
                         w as i32,
                         h as i32,
-                        rgba32_to_rl_color(color),
-                    );
-                },
-                DrawOp::Text { text, x, y, size, color } => {
-                    canvas.draw_text_ex(
-                        &self.font,
-                        &text,
-                        Vector2::new(x, y),
-                        size,
-                        1.0,
                         rgba32_to_rl_color(color),
                     );
                 },
@@ -175,26 +186,18 @@ impl RaylibBackend {
                         );
                     }
                 },
+                DrawOp::Text { text, x, y, size, color } => {
+                    canvas.draw_text_ex(
+                        &self.font,
+                        &text,
+                        Vector2::new(x, y),
+                        size,
+                        1.0,
+                        rgba32_to_rl_color(color),
+                    );
+                },
             }
         }
-    }
-}
-
-#[inline]
-fn rgba32_to_rl_color(color: RGBA32) -> Color {
-    Color::new(color.r, color.g, color.b, color.a)
-}
-
-impl Backend for RaylibBackend {
-    // ---------------------- Core Rendering ----------------------
-
-    fn clear(&mut self, color: RGBA32) {
-        // This will be called in the render loop, storing for later use
-        self.bg_color = rgba32_to_rl_color(color);
-    }
-
-    fn present(&mut self) {
-        // Raylib handles presentation automatically in the render loop
     }
 
     fn should_close(&self) -> bool {
@@ -234,15 +237,12 @@ impl Backend for RaylibBackend {
 
     fn update_texture(&mut self, id: TextureId, pixels: &[u8]) {
         if id < self.textures.len() {
-            let w = self.textures[id].width as i16; // Fix: use width
-            let h = self.textures[id].height as i16; // Keep: use height
-            let texture_size = w as usize * h as usize * 4; // Don't forget * 4 for RGBA!
-            if pixels.len() != texture_size {
-                // Recreate texture with correct size for the pixel data
-                let actual_pixels = pixels.len() / 4; // Total pixels in buffer
-                let new_w = (actual_pixels as f64).sqrt().ceil() as i32; // Square-ish
-                let new_h = (actual_pixels / new_w as usize) as i32;
-
+            let len = self.textures[id].width as usize * self.textures[id].height as usize * 4;
+            if pixels.len() != len {
+                // resize texture to match
+                let total_pixels = pixels.len() / 4;
+                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
+                let new_h = (total_pixels / new_w as usize) as i32;
                 let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
                 let texture = self.ray.load_texture_from_image(&self.thread, &image).unwrap();
                 self.textures[id] = texture;
@@ -271,16 +271,16 @@ impl Backend for RaylibBackend {
         pad.set_button(Button::A, self.ray.is_key_down(KeyboardKey::KEY_Z));
         pad.set_button(Button::LeftShoulder, self.ray.is_key_down(KeyboardKey::KEY_ONE));
 
-        // Backend specific
+        // Dashboard
         if self.ray.is_key_pressed(KeyboardKey::KEY_TAB) {
             self.display_debug = !self.display_debug;
         }
         if self.ray.is_key_pressed(KeyboardKey::KEY_EQUAL) {
-            self.debug.scale += 1;
+            self.dash.gui_scale += 1;
         }
         if self.ray.is_key_pressed(KeyboardKey::KEY_MINUS) {
-            if self.debug.scale > 1 {
-                self.debug.scale -= 1;
+            if self.dash.gui_scale > 1 {
+                self.dash.gui_scale -= 1;
             }
         }
     }
@@ -288,7 +288,9 @@ impl Backend for RaylibBackend {
     // ---------------------- Window Info ----------------------
 
     fn get_screen_size(&self) -> Vec2<i16> {
-        Vec2::new(self.ray.get_screen_width() as i16, self.ray.get_screen_height() as i16)
+        let width:i32 = self.ray.get_screen_width();
+        let height:i32 = self.ray.get_screen_height();
+        Vec2::new(width as i16, height as i16)
     }
 
     fn set_window_title(&mut self, title: &str) {
@@ -299,6 +301,9 @@ impl Backend for RaylibBackend {
         self.ray.set_target_fps(fps);
     }
 
+    fn set_bg_color(&mut self, color: RGBA32) {
+        self.bg_color = rgba32_to_rl_color(color)
+    }
     // ---------------------- Debug Features ----------------------
 
     fn toggle_debug(&mut self) -> bool {

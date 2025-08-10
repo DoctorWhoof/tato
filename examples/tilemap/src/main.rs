@@ -32,7 +32,8 @@ fn main() -> TatoResult<()> {
     println!("Asset arena: {} Bytes", tato.assets.used_memory());
     // Backend
     let mut backend = RaylibBackend::new(&tato);
-    backend.bg_color = raylib::prelude::Color::BLACK;
+    backend.set_bg_color(RGBA32::BLACK);
+
     while !backend.ray.window_should_close() {
         tato.frame_start(backend.ray.get_frame_time());
         backend.update_input(&mut tato.pad);
@@ -51,7 +52,7 @@ fn main() -> TatoResult<()> {
 
         tato.frame_finish();
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_debug(&tato);
+        backend.render_dashboard(&tato);
         backend.present();
     }
     Ok(())

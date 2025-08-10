@@ -15,24 +15,28 @@ use tato_video::{
 #[derive(Clone, Debug)]
 pub enum DrawOp {
     Rect { x: i16, y: i16, w: i16, h: i16, color: RGBA32 },
-    Text { text: String, x: f32, y: f32, size: f32, color: RGBA32 },
     Line { x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32 },
     Texture { id: TextureId, x: i16, y: i16, scale: f32, tint: RGBA32 },
+    Text { text: String, x: f32, y: f32, size: f32, color: RGBA32 },
 }
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
-pub struct DebugRenderer {
-    pub scale: i32,
+pub struct Dashboard {
+    pub gui_scale: i32,
+    pub canvas_scale: f32,
+    pub canvas_offset: Vec2<i16>,
     pub ops: Vec<DrawOp>,
     pub mouse_over_text: String,
     pub tile_pixels: [Vec<u8>; TILE_BANK_COUNT], // one vec per bank
 }
 
-impl DebugRenderer {
+impl Dashboard {
     pub fn new() -> Self {
         Self {
-            scale: 1,
+            gui_scale: 1,
+            canvas_scale: 1.0,
+            canvas_offset: Vec2 { x: 0, y: 0 },
             ops: Vec::new(),
             mouse_over_text: String::new(),
             tile_pixels: core::array::from_fn(|_| Vec::new()),
@@ -40,7 +44,7 @@ impl DebugRenderer {
     }
 
     /// Generate debug UI ops - completely backend agnostic
-    pub fn render_debug_ui(&mut self, screen_size: Vec2<i16>, mouse: Vec2<i16>, tato: &Tato) {
+    pub fn render(&mut self, screen_size: Vec2<i16>, mouse: Vec2<i16>, tato: &Tato) {
         self.ops.clear();
         self.mouse_over_text.clear();
 
@@ -62,13 +66,13 @@ impl DebugRenderer {
 
     /// Generate performance dashboard ops
     fn generate_text_dashboard(&mut self, tato: &Tato) {
-        let font_size = 12.0 * self.scale as f32;
+        let font_size = 12.0 * self.gui_scale as f32;
         let line_height = font_size;
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
         // Dashboard text from tato
         let mut y = 10.0;
-        for line in tato.get_dash_text() {
+        for line in tato.iter_dash_text() {
             self.ops.push(DrawOp::Text {
                 text: line.to_string(),
                 x: 10.0,
@@ -87,19 +91,25 @@ impl DebugRenderer {
         bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
         tiles_per_row: usize,
     ) {
-        let max_row = (bank.tile_count() / tiles_per_row) + 1;
+        // Early return for empty banks
+        if bank.tile_count() == 0 {
+            self.tile_pixels[bank_index].clear();
+            return;
+        }
+
+        // Calculate actual dimensions based on tile layout
+        let tile_count = bank.tile_count();
+        let num_rows = (tile_count + tiles_per_row - 1) / tiles_per_row; // Ceiling division
+
         let tiles_w = tiles_per_row * TILE_SIZE as usize;
-        let tiles_h = max_row * TILE_SIZE as usize;
+        let tiles_h = num_rows * TILE_SIZE as usize;
+
+        // Allocate buffer with correct size
+        let expected_size = tiles_w * tiles_h * 4; // RGBA
+        self.tile_pixels[bank_index] = vec![0u8; expected_size];
 
         // Generate tile pixels
-        let mut pixels = vec![0u8; tiles_w * tiles_h * 4];
-        let max_index = max_row * tiles_per_row;
-
-        for tile_index in 0..max_index {
-            if tile_index >= bank.tile_count() {
-                break;
-            }
-
+        for tile_index in 0..tile_count {
             let tile_x = tile_index % tiles_per_row;
             let tile_y = tile_index / tiles_per_row;
 
@@ -110,19 +120,15 @@ impl DebugRenderer {
 
                     let pixel_x = tile_x * TILE_SIZE as usize + x;
                     let pixel_y = tile_y * TILE_SIZE as usize + y;
-                    let pixel_offset = (pixel_y * tiles_w + pixel_x) * 4;
+                    let i = ((pixel_y * tiles_w) + pixel_x) * 4;
 
-                    if pixel_offset + 3 < pixels.len() {
-                        pixels[pixel_offset] = gray_value; // R
-                        pixels[pixel_offset + 1] = gray_value; // G
-                        pixels[pixel_offset + 2] = gray_value; // B
-                        pixels[pixel_offset + 3] = 255; // A
-                    }
+                    self.tile_pixels[bank_index][i] = gray_value; // R
+                    self.tile_pixels[bank_index][i + 1] = gray_value; // G
+                    self.tile_pixels[bank_index][i + 2] = gray_value; // B
+                    self.tile_pixels[bank_index][i + 3] = 255; // A
                 }
             }
         }
-
-        self.tile_pixels[bank_index] = pixels;
     }
 
     /// Generate video memory debug visualization ops
@@ -132,7 +138,7 @@ impl DebugRenderer {
         mouse: Vec2<i16>,
         tato: &Tato,
     ) {
-        let font_size = (12 * self.scale) as i16;
+        let font_size = (12 * self.gui_scale) as i16;
         let dark_bg = RGBA32 { r: 32, g: 32, b: 32, a: 255 };
         let light_bg = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
@@ -142,9 +148,9 @@ impl DebugRenderer {
 
         // Debug panel background
         let rect_bg = Rect::new(
-            screen_size.x - (tiles_w * self.scale as i16) - 8,
+            screen_size.x - (tiles_w * self.gui_scale as i16) - 8,
             font_size,
-            tiles_w * self.scale as i16,
+            tiles_w * self.gui_scale as i16,
             screen_size.y - font_size - font_size,
         );
 
@@ -159,9 +165,9 @@ impl DebugRenderer {
         let mut layout = Frame::<i16>::new(rect_bg);
         layout.set_gap(1);
         layout.set_margin(1);
-        layout.set_scale(self.scale as f32);
+        layout.set_scale(self.gui_scale as f32);
         layout.fitting = Fitting::Clamp;
-        let gap = self.scale as i16;
+        let gap = self.gui_scale as i16;
 
         // Process each video memory bank
         for bank_index in 0..TILE_BANK_COUNT {
@@ -171,7 +177,7 @@ impl DebugRenderer {
             }
 
             // Bank label
-            let h = font_size / self.scale as i16;
+            let h = font_size / self.gui_scale as i16;
             layout.push_edge(Edge::Top, h, |frame| {
                 let rect = frame.rect();
                 self.ops.push(DrawOp::Text {
@@ -380,8 +386,8 @@ impl DebugRenderer {
 
             // Mouse hover detection for tiles
             if r.contains(mouse.x, mouse.y) {
-                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / self.scale as i16;
-                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / self.scale as i16;
+                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / self.gui_scale as i16;
+                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / self.gui_scale as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text = format!("Tile {}", tile_index);
@@ -394,7 +400,7 @@ impl DebugRenderer {
     fn generate_debug_polygons(&mut self, tato: &Tato) {
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
-        for poly in tato.get_dash_polys() {
+        for poly in tato.iter_dash_polys(false) {
             if poly.len() >= 2 {
                 for i in 0..(poly.len() - 1) {
                     let current = poly[i];
@@ -409,12 +415,34 @@ impl DebugRenderer {
                 }
             }
         }
+        // World space polys (follow scrolling)
+        for world_poly in tato.iter_dash_polys(true) {
+            let scroll_x = tato.video.scroll_x as f32;
+            let scroll_y = tato.video.scroll_y as f32;
+            if world_poly.len() >= 2 {
+                for i in 0..(world_poly.len() - 1) {
+                    let current = world_poly[i];
+                    let next = world_poly[i + 1];
+                    self.ops.push(DrawOp::Line {
+                        x1: ((current.x as f32 - scroll_x) * self.canvas_scale) as i16
+                            + self.canvas_offset.x,
+                        y1: ((current.y as f32 - scroll_y) * self.canvas_scale) as i16
+                            + self.canvas_offset.y,
+                        x2: ((next.x as f32 - scroll_x) * self.canvas_scale) as i16
+                            + self.canvas_offset.x,
+                        y2: ((next.y as f32 - scroll_y) * self.canvas_scale) as i16
+                            + self.canvas_offset.y,
+                        color: white,
+                    });
+                }
+            }
+        }
     }
 
     /// Generate tooltip command
     fn generate_tooltip(&mut self, text: &str, text_width: i16, mouse: Vec2<i16>) {
-        let font_size = 12.0 * self.scale as f32;
-        let pad = self.scale as i16;
+        let font_size = 12.0 * self.gui_scale as f32;
+        let pad = self.gui_scale as i16;
 
         let text_x = mouse.x - text_width - 12;
         let text_y = mouse.y + 12;
@@ -440,14 +468,8 @@ impl DebugRenderer {
         });
     }
 
-    // === Game-Specific Debug Extensions ===
-
     // /// Add entity debug info (example of game-specific debug feature)
     // pub fn debug_entity(&mut self, name: &str, x: f32, y: f32, properties: &[(&str, String)]) {
-    //     if !self.enabled {
-    //         return;
-    //     }
-
     //     let font_size = 10.0 * self.scale as f32;
     //     let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
     //     let yellow = RGBA32 { r: 255, g: 255, b: 0, a: 255 };
@@ -485,44 +507,5 @@ impl DebugRenderer {
     //         });
     //         prop_y += font_size + 2.0;
     //     }
-    // }
-
-    // /// Add collision box debug visualization
-    // pub fn debug_collision_box(&mut self, rect: Rect<i16>, color: Option<RGBA32>) {
-    //     if !self.enabled {
-    //         return;
-    //     }
-
-    //     let debug_color = color.unwrap_or(RGBA32 { r: 255, g: 0, b: 0, a: 128 });
-
-    //     // Draw collision box outline
-    //     self.ops.push(DrawOp::Line {
-    //         x1: rect.x,
-    //         y1: rect.y,
-    //         x2: rect.x + rect.w,
-    //         y2: rect.y,
-    //         color: debug_color,
-    //     });
-    //     self.ops.push(DrawOp::Line {
-    //         x1: rect.x + rect.w,
-    //         y1: rect.y,
-    //         x2: rect.x + rect.w,
-    //         y2: rect.y + rect.h,
-    //         color: debug_color,
-    //     });
-    //     self.ops.push(DrawOp::Line {
-    //         x1: rect.x + rect.w,
-    //         y1: rect.y + rect.h,
-    //         x2: rect.x,
-    //         y2: rect.y + rect.h,
-    //         color: debug_color,
-    //     });
-    //     self.ops.push(DrawOp::Line {
-    //         x1: rect.x,
-    //         y1: rect.y + rect.h,
-    //         x2: rect.x,
-    //         y2: rect.y,
-    //         color: debug_color,
-    //     });
     // }
 }
