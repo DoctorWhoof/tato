@@ -4,6 +4,7 @@ use tato_raylib::*;
 fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
+    let mut dash = Dashboard::new();
 
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
@@ -137,7 +138,7 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&tato);
+        backend.render_dashboard(&mut dash, &tato);
         backend.present();
     }
     Ok(())

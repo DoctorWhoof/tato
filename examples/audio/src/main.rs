@@ -12,6 +12,7 @@ pub enum SoundType {
 fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
+    let mut dash = Dashboard::new();
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
@@ -38,7 +39,14 @@ fn main() -> TatoResult<()> {
     tato.draw_text(
         &mut bg_map,
         "Currently playing:",
-        TextOp { font:&FONT_MAP, id: font, col: 2, row: 6, width: 20, palette: palette_light },
+        TextOp {
+            font: &FONT_MAP,
+            id: font,
+            col: 2,
+            row: 6,
+            width: 20,
+            palette: palette_light,
+        },
     );
 
     // Audio setup
@@ -91,7 +99,14 @@ fn main() -> TatoResult<()> {
                     format!("Wave Type: White Noise        ")
                 }
             },
-            TextOp { font:&FONT_MAP, id: font, col: 2, row: 8, width: 100, palette: palette_light },
+            TextOp {
+                font: &FONT_MAP,
+                id: font,
+                col: 2,
+                row: 8,
+                width: 100,
+                palette: palette_light,
+            },
         );
 
         tato.draw_text(
@@ -123,7 +138,7 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
-        backend.render_dashboard(&tato);
+        backend.render_dashboard(&mut dash, &tato);
         backend.render_canvas(&tato, &[&bg_map]);
         backend.present();
     }

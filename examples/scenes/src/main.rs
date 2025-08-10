@@ -46,6 +46,7 @@ fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut scene = Scene::None;
     let mut t = Tato::new(240, 180, 60);
+    let mut dash = Dashboard::new();
 
     let mut state = State {
         pad: t.pad,
@@ -82,7 +83,7 @@ fn main() -> TatoResult<()> {
         // Update backend
         t.frame_finish();
         back.render_canvas(&t, &[&state.bg]);
-        back.render_dashboard(&t);
+        back.render_dashboard(&mut dash, &t);
         back.present();
 
 

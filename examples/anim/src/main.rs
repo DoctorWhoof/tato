@@ -24,6 +24,7 @@ fn main() -> TatoResult<()> {
     let bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(W, H, 30);
     let mut backend = RaylibBackend::new(&tato);
+    let mut dash = Dashboard::new();
 
     tato.video.bg_color = RGBA12::new(2, 3, 4, 7);
     tato.video.bg_tile_bank = BANK_BG;
@@ -112,7 +113,7 @@ fn main() -> TatoResult<()> {
 
         tato.frame_finish();
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&tato);
+        backend.render_dashboard(&mut dash, &tato);
         backend.present();
     }
     Ok(())

@@ -4,6 +4,9 @@ use tato_math::Vec2;
 use tato_pad::AnaloguePad;
 use tato_video::RGBA32;
 
+/// Texture identifier
+pub type TextureId = usize;
+
 /// Calculate position and scale for centered integer scaling with correct aspect ratio
 pub fn canvas_position_and_scale(
     screen_size: Vec2<i16>,
@@ -29,12 +32,6 @@ pub trait Backend {
 
     /// Check if the window should close
     fn should_close(&self) -> bool;
-
-    // /// Update the main rendering texture with pixel data
-    // fn update_main_texture(&mut self, pixels: &[u8], width: u32, height: u32);
-
-    // /// Draw the main texture at the specified rectangle with scaling
-    // fn draw_main_texture(&mut self, rect: Rect<i16>, scale: i32);
 
     // ---------------------- Drawing Primitives ----------------------
 
@@ -81,7 +78,7 @@ pub trait Backend {
     fn set_target_fps(&mut self, fps: u32);
 
     /// Set backend color where Tato pixels are transparent
-    fn set_bg_color(&mut self, color:RGBA32);
+    fn set_bg_color(&mut self, color: RGBA32);
 
     // ---------------------- State ----------------------
 
@@ -91,11 +88,3 @@ pub trait Backend {
     /// Check if debug mode is enabled
     fn debug_mode(&self) -> bool;
 }
-
-// ---------------------- Backend-Agnostic Types ----------------------
-
-/// Texture identifier
-pub type TextureId = usize;
-
-/// Font identifier
-pub type FontId = usize;

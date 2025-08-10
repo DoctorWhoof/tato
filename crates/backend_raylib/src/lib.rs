@@ -4,7 +4,7 @@ pub use raylib;
 use raylib::prelude::*;
 use tato::backend::Backend;
 use tato::dashboard::DrawOp;
-use tato::{Tato, prelude::*, smooth_buffer::SmoothBuffer};
+use tato::{Tato, prelude::*};
 
 pub use tato;
 
@@ -21,11 +21,12 @@ pub struct RaylibBackend {
     pub display_debug: bool,
     thread: RaylibThread,
     textures: Vec<Texture2D>,
-    canvas_texture: TextureId,
     font: Font,
-    iter_time_buffer: SmoothBuffer<300, f64>,
     draw_ops: Vec<DrawOp>,
-    dash: Dashboard, // Performs Debug UI drawing, stores debug pixels for tile banks
+    canvas_texture: TextureId,
+    // Cached then passed to Dashboard later
+    dash_args: DashArgs,
+    pixels: Vec<u8>,
 }
 
 /// Raylib specific implementation
@@ -61,11 +62,11 @@ impl RaylibBackend {
             thread,
             // debug_pixels,
             textures: vec![],
-            canvas_texture: 0,
             font,
-            iter_time_buffer: SmoothBuffer::pre_filled(1.0 / 120.0),
             draw_ops: Vec::new(),
-            dash: Dashboard::new(),
+            canvas_texture: 0,
+            dash_args: DashArgs::default(),
+            pixels: vec![0; w as usize * h as usize * 4],
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
@@ -86,21 +87,32 @@ impl RaylibBackend {
     where
         &'a T: Into<TilemapRef<'a>>,
     {
-        let time = std::time::Instant::now();
-        let video_width = t.video.width() as usize;
-        let video_height = t.video.height() as usize;
-        let expected_pixel_count = video_width * video_height;
+        debug_assert!(
+            {
+                let video_width = t.video.width() as usize;
+                let video_height = t.video.height() as usize;
+                video_width * video_height * 4
+            } == self.pixels.len(),
+        );
 
-        let pixels: Vec<u8> = t
-            .iter_pixels(bg_banks)
-            .take(expected_pixel_count)
-            .flat_map(|(color, _)| [color.r, color.g, color.b, color.a])
-            .collect();
+        for (i, (color, _)) in t.iter_pixels(bg_banks).enumerate() {
+            let base_idx = i * 4;
+            if base_idx + 3 < self.pixels.len() {
+                self.pixels[base_idx] = color.r;
+                self.pixels[base_idx + 1] = color.g;
+                self.pixels[base_idx + 2] = color.b;
+                self.pixels[base_idx + 3] = color.a;
+            }
+        }
 
         // Update main render texture and queue draw operation
-        self.update_texture(self.canvas_texture, &pixels);
-
-        self.iter_time_buffer.push(time.elapsed().as_secs_f64() * 1000.0);
+        Self::update_texture_internal(
+            &mut self.textures,
+            &mut self.ray,
+            &self.thread,
+            self.canvas_texture,
+            self.pixels.as_slice(),
+        );
 
         // Calculate and queue main texture draw
         let screen_size = self.get_screen_size();
@@ -109,34 +121,72 @@ impl RaylibBackend {
             Vec2::new(t.video.width() as i16, t.video.height() as i16),
         );
         self.draw_texture(self.canvas_texture, pos.x, pos.y, scale, RGBA32::WHITE);
-        self.dash.canvas_scale = scale;
-        self.dash.canvas_offset = pos;
+        self.dash_args = DashArgs {
+            screen_size,
+            mouse: self.get_mouse(),
+            canvas_scale: scale,
+            canvas_pos: pos,
+            ..self.dash_args
+        }
     }
 
     /// Process "Dashboard" draw ops
-    pub fn render_dashboard<'a>(&mut self, t: &'a Tato) {
+    pub fn render_dashboard<'a>(&mut self, dash: &mut Dashboard, t: &'a Tato) {
         if !self.debug_mode() {
             return;
         }
-
-        let screen_size = self.get_screen_size();
-        let mouse = self.get_mouse();
-
         // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-        self.dash.render(screen_size, mouse, t);
-
+        dash.render(t, self.dash_args);
         // Update GPU textures with the generated pixel data
-        let source_pixels = self.dash.tile_pixels.clone();
         for bank_index in 0..TILE_BANK_COUNT {
-            if let Some(ref pixels) = source_pixels.get(bank_index) {
+            // texture ID = bank_index
+            if let Some(pixels) = dash.tile_pixels.get(bank_index) {
                 if !pixels.is_empty() {
-                    self.update_texture(bank_index, pixels); // Update texture ID = bank_index
+                    Self::update_texture_internal(
+                        &mut self.textures,
+                        &mut self.ray,
+                        &self.thread,
+                        bank_index,
+                        pixels.as_slice(),
+                    );
                 }
             }
         }
+        // Transfer ops from dashboard to internal buffer
+        for op in dash.ops.drain(..) {
+            self.draw_ops.push(op);
+        }
+    }
 
-        for op in &self.dash.ops {
-            self.draw_ops.push(op.clone());
+    #[inline(always)]
+    fn update_texture_internal(
+        textures: &mut [Texture2D],
+        ray: &mut RaylibHandle,
+        thread: &RaylibThread,
+        id: TextureId,
+        pixels: &[u8],
+    ) {
+        if id < textures.len() {
+            let texture_pixel_count =
+                textures[id].width as usize * textures[id].height as usize * 4;
+            if pixels.len() != texture_pixel_count {
+                // resize texture to match
+                println!("Backend tile texture {} resized", id);
+
+                // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
+                let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
+                let complete_rows = total_tiles / TILES_PER_ROW as usize;
+                let remaining_tiles = total_tiles % TILES_PER_ROW as usize;
+
+                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
+                let complete_lines = complete_rows * TILE_SIZE as usize;
+                let incomplete_lines = if remaining_tiles > 0 { TILE_SIZE as usize } else { 0 };
+                let new_h = (complete_lines + incomplete_lines) as i32;
+                let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
+                let texture = ray.load_texture_from_image(thread, &image).unwrap();
+                textures[id] = texture;
+            }
+            textures[id].update_texture(&pixels).unwrap();
         }
     }
 }
@@ -236,19 +286,7 @@ impl Backend for RaylibBackend {
     }
 
     fn update_texture(&mut self, id: TextureId, pixels: &[u8]) {
-        if id < self.textures.len() {
-            let len = self.textures[id].width as usize * self.textures[id].height as usize * 4;
-            if pixels.len() != len {
-                // resize texture to match
-                let total_pixels = pixels.len() / 4;
-                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
-                let new_h = (total_pixels / new_w as usize) as i32;
-                let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
-                let texture = self.ray.load_texture_from_image(&self.thread, &image).unwrap();
-                self.textures[id] = texture;
-            }
-            self.textures[id].update_texture(&pixels).unwrap();
-        }
+        Self::update_texture_internal(&mut self.textures, &mut self.ray, &self.thread, id, pixels);
     }
 
     // ---------------------- Input ----------------------
@@ -258,29 +296,32 @@ impl Backend for RaylibBackend {
     }
 
     fn update_input(&mut self, pad: &mut AnaloguePad) {
+        use KeyboardKey::*;
+        let ray = &mut self.ray;
+
         // Copy existing update_gamepad logic
         pad.copy_current_to_previous_state();
 
         // Handle keyboard input
-        pad.set_button(Button::Left, self.ray.is_key_down(KeyboardKey::KEY_LEFT));
-        pad.set_button(Button::Right, self.ray.is_key_down(KeyboardKey::KEY_RIGHT));
-        pad.set_button(Button::Up, self.ray.is_key_down(KeyboardKey::KEY_UP));
-        pad.set_button(Button::Down, self.ray.is_key_down(KeyboardKey::KEY_DOWN));
-        pad.set_button(Button::Menu, self.ray.is_key_down(KeyboardKey::KEY_ESCAPE));
-        pad.set_button(Button::Start, self.ray.is_key_down(KeyboardKey::KEY_ENTER));
-        pad.set_button(Button::A, self.ray.is_key_down(KeyboardKey::KEY_Z));
-        pad.set_button(Button::LeftShoulder, self.ray.is_key_down(KeyboardKey::KEY_ONE));
+        pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
+        pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
+        pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
+        pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
+        pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
+        pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
+        pad.set_button(Button::A, ray.is_key_down(KEY_Z));
+        pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
 
         // Dashboard
-        if self.ray.is_key_pressed(KeyboardKey::KEY_TAB) {
+        if ray.is_key_pressed(KEY_TAB) {
             self.display_debug = !self.display_debug;
         }
-        if self.ray.is_key_pressed(KeyboardKey::KEY_EQUAL) {
-            self.dash.gui_scale += 1;
+        if ray.is_key_pressed(KEY_EQUAL) {
+            self.dash_args.gui_scale += 1.0;
         }
-        if self.ray.is_key_pressed(KeyboardKey::KEY_MINUS) {
-            if self.dash.gui_scale > 1 {
-                self.dash.gui_scale -= 1;
+        if ray.is_key_pressed(KEY_MINUS) {
+            if self.dash_args.gui_scale > 1.0 {
+                self.dash_args.gui_scale -= 1.0;
             }
         }
     }
@@ -288,8 +329,8 @@ impl Backend for RaylibBackend {
     // ---------------------- Window Info ----------------------
 
     fn get_screen_size(&self) -> Vec2<i16> {
-        let width:i32 = self.ray.get_screen_width();
-        let height:i32 = self.ray.get_screen_height();
+        let width: i32 = self.ray.get_screen_width();
+        let height: i32 = self.ray.get_screen_height();
         Vec2::new(width as i16, height as i16)
     }
 

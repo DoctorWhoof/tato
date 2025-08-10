@@ -1,72 +1,61 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render
 
-use std::vec;
-
 use crate::Tato;
-use crate::backend::TextureId;
+use std::vec;
 use tato_layout::{Edge, Fitting, Frame};
 use tato_math::{Rect, Vec2};
 use tato_video::{
     COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
 };
 
-/// A drawing command that can be executed by any backend
-#[derive(Clone, Debug)]
-pub enum DrawOp {
-    Rect { x: i16, y: i16, w: i16, h: i16, color: RGBA32 },
-    Line { x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32 },
-    Texture { id: TextureId, x: i16, y: i16, scale: f32, tint: RGBA32 },
-    Text { text: String, x: f32, y: f32, size: f32, color: RGBA32 },
-}
+mod draw_ops;
+pub use draw_ops::*;
+
+mod dash_args;
+pub use dash_args::*;
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
 pub struct Dashboard {
-    pub gui_scale: i32,
-    pub canvas_scale: f32,
-    pub canvas_offset: Vec2<i16>,
+    pub tile_pixels: [Vec<u8>; TILE_BANK_COUNT], // one vec per bank
     pub ops: Vec<DrawOp>,
     pub mouse_over_text: String,
-    pub tile_pixels: [Vec<u8>; TILE_BANK_COUNT], // one vec per bank
 }
 
 impl Dashboard {
     pub fn new() -> Self {
         Self {
-            gui_scale: 1,
-            canvas_scale: 1.0,
-            canvas_offset: Vec2 { x: 0, y: 0 },
+            tile_pixels: core::array::from_fn(|_| Vec::new()),
             ops: Vec::new(),
             mouse_over_text: String::new(),
-            tile_pixels: core::array::from_fn(|_| Vec::new()),
         }
     }
 
-    /// Generate debug UI ops - completely backend agnostic
-    pub fn render(&mut self, screen_size: Vec2<i16>, mouse: Vec2<i16>, tato: &Tato) {
+    /// Generate debug UI ops
+    pub fn render(&mut self, tato: &Tato, args: DashArgs) {
         self.ops.clear();
         self.mouse_over_text.clear();
 
         // Generate ops for performance dashboard
-        self.generate_text_dashboard(tato);
+        self.generate_text_dashboard(tato, args.gui_scale);
 
         // Generate ops for video memory debug
-        self.generate_video_memory_debug(screen_size, mouse, tato);
+        self.generate_video_memory_debug(tato, args.screen_size, args.mouse, args.gui_scale);
 
         // Generate ops for debug polygons
-        self.generate_debug_polygons(tato);
+        self.generate_debug_polygons(tato, args.canvas_pos, args.canvas_scale);
 
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
             let width = 100;
-            self.generate_tooltip(&self.mouse_over_text.clone(), width, mouse);
+            self.generate_tooltip(&self.mouse_over_text.clone(), width, args.mouse, args.gui_scale);
         }
     }
 
     /// Generate performance dashboard ops
-    fn generate_text_dashboard(&mut self, tato: &Tato) {
-        let font_size = 12.0 * self.gui_scale as f32;
+    fn generate_text_dashboard(&mut self, tato: &Tato, gui_scale: f32) {
+        let font_size = 12.0 * gui_scale as f32;
         let line_height = font_size;
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
@@ -101,31 +90,35 @@ impl Dashboard {
         let tile_count = bank.tile_count();
         let num_rows = (tile_count + tiles_per_row - 1) / tiles_per_row; // Ceiling division
 
-        let tiles_w = tiles_per_row * TILE_SIZE as usize;
-        let tiles_h = num_rows * TILE_SIZE as usize;
+        let w = tiles_per_row * TILE_SIZE as usize;
+        let h = num_rows * TILE_SIZE as usize;
 
-        // Allocate buffer with correct size
-        let expected_size = tiles_w * tiles_h * 4; // RGBA
-        self.tile_pixels[bank_index] = vec![0u8; expected_size];
+        let expected_size = w * h * 4; // RGBA
+        if expected_size != self.tile_pixels[bank_index].len() {
+            println!("Updating tile texture on bank {}", bank_index);
 
-        // Generate tile pixels
-        for tile_index in 0..tile_count {
-            let tile_x = tile_index % tiles_per_row;
-            let tile_y = tile_index / tiles_per_row;
+            // Allocate buffer with correct size
+            self.tile_pixels[bank_index] = vec![0u8; expected_size];
 
-            for y in 0..TILE_SIZE as usize {
-                for x in 0..TILE_SIZE as usize {
-                    let color_index = bank.tiles[tile_index].get_pixel(x as u8, y as u8);
-                    let gray_value = color_index * 63; // Map 0-4 to 0-252
+            // Generate tile pixels
+            for tile_index in 0..tile_count {
+                let tile_x = tile_index % tiles_per_row;
+                let tile_y = tile_index / tiles_per_row;
 
-                    let pixel_x = tile_x * TILE_SIZE as usize + x;
-                    let pixel_y = tile_y * TILE_SIZE as usize + y;
-                    let i = ((pixel_y * tiles_w) + pixel_x) * 4;
+                for y in 0..TILE_SIZE as usize {
+                    for x in 0..TILE_SIZE as usize {
+                        let color_index = bank.tiles[tile_index].get_pixel(x as u8, y as u8);
+                        let gray_value = color_index * 63; // Map 0-4 to 0-252
 
-                    self.tile_pixels[bank_index][i] = gray_value; // R
-                    self.tile_pixels[bank_index][i + 1] = gray_value; // G
-                    self.tile_pixels[bank_index][i + 2] = gray_value; // B
-                    self.tile_pixels[bank_index][i + 3] = 255; // A
+                        let pixel_x = tile_x * TILE_SIZE as usize + x;
+                        let pixel_y = tile_y * TILE_SIZE as usize + y;
+                        let i = ((pixel_y * w) + pixel_x) * 4;
+
+                        self.tile_pixels[bank_index][i] = gray_value; // R
+                        self.tile_pixels[bank_index][i + 1] = gray_value; // G
+                        self.tile_pixels[bank_index][i + 2] = gray_value; // B
+                        self.tile_pixels[bank_index][i + 3] = 255; // A
+                    }
                 }
             }
         }
@@ -134,11 +127,12 @@ impl Dashboard {
     /// Generate video memory debug visualization ops
     fn generate_video_memory_debug(
         &mut self,
+        tato: &Tato,
         screen_size: Vec2<i16>,
         mouse: Vec2<i16>,
-        tato: &Tato,
+        gui_scale: f32,
     ) {
-        let font_size = (12 * self.gui_scale) as i16;
+        let font_size = (12.0 * gui_scale) as i16;
         let dark_bg = RGBA32 { r: 32, g: 32, b: 32, a: 255 };
         let light_bg = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
@@ -148,9 +142,9 @@ impl Dashboard {
 
         // Debug panel background
         let rect_bg = Rect::new(
-            screen_size.x - (tiles_w * self.gui_scale as i16) - 8,
+            screen_size.x - (tiles_w * gui_scale as i16) - 8,
             font_size,
-            tiles_w * self.gui_scale as i16,
+            tiles_w * gui_scale as i16,
             screen_size.y - font_size - font_size,
         );
 
@@ -165,9 +159,9 @@ impl Dashboard {
         let mut layout = Frame::<i16>::new(rect_bg);
         layout.set_gap(1);
         layout.set_margin(1);
-        layout.set_scale(self.gui_scale as f32);
+        layout.set_scale(gui_scale);
         layout.fitting = Fitting::Clamp;
-        let gap = self.gui_scale as i16;
+        let gap = gui_scale as i16;
 
         // Process each video memory bank
         for bank_index in 0..TILE_BANK_COUNT {
@@ -177,7 +171,7 @@ impl Dashboard {
             }
 
             // Bank label
-            let h = font_size / self.gui_scale as i16;
+            let h = font_size / gui_scale as i16;
             layout.push_edge(Edge::Top, h, |frame| {
                 let rect = frame.rect();
                 self.ops.push(DrawOp::Text {
@@ -218,7 +212,14 @@ impl Dashboard {
 
             // Tile visualization placeholder
             self.update_tile_texture(bank_index, bank, tiles_per_row);
-            self.generate_tile_visualization(&mut layout, bank_index, bank, mouse, tiles_per_row);
+            self.generate_tile_visualization(
+                &mut layout,
+                bank_index,
+                bank,
+                mouse,
+                gui_scale,
+                tiles_per_row,
+            );
         }
     }
 
@@ -359,6 +360,7 @@ impl Dashboard {
         bank_index: usize,
         bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
         mouse: Vec2<i16>,
+        gui_scale: f32,
         tiles_per_row: usize,
     ) {
         let max_row = (bank.tile_count() / tiles_per_row) + 1;
@@ -386,8 +388,8 @@ impl Dashboard {
 
             // Mouse hover detection for tiles
             if r.contains(mouse.x, mouse.y) {
-                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / self.gui_scale as i16;
-                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / self.gui_scale as i16;
+                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / gui_scale as i16;
+                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / gui_scale as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text = format!("Tile {}", tile_index);
@@ -397,7 +399,7 @@ impl Dashboard {
     }
 
     /// Generate debug polygon ops
-    fn generate_debug_polygons(&mut self, tato: &Tato) {
+    fn generate_debug_polygons(&mut self, tato: &Tato, canvas_pos: Vec2<i16>, canvas_scale: f32) {
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
         for poly in tato.iter_dash_polys(false) {
@@ -424,14 +426,10 @@ impl Dashboard {
                     let current = world_poly[i];
                     let next = world_poly[i + 1];
                     self.ops.push(DrawOp::Line {
-                        x1: ((current.x as f32 - scroll_x) * self.canvas_scale) as i16
-                            + self.canvas_offset.x,
-                        y1: ((current.y as f32 - scroll_y) * self.canvas_scale) as i16
-                            + self.canvas_offset.y,
-                        x2: ((next.x as f32 - scroll_x) * self.canvas_scale) as i16
-                            + self.canvas_offset.x,
-                        y2: ((next.y as f32 - scroll_y) * self.canvas_scale) as i16
-                            + self.canvas_offset.y,
+                        x1: ((current.x as f32 - scroll_x) * canvas_scale) as i16 + canvas_pos.x,
+                        y1: ((current.y as f32 - scroll_y) * canvas_scale) as i16 + canvas_pos.y,
+                        x2: ((next.x as f32 - scroll_x) * canvas_scale) as i16 + canvas_pos.x,
+                        y2: ((next.y as f32 - scroll_y) * canvas_scale) as i16 + canvas_pos.y,
                         color: white,
                     });
                 }
@@ -440,9 +438,9 @@ impl Dashboard {
     }
 
     /// Generate tooltip command
-    fn generate_tooltip(&mut self, text: &str, text_width: i16, mouse: Vec2<i16>) {
-        let font_size = 12.0 * self.gui_scale as f32;
-        let pad = self.gui_scale as i16;
+    fn generate_tooltip(&mut self, text: &str, text_width: i16, mouse: Vec2<i16>, gui_scale: f32) {
+        let font_size = 12.0 * gui_scale as f32;
+        let pad = gui_scale as i16;
 
         let text_x = mouse.x - text_width - 12;
         let text_y = mouse.y + 12;
