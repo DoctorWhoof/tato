@@ -414,7 +414,7 @@ impl<'a> Iterator for PixelIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
-        if self.y == self.vid.max_y() as u16 {
+        if self.y > self.vid.max_y() as u16 {
             return None;
         }
 
@@ -459,7 +459,7 @@ impl<'a> Iterator for PixelIter<'a> {
             self.y += 1;
 
             // Prepare next line if not at end
-            if self.y < self.vid.max_y() as u16 {
+            if self.y <= self.vid.max_y() as u16 {
                 // Cache scanline
                 let fg_y = self.y as usize;
                 if fg_y < MAX_LINES {

@@ -1,10 +1,15 @@
-//! Backend-agnostic debug UI system using command-based rendering
+//! Generates the "Dashboard" UI, working in tandem with a Backend.
+//! Provides a buffer of DrawOps that the Backend can render
 
-use crate::backend::{Backend, TextureId};
+use std::vec;
+
 use crate::Tato;
-use tato_layout::{Frame, Edge, Fitting};
-use tato_math::Rect;
-use tato_video::{RGBA32, TILE_COUNT, TILE_BANK_COUNT, COLORS_PER_PALETTE, TILE_SIZE, COLORS_PER_TILE};
+use crate::backend::TextureId;
+use tato_layout::{Edge, Fitting, Frame};
+use tato_math::{Rect, Vec2};
+use tato_video::{
+    COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
+};
 
 /// A drawing command that can be executed by any backend
 #[derive(Clone, Debug)]
@@ -12,99 +17,59 @@ pub enum DrawOp {
     Rect { x: i16, y: i16, w: i16, h: i16, color: RGBA32 },
     Text { text: String, x: f32, y: f32, size: f32, color: RGBA32 },
     Line { x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32 },
-    Texture { id: TextureId, x: f32, y: f32, scale: f32, tint: RGBA32 },
+    Texture { id: TextureId, x: i16, y: i16, scale: f32, tint: RGBA32 },
 }
 
-/// Backend-agnostic debug UI system that generates drawing commands
+/// Backend-agnostic debug UI system that generates drawing ops
+#[derive(Debug)]
 pub struct DebugRenderer {
-    pub enabled: bool,
     pub scale: i32,
-    commands: Vec<DrawOp>,
-    mouse_over_text: String,
+    pub ops: Vec<DrawOp>,
+    pub mouse_over_text: String,
+    pub tile_pixels: [Vec<u8>; TILE_BANK_COUNT], // one vec per bank
 }
 
 impl DebugRenderer {
     pub fn new() -> Self {
         Self {
-            enabled: true,
             scale: 1,
-            commands: Vec::new(),
+            ops: Vec::new(),
             mouse_over_text: String::new(),
+            tile_pixels: core::array::from_fn(|_| Vec::new()),
         }
     }
 
-    /// Generate debug UI commands - completely backend agnostic
-    pub fn render_debug_ui<B: Backend>(
-        &mut self,
-        backend: &B,
-        tato: &Tato
-    ) {
-        if !self.enabled {
-            return;
-        }
-
-        self.commands.clear();
+    /// Generate debug UI ops - completely backend agnostic
+    pub fn render_debug_ui(&mut self, screen_size: Vec2<i16>, mouse: Vec2<i16>, tato: &Tato) {
+        self.ops.clear();
         self.mouse_over_text.clear();
 
-        let (mouse_x, mouse_y) = backend.mouse_pos();
-        let (screen_width, screen_height) = backend.screen_size();
+        // Generate ops for performance dashboard
+        self.generate_text_dashboard(tato);
 
-        // Generate commands for performance dashboard
-        self.generate_performance_dashboard(tato);
+        // Generate ops for video memory debug
+        self.generate_video_memory_debug(screen_size, mouse, tato);
 
-        // Generate commands for video memory debug
-        self.generate_video_memory_debug(backend, tato, mouse_x, mouse_y, screen_width, screen_height);
-
-        // Generate commands for debug polygons
+        // Generate ops for debug polygons
         self.generate_debug_polygons(tato);
 
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
-            self.generate_tooltip(backend, &self.mouse_over_text.clone(), mouse_x, mouse_y);
+            let width = 100;
+            self.generate_tooltip(&self.mouse_over_text.clone(), width, mouse);
         }
     }
 
-    /// Execute all collected commands using the Backend trait
-    pub fn execute_commands<B: Backend>(&self, backend: &mut B) {
-        for cmd in &self.commands {
-            match cmd {
-                DrawOp::Rect { x, y, w, h, color } => {
-                    backend.draw_rect(*x, *y, *w, *h, *color);
-                }
-                DrawOp::Text { text, x, y, size, color } => {
-                    backend.draw_text(text, *x, *y, *size, *color);
-                }
-                DrawOp::Line { x1, y1, x2, y2, color } => {
-                    backend.draw_line(*x1, *y1, *x2, *y2, *color);
-                }
-                DrawOp::Texture { id, x, y, scale, tint } => {
-                    backend.draw_texture(*id, *x, *y, *scale, *tint);
-                }
-            }
-        }
-    }
-
-    /// Get the list of drawing commands for custom execution
-    pub fn get_commands(&self) -> &[DrawOp] {
-        &self.commands
-    }
-
-    /// Add a custom drawing command (for game-specific debug features)
-    pub fn add_command(&mut self, command: DrawOp) {
-        self.commands.push(command);
-    }
-
-    /// Generate performance dashboard commands
-    fn generate_performance_dashboard(&mut self, tato: &Tato) {
+    /// Generate performance dashboard ops
+    fn generate_text_dashboard(&mut self, tato: &Tato) {
         let font_size = 12.0 * self.scale as f32;
         let line_height = font_size;
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
-        let mut y = 10.0;
-
         // Dashboard text from tato
+        let mut y = 10.0;
         for line in tato.get_dash_text() {
-            self.commands.push(DrawOp::Text {
+            self.ops.push(DrawOp::Text {
                 text: line.to_string(),
                 x: 10.0,
                 y,
@@ -113,45 +78,59 @@ impl DebugRenderer {
             });
             y += line_height;
         }
-
-        // Performance metrics
-        self.commands.push(DrawOp::Text {
-            text: format!("fps: {:.2}", 1.0 / tato.elapsed_time()),
-            x: 10.0,
-            y,
-            size: font_size,
-            color: white,
-        });
-        y += line_height;
-
-        self.commands.push(DrawOp::Text {
-            text: format!("elapsed: {:.2} ms", tato.elapsed_time() * 1000.0),
-            x: 10.0,
-            y,
-            size: font_size,
-            color: white,
-        });
-        y += line_height;
-
-        // Additional performance metrics that were in the backend
-        self.commands.push(DrawOp::Text {
-            text: "Debug UI: Backend-agnostic".to_string(),
-            x: 10.0,
-            y,
-            size: font_size * 0.8,
-            color: RGBA32 { r: 200, g: 200, b: 200, a: 255 },
-        });
     }
 
-    /// Generate video memory debug visualization commands
-    fn generate_video_memory_debug<B: Backend>(
+    /// Generate tile pixel data and update texture
+    fn update_tile_texture(
         &mut self,
-        _backend: &B,
+        bank_index: usize,
+        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        tiles_per_row: usize,
+    ) {
+        let max_row = (bank.tile_count() / tiles_per_row) + 1;
+        let tiles_w = tiles_per_row * TILE_SIZE as usize;
+        let tiles_h = max_row * TILE_SIZE as usize;
+
+        // Generate tile pixels
+        let mut pixels = vec![0u8; tiles_w * tiles_h * 4];
+        let max_index = max_row * tiles_per_row;
+
+        for tile_index in 0..max_index {
+            if tile_index >= bank.tile_count() {
+                break;
+            }
+
+            let tile_x = tile_index % tiles_per_row;
+            let tile_y = tile_index / tiles_per_row;
+
+            for y in 0..TILE_SIZE as usize {
+                for x in 0..TILE_SIZE as usize {
+                    let color_index = bank.tiles[tile_index].get_pixel(x as u8, y as u8);
+                    let gray_value = color_index * 63; // Map 0-4 to 0-252
+
+                    let pixel_x = tile_x * TILE_SIZE as usize + x;
+                    let pixel_y = tile_y * TILE_SIZE as usize + y;
+                    let pixel_offset = (pixel_y * tiles_w + pixel_x) * 4;
+
+                    if pixel_offset + 3 < pixels.len() {
+                        pixels[pixel_offset] = gray_value; // R
+                        pixels[pixel_offset + 1] = gray_value; // G
+                        pixels[pixel_offset + 2] = gray_value; // B
+                        pixels[pixel_offset + 3] = 255; // A
+                    }
+                }
+            }
+        }
+
+        self.tile_pixels[bank_index] = pixels;
+    }
+
+    /// Generate video memory debug visualization ops
+    fn generate_video_memory_debug(
+        &mut self,
+        screen_size: Vec2<i16>,
+        mouse: Vec2<i16>,
         tato: &Tato,
-        mouse_x: i16,
-        mouse_y: i16,
-        screen_width: i16,
-        screen_height: i16,
     ) {
         let font_size = (12 * self.scale) as i16;
         let dark_bg = RGBA32 { r: 32, g: 32, b: 32, a: 255 };
@@ -163,13 +142,13 @@ impl DebugRenderer {
 
         // Debug panel background
         let rect_bg = Rect::new(
-            screen_width - (tiles_w * self.scale as i16) - 8,
+            screen_size.x - (tiles_w * self.scale as i16) - 8,
             font_size,
             tiles_w * self.scale as i16,
-            screen_height - font_size - font_size,
+            screen_size.y - font_size - font_size,
         );
 
-        self.commands.push(DrawOp::Rect {
+        self.ops.push(DrawOp::Rect {
             x: rect_bg.x,
             y: rect_bg.y,
             w: rect_bg.w,
@@ -195,7 +174,7 @@ impl DebugRenderer {
             let h = font_size / self.scale as i16;
             layout.push_edge(Edge::Top, h, |frame| {
                 let rect = frame.rect();
-                self.commands.push(DrawOp::Text {
+                self.ops.push(DrawOp::Text {
                     text: format!("bank {}:", bank_index),
                     x: (rect.x + gap) as f32,
                     y: rect.y as f32,
@@ -207,7 +186,7 @@ impl DebugRenderer {
             // Bank info
             layout.push_edge(Edge::Top, h, |frame| {
                 let rect = frame.rect();
-                self.commands.push(DrawOp::Text {
+                self.ops.push(DrawOp::Text {
                     text: format!(
                         "{} tiles, {} custom colors, {} sub-palettes",
                         bank.tile_count(),
@@ -226,28 +205,28 @@ impl DebugRenderer {
             }
 
             // Color palette swatches
-            self.generate_palette_swatches(&mut layout, bank, mouse_x, mouse_y, dark_bg);
+            self.generate_palette_swatches(&mut layout, bank, mouse, dark_bg);
 
             // Sub-palette swatches
-            self.generate_sub_palette_swatches(&mut layout, bank, mouse_x, mouse_y, dark_bg);
+            self.generate_sub_palette_swatches(&mut layout, bank, mouse, dark_bg);
 
             // Tile visualization placeholder
-            self.generate_tile_visualization(&mut layout, bank, mouse_x, mouse_y, tiles_per_row);
+            self.update_tile_texture(bank_index, bank, tiles_per_row);
+            self.generate_tile_visualization(&mut layout, bank_index, bank, mouse, tiles_per_row);
         }
     }
 
-    /// Generate palette swatch commands
+    /// Generate palette swatch ops
     fn generate_palette_swatches(
         &mut self,
         layout: &mut Frame<i16>,
-        bank: &tato_video::VideoMemory<{TILE_COUNT}>,
-        mouse_x: i16,
-        mouse_y: i16,
+        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        mouse: Vec2<i16>,
         dark_bg: RGBA32,
     ) {
         layout.push_edge(Edge::Top, 8, |frame| {
             let rect = frame.rect();
-            self.commands.push(DrawOp::Rect {
+            self.ops.push(DrawOp::Rect {
                 x: rect.x as i16,
                 y: rect.y as i16,
                 w: rect.w as i16,
@@ -262,7 +241,7 @@ impl DebugRenderer {
                     let color = bank.palette[c];
                     let rgba32 = RGBA32::from(color);
 
-                    self.commands.push(DrawOp::Rect {
+                    self.ops.push(DrawOp::Rect {
                         x: rect.x as i16,
                         y: rect.y as i16,
                         w: rect.w as i16,
@@ -271,10 +250,14 @@ impl DebugRenderer {
                     });
 
                     // Mouse hover detection
-                    if rect.contains(mouse_x, mouse_y) {
+                    if rect.contains(mouse.x, mouse.y) {
                         self.mouse_over_text = format!(
                             "Color {} = {}, {}, {}, {}",
-                            c, color.r(), color.g(), color.b(), color.a()
+                            c,
+                            color.r(),
+                            color.g(),
+                            color.b(),
+                            color.a()
                         );
                     }
                 });
@@ -282,13 +265,12 @@ impl DebugRenderer {
         });
     }
 
-    /// Generate sub-palette swatch commands
+    /// Generate sub-palette swatch ops
     fn generate_sub_palette_swatches(
         &mut self,
         layout: &mut Frame<i16>,
-        bank: &tato_video::VideoMemory<{TILE_COUNT}>,
-        mouse_x: i16,
-        mouse_y: i16,
+        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        mouse: Vec2<i16>,
         dark_bg: RGBA32,
     ) {
         let columns = 6;
@@ -303,7 +285,7 @@ impl DebugRenderer {
                     frame_column.set_margin(0);
                     let rect = frame_column.rect();
 
-                    self.commands.push(DrawOp::Rect {
+                    self.ops.push(DrawOp::Rect {
                         x: rect.x as i16,
                         y: rect.y as i16,
                         w: rect.w as i16,
@@ -319,7 +301,9 @@ impl DebugRenderer {
                             let subp_index = ((row * COLORS_PER_TILE as u32) + column) as usize;
                             let current_item = (row * columns) + column;
 
-                            if current_item < bank.sub_palette_count() as u32 && subp_index < bank.sub_palettes.len() {
+                            if current_item < bank.sub_palette_count() as u32
+                                && subp_index < bank.sub_palettes.len()
+                            {
                                 let subp = &bank.sub_palettes[subp_index];
                                 let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
 
@@ -329,7 +313,7 @@ impl DebugRenderer {
                                         let color_index = subp[n].0 as usize;
                                         if color_index < bank.palette.len() {
                                             let color = RGBA32::from(bank.palette[color_index]);
-                                            self.commands.push(DrawOp::Rect {
+                                            self.ops.push(DrawOp::Rect {
                                                 x: r.x as i16,
                                                 y: r.y as i16,
                                                 w: r.w as i16,
@@ -341,7 +325,7 @@ impl DebugRenderer {
                                 }
 
                                 // Mouse hover detection
-                                if frame_row.rect().contains(mouse_x as i16, mouse_y as i16) {
+                                if frame_row.rect().contains(mouse.x as i16, mouse.y as i16) {
                                     let subp_text = format!(
                                         "[{}]",
                                         subp.iter()
@@ -362,13 +346,13 @@ impl DebugRenderer {
         });
     }
 
-    /// Generate tile visualization commands
+    /// Generate tile visualization ops
     fn generate_tile_visualization(
         &mut self,
         layout: &mut Frame<i16>,
-        bank: &tato_video::VideoMemory<{TILE_COUNT}>,
-        mouse_x: i16,
-        mouse_y: i16,
+        bank_index: usize,
+        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        mouse: Vec2<i16>,
         tiles_per_row: usize,
     ) {
         let max_row = (bank.tile_count() / tiles_per_row) + 1;
@@ -378,7 +362,7 @@ impl DebugRenderer {
             let r = frame_tiles.rect();
             let dark_gray = RGBA32 { r: 64, g: 64, b: 64, a: 255 };
 
-            self.commands.push(DrawOp::Rect {
+            self.ops.push(DrawOp::Rect {
                 x: r.x as i16,
                 y: r.y as i16,
                 w: r.w as i16,
@@ -386,10 +370,18 @@ impl DebugRenderer {
                 color: dark_gray,
             });
 
+            self.ops.push(DrawOp::Texture {
+                x: r.x as i16,
+                y: r.y as i16,
+                id: bank_index,
+                scale: frame_tiles.get_scale(),
+                tint: RGBA32::WHITE,
+            });
+
             // Mouse hover detection for tiles
-            if r.contains(mouse_x, mouse_y) {
-                let col = ((mouse_x - r.x) / TILE_SIZE as i16) / self.scale as i16;
-                let row = ((mouse_y - r.y) / TILE_SIZE as i16) / self.scale as i16;
+            if r.contains(mouse.x, mouse.y) {
+                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / self.scale as i16;
+                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / self.scale as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text = format!("Tile {}", tile_index);
@@ -398,7 +390,7 @@ impl DebugRenderer {
         });
     }
 
-    /// Generate debug polygon commands
+    /// Generate debug polygon ops
     fn generate_debug_polygons(&mut self, tato: &Tato) {
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
@@ -407,7 +399,7 @@ impl DebugRenderer {
                 for i in 0..(poly.len() - 1) {
                     let current = poly[i];
                     let next = poly[i + 1];
-                    self.commands.push(DrawOp::Line {
+                    self.ops.push(DrawOp::Line {
                         x1: current.x,
                         y1: current.y,
                         x2: next.x,
@@ -420,27 +412,26 @@ impl DebugRenderer {
     }
 
     /// Generate tooltip command
-    fn generate_tooltip<B: Backend>(&mut self, backend: &B, text: &str, mouse_x: i16, mouse_y: i16) {
+    fn generate_tooltip(&mut self, text: &str, text_width: i16, mouse: Vec2<i16>) {
         let font_size = 12.0 * self.scale as f32;
-        let (text_w, _text_h) = backend.measure_text(text, font_size);
         let pad = self.scale as i16;
 
-        let text_x = mouse_x - text_w as i16 - 12;
-        let text_y = mouse_y + 12;
+        let text_x = mouse.x - text_width - 12;
+        let text_y = mouse.y + 12;
 
         // Background
         let black = RGBA32 { r: 0, g: 0, b: 0, a: 255 };
-        self.commands.push(DrawOp::Rect {
+        self.ops.push(DrawOp::Rect {
             x: text_x - pad,
             y: text_y,
-            w: text_w as i16 + pad + pad,
+            w: text_width + pad + pad,
             h: font_size as i16,
             color: black,
         });
 
         // Text
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
-        self.commands.push(DrawOp::Text {
+        self.ops.push(DrawOp::Text {
             text: text.to_string(),
             x: text_x as f32,
             y: text_y as f32,
@@ -449,142 +440,89 @@ impl DebugRenderer {
         });
     }
 
-    /// Toggle debug mode
-    pub fn toggle(&mut self) -> bool {
-        self.enabled = !self.enabled;
-        self.enabled
-    }
-
-    /// Set debug scale
-    pub fn set_scale(&mut self, scale: i32) {
-        self.scale = scale.max(1);
-    }
-
-    /// Handle debug input (call this in your game loop)
-    pub fn handle_debug_input<B: Backend>(&mut self, _backend: &B) {
-        // Note: This requires backend to expose key state - you may need to implement this
-        // For now, games should handle debug input themselves and call toggle()/set_scale()
-    }
-
-    /// Convenience method for easy migration from old debug system
-    /// Call this instead of the old backend.render() debug functionality
-    pub fn render_and_execute<B: Backend>(&mut self, backend: &mut B, tato: &Tato) {
-        if self.enabled {
-            self.render_debug_ui(backend, tato);
-            self.execute_commands(backend);
-        }
-    }
-
-    /// Handle standard debug input keys (TAB, +, -)
-    /// Returns true if any debug input was handled
-    pub fn handle_standard_input(&mut self, tab_pressed: bool, plus_pressed: bool, minus_pressed: bool) -> bool {
-        let mut handled = false;
-
-        if tab_pressed {
-            self.toggle();
-            handled = true;
-        }
-        if plus_pressed {
-            self.set_scale(self.scale + 1);
-            handled = true;
-        }
-        if minus_pressed && self.scale > 1 {
-            self.set_scale(self.scale - 1);
-            handled = true;
-        }
-
-        handled
-    }
-
     // === Game-Specific Debug Extensions ===
 
-    /// Add entity debug info (example of game-specific debug feature)
-    pub fn debug_entity(&mut self, name: &str, x: f32, y: f32, properties: &[(&str, String)]) {
-        if !self.enabled {
-            return;
-        }
+    // /// Add entity debug info (example of game-specific debug feature)
+    // pub fn debug_entity(&mut self, name: &str, x: f32, y: f32, properties: &[(&str, String)]) {
+    //     if !self.enabled {
+    //         return;
+    //     }
 
-        let font_size = 10.0 * self.scale as f32;
-        let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
-        let yellow = RGBA32 { r: 255, g: 255, b: 0, a: 255 };
-        let bg = RGBA32 { r: 0, g: 0, b: 0, a: 128 };
+    //     let font_size = 10.0 * self.scale as f32;
+    //     let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
+    //     let yellow = RGBA32 { r: 255, g: 255, b: 0, a: 255 };
+    //     let bg = RGBA32 { r: 0, g: 0, b: 0, a: 128 };
 
-        // Entity name
-        self.commands.push(DrawOp::Text {
-            text: name.to_string(),
-            x,
-            y: y - 15.0,
-            size: font_size,
-            color: yellow,
-        });
+    //     // Entity name
+    //     self.ops.push(DrawOp::Text {
+    //         text: name.to_string(),
+    //         x,
+    //         y: y - 15.0,
+    //         size: font_size,
+    //         color: yellow,
+    //     });
 
-        // Properties
-        let mut prop_y = y;
-        for (key, value) in properties {
-            let prop_text = format!("{}: {}", key, value);
+    //     // Properties
+    //     let mut prop_y = y;
+    //     for (key, value) in properties {
+    //         let prop_text = format!("{}: {}", key, value);
 
-            // Background for better readability
-            self.commands.push(DrawOp::Rect {
-                x: x as i16 - 2,
-                y: prop_y as i16 - 2,
-                w: (prop_text.len() as i16 * 6) + 4,
-                h: font_size as i16 + 4,
-                color: bg,
-            });
+    //         // Background for better readability
+    //         self.ops.push(DrawOp::Rect {
+    //             x: x as i16 - 2,
+    //             y: prop_y as i16 - 2,
+    //             w: (prop_text.len() as i16 * 6) + 4,
+    //             h: font_size as i16 + 4,
+    //             color: bg,
+    //         });
 
-            self.commands.push(DrawOp::Text {
-                text: prop_text,
-                x,
-                y: prop_y,
-                size: font_size,
-                color: white,
-            });
-            prop_y += font_size + 2.0;
-        }
-    }
+    //         self.ops.push(DrawOp::Text {
+    //             text: prop_text,
+    //             x,
+    //             y: prop_y,
+    //             size: font_size,
+    //             color: white,
+    //         });
+    //         prop_y += font_size + 2.0;
+    //     }
+    // }
 
-    /// Add collision box debug visualization
-    pub fn debug_collision_box(&mut self, rect: Rect<i16>, color: Option<RGBA32>) {
-        if !self.enabled {
-            return;
-        }
+    // /// Add collision box debug visualization
+    // pub fn debug_collision_box(&mut self, rect: Rect<i16>, color: Option<RGBA32>) {
+    //     if !self.enabled {
+    //         return;
+    //     }
 
-        let debug_color = color.unwrap_or(RGBA32 { r: 255, g: 0, b: 0, a: 128 });
+    //     let debug_color = color.unwrap_or(RGBA32 { r: 255, g: 0, b: 0, a: 128 });
 
-        // Draw collision box outline
-        self.commands.push(DrawOp::Line {
-            x1: rect.x,
-            y1: rect.y,
-            x2: rect.x + rect.w,
-            y2: rect.y,
-            color: debug_color,
-        });
-        self.commands.push(DrawOp::Line {
-            x1: rect.x + rect.w,
-            y1: rect.y,
-            x2: rect.x + rect.w,
-            y2: rect.y + rect.h,
-            color: debug_color,
-        });
-        self.commands.push(DrawOp::Line {
-            x1: rect.x + rect.w,
-            y1: rect.y + rect.h,
-            x2: rect.x,
-            y2: rect.y + rect.h,
-            color: debug_color,
-        });
-        self.commands.push(DrawOp::Line {
-            x1: rect.x,
-            y1: rect.y + rect.h,
-            x2: rect.x,
-            y2: rect.y,
-            color: debug_color,
-        });
-    }
-}
-
-impl Default for DebugRenderer {
-    fn default() -> Self {
-        Self::new()
-    }
+    //     // Draw collision box outline
+    //     self.ops.push(DrawOp::Line {
+    //         x1: rect.x,
+    //         y1: rect.y,
+    //         x2: rect.x + rect.w,
+    //         y2: rect.y,
+    //         color: debug_color,
+    //     });
+    //     self.ops.push(DrawOp::Line {
+    //         x1: rect.x + rect.w,
+    //         y1: rect.y,
+    //         x2: rect.x + rect.w,
+    //         y2: rect.y + rect.h,
+    //         color: debug_color,
+    //     });
+    //     self.ops.push(DrawOp::Line {
+    //         x1: rect.x + rect.w,
+    //         y1: rect.y + rect.h,
+    //         x2: rect.x,
+    //         y2: rect.y + rect.h,
+    //         color: debug_color,
+    //     });
+    //     self.ops.push(DrawOp::Line {
+    //         x1: rect.x,
+    //         y1: rect.y + rect.h,
+    //         x2: rect.x,
+    //         y2: rect.y,
+    //         color: debug_color,
+    //     });
+    // }
 }

@@ -25,6 +25,7 @@ pub struct Tato {
     frame_started: bool,
     frame_finished: bool,
 
+    // debug_renderer: DebugRenderer,
     // #[cfg(debug_assertions)]
     debug_arena: Arena<64536, u16>, // Persistent debug arena
     // #[cfg(debug_assertions)]
@@ -127,6 +128,8 @@ impl Tato {
         {
             self.dash_text(&format!("Debug arena size: {} Kb", self.debug_arena.used() / 1024));
             self.dash_text(&format!("Asset arena size: {} Kb", self.assets.arena.used() / 1024));
+            self.dash_text(&format!("fps: {:.2}", 1.0 / self.elapsed_time()));
+            self.dash_text(&format!("elapsed: {:.2} ms", self.elapsed_time() * 1000.0));
         }
 
         self.frame_finished = true;

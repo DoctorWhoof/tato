@@ -123,7 +123,9 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
-        backend.render(&tato, &[&bg_map]);
+        backend.render_canvas(&tato, &[&bg_map]);
+        backend.render_debug(&tato);
+        backend.present();
     }
 
     audio_backend.write_wav_file();

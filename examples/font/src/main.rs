@@ -112,7 +112,7 @@ fn main() -> TatoResult<()> {
     while !backend.ray.window_should_close() {
         // Input
         tato.frame_start(backend.ray.get_frame_time());
-        backend.update_gamepad(&mut tato.pad);
+        backend.update_input(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {
             tato.video.scroll_x += 1;
@@ -136,7 +136,9 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        backend.render(&mut tato, &[&bg_map]);
+        backend.render_canvas(&tato, &[&bg_map]);
+        backend.render_debug(&tato);
+        backend.present();
     }
     Ok(())
 }
