@@ -13,7 +13,7 @@ pub(crate) struct StripEntry {
 }
 
 /// A Reference to an animation object.
-/// 
+///
 /// AnimID(0) represents "no animation" and is the default value.
 /// Valid animation IDs start from 1.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Default)]
@@ -25,17 +25,17 @@ pub struct AnimID(pub u8);
 /// some sort of validation.
 pub struct Anim<const LEN: usize> {
     pub fps: u8,
-    pub repeat: bool,
+    pub rep: bool,
     pub frames: [u8; LEN],
-    pub strip_id: StripID
+    pub strip: StripID
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct AnimEntry {
     pub frames: Pool<u8, u16>,
     pub fps: u8,
-    pub repeat: bool,
-    pub strip_id: StripID
+    pub rep: bool,
+    pub strip: StripID
 }
 
 // /// A reference to an animation stored in Assets

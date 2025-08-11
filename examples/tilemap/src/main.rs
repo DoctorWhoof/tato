@@ -14,12 +14,13 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
     let mut dash = Dashboard::new();
     let mut tato = Tato::new(240, 180, 60);
-    tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
+
+    tato.video.bg_color = RGBA12::new(1, 2, 3);
 
     // Populate tilesets
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let _transparent = tato.banks[0].push_color(RGBA12::new(0, 0, 0, 0));
-    let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
+    let _transparent = tato.banks[0].push_color(RGBA12::TRANSPARENT);
+    let _empty_palette = tato.new_subpalette(0, [0, 1, 2, 3]);
 
     let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;

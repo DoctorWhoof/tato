@@ -73,13 +73,13 @@ impl<const TILES: usize> VideoMemory<TILES> {
         self.sub_palettes[index.0 as usize] = colors;
     }
 
-    pub fn push_subpalette(&mut self, colors: [ColorID; COLORS_PER_TILE as usize]) -> PaletteID {
+    pub fn push_subpalette(&mut self, colors: [u8; COLORS_PER_TILE as usize]) -> PaletteID {
         assert!(
             self.sub_palette_head < SUBPALETTE_COUNT,
             err!("SUBPALETTE_COUNT exceeded")
         );
         let result = self.sub_palette_head;
-        self.sub_palettes[self.sub_palette_head as usize] = colors;
+        self.sub_palettes[self.sub_palette_head as usize] = colors.map(|c| ColorID(c));
         self.sub_palette_head += 1;
         PaletteID(result)
     }

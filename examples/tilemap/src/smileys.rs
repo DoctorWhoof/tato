@@ -20,18 +20,18 @@ pub const SMILEYS_TILESET: TilesetData = TilesetData {
 };
 
 pub const SMILEYS_COLORS: [RGBA12; 12] = [
-    RGBA12::new(7, 7, 7, 7),
-    RGBA12::new(4, 4, 4, 7),
-    RGBA12::new(7, 6, 3, 7),
-    RGBA12::new(0, 2, 1, 7),
-    RGBA12::new(0, 1, 3, 7),
-    RGBA12::new(0, 0, 0, 7),
-    RGBA12::new(6, 4, 1, 7),
-    RGBA12::new(2, 4, 2, 7),
-    RGBA12::new(1, 2, 6, 7),
-    RGBA12::new(6, 3, 6, 7),
-    RGBA12::new(4, 6, 3, 7),
-    RGBA12::new(4, 6, 7, 7),
+    RGBA12::with_transparency(7, 7, 7, 7),
+    RGBA12::with_transparency(4, 4, 4, 7),
+    RGBA12::with_transparency(7, 6, 3, 7),
+    RGBA12::with_transparency(0, 2, 1, 7),
+    RGBA12::with_transparency(0, 1, 3, 7),
+    RGBA12::with_transparency(0, 0, 0, 7),
+    RGBA12::with_transparency(6, 4, 1, 7),
+    RGBA12::with_transparency(2, 4, 2, 7),
+    RGBA12::with_transparency(1, 2, 6, 7),
+    RGBA12::with_transparency(6, 3, 6, 7),
+    RGBA12::with_transparency(4, 6, 3, 7),
+    RGBA12::with_transparency(4, 6, 7, 7),
 ];
 
 pub const SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 0, 0];

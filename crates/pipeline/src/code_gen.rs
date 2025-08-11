@@ -89,7 +89,7 @@ impl CodeWriter {
 
         for color in colors {
             self.write_line(&format!(
-                "    RGBA12::new({}, {}, {}, {}),",
+                "    RGBA12::with_transparency({}, {}, {}, {}),",
                 color.r(),
                 color.g(),
                 color.b(),

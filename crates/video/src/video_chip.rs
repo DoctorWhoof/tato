@@ -59,7 +59,7 @@ impl VideoChip {
         assert!(h > 7 && h <= MAX_LINES as u16, err!("Screen height range is 8 to MAX_LINES"));
 
         let mut result = Self {
-            bg_color: RGBA12::new(0, 0, 0, 7), // TODO: replace with RGBA12::BLACK
+            bg_color: RGBA12::BLACK,
             wrap_sprites: true,
             wrap_bg: true,
             sprite_gen: SpriteGenerator::new(),
@@ -123,7 +123,7 @@ impl VideoChip {
 
     /// Resets the chip to its initial state.
     pub fn reset_all(&mut self) {
-        self.bg_color = RGBA12::new(0, 0, 0, 7); // TODO: replace with RGBA12::BLACK
+        self.bg_color = RGBA12::BLACK;
         self.wrap_sprites = true;
         self.frame_count = 0;
         self.fg_tile_bank = 0;

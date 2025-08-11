@@ -1,8 +1,17 @@
 ### General Engine
 
-[x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
+[ ] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
+    . I'm considering breaking away from default colors and requiring colors to be always defined by the user
+    . There could be a "default_colors()" function that pushes the default ones, if needed
 
-[ ] Use "collider" flag on tiles, figure out a way for pipeline to mark it.
+[ ] Collider should be a TileFlag bit, not a group
+    . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
+    . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
+    . Will be ready if i decide to implement sprite collisions
+    . Doesn't feel right: flags like "trigger" don't belong in the video chip, since they're gameplay related. Maybe just a "collider" bit, plus 3 "custom" bits that the user can choose how to use.
+    [ ] Use "collider" flag on tiles, figure out a way for pipeline to mark it.
+
+[x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
 
 [ ] Drawing
     [x] Tilemap to Tilemap
@@ -26,13 +35,7 @@
             - Flags: 1 bytes
             - Palette: 2 bytes (4 bits per color)
     . UPDATE: Will simply use more subpalettes instead. Allows for more groups while still keeping Cell size to 4 bytes.
-    . May just adopt 16 color clusters in the future, with some way to override/remap colors.
-
-[ ] Collider should be a TileFlag bit, not a group
-    . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
-    . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
-    . Will be ready if i decide to implement sprite collisions
-    . Doesn't feel right: flags like "trigger" don't belong in the video chip, since they're gameplay related. Maybe just a "collider" bit, plus 3 "custom" bits that the user can choose how to use.
+    . May just adopt 16 color clusters (i.e. Master System) in the future, with some way to override/remap colors.
 
 ### Backend and examples
 

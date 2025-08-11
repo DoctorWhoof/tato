@@ -16,8 +16,8 @@ fn main() -> TatoResult<()> {
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
-    let palette_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let palette_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
+    let palette_default = tato.new_subpalette(0, [0, 14, 2, 2]);
+    let palette_light = tato.new_subpalette(0, [0, 3, 2, 2]);
 
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
     let font = tato.push_tileset(0, FONT_TILESET)?;

@@ -10,11 +10,11 @@ fn main() -> TatoResult<()> {
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let ts_font = tato.push_tileset(0, FONT_TILESET)?;
 
-    let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
-    let plt_cycle = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, BLACK]);
+    let plt_default = tato.new_subpalette(0, [0, 14, 2, 2]);
+    let plt_light = tato.new_subpalette(0, [0, 3, 2, 2]);
+    let plt_cycle = tato.new_subpalette(0, [0, 3, 2, 0]);
 
-    tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
+    tato.video.bg_color = RGBA12::new(1, 2, 3);
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;

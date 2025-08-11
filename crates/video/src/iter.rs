@@ -88,8 +88,8 @@ impl<'a> PixelIter<'a> {
             scroll_y: vid.scroll_y,
             bg_color: vid.bg_color,
             scanline: vid.sprite_gen.scanlines[0].clone(),
-            sprite_buffer: [RGBA12::BG.with_z(Z_SPRITE); 512],
-            bg_buffer: [RGBA12::BG.with_z(Z_BG_COLOR); 512],
+            sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); 512],
+            bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG_COLOR); 512],
         };
         // Run Y IRQ on first line before anything else
         result.call_line_irq();
@@ -125,7 +125,7 @@ impl<'a> PixelIter<'a> {
         unsafe {
             let ptr = self.sprite_buffer.as_mut_ptr();
             for x in viewport_start..viewport_end {
-                *ptr.add(x) = RGBA12::BG;
+                *ptr.add(x) = RGBA12::TRANSPARENT;
             }
         }
 

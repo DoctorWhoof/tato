@@ -110,7 +110,7 @@ impl Tato {
     pub fn new_subpalette(
         &mut self,
         bank_id: u8,
-        sub_palette: [ColorID; COLORS_PER_TILE as usize],
+        sub_palette: [u8; COLORS_PER_TILE as usize],
     ) -> PaletteID {
         let bank = self.banks.get_mut(bank_id as usize).unwrap();
         let assets = &mut self.assets;
@@ -237,9 +237,8 @@ impl Tato {
                     tileset_sub_palettes[i] = **sub_palette;
                 }
 
-                let mapped_sub_palette: [ColorID; COLORS_PER_TILE as usize] = from_fn(|j| {
-                    let mapped = color_entries[sub_palette[j] as usize].index;
-                    ColorID(mapped)
+                let mapped_sub_palette: [u8; COLORS_PER_TILE as usize] = from_fn(|j| {
+                    color_entries[sub_palette[j] as usize].index
                 });
                 bank.push_subpalette(mapped_sub_palette);
                 sub_palettes_len += 1;
@@ -407,8 +406,8 @@ impl Tato {
         let strip = self
             .assets
             .strip_entries
-            .get(anim.strip_id.0 as usize)
-            .ok_or(TatoError::InvalidStripId(anim.strip_id.0))?;
+            .get(anim.strip.0 as usize)
+            .ok_or(TatoError::InvalidStripId(anim.strip.0))?;
 
         // Reserve index 0 for "no animation", start allocation from index 1
         let next_index = if self.assets.anim_head == 0 { 1 } else { self.assets.anim_head + 1 };
@@ -433,12 +432,8 @@ impl Tato {
             .arena
             .alloc_pool_from_fn(anim.frames.len(), |i| anim.frames[i])
             .ok_or(TatoError::ArenaOutOfSpace)?;
-        self.assets.anim_entries[next_index as usize] = AnimEntry {
-            frames,
-            fps: anim.fps,
-            repeat: anim.repeat,
-            strip_id: anim.strip_id,
-        };
+        self.assets.anim_entries[next_index as usize] =
+            AnimEntry { frames, fps: anim.fps, rep: anim.rep, strip: anim.strip };
 
         // Update head to track the last allocated index
         self.assets.anim_head = next_index;
@@ -465,7 +460,7 @@ impl Tato {
     //     AnimRef {
     //         frames: self.assets.arena.get_pool(&entry.frames),
     //         fps: entry.fps,
-    //         repeat: entry.repeat,
+    //         rep: entry.rep,
     //         // tileset: entry.tileset,
     //     }
     // }

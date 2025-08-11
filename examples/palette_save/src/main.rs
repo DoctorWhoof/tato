@@ -19,7 +19,7 @@ fn main() {
         for g in 0..8 {
             for b in 0..8 {
                 // Create RGBA12 color with full alpha (7)
-                let color12 = RGBA12::new(r, g, b, 7);
+                let color12 = RGBA12::new(r, g, b);
 
                 // Convert to RGBA32 to get the actual color values
                 let color32 = RGBA32::from(color12);

@@ -36,7 +36,7 @@ impl SceneC {
             //     flags: TileFlags::default().with_fg(),
             //     sub_palette: PaletteID(0),
             // });
-            t.banks[0].push_subpalette([BG_COLOR, ColorID(id), BG_COLOR, BG_COLOR]);
+            t.banks[0].push_subpalette([0, id, 0, 0]);
         }
 
         Ok(SceneC { smiley, counter: 0 })
