@@ -440,7 +440,7 @@ impl Tato {
         Ok(AnimID(next_index))
     }
 
-    pub fn get_tilemap(&self, map_id: MapID) -> TatoResult<TilemapRef> {
+    pub fn get_tilemap(&self, map_id: MapID) -> TatoResult<TilemapRef<'_>> {
         let entry = self
             .assets
             .map_entries

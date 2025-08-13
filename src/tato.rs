@@ -1,4 +1,4 @@
-use core::fmt::{Debug, Display};
+use core::fmt::Debug;
 
 use tato_arena::{Arena, Buffer, Pool, Text};
 use tato_math::{Rect, Vec2};
