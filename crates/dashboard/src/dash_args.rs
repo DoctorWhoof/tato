@@ -1,5 +1,4 @@
-use tato_math::Vec2;
-
+use tato::math::Vec2;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DashArgs {

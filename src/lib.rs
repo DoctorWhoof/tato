@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 
 pub use tato_audio as audio;
 pub use tato_layout as layout;
@@ -24,15 +24,12 @@ pub use tato::*;
 
 pub mod backend;
 
-pub mod dashboard;
-
 pub mod default_assets;
 
 pub mod prelude {
     pub use crate::default_assets::*;
     pub use crate::graphics::*;
     pub use crate::backend::*;
-    pub use crate::dashboard::*;
     pub use crate::*;
     pub use tato_audio::waveform::*;
     pub use tato_audio::*;

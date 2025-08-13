@@ -1,5 +1,6 @@
 use std::{f32::consts::PI, time::Instant};
 use tato::{Tato, prelude::*};
+use tato_dashboard::Dashboard;
 use tato_raylib::*;
 
 pub enum SoundType {
@@ -66,6 +67,7 @@ fn main() -> TatoResult<()> {
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
         tato.frame_start(backend.ray.get_frame_time());
+        backend.update_input(&mut tato.pad);
 
         // "Envelopes"
         let env_len = 2.0;
@@ -138,8 +140,8 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
-        backend.render_dashboard(&mut dash, &tato);
         backend.render_canvas(&tato, &[&bg_map]);
+        backend.render_dashboard(&mut dash, &tato);
         backend.present();
     }
 

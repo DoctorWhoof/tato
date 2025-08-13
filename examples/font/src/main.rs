@@ -1,4 +1,5 @@
 use tato::{Tato, prelude::*};
+use tato_dashboard::Dashboard;
 use tato_raylib::*;
 
 fn main() -> TatoResult<()> {

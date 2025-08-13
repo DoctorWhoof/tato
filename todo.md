@@ -26,23 +26,28 @@
     . Simplify pipeline, reduce errors due to subpalette limit reached
     . 4 colors per tile stays. Maybe a "Mode 1" where we can have 16 colors per tile?...
     . Clusters can stay as is? (2 bits per pixel)
-        . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
+    . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
     . Should still allow palette swap, will need a palette override mechanism
     . Subpalette bits can now be groups, up to 15 + None
-        . Instead of using bits, simply use named groups like WALL and DOOR
-        . This will keep Cell at 4 bytes:
-            - Id: 1 byte
-            - Flags: 1 bytes
-            - Palette: 2 bytes (4 bits per color)
+    . Instead of using bits, simply use named groups like WALL and DOOR
+    . This will keep Cell at 4 bytes: - Id: 1 byte - Flags: 1 bytes - Palette: 2 bytes (4 bits per color)
     . UPDATE: Will simply use more subpalettes instead. Allows for more groups while still keeping Cell size to 4 bytes.
     . May just adopt 16 color clusters (i.e. Master System) in the future, with some way to override/remap colors.
 
+### Arenas
+
+    [ ] Arena-backed strings
+        . Implements Into<&str>
+        . Some sort of string formatting would be great
+
+    [ ] Rename Buffer to something nicer!
+
 ### Backend and examples
 
---->[ ] Some way to easily send information to the backend.
+[x] Some way to easily send information to the backend.
     . Some static mut shenanigans? Should be OK since it won't affect gameplay. Investigate.
-        [ ] Debug rects with colors
-        [ ] Debug text
+    [x] Debug rects with colors
+    [x] Debug text
 
 [.] Use LIRQ (Line interrupt) to draw Game GUI
     . Will need to switch Tile bank halfway through
@@ -55,8 +60,8 @@
     [x] Use tato_layout, positioning everything manually is a pain!
     [x] Mouse over display debug
     [ ] Mouse over video output:
-        [ ] Inspect any BG tile being displayed by tato_video.
-        [ ] Inspect Sprites.
+    [ ] Inspect any BG tile being displayed by tato_video.
+    [ ] Inspect Sprites.
     [x] Shrink tile view to used tiles Only
     [x] Shrink subpalettes size
     [.] Indicate colors added Vs. default colors
@@ -79,23 +84,23 @@
 
 [x] Text and Fonts
     [/] Fonts will be Cell-based assets, like Anim and Tilemaps
-        . Using Tilemaps as fonts seems to work better, allows easy detection of flipped tiles, etc.
+    . Using Tilemaps as fonts seems to work better, allows easy detection of flipped tiles, etc.
     [x] Write directly to the BG Map
     [ ] Let the function accept a user defined slice of characters so that fonts of any length may be used. I.e. Very basic games may only need numbers.
 
 [.] Load & Unload Tilesets.
     . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
     [.] Arena approach!
-        [.] Basic push/pop implemented, needs testing!
-        [x] Once tilesets + tilemaps are working, implement Anims!
-        . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
-        . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
-        [ ] Detect and prevent loading "empty" animation frames
-        [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
+    [.] Basic push/pop implemented, needs testing!
+    [x] Once tilesets + tilemaps are working, implement Anims!
+    . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
+    . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
+    [ ] Detect and prevent loading "empty" animation frames
+    [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
 
 [x] Tilemaps
     [x] Correctly map subpalettes when loading into Assets.
-        . Looks done? Needs more testing
+    . Looks done? Needs more testing
 
 [x] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?

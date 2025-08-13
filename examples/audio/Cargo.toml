@@ -8,3 +8,4 @@ rand = {version = "0.9.0" }
 tato = { path = "../../"}
 backend_cpal = { path = "../../crates/backend_cpal"}
 tato_raylib = { path = "../../crates/backend_raylib"}
+tato_dashboard = { path = "../../crates/dashboard" }

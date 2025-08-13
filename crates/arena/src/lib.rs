@@ -2,27 +2,23 @@
 //! Fixed-size arena allocator with generational safety and type markers.
 
 pub mod arena;
+pub mod buffer;
 pub mod id;
 pub mod pool;
-pub mod fillable_pool;
+pub mod text;
 pub mod typed_arena;
 
 pub use arena::Arena;
+pub use buffer::*;
 pub use id::{ArenaId, RawId};
 pub use pool::Pool;
-pub use fillable_pool::*;
+pub use text::*;
 pub use typed_arena::{TypedArena, TypedId};
 
 /// Trait for types that can be used as arena indices.
-///
 /// This consolidates all the requirements for index types like u8, u16, usize.
 pub trait ArenaIndex:
-    Copy +
-    TryFrom<usize> +
-    Into<usize> +
-    PartialOrd +
-    core::ops::Add<Output = Self> +
-    tato_math::Num
+    Copy + TryFrom<usize> + Into<usize> + PartialOrd + core::ops::Add<Output = Self> + tato_math::Num
 {
 }
 

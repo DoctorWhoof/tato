@@ -1,12 +1,10 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render
 
-use crate::Tato;
-use std::vec;
-use tato_layout::{Edge, Fitting, Frame};
-use tato_math::{Rect, Vec2};
-use tato_video::{
+use tato::prelude::{Edge, Fitting, Frame, Rect, Tato, Vec2};
+use tato::video::{
     COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
+    VideoMemory,
 };
 
 mod draw_ops;
@@ -53,21 +51,46 @@ impl Dashboard {
         }
     }
 
+    fn additional_text(&mut self, y: &mut f32, line_height: f32, font_size: f32, text: &str) {
+        self.ops.push(DrawOp::Text {
+            text: text.to_string(),
+            x: 10.0,
+            y: *y,
+            size: font_size,
+            color: RGBA32::WHITE,
+        });
+        *y += line_height;
+    }
+
     /// Generate performance dashboard ops
     fn generate_text_dashboard(&mut self, tato: &Tato, gui_scale: f32) {
         let font_size = 12.0 * gui_scale as f32;
         let line_height = font_size;
-        let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
+        let mut y = 10.0;
+
+        // Additional debug info
+        let arena_size = &format!("Debug arena size: {} Kb", tato.debug_arena.used() / 1024);
+        self.additional_text(&mut y, line_height, font_size, arena_size);
+
+        let asset_size = &format!("Asset arena size: {} Kb", tato.assets.arena.used() / 1024);
+        self.additional_text(&mut y, line_height, font_size, asset_size);
+
+        let fps = &format!("fps: {:.2}", 1.0 / tato.elapsed_time());
+        self.additional_text(&mut y, line_height, font_size, fps);
+
+        let elapsed = &format!("elapsed: {:.2} ms", tato.elapsed_time() * 1000.0);
+        self.additional_text(&mut y, line_height, font_size, elapsed);
+
+        self.additional_text(&mut y, line_height, font_size, "------------------------");
 
         // Dashboard text from tato
-        let mut y = 10.0;
         for line in tato.iter_dash_text() {
             self.ops.push(DrawOp::Text {
                 text: line.to_string(),
                 x: 10.0,
                 y,
                 size: font_size,
-                color: white,
+                color: RGBA32::WHITE,
             });
             y += line_height;
         }
@@ -77,7 +100,7 @@ impl Dashboard {
     fn update_tile_texture(
         &mut self,
         bank_index: usize,
-        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        bank: &VideoMemory<{ TILE_COUNT }>,
         tiles_per_row: usize,
     ) {
         // Early return for empty banks
@@ -227,7 +250,7 @@ impl Dashboard {
     fn generate_palette_swatches(
         &mut self,
         layout: &mut Frame<i16>,
-        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        bank: &VideoMemory<{ TILE_COUNT }>,
         mouse: Vec2<i16>,
         dark_bg: RGBA32,
     ) {
@@ -276,7 +299,7 @@ impl Dashboard {
     fn generate_sub_palette_swatches(
         &mut self,
         layout: &mut Frame<i16>,
-        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        bank: &VideoMemory<{ TILE_COUNT }>,
         mouse: Vec2<i16>,
         dark_bg: RGBA32,
     ) {
@@ -358,7 +381,7 @@ impl Dashboard {
         &mut self,
         layout: &mut Frame<i16>,
         bank_index: usize,
-        bank: &tato_video::VideoMemory<{ TILE_COUNT }>,
+        bank: &VideoMemory<{ TILE_COUNT }>,
         mouse: Vec2<i16>,
         gui_scale: f32,
         tiles_per_row: usize,

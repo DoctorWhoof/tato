@@ -1,13 +1,13 @@
 use super::*;
 
 #[derive(Debug)]
-pub struct FillablePool<T, SizeType> {
+pub struct Buffer<T, SizeType> {
     pool: Pool<T, SizeType>,
     len: usize,      // Current number of elements used
     capacity: usize, // Maximum elements (from original allocation)
 }
 
-impl<T, SizeType: ArenaIndex> FillablePool<T, SizeType> {
+impl<T, SizeType: ArenaIndex> Buffer<T, SizeType> {
     pub fn new<const LEN: usize>(
         arena: &mut Arena<LEN, SizeType>,
         capacity: usize,

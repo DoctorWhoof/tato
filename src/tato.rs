@@ -1,4 +1,6 @@
-use tato_arena::{Arena, FillablePool, Pool};
+use core::fmt::{Debug, Display};
+
+use tato_arena::{Arena, Buffer, Pool, Text};
 use tato_math::{Rect, Vec2};
 
 use crate::*;
@@ -25,20 +27,20 @@ pub struct Tato {
     frame_started: bool,
     frame_finished: bool,
 
-    debug_arena: Arena<64536, u16>, // Debug arena, cleared on every frame start
-    debug_strings: FillablePool<Pool<u8, u16>, u16>,
+    pub debug_arena: Arena<64536, u16>, // Debug arena, cleared on every frame start
+    debug_strings: Buffer<Pool<u8, u16>, u16>,
     // Each poly is a Vec2 slice
-    debug_polys: FillablePool<Pool<Vec2<i16>, u16>, u16>,
-    debug_polys_world: FillablePool<Pool<Vec2<i16>, u16>, u16>,
+    debug_polys: Buffer<Pool<Vec2<i16>, u16>, u16>,
+    debug_polys_world: Buffer<Pool<Vec2<i16>, u16>, u16>,
 }
 
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         // let temp = Arena::new();
         let mut debug_arena = Arena::new();
-        let debug_strings = FillablePool::new(&mut debug_arena, 256).unwrap();
-        let debug_polys = FillablePool::new(&mut debug_arena, 256).unwrap();
-        let debug_polys_world = FillablePool::new(&mut debug_arena, 256).unwrap();
+        let debug_strings = Buffer::new(&mut debug_arena, 256).unwrap();
+        let debug_polys = Buffer::new(&mut debug_arena, 256).unwrap();
+        let debug_polys_world = Buffer::new(&mut debug_arena, 256).unwrap();
 
         Self {
             // Main parts
@@ -105,9 +107,9 @@ impl Tato {
         self.frame_started = true;
 
         self.debug_arena.clear();
-        self.debug_strings = FillablePool::new(&mut self.debug_arena, 512).unwrap();
-        self.debug_polys = FillablePool::new(&mut self.debug_arena, 256).unwrap();
-        self.debug_polys_world = FillablePool::new(&mut self.debug_arena, 256).unwrap();
+        self.debug_strings = Buffer::new(&mut self.debug_arena, 512).unwrap();
+        self.debug_polys = Buffer::new(&mut self.debug_arena, 256).unwrap();
+        self.debug_polys_world = Buffer::new(&mut self.debug_arena, 256).unwrap();
     }
 
     pub fn frame_finish(&mut self) {
@@ -117,17 +119,15 @@ impl Tato {
             ))
         }
 
-        self.dash_text(&format!("Debug arena size: {} Kb", self.debug_arena.used() / 1024));
-        self.dash_text(&format!("Asset arena size: {} Kb", self.assets.arena.used() / 1024));
-        self.dash_text(&format!("fps: {:.2}", 1.0 / self.elapsed_time()));
-        self.dash_text(&format!("elapsed: {:.2} ms", self.elapsed_time() * 1000.0));
-
         self.frame_finished = true;
         self.frame_started = false;
     }
 
     // --------------------- Dashboard ---------------------
 
+    /// Sends text messages to the dashboard buffer. Unfortunately, formatting
+    /// those messages requires std library. For basic, no_std formatting check
+    /// "dash_dbg" below.
     pub fn dash_text(&mut self, text: &str) {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
         assert!(text.is_ascii());
@@ -139,6 +139,21 @@ impl Tato {
         let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
     }
 
+    /// Allows basic text formatting when sending text to the dashboard
+    pub fn dash_dbg<T>(&mut self, message: &str, value: T)
+    where
+        T: Debug,
+    {
+        // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
+        let handle = Text::format(&mut self.debug_arena, message, value).unwrap();
+        let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
+    }
+
+
+    /// Sends an open polygon to the dashboard (to close, simply ensure the last
+    /// point matches the first). If "world_space" is true, poly will be resized
+    /// and translated to match canvas size and scroll values. If not, it will
+    /// be drawn like a gui.
     pub fn dash_poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
         let handle = self.debug_arena.alloc_pool::<Vec2<i16>>(points.len()).unwrap();
         let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
@@ -150,6 +165,7 @@ impl Tato {
         }
     }
 
+    /// Convenient way to send a rect as a poly to the dashboard.
     pub fn dash_rect(&mut self, rect: Rect<i16>, world_space: bool) {
         let points = [
             rect.top_left(),
@@ -161,6 +177,7 @@ impl Tato {
         self.dash_poly(&points, world_space);
     }
 
+    /// Convenient way to send a point as an "x" to the dashboard.
     pub fn dash_pivot(&mut self, x: i16, y: i16, size: i16, world_space: bool) {
         let half = size / 2;
         self.dash_poly(

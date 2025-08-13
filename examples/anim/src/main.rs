@@ -2,6 +2,7 @@ mod astro;
 
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
 use tato::prelude::*;
+use tato_dashboard::Dashboard;
 use tato_raylib::RaylibBackend;
 
 // An entity that fits in 64 bits! :-)

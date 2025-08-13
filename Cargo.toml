@@ -14,7 +14,6 @@ tato_audio = { path = "crates/audio" }
 tato_video = { path = "crates/video" }
 tato_math = { path = "crates/math" }
 tato_rng = { path = "crates/rng" }
-# smooth-buffer = { path = "crates/smooth_buffer" }
 tato_arena = { path = "crates/arena" }
 tato_collision = { path = "crates/collision" }
 smooth_buffer = { path = "crates/smooth_buffer" }
@@ -29,7 +28,7 @@ members = [
     "examples/font",
     "examples/tilemap",
     "examples/palette_save",
-    "examples/anim",
+    "examples/anim", "crates/dashboard",
     # "crates/rng",
     # "crates/collision",
     # "examples/pipe",

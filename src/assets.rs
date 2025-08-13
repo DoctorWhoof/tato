@@ -20,7 +20,7 @@ pub use tilemap::*;
 #[derive(Debug)]
 pub struct Assets<const CAP: usize> {
     // Main storage
-    pub(crate) arena: tato_arena::Arena<CAP, u16>,
+    pub arena: tato_arena::Arena<CAP, u16>,
     // Everything that needs to be counted.
     cell_head: u16,
     tileset_head: u8,

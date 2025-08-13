@@ -2,9 +2,8 @@ use std::vec;
 
 pub use raylib;
 use raylib::prelude::*;
-use tato::backend::Backend;
-use tato::dashboard::DrawOp;
-use tato::{Tato, prelude::*};
+use tato_dashboard::*;
+use tato::{Tato, prelude::*, backend::Backend};
 
 pub use tato;
 

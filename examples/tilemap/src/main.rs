@@ -1,4 +1,5 @@
 use tato::prelude::*;
+use tato_dashboard::Dashboard;
 use tato_raylib::*;
 
 mod patch;

@@ -1,5 +1,5 @@
-use crate::backend::TextureId;
-use tato_video::RGBA32;
+use tato::backend::TextureId;
+use tato::video::RGBA32;
 
 /// A drawing command that can be executed by any backend
 #[derive(Clone, Debug)]
