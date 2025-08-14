@@ -157,7 +157,7 @@ impl Dashboard {
         screen_size: Vec2<i16>,
         mouse: Vec2<i16>,
     ) {
-        let font_size = (12.0 * self.scale) as i16;
+        let font_size = (self.font_size * self.scale) as i16;
         let dark_bg = RGBA32 { r: 32, g: 32, b: 32, a: 255 };
         let light_bg = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
@@ -168,9 +168,9 @@ impl Dashboard {
         // Debug panel background
         let rect_bg = Rect::new(
             screen_size.x - (tiles_w * self.scale as i16) - 8,
-            font_size,
+            self.font_size as i16,
             tiles_w * self.scale as i16,
-            screen_size.y - font_size - font_size,
+            screen_size.y - (self.font_size + self.font_size) as i16,
         );
 
         self.ops.push(DrawOp::Rect {
