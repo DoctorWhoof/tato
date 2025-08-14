@@ -15,9 +15,12 @@ fn main() {
     use tato_pipe::*;
     init_build();
 
+    // Shared groups for default assets
+    let mut groups = GroupBuilder::new();
+
     // Default font
     let mut palette_font = PaletteBuilder::new("font");
-    let mut tileset_font = TilesetBuilder::new("font", &mut palette_font);
+    let mut tileset_font = TilesetBuilder::new("font", &mut palette_font, &mut groups);
     tileset_font.allow_unused = true;
     tileset_font.save_colors = false; // Sticks with default palette
     tileset_font.use_crate_assets = true; // Only true when used by this crate
@@ -26,7 +29,7 @@ fn main() {
 
     // Default basic tiles
     let mut palette_default = PaletteBuilder::new("default");
-    let mut tileset_default = TilesetBuilder::new("default", &mut palette_default);
+    let mut tileset_default = TilesetBuilder::new("default", &mut palette_default, &mut groups);
     tileset_default.allow_unused = true;
     tileset_default.save_colors = false; // Sticks with default palette
     tileset_default.use_crate_assets = true; // Only true when used by this crate
@@ -39,4 +42,7 @@ fn main() {
     tileset_default.new_tile("import/tile_arrow.png");
     tileset_default.new_tile("import/tile_smiley.png");
     tileset_default.write("src/default_assets/default_tiles.rs");
+
+    // Write groups to their own file (if any)
+    groups.write("src/default_assets/groups.rs");
 }

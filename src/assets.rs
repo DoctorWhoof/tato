@@ -314,6 +314,8 @@ impl Tato {
         // Validate that maps can only be loaded for the current tileset
         let expected = self.assets.tileset_head.saturating_sub(1);
         if tileset_id.0 != expected {
+            // TODO: I ran into tis error and it was... confusing.
+            // Maybe a simple panic is better, provides call stack, etc.
             return Err(TatoError::InvalidTilesetForMap { provided: tileset_id.0, expected });
         }
 

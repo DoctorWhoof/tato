@@ -2,7 +2,7 @@ mod anim;
 pub(crate) use anim::*;
 
 mod group;
-pub(crate) use group::*;
+pub use group::*;
 
 mod map;
 pub(crate) use map::*;

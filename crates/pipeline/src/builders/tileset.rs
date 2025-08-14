@@ -19,7 +19,7 @@ pub struct TilesetBuilder<'a> {
     pub tile_hash: HashMap<CanonicalTile, Cell>,
     pub sub_palette_name_hash: HashMap<[u8; COLORS_PER_TILE as usize], String>,
     pub sub_palettes: Vec<[u8; COLORS_PER_TILE as usize]>,
-    groups: GroupBuilder,
+    groups: &'a mut GroupBuilder,
     anims: Vec<AnimBuilder>,
     maps: Vec<MapBuilder>,
     single_tiles: Vec<SingleTileBuilder>,
@@ -29,7 +29,7 @@ pub struct TilesetBuilder<'a> {
 }
 
 impl<'a> TilesetBuilder<'a> {
-    pub fn new(name: &str, palette: &'a mut PaletteBuilder) -> Self {
+    pub fn new(name: &str, palette: &'a mut PaletteBuilder, groups: &'a mut GroupBuilder) -> Self {
         Self {
             allow_tile_transforms: true,
             allow_unused: false,
@@ -38,7 +38,7 @@ impl<'a> TilesetBuilder<'a> {
             name: String::from(name),
             pixels: vec![],
             tile_hash: HashMap::new(),
-            groups: GroupBuilder::default(),
+            groups,
             sub_palette_name_hash: HashMap::new(),
             next_tile: 0,
             anims: vec![],
@@ -64,18 +64,9 @@ impl<'a> TilesetBuilder<'a> {
     /// those must be added afterwards and will be correctly marked as part of a group, if
     /// there's a match.
     pub fn new_group(&mut self, path: &str, name: &str) {
-        let group_index = self.groups.names.len() + 1;
-        assert!(group_index > 0 && group_index <= 16, "Group index must be between 1-16");
-        let group_index = group_index as u8;
-
+        let group_index = self.groups.add_group(name);
         let img = self.load_valid_image(path, 1, 1);
-        // Ensure the names vec is large enough and store the group name
-        let vec_index = (group_index - 1) as usize; // Convert 1-based to 0-based
-        if self.groups.names.len() <= vec_index {
-            self.groups.names.resize(vec_index + 1, String::new());
-        }
-        self.groups.names[vec_index] = String::from(name);
-
+        
         // Process tiles and register them in the group, discard the returned cells
         let _ = self.add_tiles(&img, Some(group_index));
     }
@@ -162,16 +153,7 @@ impl<'a> TilesetBuilder<'a> {
             }
         }
 
-        // Write group constants
-        if !self.groups.names.is_empty() {
-            for (index, name) in self.groups.names.iter().enumerate() {
-                if !name.is_empty() {
-                    let group_index = (index + 1) as u8; // Convert 0-based back to 1-based
-                    code.write_group_constant(name, group_index);
-                }
-            }
-            code.write_line("");
-        }
+
 
         // Write animation strips if any
         if !self.anims.is_empty() {
@@ -277,9 +259,7 @@ impl<'a> TilesetBuilder<'a> {
                         if let Some(group_idx) = group {
                             // Only register multi-color tiles in groups (skip empty/single-color tiles)
                             if color_mapping.len() > 1 {
-                                let group_bit = 1u8 << (group_idx - 1); // Convert 1-based index to bit position
-                                let current_groups = self.groups.hash.get(&canonical_tile).unwrap_or(&0);
-                                self.groups.hash.insert(canonical_tile, current_groups | group_bit);
+                                self.groups.register_tile(canonical_tile, group_idx);
 
                                 // Also register all transformations if enabled
                                 if self.allow_tile_transforms {
@@ -295,8 +275,7 @@ impl<'a> TilesetBuilder<'a> {
 
                                                 // Only register if the transformed tile is also multi-color
                                                 if transformed_colors.len() > 1 {
-                                                    let current_groups = self.groups.hash.get(&transformed_canonical).unwrap_or(&0);
-                                                    self.groups.hash.insert(transformed_canonical, current_groups | group_bit);
+                                                    self.groups.register_tile(transformed_canonical, group_idx);
                                                 }
                                             }
                                         }

@@ -1,5 +1,9 @@
 ### General Engine
 
+[x] Groups must be tileset-independent!
+    . GroupBuilder is separate from each TilesetBuilder, saves to its own module.
+    . Gets passed to tilesetbuilder::new, just like palette?
+
 [ ] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
     . I'm considering breaking away from default colors and requiring colors to be always defined by the user
     . There could be a "default_colors()" function that pushes the default ones, if needed
@@ -30,7 +34,7 @@
     . Should still allow palette swap, will need a palette override mechanism
     . Subpalette bits can now be groups, up to 15 + None
     . Instead of using bits, simply use named groups like WALL and DOOR
-    . This will keep Cell at 4 bytes: - Id: 1 byte - Flags: 1 bytes - Palette: 2 bytes (4 bits per color)
+    . This will keep Cell at 4 bytes: - Id: 1 byte - Flags: 1 byte - Palette: 2 bytes (4 bits per color)
     . UPDATE: Will simply use more subpalettes instead. Allows for more groups while still keeping Cell size to 4 bytes.
     . May just adopt 16 color clusters (i.e. Master System) in the future, with some way to override/remap colors.
 
