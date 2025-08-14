@@ -1,9 +1,8 @@
-use std::vec;
-
 pub use raylib;
 use raylib::prelude::*;
+use std::{time::Instant, vec};
+use tato::{Tato, backend::Backend, prelude::*, smooth_buffer::SmoothBuffer};
 use tato_dashboard::*;
-use tato::{Tato, prelude::*, backend::Backend};
 
 pub use tato;
 
@@ -26,6 +25,9 @@ pub struct RaylibBackend {
     // Cached then passed to Dashboard later
     dash_args: DashArgs,
     pixels: Vec<u8>,
+    time_profile: Instant,
+    buffer_iter_time: SmoothBuffer<120, f64>,
+    buffer_canvas_time: SmoothBuffer<120, f64>,
 }
 
 /// Raylib specific implementation
@@ -66,6 +68,9 @@ impl RaylibBackend {
             canvas_texture: 0,
             dash_args: DashArgs::default(),
             pixels: vec![0; w as usize * h as usize * 4],
+            time_profile: std::time::Instant::now(),
+            buffer_iter_time: SmoothBuffer::new(),
+            buffer_canvas_time: SmoothBuffer::new(),
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
@@ -74,11 +79,43 @@ impl RaylibBackend {
             result.create_texture(size, size);
         }
 
-        // Main render texture (ID 0)
+        // Main render texture
         let id = result.create_texture(tato.video.width() as i16, tato.video.height() as i16);
         result.canvas_texture = id;
 
         result
+    }
+
+    #[inline(always)]
+    fn update_texture_internal(
+        textures: &mut [Texture2D],
+        ray: &mut RaylibHandle,
+        thread: &RaylibThread,
+        id: TextureId,
+        pixels: &[u8],
+    ) {
+        if id < textures.len() {
+            let texture_pixel_count =
+                textures[id].width as usize * textures[id].height as usize * 4;
+            if pixels.len() != texture_pixel_count {
+                // resize texture to match
+                println!("Backend texture {} resized", id);
+
+                // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
+                let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
+                let complete_rows = total_tiles / TILES_PER_ROW as usize;
+                let remaining_tiles = total_tiles % TILES_PER_ROW as usize;
+
+                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
+                let complete_lines = complete_rows * TILE_SIZE as usize;
+                let incomplete_lines = if remaining_tiles > 0 { TILE_SIZE as usize } else { 0 };
+                let new_h = (complete_lines + incomplete_lines) as i32;
+                let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
+                let texture = ray.load_texture_from_image(thread, &image).unwrap();
+                textures[id] = texture;
+            }
+            textures[id].update_texture(&pixels).unwrap();
+        }
     }
 
     /// Copy from framebuffer to raylib texture
@@ -86,23 +123,24 @@ impl RaylibBackend {
     where
         &'a T: Into<TilemapRef<'a>>,
     {
-        debug_assert!(
-            {
-                let video_width = t.video.width() as usize;
-                let video_height = t.video.height() as usize;
-                video_width * video_height * 4
-            } == self.pixels.len(),
-        );
+        let video_width = t.video.width() as usize;
+        let video_height = t.video.height() as usize;
+        debug_assert!({ video_width * video_height * 4 } == self.pixels.len(),);
 
-        for (i, (color, _)) in t.iter_pixels(bg_banks).enumerate() {
-            let base_idx = i * 4;
-            if base_idx + 3 < self.pixels.len() {
-                self.pixels[base_idx] = color.r;
-                self.pixels[base_idx + 1] = color.g;
-                self.pixels[base_idx + 2] = color.b;
-                self.pixels[base_idx + 3] = color.a;
-            }
+        self.time_profile = Instant::now();
+        let mut i = 0;
+        for color in t.iter_pixels(bg_banks) {
+            self.pixels[i] = color.r;
+            self.pixels[i + 1] = color.g;
+            self.pixels[i + 2] = color.b;
+            self.pixels[i + 3] = color.a;
+            i += 4
         }
+        self.buffer_iter_time.push(self.time_profile.elapsed().as_secs_f64());
+
+        // Will be used across functions, that's why it's a field
+        // TODO: Proper profiling...
+        self.time_profile = Instant::now();
 
         // Update main render texture and queue draw operation
         Self::update_texture_internal(
@@ -134,9 +172,21 @@ impl RaylibBackend {
         if !self.debug_mode() {
             return;
         }
+
+        // Push timing data before moving ops out of dashboard
+        dash.add_text_op(&format!(
+            "iter time: {:.1} ms", //
+            self.buffer_iter_time.average() * 1000.0
+        ));
+        dash.add_text_op(&format!(
+            "canvas time: {:.1} ms",
+            self.buffer_canvas_time.average() * 1000.0
+        ));
+
         // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
         dash.render(t, self.dash_args);
-        // Update GPU textures with the generated pixel data
+
+        // Copy tile pixels from dashboard to GPU textures
         for bank_index in 0..TILE_BANK_COUNT {
             // texture ID = bank_index
             if let Some(pixels) = dash.tile_pixels.get(bank_index) {
@@ -151,42 +201,13 @@ impl RaylibBackend {
                 }
             }
         }
+
         // Transfer ops from dashboard to internal buffer
         for op in dash.ops.drain(..) {
             self.draw_ops.push(op);
         }
-    }
 
-    #[inline(always)]
-    fn update_texture_internal(
-        textures: &mut [Texture2D],
-        ray: &mut RaylibHandle,
-        thread: &RaylibThread,
-        id: TextureId,
-        pixels: &[u8],
-    ) {
-        if id < textures.len() {
-            let texture_pixel_count =
-                textures[id].width as usize * textures[id].height as usize * 4;
-            if pixels.len() != texture_pixel_count {
-                // resize texture to match
-                println!("Backend tile texture {} resized", id);
-
-                // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
-                let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
-                let complete_rows = total_tiles / TILES_PER_ROW as usize;
-                let remaining_tiles = total_tiles % TILES_PER_ROW as usize;
-
-                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
-                let complete_lines = complete_rows * TILE_SIZE as usize;
-                let incomplete_lines = if remaining_tiles > 0 { TILE_SIZE as usize } else { 0 };
-                let new_h = (complete_lines + incomplete_lines) as i32;
-                let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
-                let texture = ray.load_texture_from_image(thread, &image).unwrap();
-                textures[id] = texture;
-            }
-            textures[id].update_texture(&pixels).unwrap();
-        }
+        dash.clear();
     }
 }
 
@@ -203,6 +224,7 @@ impl Backend for RaylibBackend {
     fn present(&mut self) {
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
+
         // Execute draw ops
         for cmd in self.draw_ops.drain(..) {
             match cmd {
@@ -247,6 +269,9 @@ impl Backend for RaylibBackend {
                 },
             }
         }
+        // Time to queue all backed drawing, does not include actual render time,
+        // which will happen when this function returns
+        self.buffer_canvas_time.push(self.time_profile.elapsed().as_secs_f64());
     }
 
     fn should_close(&self) -> bool {

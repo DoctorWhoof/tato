@@ -7,11 +7,11 @@ use tato::video::{
     VideoMemory,
 };
 
-mod draw_ops;
-pub use draw_ops::*;
+mod ops;
+pub use ops::*;
 
-mod dash_args;
-pub use dash_args::*;
+mod args;
+pub use args::*;
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
@@ -19,6 +19,9 @@ pub struct Dashboard {
     pub tile_pixels: [Vec<u8>; TILE_BANK_COUNT], // one vec per bank
     pub ops: Vec<DrawOp>,
     pub mouse_over_text: String,
+    pub text_cursor_y: f32,
+    pub font_size: f32,
+    pub scale: f32,
 }
 
 impl Dashboard {
@@ -27,72 +30,72 @@ impl Dashboard {
             tile_pixels: core::array::from_fn(|_| Vec::new()),
             ops: Vec::new(),
             mouse_over_text: String::new(),
+            text_cursor_y: 0.0,
+            font_size: 12.0,
+            scale: 1.0,
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.ops.clear();
+        self.mouse_over_text.clear();
+        self.text_cursor_y = 0.0;
     }
 
     /// Generate debug UI ops
     pub fn render(&mut self, tato: &Tato, args: DashArgs) {
-        self.ops.clear();
-        self.mouse_over_text.clear();
+        // NOTE: If you don't want the side panel text to scale
+        // with the ui, disable this line:
+        self.scale = args.gui_scale;
 
         // Generate ops for performance dashboard
-        self.generate_text_dashboard(tato, args.gui_scale);
+        self.generate_text_dashboard_ops(tato);
 
         // Generate ops for video memory debug
-        self.generate_video_memory_debug(tato, args.screen_size, args.mouse, args.gui_scale);
+        self.generate_video_memory_debug_ops(tato, args.screen_size, args.mouse);
 
         // Generate ops for debug polygons
-        self.generate_debug_polygons(tato, args.canvas_pos, args.canvas_scale);
+        self.generate_debug_polygons_ops(tato, args.canvas_pos, args.canvas_scale);
 
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
             let width = 100;
-            self.generate_tooltip(&self.mouse_over_text.clone(), width, args.mouse, args.gui_scale);
+            self.generate_tooltip_ops(&self.mouse_over_text.clone(), width, args.mouse);
         }
     }
 
-    fn additional_text(&mut self, y: &mut f32, line_height: f32, font_size: f32, text: &str) {
+    pub fn add_text_op(&mut self, text: &str) {
+        let line_height = self.font_size * self.scale;
         self.ops.push(DrawOp::Text {
             text: text.to_string(),
             x: 10.0,
-            y: *y,
-            size: font_size,
+            y: self.text_cursor_y,
+            size: line_height,
             color: RGBA32::WHITE,
         });
-        *y += line_height;
+        self.text_cursor_y += line_height;
     }
 
     /// Generate performance dashboard ops
-    fn generate_text_dashboard(&mut self, tato: &Tato, gui_scale: f32) {
-        let font_size = 12.0 * gui_scale as f32;
-        let line_height = font_size;
-        let mut y = 10.0;
-
+    fn generate_text_dashboard_ops(&mut self, tato: &Tato) {
         // Additional debug info
         let arena_size = &format!("Debug arena size: {} Kb", tato.debug_arena.used() / 1024);
-        self.additional_text(&mut y, line_height, font_size, arena_size);
+        self.add_text_op(arena_size);
 
         let asset_size = &format!("Asset arena size: {} Kb", tato.assets.arena.used() / 1024);
-        self.additional_text(&mut y, line_height, font_size, asset_size);
+        self.add_text_op(asset_size);
 
         let fps = &format!("fps: {:.2}", 1.0 / tato.elapsed_time());
-        self.additional_text(&mut y, line_height, font_size, fps);
+        self.add_text_op(fps);
 
         let elapsed = &format!("elapsed: {:.2} ms", tato.elapsed_time() * 1000.0);
-        self.additional_text(&mut y, line_height, font_size, elapsed);
+        self.add_text_op(elapsed);
 
-        self.additional_text(&mut y, line_height, font_size, "------------------------");
+        self.add_text_op("------------------------");
 
         // Dashboard text from tato
         for line in tato.iter_dash_text() {
-            self.ops.push(DrawOp::Text {
-                text: line.to_string(),
-                x: 10.0,
-                y,
-                size: font_size,
-                color: RGBA32::WHITE,
-            });
-            y += line_height;
+            self.add_text_op(line);
         }
     }
 
@@ -148,14 +151,13 @@ impl Dashboard {
     }
 
     /// Generate video memory debug visualization ops
-    fn generate_video_memory_debug(
+    fn generate_video_memory_debug_ops(
         &mut self,
         tato: &Tato,
         screen_size: Vec2<i16>,
         mouse: Vec2<i16>,
-        gui_scale: f32,
     ) {
-        let font_size = (12.0 * gui_scale) as i16;
+        let font_size = (12.0 * self.scale) as i16;
         let dark_bg = RGBA32 { r: 32, g: 32, b: 32, a: 255 };
         let light_bg = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
@@ -165,9 +167,9 @@ impl Dashboard {
 
         // Debug panel background
         let rect_bg = Rect::new(
-            screen_size.x - (tiles_w * gui_scale as i16) - 8,
+            screen_size.x - (tiles_w * self.scale as i16) - 8,
             font_size,
-            tiles_w * gui_scale as i16,
+            tiles_w * self.scale as i16,
             screen_size.y - font_size - font_size,
         );
 
@@ -182,9 +184,9 @@ impl Dashboard {
         let mut layout = Frame::<i16>::new(rect_bg);
         layout.set_gap(1);
         layout.set_margin(1);
-        layout.set_scale(gui_scale);
+        layout.set_scale(self.scale);
         layout.fitting = Fitting::Clamp;
-        let gap = gui_scale as i16;
+        let gap = self.scale as i16;
 
         // Process each video memory bank
         for bank_index in 0..TILE_BANK_COUNT {
@@ -194,7 +196,7 @@ impl Dashboard {
             }
 
             // Bank label
-            let h = font_size / gui_scale as i16;
+            let h = font_size / self.scale as i16;
             layout.push_edge(Edge::Top, h, |frame| {
                 let rect = frame.rect();
                 self.ops.push(DrawOp::Text {
@@ -228,26 +230,25 @@ impl Dashboard {
             }
 
             // Color palette swatches
-            self.generate_palette_swatches(&mut layout, bank, mouse, dark_bg);
+            self.generate_palette_swatches_ops(&mut layout, bank, mouse, dark_bg);
 
             // Sub-palette swatches
-            self.generate_sub_palette_swatches(&mut layout, bank, mouse, dark_bg);
+            self.generate_sub_palette_swatches_ops(&mut layout, bank, mouse, dark_bg);
 
             // Tile visualization placeholder
             self.update_tile_texture(bank_index, bank, tiles_per_row);
-            self.generate_tile_visualization(
+            self.generate_tile_visualization_ops(
                 &mut layout,
                 bank_index,
                 bank,
                 mouse,
-                gui_scale,
                 tiles_per_row,
             );
         }
     }
 
     /// Generate palette swatch ops
-    fn generate_palette_swatches(
+    fn generate_palette_swatches_ops(
         &mut self,
         layout: &mut Frame<i16>,
         bank: &VideoMemory<{ TILE_COUNT }>,
@@ -296,7 +297,7 @@ impl Dashboard {
     }
 
     /// Generate sub-palette swatch ops
-    fn generate_sub_palette_swatches(
+    fn generate_sub_palette_swatches_ops(
         &mut self,
         layout: &mut Frame<i16>,
         bank: &VideoMemory<{ TILE_COUNT }>,
@@ -377,13 +378,12 @@ impl Dashboard {
     }
 
     /// Generate tile visualization ops
-    fn generate_tile_visualization(
+    fn generate_tile_visualization_ops(
         &mut self,
         layout: &mut Frame<i16>,
         bank_index: usize,
         bank: &VideoMemory<{ TILE_COUNT }>,
         mouse: Vec2<i16>,
-        gui_scale: f32,
         tiles_per_row: usize,
     ) {
         let max_row = (bank.tile_count() / tiles_per_row) + 1;
@@ -411,8 +411,8 @@ impl Dashboard {
 
             // Mouse hover detection for tiles
             if r.contains(mouse.x, mouse.y) {
-                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / gui_scale as i16;
-                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / gui_scale as i16;
+                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / self.scale as i16;
+                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / self.scale as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text = format!("Tile {}", tile_index);
@@ -422,7 +422,7 @@ impl Dashboard {
     }
 
     /// Generate debug polygon ops
-    fn generate_debug_polygons(&mut self, tato: &Tato, canvas_pos: Vec2<i16>, canvas_scale: f32) {
+    fn generate_debug_polygons_ops(&mut self, tato: &Tato, canvas_pos: Vec2<i16>, canvas_scale:f32) {
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
         for poly in tato.iter_dash_polys(false) {
@@ -461,9 +461,9 @@ impl Dashboard {
     }
 
     /// Generate tooltip command
-    fn generate_tooltip(&mut self, text: &str, text_width: i16, mouse: Vec2<i16>, gui_scale: f32) {
-        let font_size = 12.0 * gui_scale as f32;
-        let pad = gui_scale as i16;
+    fn generate_tooltip_ops(&mut self, text: &str, text_width: i16, mouse: Vec2<i16>) {
+        let font_size = 12.0 * self.scale as f32;
+        let pad = self.scale as i16;
 
         let text_x = mouse.x - text_width - 12;
         let text_y = mouse.y + 12;
@@ -488,45 +488,4 @@ impl Dashboard {
             color: white,
         });
     }
-
-    // /// Add entity debug info (example of game-specific debug feature)
-    // pub fn debug_entity(&mut self, name: &str, x: f32, y: f32, properties: &[(&str, String)]) {
-    //     let font_size = 10.0 * self.scale as f32;
-    //     let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
-    //     let yellow = RGBA32 { r: 255, g: 255, b: 0, a: 255 };
-    //     let bg = RGBA32 { r: 0, g: 0, b: 0, a: 128 };
-
-    //     // Entity name
-    //     self.ops.push(DrawOp::Text {
-    //         text: name.to_string(),
-    //         x,
-    //         y: y - 15.0,
-    //         size: font_size,
-    //         color: yellow,
-    //     });
-
-    //     // Properties
-    //     let mut prop_y = y;
-    //     for (key, value) in properties {
-    //         let prop_text = format!("{}: {}", key, value);
-
-    //         // Background for better readability
-    //         self.ops.push(DrawOp::Rect {
-    //             x: x as i16 - 2,
-    //             y: prop_y as i16 - 2,
-    //             w: (prop_text.len() as i16 * 6) + 4,
-    //             h: font_size as i16 + 4,
-    //             color: bg,
-    //         });
-
-    //         self.ops.push(DrawOp::Text {
-    //             text: prop_text,
-    //             x,
-    //             y: prop_y,
-    //             size: font_size,
-    //             color: white,
-    //         });
-    //         prop_y += font_size + 2.0;
-    //     }
-    // }
 }

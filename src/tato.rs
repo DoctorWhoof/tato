@@ -1,5 +1,4 @@
 use core::fmt::Debug;
-
 use tato_arena::{Arena, Buffer, Pool, Text};
 use tato_math::{Rect, Vec2};
 
@@ -7,19 +6,20 @@ use crate::*;
 
 #[derive(Debug)]
 pub struct Tato {
-    // pub temp: Arena<16384, u16>, // Frame-only arena allocator
     // Input
     pub pad: tato_pad::AnaloguePad,
+
     // Audio
     pub audio: tato_audio::AudioChip,
+
     // Video
     pub video: tato_video::VideoChip,
     pub banks: [tato_video::VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
     // 16Kb asset memory. Currently only stores remapped tilemaps -
-    // the tiles are stored in the memory banks
+    // the tiles are stored directly in the memory banks
     pub assets: Assets<16384>,
+
     // Internals
-    // pub update_time_acc: SmoothBuffer<20, f64>,
     pub target_fps: u8,
     pub(crate) time: f64,
     pub(crate) delta: f32,
@@ -36,7 +36,6 @@ pub struct Tato {
 
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
-        // let temp = Arena::new();
         let mut debug_arena = Arena::new();
         let debug_strings = Buffer::new(&mut debug_arena, 256).unwrap();
         let debug_polys = Buffer::new(&mut debug_arena, 256).unwrap();
@@ -148,7 +147,6 @@ impl Tato {
         let handle = Text::format(&mut self.debug_arena, message, value).unwrap();
         let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
     }
-
 
     /// Sends an open polygon to the dashboard (to close, simply ensure the last
     /// point matches the first). If "world_space" is true, poly will be resized

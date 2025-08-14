@@ -3,9 +3,9 @@ use core::array::from_fn;
 use crate::*;
 
 // Z-buffer priority constants for compositing
-const Z_BG_COLOR: u8 = 0;      // Background color (lowest priority)
-const Z_BG_TILE: u8 = 1;       // Normal background tiles
-const Z_SPRITE: u8 = 2;        // Sprites
+const Z_BG_COLOR: u8 = 0; // Background color (lowest priority)
+const Z_BG_TILE: u8 = 1; // Normal background tiles
+const Z_SPRITE: u8 = 2; // Sprites
 const Z_BG_FOREGROUND: u8 = 3; // Background tiles with is_fg() flag (highest priority)
 
 /// Renders every pixel as it iterates the entire screen.
@@ -30,18 +30,11 @@ pub struct PixelIter<'a> {
     pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
-    pub scanline: Scanline, // current sprite scanline
-    pub bg_color: RGBA12,   // Background color
+    pub bg_color: RGBA12, // Background color
 
     // Dual buffers for parallel processing
-    sprite_buffer: [RGBA12; 512], // Sprite layer
-    bg_buffer: [RGBA12; 512],     // Background layer (tiles + bg_color)
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Coords {
-    pub x: i16,
-    pub y: i16,
+    sprite_buffer: [RGBA12; MAX_VERTICAL_LINES], // Sprite layer
+    bg_buffer: [RGBA12; MAX_VERTICAL_LINES],     // Background layer (tiles + bg_color)
 }
 
 impl<'a> PixelIter<'a> {
@@ -87,9 +80,9 @@ impl<'a> PixelIter<'a> {
             scroll_x: vid.scroll_x,
             scroll_y: vid.scroll_y,
             bg_color: vid.bg_color,
-            scanline: vid.sprite_gen.scanlines[0].clone(),
-            sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); 512],
-            bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG_COLOR); 512],
+            // scanline: vid.sprite_gen.scanlines[0].clone(),
+            sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES],
+            bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG_COLOR); MAX_VERTICAL_LINES],
         };
         // Run Y IRQ on first line before anything else
         result.call_line_irq();
@@ -117,6 +110,9 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_sprites(&mut self, width: u16) {
+        // self.scanline = self.vid.sprite_gen.scanlines[self.y as usize].clone();
+        let scanline = &self.vid.sprite_gen.scanlines[self.y as usize];
+
         // Pre-calculate viewport bounds
         let viewport_start = self.vid.view_left.max(0) as usize;
         let viewport_end = (self.vid.view_right + 1).min(width) as usize;
@@ -130,7 +126,7 @@ impl<'a> PixelIter<'a> {
         }
 
         // Early exit if no sprites or no viewport
-        if self.scanline.mask == 0 || viewport_start >= viewport_end {
+        if scanline.mask == 0 || viewport_start >= viewport_end {
             return;
         }
 
@@ -138,8 +134,8 @@ impl<'a> PixelIter<'a> {
         let bank = self.tile_banks[self.fg_tile_bank as usize];
 
         // Process sprites from back to front
-        for n in (0..self.scanline.sprite_count as usize).rev() {
-            let sprite_id = self.scanline.sprites[n] as usize;
+        for n in (0..scanline.sprite_count as usize).rev() {
+            let sprite_id = scanline.sprites[n] as usize;
             let sprite = &self.vid.sprite_gen.sprites[sprite_id];
 
             let sprite_y = line_y - sprite.y;
@@ -176,7 +172,7 @@ impl<'a> PixelIter<'a> {
                 0
             };
 
-            if self.scanline.mask & slot_mask == 0 {
+            if scanline.mask & slot_mask == 0 {
                 continue;
             }
 
@@ -191,7 +187,7 @@ impl<'a> PixelIter<'a> {
             for x in start_x..end_x {
                 // Check if this pixel is in an active slot
                 let pixel_slot = (x as f32 / self.slot_width) as u16;
-                if self.scanline.mask & (1 << pixel_slot) == 0 {
+                if scanline.mask & (1 << pixel_slot) == 0 {
                     continue;
                 }
 
@@ -398,7 +394,7 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_line(&mut self) {
-        let width = self.vid.width().min(512);
+        let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
 
         // Render both buffers independently (I hope CPU parallelism kicks in!)
         self.pre_render_background(width);
@@ -410,7 +406,7 @@ impl<'a> PixelIter<'a> {
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (RGBA32, Coords);
+    type Item = RGBA32;
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
@@ -421,15 +417,6 @@ impl<'a> Iterator for PixelIter<'a> {
         // Composite sprite and background buffers
         let sprite = self.sprite_buffer[self.x as usize];
         let bg = self.bg_buffer[self.x as usize];
-
-        // Check viewport in y
-        // let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
-        // // Simple alpha check - sprite wins if it has any alpha
-        // let final_color = if in_viewport {
-        //     if sprite.a() > 0 { sprite } else { bg }
-        // } else {
-        //     self.bg_color
-        // };
 
         // Z-buffer based compositing - higher z value wins
         let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
@@ -448,7 +435,6 @@ impl<'a> Iterator for PixelIter<'a> {
 
         // results
         let color = RGBA32::from(final_color);
-        let coords = Coords { x: self.x as i16, y: self.y as i16 };
 
         // Increment screen position
         self.x += 1;
@@ -457,22 +443,13 @@ impl<'a> Iterator for PixelIter<'a> {
         if self.x == self.vid.width() {
             self.x = 0;
             self.y += 1;
-
-            // Prepare next line if not at end
-            if self.y <= self.vid.max_y() as u16 {
-                // Cache scanline
-                let fg_y = self.y as usize;
-                if fg_y < MAX_LINES {
-                    self.scanline = self.vid.sprite_gen.scanlines[fg_y as usize].clone();
-                }
-                // Run Y IRQ for the new line
-                self.call_line_irq();
-                // Pre-render the new line
-                self.pre_render_line();
-            }
+            // Run Y IRQ for the new line
+            self.call_line_irq();
+            // Pre-render the new line
+            self.pre_render_line();
         }
 
         // Return the pixel color
-        Some((color, coords))
+        Some(color)
     }
 }
