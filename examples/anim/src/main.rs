@@ -116,7 +116,7 @@ fn main() -> TatoResult<()> {
 
 // Curiosity! To flicker sprites that go above the sprites-per-scanline
 // limit, you can do this:
-// let frame_offset = tato.video.frame_count() % 2;
+// let frame_offset = tato.video.frame_number() % 2;
 // for priority_group in 0..2 {
 //     let actual_group = (priority_group + frame_offset) % 2;
 //     for i in (0..entities.len()).filter(|&i| i % 2 == actual_group) {

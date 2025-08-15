@@ -28,6 +28,7 @@ pub struct RaylibBackend {
     time_profile: Instant,
     buffer_iter_time: SmoothBuffer<120, f64>,
     buffer_canvas_time: SmoothBuffer<120, f64>,
+    frame_number: usize,
 }
 
 /// Raylib specific implementation
@@ -71,6 +72,7 @@ impl RaylibBackend {
             time_profile: std::time::Instant::now(),
             buffer_iter_time: SmoothBuffer::new(),
             buffer_canvas_time: SmoothBuffer::new(),
+            frame_number: 0,
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
@@ -123,18 +125,18 @@ impl RaylibBackend {
     where
         &'a T: Into<TilemapRef<'a>>,
     {
+        self.frame_number = t.video.frame_number();
+        self.time_profile = Instant::now();
         let video_width = t.video.width() as usize;
         let video_height = t.video.height() as usize;
         debug_assert!({ video_width * video_height * 4 } == self.pixels.len(),);
 
-        self.time_profile = Instant::now();
-        let mut i = 0;
-        for color in t.iter_pixels(bg_banks) {
-            self.pixels[i] = color.r;
-            self.pixels[i + 1] = color.g;
-            self.pixels[i + 2] = color.b;
-            self.pixels[i + 3] = color.a;
-            i += 4
+        for (i, color) in t.iter_pixels(bg_banks).enumerate() {
+            let index = i * 4;
+            self.pixels[index] = color.r;
+            self.pixels[index + 1] = color.g;
+            self.pixels[index + 2] = color.b;
+            self.pixels[index + 3] = color.a;
         }
         self.buffer_iter_time.push(self.time_profile.elapsed().as_secs_f64());
 
@@ -272,6 +274,14 @@ impl Backend for RaylibBackend {
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
         self.buffer_canvas_time.push(self.time_profile.elapsed().as_secs_f64());
+
+        // TODO: This print exists for a silly reason: the game actually runs slower if I don't! :-0
+        // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
+        println!(
+            "Frame {} finished in {:.2} ms",
+            self.frame_number,
+            (self.buffer_canvas_time.average() + self.buffer_iter_time.average()) * 1000.0
+        );
     }
 
     fn should_close(&self) -> bool {

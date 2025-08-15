@@ -1,5 +1,18 @@
 ### General Engine
 
+[ ] Engine pausing
+    - toggle_pause() and is_paused() functions.
+    - Internal timer will freeze, but input can still be updated in the main loop.
+    - Game logic (update and draw) must be skipped in the main loop if tato.is_paused(), not in the engine.
+
+--->[ ] Implement command-agnostic console
+    - For common debug actions like "warp x,y", "reset", "toggle x", etc.
+    - Provides text input and parses the text line into command + args
+    - Does not actually process commands - that will be on the Game side
+    - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
+
+---> [ ] New PixelIter that favors iteration speed over memory compactness (i.e. frame buffer)
+
 [x] Groups must be tileset-independent!
     . GroupBuilder is separate from each TilesetBuilder, saves to its own module.
     . Gets passed to tilesetbuilder::new, just like palette?
@@ -109,7 +122,7 @@
 [x] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?
     [x] Create Anims out of a "frame array"
-    [x] Add and use "tato.time" to draw animations, instead of video.frame_count(), to ensure frame rate independence.
+    [x] Add and use "tato.time" to draw animations, instead of video.frame_number(), to ensure frame rate independence.
     [x] AnimID(0) should mean "no animation"
 
 [x] Fonts: Replace text rendering using Anim to use Fonts.

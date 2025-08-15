@@ -50,7 +50,7 @@ pub struct VideoChip {
     pub(crate) view_right: u16,
     pub(crate) view_bottom: u16,
     // Internal timer.
-    frame_count: usize,
+    frame_number: usize,
 }
 
 impl VideoChip {
@@ -71,7 +71,7 @@ impl VideoChip {
             h,
             scroll_x: 0,
             scroll_y: 0,
-            frame_count: 0,
+            frame_number: 0,
             // Video IRQs
             // irq_x_callback: None,
             irq_line: None,
@@ -92,24 +92,29 @@ impl VideoChip {
         result
     }
 
+    #[inline]
     pub fn max_x(&self) -> u16 {
         self.w - 1
     }
 
+    #[inline]
     pub fn max_y(&self) -> u16 {
         self.h - 1
     }
 
+    #[inline]
     pub fn width(&self) -> u16 {
         self.w
     }
 
+    #[inline]
     pub fn height(&self) -> u16 {
         self.h
     }
 
-    pub fn frame_count(&self) -> usize {
-        self.frame_count
+    #[inline]
+    pub fn frame_number(&self) -> usize {
+        self.frame_number
     }
 
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter pixels outside
@@ -125,7 +130,7 @@ impl VideoChip {
     pub fn reset_all(&mut self) {
         self.bg_color = RGBA12::BLACK;
         self.wrap_sprites = true;
-        self.frame_count = 0;
+        self.frame_number = 0;
         self.fg_tile_bank = 0;
         self.bg_tile_bank = 0;
         self.reset_scroll();
@@ -227,7 +232,7 @@ impl VideoChip {
     }
 
     pub fn start_frame(&mut self) {
-        self.frame_count += 1;
+        self.frame_number += 1;
         self.reset_sprites();
     }
 
