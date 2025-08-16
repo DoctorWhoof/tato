@@ -146,7 +146,7 @@ impl Tato {
     /// Allows basic text formatting when sending text to the dashboard
     pub fn dash_dbg<T>(&mut self, message: &str, value: T)
     where
-        T: Debug,
+        T: Debug + Display,
     {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
         let handle = Text::format(&mut self.debug_arena, message, value).unwrap();

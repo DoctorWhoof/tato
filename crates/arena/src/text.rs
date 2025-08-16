@@ -3,8 +3,7 @@ mod debug_buffer;
 use debug_buffer::*;
 
 use crate::{Arena, ArenaIndex, Buffer};
-use core::fmt::{Write, Debug};
-use std::fmt::Display;
+
 
 /// Type alias for text stored as a Slice<u8>
 pub type Text<Idx = u16> = Buffer<u8, Idx>;
@@ -30,6 +29,7 @@ where
     }
 
     /// Create formatted text from message and value
+    /// Supports format specifiers: "{}", "{:?}", "{:.N}"
     pub fn format<const LEN: usize, M, V>(
         arena: &mut Arena<LEN, Idx>,
         message: M,
@@ -37,30 +37,21 @@ where
     ) -> Option<Self>
     where
         M: AsRef<str>,
-        V: Debug,
+        V: core::fmt::Display + core::fmt::Debug,
     {
         let message_str = message.as_ref();
         debug_assert!(message_str.is_ascii());
 
-        // Format the debug value into a buffer
+        // Format the complete message with value into a buffer
         let mut debug_buf = DebugBuffer::new();
-        let value_str = if write!(&mut debug_buf, "{:?}", value).is_ok() {
-            debug_buf.as_str()
-        } else {
-            "[DEBUG_TOO_LARGE]"
-        };
+        if debug_buf.format_message(message_str, &value).is_err() {
+            return None;
+        }
 
-        debug_assert!(value_str.is_ascii());
+        let formatted_str = debug_buf.as_str();
+        let total_len = Idx::from_usize_checked(formatted_str.len())?;
 
-        // Calculate total length: message + ": " + value
-        let total_len = Idx::from_usize_checked(message_str.len() + value_str.len()).unwrap();
-        Buffer::from_fn(arena, total_len, |i| {
-            if i < message_str.len() {
-                message_str.as_bytes()[i]
-            } else {
-                value_str.as_bytes()[i - message_str.len()]
-            }
-        })
+        Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
 
     /// A Buffer of Text lines (which are, themselves, buffers).
