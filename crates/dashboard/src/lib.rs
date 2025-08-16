@@ -31,7 +31,7 @@ pub struct Dashboard {
 impl Dashboard {
     pub fn new() -> Self {
         let mut arena = Arena::new();
-        let console_buffer = Buffer::text_buffer::<100, _>(&mut arena, 100).unwrap();
+        let console_buffer = Buffer::text_multi_buffer(&mut arena, 100, 100, true).unwrap();
         Self {
             arena,
             tile_pixels: core::array::from_fn(|_| Vec::new()),

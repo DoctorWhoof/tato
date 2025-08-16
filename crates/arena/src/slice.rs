@@ -12,33 +12,27 @@ pub struct Slice<T, Idx = u16, Marker = ()> {
     pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
-impl<T, Idx, Marker> Slice<T, Idx, Marker> {
-    /// Create a new pool (internal use)
+impl<T, Idx, Marker> Slice<T, Idx, Marker>
+where
+    Idx: ArenaIndex,
+{
+    /// Create a new Slice (internal use)
     pub(crate) fn new(offset: Idx, len: Idx, generation: u16, arena_id: u16) -> Self {
         Self { offset, len, generation, arena_id, _phantom: PhantomData }
     }
 
     /// Get element count
-    pub fn len(&self) -> Idx
-    where
-        Idx: ArenaIndex,
-    {
+    pub fn len(&self) -> Idx {
         self.len
     }
 
     /// Check if empty
-    pub fn is_empty(&self) -> bool
-    where
-        Idx: ArenaIndex,
-    {
+    pub fn is_empty(&self) -> bool {
         self.len.into() == 0
     }
 
     /// Get arena offset
-    pub fn offset(&self) -> Idx
-    where
-        Idx: ArenaIndex,
-    {
+    pub fn offset(&self) -> Idx {
         self.offset
     }
 
@@ -53,19 +47,13 @@ impl<T, Idx, Marker> Slice<T, Idx, Marker> {
     }
 
     /// Get size in bytes
-    pub fn size_bytes(&self) -> usize
-    where
-        Idx: ArenaIndex,
-    {
+    pub fn size_bytes(&self) -> usize {
         self.len.into() * core::mem::size_of::<T>()
     }
 
     /// Get capacity as (used, total)
-    pub fn capacity(&self) -> (usize, usize)
-    where
-        Idx: ArenaIndex,
-    {
-        (self.len.into(), self.len.into())
+    pub fn capacity(&self) -> Idx {
+        self.len
     }
 }
 

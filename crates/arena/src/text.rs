@@ -4,7 +4,6 @@ use debug_buffer::*;
 
 use crate::{Arena, ArenaIndex, Buffer};
 
-
 /// Type alias for text stored as a Slice<u8>
 pub type Text<Idx = u16> = Buffer<u8, Idx>;
 
@@ -28,8 +27,61 @@ where
         Buffer::from_fn(arena, len, |i| bytes[i])
     }
 
-    /// Create formatted text from message and value
+    /// Create formatted text using Debug trait
+    /// Supports format specifiers: "{:?}" and fallback behavior
+    pub fn format_debug<const LEN: usize, M, V>(
+        arena: &mut Arena<LEN, Idx>,
+        message: M,
+        value: V,
+    ) -> Option<Self>
+    where
+        M: AsRef<str>,
+        V: core::fmt::Debug,
+    {
+        let message_str = message.as_ref();
+        debug_assert!(message_str.is_ascii());
+
+        // Format using debug trait
+        let mut debug_buf = DebugBuffer::new();
+        if debug_buf.format_debug_message(message_str, &value).is_err() {
+            return None;
+        }
+
+        let formatted_str = debug_buf.as_str();
+        let total_len = Idx::from_usize_checked(formatted_str.len())?;
+
+        Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
+    }
+
+    /// Create formatted text using Display trait
+    /// Supports format specifiers: "{}", "{:.N}" and fallback behavior
+    pub fn format_display<const LEN: usize, M, V>(
+        arena: &mut Arena<LEN, Idx>,
+        message: M,
+        value: V,
+    ) -> Option<Self>
+    where
+        M: AsRef<str>,
+        V: core::fmt::Display,
+    {
+        let message_str = message.as_ref();
+        debug_assert!(message_str.is_ascii());
+
+        // Format using display trait
+        let mut debug_buf = DebugBuffer::new();
+        if debug_buf.format_display_message(message_str, &value).is_err() {
+            return None;
+        }
+
+        let formatted_str = debug_buf.as_str();
+        let total_len = Idx::from_usize_checked(formatted_str.len())?;
+
+        Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
+    }
+
+    /// Create formatted text with full format support
     /// Supports format specifiers: "{}", "{:?}", "{:.N}"
+    /// Requires both Debug and Display traits
     pub fn format<const LEN: usize, M, V>(
         arena: &mut Arena<LEN, Idx>,
         message: M,
@@ -57,11 +109,18 @@ where
     /// A Buffer of Text lines (which are, themselves, buffers).
     /// Helps to get around borrowing issues since the buffer and the text lines
     /// are in the same arena.
-    pub fn text_buffer<const LEN: usize, const ARENA_LEN: usize>(
+    /// Warning: All text lines are pre-initialized!
+    /// Use clear() after creating if you want to start empty.
+    pub fn text_multi_buffer<const ARENA_LEN: usize>(
         arena: &mut Arena<ARENA_LEN, Idx>,
+        item_count: Idx,
         item_length: Idx,
+        init_with_zero_len: bool,
     ) -> Option<Buffer<Text<Idx>, Idx>> {
-        let item_count: Idx = Idx::from_usize_checked(LEN)?;
-        Self::multi_buffer::<LEN, ARENA_LEN, _>(arena, item_count, item_length, |_| ' ' as u8)
+        let mut result = Self::multi_buffer::<ARENA_LEN>(arena, item_count, item_length)?;
+        if init_with_zero_len {
+            result.clear();
+        }
+        Some(result)
     }
 }

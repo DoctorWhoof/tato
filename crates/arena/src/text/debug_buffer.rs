@@ -51,7 +51,7 @@ impl DebugBuffer {
     /// Format a value according to the format specifier
     pub(crate) fn format_value<T>(&mut self, value: &T, spec: FormatSpec) -> Result<(), core::fmt::Error>
     where
-        T: Display + Debug,
+        T: Debug + Display,
     {
         match spec {
             FormatSpec::Display => write!(self, "{}", value),
@@ -105,10 +105,75 @@ impl DebugBuffer {
 
             Ok(())
         } else {
-            // No format specifier found, append ": " and use Debug format as fallback
+            // No format specifier found
             self.write_str(message)?;
-            self.write_str(": ")?;
             write!(self, "{:?}", value)
+        }
+    }
+
+    /// Format a message using only Debug trait - supports {:?} and fallback
+    pub(crate) fn format_debug_message<T>(
+        &mut self,
+        message: &str,
+        value: &T,
+    ) -> Result<(), core::fmt::Error>
+    where
+        T: Debug,
+    {
+        if let Some((start, end, spec)) = parse_format_string(message) {
+            match spec {
+                FormatSpec::Debug => {
+                    self.write_str(&message[..start])?;
+                    write!(self, "{:?}", value)?;
+                    self.write_str(&message[end..])?;
+                    Ok(())
+                }
+                _ => {
+                    // Unsupported format for Debug-only, fall back to debug with separator
+                    self.write_str(message)?;
+                    write!(self, "{:?}", value)
+                }
+            }
+        } else {
+            // No format specifier found
+            self.write_str(message)?;
+            write!(self, "{:?}", value)
+        }
+    }
+
+    /// Format a message using only Display trait - supports {} and {:.N} and fallback
+    pub(crate) fn format_display_message<T>(
+        &mut self,
+        message: &str,
+        value: &T,
+    ) -> Result<(), core::fmt::Error>
+    where
+        T: Display,
+    {
+        if let Some((start, end, spec)) = parse_format_string(message) {
+            match spec {
+                FormatSpec::Display => {
+                    self.write_str(&message[..start])?;
+                    write!(self, "{}", value)?;
+                    self.write_str(&message[end..])?;
+                    Ok(())
+                }
+                FormatSpec::DisplayWithPrecision(precision) => {
+                    self.write_str(&message[..start])?;
+                    self.format_with_precision(value, precision)?;
+                    self.write_str(&message[end..])?;
+                    Ok(())
+                }
+                FormatSpec::Debug => {
+                    // Debug format not supported for Display-only, fall back
+                    self.write_str(message)?;
+                    write!(self, "{}", value)
+                }
+            }
+        } else {
+            // No format specifier found
+            self.write_str(message)?;
+            write!(self, "{}", value)
         }
     }
 }
@@ -152,7 +217,7 @@ mod tests {
         assert_eq!(buf.as_str(), "pi: 3.14");
 
         let mut buf = DebugBuffer::new();
-        buf.format_message("fallback", &42).unwrap();
+        buf.format_message("fallback: ", &42).unwrap();
         assert_eq!(buf.as_str(), "fallback: 42");
     }
 }

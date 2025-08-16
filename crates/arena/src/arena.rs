@@ -326,6 +326,11 @@ where
         LEN - self.offset.into()
     }
 
+    /// Total Bytes
+    pub fn capacity(&self) -> usize {
+        LEN
+    }
+
     /// Current generation
     pub fn generation(&self) -> u16 {
         self.generation

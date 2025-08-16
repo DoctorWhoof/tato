@@ -3,17 +3,19 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct Buffer<T, Idx = u16> {
     pub pool: Slice<T, Idx>,
-    len: Idx,      // Current number of elements used
-    capacity: Idx, // Maximum elements (from original allocation)
+    len: Idx, // Current number of elements used
 }
 
-impl<T, Idx: ArenaIndex> Buffer<T, Idx> {
+impl<T, Idx> Buffer<T, Idx>
+where
+    Idx: ArenaIndex,
+{
     pub fn new<const LEN: usize>(arena: &mut Arena<LEN, Idx>, capacity: Idx) -> Option<Self>
     where
         T: Default,
     {
         let pool = arena.alloc_pool::<T>(capacity)?;
-        Some(Self { pool, len: Idx::zero(), capacity })
+        Some(Self { pool, len: Idx::zero() })
     }
 
     pub fn from_fn<const LEN: usize, F>(
@@ -25,7 +27,7 @@ impl<T, Idx: ArenaIndex> Buffer<T, Idx> {
         F: FnMut(usize) -> T,
     {
         let pool = arena.alloc_pool_from_fn(capacity, func)?;
-        Some(Self { pool, len:capacity, capacity })
+        Some(Self { pool, len: capacity })
     }
 
     pub fn clear(&mut self) {
@@ -36,8 +38,16 @@ impl<T, Idx: ArenaIndex> Buffer<T, Idx> {
         self.len.into()
     }
 
-    pub fn capacity(&self) -> usize {
-        self.capacity.into()
+    pub fn capacity(&self) -> Idx {
+        self.pool.capacity()
+    }
+
+    pub fn remaining(&self) -> Idx {
+        self.pool.capacity() - self.len
+    }
+
+    pub fn used(&self) -> Idx {
+        self.len
     }
 
     pub fn push<const LEN: usize>(
@@ -45,7 +55,7 @@ impl<T, Idx: ArenaIndex> Buffer<T, Idx> {
         arena: &mut Arena<LEN, Idx>,
         value: T,
     ) -> Result<(), &str> {
-        if self.len >= self.capacity {
+        if self.len >= self.pool.capacity() {
             return Err("Arena: Capacity reached"); // Return the value back if full
         }
         let slice = arena
@@ -64,22 +74,30 @@ impl<T, Idx: ArenaIndex> Buffer<T, Idx> {
     /// A Buffer of smaller buffers.
     /// Helps to get around borrowing issues since the buffer and the text lines
     /// are in the same arena. "func" must return each individual sub-buffer.
-    pub fn multi_buffer<const LEN: usize, const ARENA_LEN: usize, F>(
+    pub fn multi_buffer<const ARENA_LEN: usize>(
         arena: &mut Arena<ARENA_LEN, Idx>,
         sub_buffer_count: Idx,
         sub_buffer_len: Idx,
-        item_func: F,
     ) -> Option<Buffer<Buffer<T, Idx>, Idx>>
     where
-        T: Clone,
-        F: FnMut(usize) -> T + Copy,
+        T: Default,
     {
-        let buffers: [Buffer<T, Idx>; LEN] = core::array::from_fn(|_| {
-            Buffer::from_fn(arena, sub_buffer_len, item_func)
-                .expect("Arena: Could not create buffer")
-        });
+        // Allocate temporary space in the arena for the buffers using MaybeUninit
+        let temp_slice = arena.alloc_pool_from_fn(sub_buffer_count, |_| {
+            core::mem::MaybeUninit::<Buffer<T, Idx>>::uninit()
+        })?;
+        let temp_ptr = arena.get_pool_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, Idx>;
 
-        // Return buffer, moving items from the array
-        Buffer::from_fn(arena, sub_buffer_count, |i| buffers[i].clone())
+        // Initialize each buffer in the temporary space
+        for i in 0..sub_buffer_count.into() {
+            let buffer =
+                Buffer::new(arena, sub_buffer_len).expect("Arena: Could not create buffer");
+            unsafe {
+                temp_ptr.add(i).write(buffer);
+            }
+        }
+
+        // Create the final buffer by moving from temporary storage
+        Buffer::from_fn(arena, sub_buffer_count, |i| unsafe { core::ptr::read(temp_ptr.add(i)) })
     }
 }

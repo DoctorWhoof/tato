@@ -83,7 +83,7 @@ fn test_pool_capacity_info() {
     let pool = arena.alloc_pool::<u64>(10).unwrap();
     assert_eq!(pool.len(), 10);
     assert_eq!(pool.size_bytes(), 80); // 10 * 8 bytes
-    assert_eq!(pool.capacity(), (10, 10));
+    assert_eq!(pool.capacity(), 10);
 }
 
 #[test]

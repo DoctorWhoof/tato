@@ -1,12 +1,12 @@
 use core::fmt::Debug;
-use std::fmt::Display;
+
 use tato_arena::{Arena, Buffer, Slice, Text};
 use tato_math::{Rect, Vec2};
 
 use crate::*;
 
-const DEBUG_STRING_COUNT: usize = 200;
-const DEBUG_STRING_LINE_LEN: u16 = 100;
+const DEBUG_STR_COUNT: u16 = 200;
+const DEBUG_STR_LINE_LEN: u16 = 100;
 const DEBUG_POLY_COUNT: u16 = 500;
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub struct Tato {
     frame_started: bool,
     frame_finished: bool,
 
-    pub debug_arena: Arena<64536>, // Debug arena, cleared on every frame start
+    pub debug_arena: Arena<32768>, // Debug arena, cleared on every frame start
     debug_strings: Buffer<Text>,
     debug_polys: Buffer<Slice<Vec2<i16>>>,
     debug_polys_world: Buffer<Slice<Vec2<i16>>>,
@@ -41,11 +41,11 @@ pub struct Tato {
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         let mut debug_arena = Arena::new();
-        let debug_strings =
-            Buffer::text_buffer::<DEBUG_STRING_COUNT, _>(&mut debug_arena, DEBUG_STRING_LINE_LEN)
-                .unwrap();
         let debug_polys = Buffer::new(&mut debug_arena, DEBUG_POLY_COUNT).unwrap();
         let debug_polys_world = Buffer::new(&mut debug_arena, DEBUG_POLY_COUNT).unwrap();
+        let debug_strings =
+            Buffer::text_multi_buffer(&mut debug_arena, DEBUG_STR_COUNT, DEBUG_STR_LINE_LEN, true)
+                .unwrap();
 
         Self {
             assets: Assets::new(),
@@ -111,13 +111,15 @@ impl Tato {
 
         self.debug_arena.clear();
         // Re-inits buffers. (if I just clear, all arena handles are invalidated!)
-        self.debug_strings = Buffer::text_buffer::<DEBUG_STRING_COUNT, _>(
-            &mut self.debug_arena,
-            DEBUG_STRING_LINE_LEN,
-        )
-        .unwrap();
         self.debug_polys = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
         self.debug_polys_world = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
+        self.debug_strings = Buffer::text_multi_buffer(
+            &mut self.debug_arena,
+            DEBUG_STR_COUNT,
+            DEBUG_STR_LINE_LEN,
+            true,
+        )
+        .unwrap();
     }
 
     pub fn frame_finish(&mut self) {
@@ -146,10 +148,10 @@ impl Tato {
     /// Allows basic text formatting when sending text to the dashboard
     pub fn dash_dbg<T>(&mut self, message: &str, value: T)
     where
-        T: Debug + Display,
+        T: Debug,
     {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
-        let handle = Text::format(&mut self.debug_arena, message, value).unwrap();
+        let handle = Text::format_debug(&mut self.debug_arena, message, value).unwrap();
         let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
     }
 
