@@ -28,7 +28,7 @@ let huge: Arena<1048576, usize> = Arena::new(); // 24-byte handles, unlimited
 The essential introduction to arena usage:
 - Single value allocation with `alloc()`
 - Safe access with `get()` and `get_mut()`
-- Pool allocation with `alloc_pool()` and `alloc_pool_from_fn()`
+- Slice allocation with `alloc_pool()` and `alloc_pool_from_fn()`
 - Memory management with `clear()`
 
 ```bash

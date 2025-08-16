@@ -1,67 +1,37 @@
-//! Text utilities for Pool<u8> - treating byte pools as strings
+//! Text utilities for Slice<u8> - treating byte pools as strings
+mod debug_buffer;
+use debug_buffer::*;
 
-use crate::{Arena, ArenaIndex, Pool};
-use core::fmt::{Debug, Write};
+use crate::{Arena, ArenaIndex, Buffer};
+use core::fmt::{Write, Debug};
+use std::fmt::Display;
 
-/// Type alias for text stored as a Pool<u8>
-pub type Text<SizeType = u16, Marker = ()> = Pool<u8, SizeType, Marker>;
+/// Type alias for text stored as a Slice<u8>
+pub type Text<Idx = u16> = Buffer<u8, Idx>;
 
-/// Simple fixed-size buffer for formatting Debug values
-struct DebugBuffer {
-    buf: [u8; 256],
-    len: usize,
-}
-
-impl DebugBuffer {
-    fn new() -> Self {
-        Self {
-            buf: [0; 256],
-            len: 0,
-        }
-    }
-
-    fn as_str(&self) -> &str {
-        // Safety: We only write valid UTF-8 via core::fmt::Write
-        unsafe { core::str::from_utf8_unchecked(&self.buf[..self.len]) }
-    }
-}
-
-impl Write for DebugBuffer {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let bytes = s.as_bytes();
-        if self.len + bytes.len() > self.buf.len() {
-            return Err(core::fmt::Error);
-        }
-        self.buf[self.len..self.len + bytes.len()].copy_from_slice(bytes);
-        self.len += bytes.len();
-        Ok(())
-    }
-}
-
-/// Implementation for "Pool<u8>"" specifically to add text functionality. You can convert to and from
+/// Implementation for "Slice<u8>"" specifically to add text functionality. You can convert to and from
 /// &str, and use [Text::format] for very basic message+value formatting in no_std environments.
-impl<SizeType, Marker> Text<SizeType, Marker>
+impl<Idx> Text<Idx>
 where
-    SizeType: ArenaIndex,
+    Idx: ArenaIndex,
 {
     /// Get the text as &str (requires arena for safety)
     /// Returns None if the bytes are not valid UTF-8
-    pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, SizeType, Marker>) -> Option<&'a str> {
-            let bytes = arena.get_pool(self)?;
-            core::str::from_utf8(bytes).ok()
-        }
+    pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a str> {
+        let bytes = arena.get_pool(&self.pool)?;
+        core::str::from_utf8(bytes).ok()
+    }
 
     /// Create text from a string slice
-    pub fn from_str<const LEN: usize>(
-        arena: &mut Arena<LEN, SizeType, Marker>,
-        s: &str,
-    ) -> Option<Self> {
-        arena.alloc_pool_from_fn(s.len(), |i| s.as_bytes()[i])
+    pub fn from_str<const LEN: usize>(arena: &mut Arena<LEN, Idx>, s: &str) -> Option<Self> {
+        let bytes = s.as_bytes();
+        let len = Idx::from_usize_checked(s.len()).unwrap();
+        Buffer::from_fn(arena, len, |i| bytes[i])
     }
 
     /// Create formatted text from message and value
     pub fn format<const LEN: usize, M, V>(
-        arena: &mut Arena<LEN, SizeType, Marker>,
+        arena: &mut Arena<LEN, Idx>,
         message: M,
         value: V,
     ) -> Option<Self>
@@ -83,8 +53,8 @@ where
         debug_assert!(value_str.is_ascii());
 
         // Calculate total length: message + ": " + value
-        let total_len = message_str.len() + value_str.len();
-        arena.alloc_pool_from_fn(total_len, |i| {
+        let total_len = Idx::from_usize_checked(message_str.len() + value_str.len()).unwrap();
+        Buffer::from_fn(arena, total_len, |i| {
             if i < message_str.len() {
                 message_str.as_bytes()[i]
             } else {
@@ -92,30 +62,15 @@ where
             }
         })
     }
-}
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_text_from_str() {
-        let mut arena: Arena<1024> = Arena::new();
-
-        let text = Pool::from_str(&mut arena, "Hello, World!").unwrap();
-        assert_eq!(text.len(), 13);
-
-        let s = text.as_str(&arena).unwrap();
-        assert_eq!(s, "Hello, World!");
-    }
-
-    #[test]
-    fn test_text_format() {
-        let mut arena: Arena<1024> = Arena::new();
-
-        let text = Pool::format(&mut arena, "greeting", "Hello").unwrap();
-        let s = text.as_str(&arena).unwrap();
-        assert_eq!(s, "greeting: Hello");
+    /// A Buffer of Text lines (which are, themselves, buffers).
+    /// Helps to get around borrowing issues since the buffer and the text lines
+    /// are in the same arena.
+    pub fn text_buffer<const LEN: usize, const ARENA_LEN: usize>(
+        arena: &mut Arena<ARENA_LEN, Idx>,
+        item_length: Idx,
+    ) -> Option<Buffer<Text<Idx>, Idx>> {
+        let item_count: Idx = Idx::from_usize_checked(LEN)?;
+        Self::multi_buffer::<LEN, ARENA_LEN, _>(arena, item_count, item_length, |_| ' ' as u8)
     }
 }

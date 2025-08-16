@@ -1,17 +1,17 @@
-#![no_std]
+// #![no_std]
 //! Fixed-size arena allocator with generational safety and type markers.
 
 pub mod arena;
 pub mod buffer;
 pub mod id;
-pub mod pool;
+pub mod slice;
 pub mod text;
 pub mod typed_arena;
 
 pub use arena::Arena;
 pub use buffer::*;
 pub use id::{ArenaId, RawId};
-pub use pool::Pool;
+pub use slice::Slice;
 pub use text::*;
 pub use typed_arena::{TypedArena, TypedId};
 

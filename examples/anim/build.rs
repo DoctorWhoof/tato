@@ -1,6 +1,6 @@
 use tato_pipe::*;
 
-fn main(){
+fn main() {
     init_build();
 
     let mut palette = PaletteBuilder::new("main");

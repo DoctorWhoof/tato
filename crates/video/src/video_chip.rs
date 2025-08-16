@@ -228,7 +228,15 @@ impl VideoChip {
             }
         }
 
-        self.sprite_gen.insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id, data.sub_palette);
+        self.sprite_gen.insert(
+            wrapped_x,
+            wrapped_y,
+            self.w,
+            self.h,
+            data.flags,
+            data.id,
+            data.sub_palette,
+        );
     }
 
     pub fn start_frame(&mut self) {

@@ -1,4 +1,4 @@
-use tato_arena::Pool;
+use tato_arena::Slice;
 
 /// A reference to a frame strip associated with a tileset.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Default)]
@@ -9,7 +9,7 @@ pub struct StripID(pub u8);
 #[derive(Debug, Default)]
 pub(crate) struct StripEntry {
     pub start_index: u8,
-    pub frame_count: u8
+    pub frame_count: u8,
 }
 
 /// A Reference to an animation object.
@@ -27,15 +27,15 @@ pub struct Anim<const LEN: usize> {
     pub fps: u8,
     pub rep: bool,
     pub frames: [u8; LEN],
-    pub strip: StripID
+    pub strip: StripID,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct AnimEntry {
-    pub frames: Pool<u8, u16>,
+    pub frames: Slice<u8, u16>,
     pub fps: u8,
     pub rep: bool,
-    pub strip: StripID
+    pub strip: StripID,
 }
 
 // /// A reference to an animation stored in Assets

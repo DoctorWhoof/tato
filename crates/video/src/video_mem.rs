@@ -43,10 +43,7 @@ impl<const TILES: usize> VideoMemory<TILES> {
     }
 
     pub fn push_color(&mut self, color: RGBA12) -> ColorID {
-        assert!(
-            self.palette_head < COLORS_PER_PALETTE as u8,
-            "Palette capacity reached"
-        );
+        assert!(self.palette_head < COLORS_PER_PALETTE as u8, "Palette capacity reached");
         let id = ColorID(self.palette_head);
         self.palette[self.palette_head as usize] = color;
         self.palette_head += 1;
@@ -54,10 +51,7 @@ impl<const TILES: usize> VideoMemory<TILES> {
     }
 
     pub fn set_color(&mut self, id: ColorID, color: RGBA12) {
-        assert!(
-            id.0 < COLORS_PER_PALETTE as u8,
-            "Invalid color ID"
-        );
+        assert!(id.0 < COLORS_PER_PALETTE as u8, "Invalid color ID");
         self.palette[id.0 as usize] = color;
     }
 
@@ -74,10 +68,7 @@ impl<const TILES: usize> VideoMemory<TILES> {
     }
 
     pub fn push_subpalette(&mut self, colors: [u8; COLORS_PER_TILE as usize]) -> PaletteID {
-        assert!(
-            self.sub_palette_head < SUBPALETTE_COUNT,
-            err!("SUBPALETTE_COUNT exceeded")
-        );
+        assert!(self.sub_palette_head < SUBPALETTE_COUNT, err!("SUBPALETTE_COUNT exceeded"));
         let result = self.sub_palette_head;
         self.sub_palettes[self.sub_palette_head as usize] = colors.map(|c| ColorID(c));
         self.sub_palette_head += 1;
@@ -135,10 +126,7 @@ impl<const TILES: usize> VideoMemory<TILES> {
 
     /// Adds a single tile, returns a TileID
     pub fn add_tile(&mut self, tile: &Tile<2>) -> TileID {
-        assert!(
-            (self.tile_head as usize) < TILES,
-            err!("Tileset capacity reached")
-        );
+        assert!((self.tile_head as usize) < TILES, err!("Tileset capacity reached"));
         let result = TileID(self.tile_head);
         // Copy tile data to bank
         let dest_index = self.tile_head as usize;
@@ -149,10 +137,6 @@ impl<const TILES: usize> VideoMemory<TILES> {
 
     /// Get a specific tile within a tileset
     pub fn get_tile(&self, index: u8) -> Option<&Tile<2>> {
-        if index < self.tile_head {
-            Some(&self.tiles[index as usize])
-        } else {
-            None
-        }
+        if index < self.tile_head { Some(&self.tiles[index as usize]) } else { None }
     }
 }

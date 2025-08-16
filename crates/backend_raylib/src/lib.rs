@@ -230,12 +230,12 @@ impl Backend for RaylibBackend {
         // Execute draw ops
         for cmd in self.draw_ops.drain(..) {
             match cmd {
-                DrawOp::Rect { x, y, w, h, color } => {
+                DrawOp::Rect { rect, color } => {
                     canvas.draw_rectangle(
-                        x as i32,
-                        y as i32,
-                        w as i32,
-                        h as i32,
+                        rect.x as i32,
+                        rect.y as i32,
+                        rect.w as i32,
+                        rect.h as i32,
                         rgba32_to_rl_color(color),
                     );
                 },
@@ -290,17 +290,17 @@ impl Backend for RaylibBackend {
 
     // ---------------------- Drawing Primitives ----------------------
 
-    fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32) {
-        self.draw_ops.push(DrawOp::Rect { x, y, w, h, color });
-    }
+    // fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32) {
+    //     self.draw_ops.push(DrawOp::Rect { rect: Rect { x, y, w, h }, color });
+    // }
 
-    fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32) {
-        self.draw_ops.push(DrawOp::Text { text: text.to_string(), x, y, size: font_size, color });
-    }
+    // fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32) {
+    //     self.draw_ops.push(DrawOp::Text { text: text.to_string(), x, y, size: font_size, color });
+    // }
 
-    fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32) {
-        self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
-    }
+    // fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32) {
+    //     self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
+    // }
 
     fn draw_texture(&mut self, id: TextureId, x: i16, y: i16, scale: f32, tint: RGBA32) {
         self.draw_ops.push(DrawOp::Texture { id, x, y, scale, tint });

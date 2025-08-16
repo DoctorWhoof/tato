@@ -1,13 +1,11 @@
 use crate::*;
 
-
 #[derive(Debug, Clone, Default, Copy, PartialEq, Hash)]
 pub struct Cell {
     pub id: TileID,
     pub flags: TileFlags,
     pub sub_palette: PaletteID,
     pub group: u8,
-
     // FUTURE USE: In case I abandon subpalettes, colors would be
     // stored as 4 numbers, 4 bits each, like this:
     // pub palette: u16

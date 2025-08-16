@@ -42,8 +42,7 @@ impl Tato {
         let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
             return;
         };
-        let Some(strip_entry) = self.assets.strip_entries.get(anim_entry.strip.0 as usize)
-        else {
+        let Some(strip_entry) = self.assets.strip_entries.get(anim_entry.strip.0 as usize) else {
             return;
         };
 

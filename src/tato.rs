@@ -1,8 +1,13 @@
 use core::fmt::Debug;
-use tato_arena::{Arena, Buffer, Pool, Text};
+use std::fmt::Display;
+use tato_arena::{Arena, Buffer, Slice, Text};
 use tato_math::{Rect, Vec2};
 
 use crate::*;
+
+const DEBUG_STRING_COUNT: usize = 200;
+const DEBUG_STRING_LINE_LEN: u16 = 100;
+const DEBUG_POLY_COUNT: u16 = 500;
 
 #[derive(Debug)]
 pub struct Tato {
@@ -27,23 +32,22 @@ pub struct Tato {
     frame_started: bool,
     frame_finished: bool,
 
-    pub debug_arena: Arena<64536, u16>, // Debug arena, cleared on every frame start
-    debug_strings: Buffer<Pool<u8, u16>, u16>,
-    // Each poly is a Vec2 slice
-    debug_polys: Buffer<Pool<Vec2<i16>, u16>, u16>,
-    debug_polys_world: Buffer<Pool<Vec2<i16>, u16>, u16>,
+    pub debug_arena: Arena<64536>, // Debug arena, cleared on every frame start
+    debug_strings: Buffer<Text>,
+    debug_polys: Buffer<Slice<Vec2<i16>>>,
+    debug_polys_world: Buffer<Slice<Vec2<i16>>>,
 }
 
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         let mut debug_arena = Arena::new();
-        let debug_strings = Buffer::new(&mut debug_arena, 256).unwrap();
-        let debug_polys = Buffer::new(&mut debug_arena, 256).unwrap();
-        let debug_polys_world = Buffer::new(&mut debug_arena, 256).unwrap();
+        let debug_strings =
+            Buffer::text_buffer::<DEBUG_STRING_COUNT, _>(&mut debug_arena, DEBUG_STRING_LINE_LEN)
+                .unwrap();
+        let debug_polys = Buffer::new(&mut debug_arena, DEBUG_POLY_COUNT).unwrap();
+        let debug_polys_world = Buffer::new(&mut debug_arena, DEBUG_POLY_COUNT).unwrap();
 
         Self {
-            // Main parts
-            // temp,
             assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
@@ -106,9 +110,14 @@ impl Tato {
         self.frame_started = true;
 
         self.debug_arena.clear();
-        self.debug_strings = Buffer::new(&mut self.debug_arena, 512).unwrap();
-        self.debug_polys = Buffer::new(&mut self.debug_arena, 256).unwrap();
-        self.debug_polys_world = Buffer::new(&mut self.debug_arena, 256).unwrap();
+        // Re-inits buffers. (if I just clear, all arena handles are invalidated!)
+        self.debug_strings = Buffer::text_buffer::<DEBUG_STRING_COUNT, _>(
+            &mut self.debug_arena,
+            DEBUG_STRING_LINE_LEN,
+        )
+        .unwrap();
+        self.debug_polys = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
+        self.debug_polys_world = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
     }
 
     pub fn frame_finish(&mut self) {
@@ -130,12 +139,8 @@ impl Tato {
     pub fn dash_text(&mut self, text: &str) {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
         assert!(text.is_ascii());
-        let handle = self.debug_arena.alloc_pool::<u8>(text.len()).unwrap();
-        let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
-        for (i, c) in text.chars().enumerate() {
-            pool[i] = c as u8;
-        }
-        let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
+        let text = Text::from_str(&mut self.debug_arena, text).unwrap();
+        let _ = self.debug_strings.push(&mut self.debug_arena, text).unwrap();
     }
 
     /// Allows basic text formatting when sending text to the dashboard
@@ -153,7 +158,7 @@ impl Tato {
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
     pub fn dash_poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
-        let handle = self.debug_arena.alloc_pool::<Vec2<i16>>(points.len()).unwrap();
+        let handle = self.debug_arena.alloc_pool::<Vec2<i16>>(points.len() as u16).unwrap();
         let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
         pool.copy_from_slice(points);
         if world_space {
@@ -190,15 +195,15 @@ impl Tato {
 
     // --------------------- Iterators ---------------------
 
-    pub fn iter_dash_text(&self) -> impl Iterator<Item = &str> + '_ {
+    pub fn iter_dash_text(&self) -> impl Iterator<Item = &str> {
         let debug_handles = self.debug_strings.as_slice(&self.debug_arena).unwrap_or(&[]);
         debug_handles.iter().filter_map(|handle| {
-            let bytes = self.debug_arena.get_pool(handle)?;
+            let bytes = self.debug_arena.get_pool(&handle.pool)?;
             core::str::from_utf8(bytes).ok()
         })
     }
 
-    pub fn iter_dash_polys(&self, world_space: bool) -> impl Iterator<Item = &[Vec2<i16>]> + '_ {
+    pub fn iter_dash_polys(&self, world_space: bool) -> impl Iterator<Item = &[Vec2<i16>]> {
         let debug_handles = if world_space {
             self.debug_polys_world.as_slice(&self.debug_arena).unwrap_or(&[])
         } else {

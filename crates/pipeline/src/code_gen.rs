@@ -147,11 +147,7 @@ impl CodeWriter {
     }
 
     pub fn write_cell_constant(&mut self, name: &str, cell: Cell) {
-        self.write_line(&format!(
-            "pub const {}: Cell = {:?};",
-            name.to_uppercase(),
-            cell
-        ));
+        self.write_line(&format!("pub const {}: Cell = {:?};", name.to_uppercase(), cell));
     }
 
     pub fn write_group_constant(&mut self, name: &str, group_index: u8) {

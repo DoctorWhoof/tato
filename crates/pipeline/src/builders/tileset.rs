@@ -66,11 +66,10 @@ impl<'a> TilesetBuilder<'a> {
     pub fn new_group(&mut self, path: &str, name: &str) {
         let group_index = self.groups.add_group(name);
         let img = self.load_valid_image(path, 1, 1);
-        
+
         // Process tiles and register them in the group, discard the returned cells
         let _ = self.add_tiles(&img, Some(group_index));
     }
-
 
     /// Creates a new single tile from a .png file
     pub fn new_tile(&mut self, path: &str) {
@@ -153,8 +152,6 @@ impl<'a> TilesetBuilder<'a> {
             }
         }
 
-
-
         // Write animation strips if any
         if !self.anims.is_empty() {
             for anim in &self.anims {
@@ -228,7 +225,7 @@ impl<'a> TilesetBuilder<'a> {
         code.format_output(file_path);
     }
 
-    fn add_tiles(&mut self, img: &PalettizedImg, group:Option<u8>) -> Vec<Vec<Cell>> {
+    fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
         // Main detection routine.
@@ -270,12 +267,18 @@ impl<'a> TilesetBuilder<'a> {
                                                     continue; // Skip identity transform
                                                 }
 
-                                                let transformed_tile = transform_tile(&tile_data, flip_x, flip_y, rotation);
-                                                let (transformed_canonical, transformed_colors) = create_canonical_tile(&transformed_tile);
+                                                let transformed_tile = transform_tile(
+                                                    &tile_data, flip_x, flip_y, rotation,
+                                                );
+                                                let (transformed_canonical, transformed_colors) =
+                                                    create_canonical_tile(&transformed_tile);
 
                                                 // Only register if the transformed tile is also multi-color
                                                 if transformed_colors.len() > 1 {
-                                                    self.groups.register_tile(transformed_canonical, group_idx);
+                                                    self.groups.register_tile(
+                                                        transformed_canonical,
+                                                        group_idx,
+                                                    );
                                                 }
                                             }
                                         }
@@ -283,7 +286,6 @@ impl<'a> TilesetBuilder<'a> {
                                 }
                             }
                         }
-
 
                         if color_mapping.len() > SUBPALETTE_COUNT as usize {
                             panic!(
@@ -306,7 +308,9 @@ impl<'a> TilesetBuilder<'a> {
                         // Handle single-color tiles efficiently
                         let (sub_palette_id, remapping) = if color_mapping.len() <= 1 {
                             // Single color tile - find or create a simple sub-palette
-                            self.find_or_create_single_color_sub_palette(color_mapping.get(0).copied().unwrap_or(0))
+                            self.find_or_create_single_color_sub_palette(
+                                color_mapping.get(0).copied().unwrap_or(0),
+                            )
                         } else {
                             // Multi-color tile - use normal processing
                             self.find_or_create_compatible_sub_palette(&color_mapping)
@@ -368,7 +372,8 @@ impl<'a> TilesetBuilder<'a> {
                         }
 
                         // Look up group membership for this tile pattern
-                        let group_bits = self.groups.hash.get(&canonical_tile).copied().unwrap_or(0);
+                        let group_bits =
+                            self.groups.hash.get(&canonical_tile).copied().unwrap_or(0);
 
                         let cell = match found_cell {
                             Some(existing_cell) => {
@@ -378,7 +383,7 @@ impl<'a> TilesetBuilder<'a> {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
                                     group: group_bits,
-                                    sub_palette: PaletteID(sub_palette_id)
+                                    sub_palette: PaletteID(sub_palette_id),
                                 }
                             },
                             None => {
@@ -387,7 +392,7 @@ impl<'a> TilesetBuilder<'a> {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
                                     group: group_bits,
-                                    sub_palette: PaletteID(sub_palette_id)
+                                    sub_palette: PaletteID(sub_palette_id),
                                 };
 
                                 // Store the already computed normalized_tile tile data

@@ -1,5 +1,10 @@
 ### General Engine
 
+--->[ ] Proper error handling/messages when arena handles are invalid.
+    - Most "Option" types need to become "Result" with proper error messages
+    - It's super hard to debug arena related errors right now due to that
+    - maybe "expect" instead of unwrap, so i get error messages?
+
 [ ] Engine pausing
     - toggle_pause() and is_paused() functions.
     - Internal timer will freeze, but input can still be updated in the main loop.
@@ -11,7 +16,9 @@
     - Does not actually process commands - that will be on the Game side
     - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
 
----> [ ] New PixelIter that favors iteration speed over memory compactness (i.e. frame buffer)
+[?] New PixelIter that favors iteration speed over memory compactness (i.e. frame buffer)
+    - There's a bug "somewhere" (I blame the O.S...) where if I don't print anything, the game uses more CPU and takes longer to finish. Maybe it's using efficiency cores instead of performance ones?
+    - In any case, with printing (sigh) iter times are now around 0.5ms in release, solidly in the "Good Enough" zone. I still want to redesign the iterator like this, but it's not a priority
 
 [x] Groups must be tileset-independent!
     . GroupBuilder is separate from each TilesetBuilder, saves to its own module.

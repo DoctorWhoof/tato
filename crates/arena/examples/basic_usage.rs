@@ -22,10 +22,7 @@ fn main() {
     println!("1. Single Allocations");
     println!("--------------------");
 
-    let player_id = arena.alloc(Player {
-        name: "Hero",
-        health: 100,
-    }).unwrap();
+    let player_id = arena.alloc(Player { name: "Hero", health: 100 }).unwrap();
 
     let number_id = arena.alloc(42u32).unwrap();
     let text_id = arena.alloc("Hello Arena!").unwrap();
@@ -39,8 +36,8 @@ fn main() {
     println!("Number: {}", number);
     println!("Text: {}", text);
 
-    // 2. Pool allocation (arrays)
-    println!("\n2. Pool Allocations");
+    // 2. Slice allocation (arrays)
+    println!("\n2. Slice Allocations");
     println!("------------------");
 
     // Create a pool of 5 integers, all starting at 0

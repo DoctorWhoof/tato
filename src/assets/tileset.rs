@@ -12,9 +12,9 @@ pub struct Tileset {
     pub bank_id: u8,
     pub tile_start: u8,
     pub colors: [RGBA12; COLORS_PER_PALETTE as usize],
-    pub color_count:u8,
+    pub color_count: u8,
     pub sub_palettes: [[u8; 4]; SUBPALETTE_COUNT as usize],
-    pub sub_palette_count:u8,
+    pub sub_palette_count: u8,
     pub sub_palettes_start: u8,
     pub sub_palettes_len: u8,
 }

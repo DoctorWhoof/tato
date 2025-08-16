@@ -12,32 +12,42 @@ pub use ops::*;
 
 mod args;
 pub use args::*;
+use tato_arena::{Arena, Buffer, Text};
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
 pub struct Dashboard {
+    arena: Arena<65536, u16>,
     pub tile_pixels: [Vec<u8>; TILE_BANK_COUNT], // one vec per bank
     pub ops: Vec<DrawOp>,
     pub mouse_over_text: String,
     pub text_cursor_y: f32,
     pub font_size: f32,
     pub scale: f32,
+    pub console: bool,
+    pub console_buffer: Buffer<Text, u16>,
 }
 
 impl Dashboard {
     pub fn new() -> Self {
+        let mut arena = Arena::new();
+        let console_buffer = Buffer::text_buffer::<100, _>(&mut arena, 100).unwrap();
         Self {
+            arena,
             tile_pixels: core::array::from_fn(|_| Vec::new()),
             ops: Vec::new(),
-            mouse_over_text: String::new(),
+            mouse_over_text: String::default(),
             text_cursor_y: 0.0,
             font_size: 12.0,
             scale: 1.0,
+            console: true,
+            console_buffer,
         }
     }
 
     pub fn clear(&mut self) {
         self.ops.clear();
+        self.console_buffer.clear();
         self.mouse_over_text.clear();
         self.text_cursor_y = 0.0;
     }
@@ -57,6 +67,14 @@ impl Dashboard {
         // Generate ops for debug polygons
         self.generate_debug_polygons_ops(tato, args.canvas_pos, args.canvas_scale);
 
+        if self.console {
+            let canvas_size = Vec2 {
+                x: (tato.video.width() as f32 * args.canvas_scale) as i16,
+                y: (tato.video.height() as f32 * args.canvas_scale) as i16,
+            };
+            self.generate_console_ops(canvas_size, args.screen_size);
+        }
+
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
             let width = 100;
@@ -74,6 +92,23 @@ impl Dashboard {
             color: RGBA32::WHITE,
         });
         self.text_cursor_y += line_height;
+    }
+
+    fn generate_console_ops(&mut self, canvas_size: Vec2<i16>, screen_size: Vec2<i16>) {
+        let mut layout = Frame::new(Rect {
+            x: (screen_size.x - canvas_size.x) / 2,
+            y: (screen_size.y - canvas_size.y) / 2,
+            w: canvas_size.x,
+            h: canvas_size.y,
+        });
+        layout.set_margin(10);
+        layout.set_scale(self.scale);
+        layout.push_edge(Edge::Bottom, 100, |console| {
+            self.ops.push(DrawOp::Rect {
+                rect: console.rect(),
+                color: RGBA32 { r: 18, g: 18, b: 18, a: 230 },
+            });
+        });
     }
 
     /// Generate performance dashboard ops
@@ -173,13 +208,7 @@ impl Dashboard {
             screen_size.y - (self.font_size + self.font_size) as i16,
         );
 
-        self.ops.push(DrawOp::Rect {
-            x: rect_bg.x,
-            y: rect_bg.y,
-            w: rect_bg.w,
-            h: rect_bg.h,
-            color: light_bg,
-        });
+        self.ops.push(DrawOp::Rect { rect: rect_bg, color: light_bg });
 
         let mut layout = Frame::<i16>::new(rect_bg);
         layout.set_gap(1);
@@ -257,13 +286,7 @@ impl Dashboard {
     ) {
         layout.push_edge(Edge::Top, 8, |frame| {
             let rect = frame.rect();
-            self.ops.push(DrawOp::Rect {
-                x: rect.x as i16,
-                y: rect.y as i16,
-                w: rect.w as i16,
-                h: rect.h as i16,
-                color: dark_bg,
-            });
+            self.ops.push(DrawOp::Rect { rect, color: dark_bg });
 
             let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
             for c in 0..COLORS_PER_PALETTE as usize {
@@ -272,13 +295,7 @@ impl Dashboard {
                     let color = bank.palette[c];
                     let rgba32 = RGBA32::from(color);
 
-                    self.ops.push(DrawOp::Rect {
-                        x: rect.x as i16,
-                        y: rect.y as i16,
-                        w: rect.w as i16,
-                        h: rect.h as i16,
-                        color: rgba32,
-                    });
+                    self.ops.push(DrawOp::Rect { rect, color: rgba32 });
 
                     // Mouse hover detection
                     if rect.contains(mouse.x, mouse.y) {
@@ -316,13 +333,7 @@ impl Dashboard {
                     frame_column.set_margin(0);
                     let rect = frame_column.rect();
 
-                    self.ops.push(DrawOp::Rect {
-                        x: rect.x as i16,
-                        y: rect.y as i16,
-                        w: rect.w as i16,
-                        h: rect.h as i16,
-                        color: dark_bg,
-                    });
+                    self.ops.push(DrawOp::Rect { rect, color: dark_bg });
 
                     let row_h = frame_column.divide_height(rows);
                     for row in 0..rows {
@@ -344,13 +355,7 @@ impl Dashboard {
                                         let color_index = subp[n].0 as usize;
                                         if color_index < bank.palette.len() {
                                             let color = RGBA32::from(bank.palette[color_index]);
-                                            self.ops.push(DrawOp::Rect {
-                                                x: r.x as i16,
-                                                y: r.y as i16,
-                                                w: r.w as i16,
-                                                h: r.h as i16,
-                                                color,
-                                            });
+                                            self.ops.push(DrawOp::Rect { rect: r, color });
                                         }
                                     });
                                 }
@@ -390,29 +395,23 @@ impl Dashboard {
         let tiles_height = max_row as i16 * TILE_SIZE as i16;
 
         layout.push_edge(Edge::Top, tiles_height, |frame_tiles| {
-            let r = frame_tiles.rect();
+            let rect = frame_tiles.rect();
             let dark_gray = RGBA32 { r: 64, g: 64, b: 64, a: 255 };
 
-            self.ops.push(DrawOp::Rect {
-                x: r.x as i16,
-                y: r.y as i16,
-                w: r.w as i16,
-                h: r.h as i16,
-                color: dark_gray,
-            });
+            self.ops.push(DrawOp::Rect { rect, color: dark_gray });
 
             self.ops.push(DrawOp::Texture {
-                x: r.x as i16,
-                y: r.y as i16,
+                x: rect.x as i16,
+                y: rect.y as i16,
                 id: bank_index,
                 scale: frame_tiles.get_scale(),
                 tint: RGBA32::WHITE,
             });
 
             // Mouse hover detection for tiles
-            if r.contains(mouse.x, mouse.y) {
-                let col = ((mouse.x - r.x) / TILE_SIZE as i16) / self.scale as i16;
-                let row = ((mouse.y - r.y) / TILE_SIZE as i16) / self.scale as i16;
+            if rect.contains(mouse.x, mouse.y) {
+                let col = ((mouse.x - rect.x) / TILE_SIZE as i16) / self.scale as i16;
+                let row = ((mouse.y - rect.y) / TILE_SIZE as i16) / self.scale as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text = format!("Tile {}", tile_index);
@@ -422,7 +421,12 @@ impl Dashboard {
     }
 
     /// Generate debug polygon ops
-    fn generate_debug_polygons_ops(&mut self, tato: &Tato, canvas_pos: Vec2<i16>, canvas_scale:f32) {
+    fn generate_debug_polygons_ops(
+        &mut self,
+        tato: &Tato,
+        canvas_pos: Vec2<i16>,
+        canvas_scale: f32,
+    ) {
         let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
 
         for poly in tato.iter_dash_polys(false) {
@@ -471,10 +475,12 @@ impl Dashboard {
         // Background
         let black = RGBA32 { r: 0, g: 0, b: 0, a: 255 };
         self.ops.push(DrawOp::Rect {
-            x: text_x - pad,
-            y: text_y,
-            w: text_width + pad + pad,
-            h: font_size as i16,
+            rect: Rect {
+                x: text_x - pad,
+                y: text_y,
+                w: text_width + pad + pad,
+                h: font_size as i16,
+            },
             color: black,
         });
 

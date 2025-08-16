@@ -237,9 +237,8 @@ impl Tato {
                     tileset_sub_palettes[i] = **sub_palette;
                 }
 
-                let mapped_sub_palette: [u8; COLORS_PER_TILE as usize] = from_fn(|j| {
-                    color_entries[sub_palette[j] as usize].index
-                });
+                let mapped_sub_palette: [u8; COLORS_PER_TILE as usize] =
+                    from_fn(|j| color_entries[sub_palette[j] as usize].index);
                 bank.push_subpalette(mapped_sub_palette);
                 sub_palettes_len += 1;
             }
@@ -332,10 +331,10 @@ impl Tato {
             return Err(TatoError::MapCapacityExceeded { bank_id });
         }
 
-        if map.len() % map.columns as usize != 0 {
+        if map.len() % map.columns() as usize != 0 {
             return Err(TatoError::InvalidTilemapDimensions {
                 len: map.len(),
-                columns: map.columns,
+                columns: map.columns(),
             });
         }
 
@@ -343,8 +342,8 @@ impl Tato {
         let cells_pool = self
             .assets
             .arena
-            .alloc_pool_from_fn(map.len(), |i| {
-                let cell = &map.cells[i];
+            .alloc_pool_from_fn(map.len() as u16, |i| {
+                let cell = &map.cells()[i];
                 // let mut flags = cell.flags;
                 // flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
                 Cell {
@@ -358,7 +357,7 @@ impl Tato {
         // Store entry
         let map_idx = self.assets.map_head;
         self.assets.map_entries[map_idx as usize] =
-            TilemapEntry { cells: cells_pool, columns: map.columns, rows: map.rows };
+            TilemapEntry { cells: cells_pool, columns: map.columns(), rows: map.rows() };
 
         if self.assets.map_head == 255 {
             return Err(TatoError::TilemapCapacityReached);
@@ -432,7 +431,7 @@ impl Tato {
         let frames = self
             .assets
             .arena
-            .alloc_pool_from_fn(anim.frames.len(), |i| anim.frames[i])
+            .alloc_pool_from_fn(anim.frames.len() as u16, |i| anim.frames[i])
             .ok_or(TatoError::ArenaOutOfSpace)?;
         self.assets.anim_entries[next_index as usize] =
             AnimEntry { frames, fps: anim.fps, rep: anim.rep, strip: anim.strip };

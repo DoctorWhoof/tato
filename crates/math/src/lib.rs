@@ -1,10 +1,10 @@
 #![no_std]
 
 pub mod num;
-pub use num::{Num, Float, SignedNum, Integer};
+pub use num::{Float, Integer, Num, SignedNum};
 
 pub mod prelude {
-    pub use crate::num::{Num, Float, SignedNum, Integer};
+    pub use crate::num::{Float, Integer, Num, SignedNum};
     pub use crate::rect::*;
     pub use crate::vec2::*;
 }

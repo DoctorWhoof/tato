@@ -15,9 +15,9 @@ pub struct TilemapRef<'a> {
 impl<'a, const CELL_COUNT: usize> From<&'a Tilemap<CELL_COUNT>> for TilemapRef<'a> {
     fn from(tilemap: &'a Tilemap<CELL_COUNT>) -> Self {
         Self {
-            cells: &tilemap.cells[..((tilemap.columns as usize) * (tilemap.rows as usize))],
-            columns: tilemap.columns,
-            rows: tilemap.rows,
+            cells: &tilemap.cells()[..((tilemap.columns() as usize) * (tilemap.rows() as usize))],
+            columns: tilemap.columns(),
+            rows: tilemap.rows(),
         }
     }
 }

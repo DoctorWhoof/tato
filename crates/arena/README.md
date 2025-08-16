@@ -4,7 +4,7 @@ A no-allocation, fixed-size arena allocator optimized for severely constrained e
 Each module has a single responsibility:
 - **`Arena`**: Core bump allocator with alignment handling
 - **`ArenaId<T>`**: Type-safe handles with compile-time guarantees
-- **`Pool<T>`**: Fixed-size collections allocated at runtime
+- **`Slice<T>`**: Fixed-size collections allocated at runtime
 
 ## Usage
 
@@ -29,7 +29,7 @@ assert_eq!(*arena.get(&float_id), 3.14);
 assert_eq!(*arena.get(&int_id), 100);
 ```
 
-### Runtime-Sized Collections with Pool
+### Runtime-Sized Collections with Slice
 
 You can allocate collections with runtime-determined sizes:
 

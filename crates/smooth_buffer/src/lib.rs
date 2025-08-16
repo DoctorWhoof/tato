@@ -24,10 +24,7 @@ impl<const CAP: usize, T: Num> Default for SmoothBuffer<CAP, T> {
 impl<const CAP: usize, T: Num> SmoothBuffer<CAP, T> {
     /// Creates a new, empty buffer.
     pub fn new() -> Self {
-        assert!(
-            CAP > 0,
-            "SmoothBuffer Error: Capacity must be larger than zero"
-        );
+        assert!(CAP > 0, "SmoothBuffer Error: Capacity must be larger than zero");
         SmoothBuffer {
             data: [T::default(); CAP],
             head: 0,
@@ -41,10 +38,7 @@ impl<const CAP: usize, T: Num> SmoothBuffer<CAP, T> {
 
     /// Creates a new buffer pre-populated with a value, filled to capacity.
     pub fn pre_filled(value: T) -> Self {
-        assert!(
-            CAP > 0,
-            "SmoothBuffer Error: Capacity must be larger than zero"
-        );
+        assert!(CAP > 0, "SmoothBuffer Error: Capacity must be larger than zero");
         SmoothBuffer {
             data: [value; CAP],
             head: CAP - 1,
@@ -107,11 +101,8 @@ impl<const CAP: usize, T: Num> SmoothBuffer<CAP, T> {
         }
 
         // First find the index of the oldest element
-        let start_idx = if self.filled_len < CAP {
-            0
-        } else {
-            (self.head + CAP - self.filled_len) % CAP
-        };
+        let start_idx =
+            if self.filled_len < CAP { 0 } else { (self.head + CAP - self.filled_len) % CAP };
 
         // Initialize with the first valid element
         let mut new_min = self.data[start_idx];
@@ -168,13 +159,13 @@ impl<const CAP: usize, T: Num> SmoothBuffer<CAP, T> {
             match self.max {
                 None => self.max = Some(value),
                 Some(max) if value > max => self.max = Some(value),
-                _ => {}
+                _ => {},
             }
 
             match self.min {
                 None => self.min = Some(value),
                 Some(min) if value < min => self.min = Some(value),
-                _ => {}
+                _ => {},
             }
         }
     }
@@ -245,7 +236,6 @@ mod tests {
             assert_eq!(i as f64, *value);
         }
     }
-
 
     #[test]
     fn test_min_max_recalculation() {

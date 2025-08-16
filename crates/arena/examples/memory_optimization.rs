@@ -23,9 +23,9 @@ fn demonstrate_handle_sizes() {
     println!("------------------------");
 
     // Different arena types with different index sizes
-    let mut arena_default: Arena<4096> = Arena::new();         // Default u16 (2 bytes) - RECOMMENDED!
-    let mut arena_usize: Arena<4096, usize> = Arena::new();    // Large (8 bytes on 64-bit)
-    let mut arena_u8: Arena<255, u8> = Arena::new();           // Tiny (1 byte)
+    let mut arena_default: Arena<4096> = Arena::new(); // Default u16 (2 bytes) - RECOMMENDED!
+    let mut arena_usize: Arena<4096, usize> = Arena::new(); // Large (8 bytes on 64-bit)
+    let mut arena_u8: Arena<255, u8> = Arena::new(); // Tiny (1 byte)
 
     // Allocate the same data in each
     let id_default = arena_default.alloc(Item { value: 100, active: true }).unwrap();
@@ -74,7 +74,9 @@ fn demonstrate_capacity_limits() {
     // Fill the arena
     while let Some(_) = small_arena.alloc(Item::default()) {
         count += 1;
-        if count > 50 { break; } // Safety limit for demo
+        if count > 50 {
+            break;
+        } // Safety limit for demo
     }
 
     println!("\nu8 arena demonstration:");
@@ -93,10 +95,9 @@ fn demonstrate_practical_usage() {
 
     // Create pools of game objects
     let players_pool = game_arena.alloc_pool::<Item>(64).unwrap();
-    let enemies_pool = game_arena.alloc_pool_from_fn(128, |i| Item {
-        value: i as u32 * 10,
-        active: i % 3 == 0,
-    }).unwrap();
+    let enemies_pool = game_arena
+        .alloc_pool_from_fn(128, |i| Item { value: i as u32 * 10, active: i % 3 == 0 })
+        .unwrap();
 
     println!("Game arena usage:");
     println!("  Arena capacity: 32KB with default u16 indices");
@@ -107,7 +108,7 @@ fn demonstrate_practical_usage() {
     // Show memory savings calculation
     let handles_stored = 192; // 64 players + 128 enemies
     let usize_handle_size = 24; // Size with usize indices
-    let u16_handle_size = 8;    // Size with u16 indices (DEFAULT)
+    let u16_handle_size = 8; // Size with u16 indices (DEFAULT)
 
     let usize_total = handles_stored * usize_handle_size;
     let u16_total = handles_stored * u16_handle_size;
@@ -117,7 +118,11 @@ fn demonstrate_practical_usage() {
     println!("  {} handles stored in game:", handles_stored);
     println!("  With usize: {} bytes", usize_total);
     println!("  With u16:   {} bytes (DEFAULT)", u16_total);
-    println!("  Savings:    {} bytes ({:.1}x smaller)", savings, usize_total as f32 / u16_total as f32);
+    println!(
+        "  Savings:    {} bytes ({:.1}x smaller)",
+        savings,
+        usize_total as f32 / u16_total as f32
+    );
     println!("  🎉 u16 default gives you 64KB capacity with 3x smaller handles!");
 
     // Access some data to show it works normally
@@ -130,9 +135,11 @@ fn demonstrate_practical_usage() {
 
     // Show that players pool is also accessible
     if let Some(players) = game_arena.get_pool(&players_pool) {
-        println!("Players pool has {} slots, first player active: {}",
-                 players.len(),
-                 players.first().map(|p| p.active).unwrap_or(false));
+        println!(
+            "Players pool has {} slots, first player active: {}",
+            players.len(),
+            players.first().map(|p| p.active).unwrap_or(false)
+        );
     }
 
     println!("\n💡 Choose your index type based on arena size:");

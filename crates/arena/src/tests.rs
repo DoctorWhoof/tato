@@ -262,7 +262,7 @@ mod pool_tests {
         let gen2 = arena.generation();
         assert_eq!(gen2, gen1 + 1);
 
-        // Pool should be invalid
+        // Slice should be invalid
         assert!(arena.get_pool(&pool).is_none());
         assert!(!arena.is_pool_valid(&pool));
     }
@@ -309,6 +309,30 @@ mod pool_tests {
         // Both should be invalid due to generation change
         assert!(arena.get_pool(&pool1).is_none());
         assert!(arena.get_pool(&pool2).is_none());
+    }
+}
+
+mod text_tests {
+    use super::*;
+
+    #[test]
+    fn test_text_from_str() {
+        let mut arena: Arena<1024> = Arena::new();
+
+        let text = Text::from_str(&mut arena, "Hello, World!").unwrap();
+        assert_eq!(text.len(), 13);
+
+        let s = text.as_str(&arena).unwrap();
+        assert_eq!(s, "Hello, World!");
+    }
+
+    #[test]
+    fn test_text_format() {
+        let mut arena: Arena<1024> = Arena::new();
+
+        let text = Text::format(&mut arena, "greeting:", "Hello").unwrap();
+        let s = text.as_str(&arena).unwrap();
+        assert_eq!(s, "greeting:\"Hello\""); // Strings get formatted with quotes
     }
 }
 

@@ -1,17 +1,17 @@
 //! Numeric traits and implementations for the math crate.
+pub mod float;
+pub mod integer;
 pub mod num;
 pub mod signed_num;
-pub mod integer;
-pub mod float;
 
 #[cfg(test)]
 pub mod tests;
 
 // Re-export the main traits
+pub use float::Float;
+pub use integer::Integer;
 pub use num::Num;
 pub use signed_num::SignedNum;
-pub use integer::Integer;
-pub use float::Float;
 
 /// Implements Num for unsigned integer types
 macro_rules! impl_uint_num {
@@ -39,11 +39,7 @@ macro_rules! impl_uint_num {
 
             #[inline(always)]
             fn from_usize_checked(value: usize) -> Option<Self> {
-                if value <= Self::MAX as usize {
-                    Some(value as Self)
-                } else {
-                    None
-                }
+                if value <= Self::MAX as usize { Some(value as Self) } else { None }
             }
 
             #[inline(always)]
@@ -72,11 +68,7 @@ macro_rules! impl_uint_num {
                     0
                 } else {
                     let rounded = banker_round(value);
-                    if rounded > Self::MAX as f32 {
-                        Self::MAX
-                    } else {
-                        rounded as Self
-                    }
+                    if rounded > Self::MAX as f32 { Self::MAX } else { rounded as Self }
                 }
             }
 
@@ -114,11 +106,7 @@ macro_rules! impl_sint_num {
 
             #[inline(always)]
             fn from_usize_checked(value: usize) -> Option<Self> {
-                if value <= Self::MAX as usize {
-                    Some(value as Self)
-                } else {
-                    None
-                }
+                if value <= Self::MAX as usize { Some(value as Self) } else { None }
             }
 
             #[inline(always)]
@@ -264,8 +252,6 @@ impl Integer for u32 {}
 impl Integer for u64 {}
 impl Integer for usize {}
 
-
-
 // Implement Float trait for floating point types
 impl Float for f32 {
     #[inline(always)]
@@ -329,7 +315,6 @@ impl Float for f32 {
     }
 }
 
-
 impl Float for f64 {
     #[inline(always)]
     fn floor(self) -> Self {
@@ -392,8 +377,6 @@ impl Float for f64 {
     }
 }
 
-
-
 /// Banker's rounding (round half to even)
 #[inline(always)]
 fn banker_round(value: f32) -> f32 {
@@ -407,9 +390,9 @@ fn banker_round(value: f32) -> f32 {
         // Exactly 0.5 - round to even
         let floor_int = floor_value as i64;
         if floor_int % 2 == 0 {
-            floor_value  // Even, so round down
+            floor_value // Even, so round down
         } else {
-            floor_value + 1.0  // Odd, so round up to make it even
+            floor_value + 1.0 // Odd, so round up to make it even
         }
     }
 }

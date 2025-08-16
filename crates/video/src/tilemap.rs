@@ -33,7 +33,7 @@ pub struct BgOp {
     pub row: i16,
     pub tile_id: TileID,
     pub flags: TileFlags,
-    pub sub_palette: PaletteID
+    pub sub_palette: PaletteID,
 }
 
 impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {

@@ -15,10 +15,7 @@ pub struct TileFlags(pub u8);
 
 impl TileFlags {
     pub const fn new(flip_h: bool, flip_v: bool, custom_data: u8) -> Self {
-        assert!(
-            custom_data < 16,
-            err!("Custom data must be in the 0 to 15 range")
-        );
+        assert!(custom_data < 16, err!("Custom data must be in the 0 to 15 range"));
         let mut data: u8 = 0b_0000_0000;
         // Set tile flip
         if flip_h {
@@ -74,50 +71,30 @@ impl TileFlags {
     }
 
     pub const fn set_custom_data(&mut self, custom_data: u8) {
-        debug_assert!(
-            custom_data < 16,
-            err!("Custom data must be in the 0 to 15 range")
-        );
+        debug_assert!(custom_data < 16, err!("Custom data must be in the 0 to 15 range"));
         self.0 &= 0b_1111_0000; // Clear the lower 4 bits (custom data bits)
         self.0 |= custom_data & 0b_0000_1111; // Set the new custom data (mask to ensure only lower 4 bits)
     }
 
-
     /// If true flag will be flipped horizontally
     pub const fn set_flip_x(&mut self, state: bool) {
-        if state {
-            self.0 |= 0b_1000_0000
-        } else {
-            self.0 &= 0b_0111_1111
-        }
+        if state { self.0 |= 0b_1000_0000 } else { self.0 &= 0b_0111_1111 }
     }
 
     /// If true flag will be flipped vertically
     pub const fn set_flip_y(&mut self, state: bool) {
-        if state {
-            self.0 |= 0b_0100_0000
-        } else {
-            self.0 &= 0b_1011_1111
-        }
+        if state { self.0 |= 0b_0100_0000 } else { self.0 &= 0b_1011_1111 }
     }
 
     /// If true flag will be rotated 90 degrees.
     pub const fn set_rotation(&mut self, state: bool) {
-        if state {
-            self.0 |= 0b_0010_0000
-        } else {
-            self.0 &= 0b_1101_1111
-        }
+        if state { self.0 |= 0b_0010_0000 } else { self.0 &= 0b_1101_1111 }
     }
 
     /// If true and this is a BG tile, it will be rendered in front of sprites.
     /// This value is ignored when used on sprites.
     pub const fn set_fg(&mut self, state: bool) {
-        if state {
-            self.0 |= 0b_0001_0000
-        } else {
-            self.0 &= 0b_1110_1111
-        }
+        if state { self.0 |= 0b_0001_0000 } else { self.0 &= 0b_1110_1111 }
     }
 
     /// Toggles the horizontal flip state

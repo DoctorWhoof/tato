@@ -1,4 +1,4 @@
-use crate::{Button, AnyButton, DPad};
+use crate::{AnyButton, Button, DPad};
 
 /// A simple virtual Game controller with digital buttons and a few analogue axis.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]

@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use crate::{CanonicalTile, CodeWriter};
+use std::collections::HashMap;
 
 #[derive(Debug, Default)]
 pub struct GroupBuilder {
-    pub hash: HashMap<CanonicalTile, u8>,  // Key: tile, value:group bits
-    pub names: Vec<String>                  // Index is group index (0-based), value is group name
+    pub hash: HashMap<CanonicalTile, u8>, // Key: tile, value:group bits
+    pub names: Vec<String>,               // Index is group index (0-based), value is group name
 }
 
 impl GroupBuilder {
@@ -30,7 +30,7 @@ impl GroupBuilder {
             self.names.resize(vec_index + 1, String::new());
         }
         self.names[vec_index] = String::from(name);
-        
+
         group_index
     }
 

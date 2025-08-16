@@ -1,33 +1,27 @@
 //! Pools for arena allocations
 
-use core::marker::PhantomData;
 use crate::ArenaIndex;
+use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pool<T, SizeType = u16, Marker = ()> {
-    pub(crate) offset: SizeType,
-    pub(crate) len: SizeType,
+pub struct Slice<T, Idx = u16, Marker = ()> {
+    pub(crate) offset: Idx,
+    pub(crate) len: Idx,
     pub(crate) generation: u16,
     pub(crate) arena_id: u16,
     pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
-impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
+impl<T, Idx, Marker> Slice<T, Idx, Marker> {
     /// Create a new pool (internal use)
-    pub(crate) fn new(offset: SizeType, len: SizeType, generation: u16, arena_id: u16) -> Self {
-        Self {
-            offset,
-            len,
-            generation,
-            arena_id,
-            _phantom: PhantomData
-        }
+    pub(crate) fn new(offset: Idx, len: Idx, generation: u16, arena_id: u16) -> Self {
+        Self { offset, len, generation, arena_id, _phantom: PhantomData }
     }
 
     /// Get element count
-    pub fn len(&self) -> SizeType
+    pub fn len(&self) -> Idx
     where
-        SizeType: ArenaIndex,
+        Idx: ArenaIndex,
     {
         self.len
     }
@@ -35,15 +29,15 @@ impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     /// Check if empty
     pub fn is_empty(&self) -> bool
     where
-        SizeType: ArenaIndex,
+        Idx: ArenaIndex,
     {
         self.len.into() == 0
     }
 
     /// Get arena offset
-    pub fn offset(&self) -> SizeType
+    pub fn offset(&self) -> Idx
     where
-        SizeType: ArenaIndex,
+        Idx: ArenaIndex,
     {
         self.offset
     }
@@ -61,7 +55,7 @@ impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     /// Get size in bytes
     pub fn size_bytes(&self) -> usize
     where
-        SizeType: ArenaIndex,
+        Idx: ArenaIndex,
     {
         self.len.into() * core::mem::size_of::<T>()
     }
@@ -69,20 +63,20 @@ impl<T, SizeType, Marker> Pool<T, SizeType, Marker> {
     /// Get capacity as (used, total)
     pub fn capacity(&self) -> (usize, usize)
     where
-        SizeType: ArenaIndex,
+        Idx: ArenaIndex,
     {
         (self.len.into(), self.len.into())
     }
 }
 
-impl<T, SizeType, Marker> Default for Pool<T, SizeType, Marker>
+impl<T, Idx, Marker> Default for Slice<T, Idx, Marker>
 where
-    SizeType: ArenaIndex,
+    Idx: ArenaIndex,
 {
     fn default() -> Self {
         Self {
-            offset: SizeType::zero(),
-            len: SizeType::zero(),
+            offset: Idx::zero(),
+            len: Idx::zero(),
             generation: 0,
             arena_id: 0,
             _phantom: PhantomData,

@@ -22,9 +22,7 @@ impl WaveWriter {
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
-        WaveWriter {
-            writer: WavWriter::create(target_file, wav_spec).unwrap(),
-        }
+        WaveWriter { writer: WavWriter::create(target_file, wav_spec).unwrap() }
     }
 
     pub fn push(&mut self, sample: i16) {
