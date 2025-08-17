@@ -13,7 +13,7 @@ pub struct RawId<Idx = u16> {
     /// Size of the original type in bytes (for type checking)
     pub(crate) type_size: Idx,
     /// Generation when this ID was created
-    pub(crate) generation: u16,
+    pub(crate) generation: u32,
     /// Arena ID for cross-arena safety
     pub(crate) arena_id: u16,
 }
@@ -44,7 +44,7 @@ where
     }
 
     /// Get generation
-    pub fn generation(&self) -> u16 {
+    pub fn generation(&self) -> u32 {
         self.generation
     }
 
@@ -62,7 +62,7 @@ pub struct ArenaId<T, Idx = u16, Marker = ()> {
     /// Size of the allocation in bytes
     pub(crate) size: Idx,
     /// Generation when this ID was created
-    pub(crate) generation: u16,
+    pub(crate) generation: u32,
     /// Arena ID for cross-arena safety
     pub(crate) arena_id: u16,
     /// Zero-sized type marker for compile-time type safety
@@ -71,7 +71,7 @@ pub struct ArenaId<T, Idx = u16, Marker = ()> {
 
 impl<T, Idx, Marker> ArenaId<T, Idx, Marker> {
     /// Create a new ArenaId (internal use)
-    pub(crate) fn new(offset: Idx, size: Idx, generation: u16, arena_id: u16) -> Self {
+    pub(crate) fn new(offset: Idx, size: Idx, generation: u32, arena_id: u16) -> Self {
         Self { offset, size, generation, arena_id, _phantom: PhantomData }
     }
 
@@ -92,7 +92,7 @@ impl<T, Idx, Marker> ArenaId<T, Idx, Marker> {
     }
 
     /// Get generation
-    pub fn generation(&self) -> u16 {
+    pub fn generation(&self) -> u32 {
         self.generation
     }
 

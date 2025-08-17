@@ -1,5 +1,5 @@
 use std::{f32::consts::PI, time::Instant};
-use tato::{Tato, prelude::*};
+use tato::{arena::Arena, Tato, prelude::*};
 
 use tato_raylib::*;
 
@@ -13,7 +13,8 @@ pub enum SoundType {
 fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
-    let mut dash = Dashboard::new();
+    let mut arena = Arena::new();
+    let mut dash = Dashboard::new(&mut arena);
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
@@ -66,7 +67,9 @@ fn main() -> TatoResult<()> {
     // Main Loop
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
+        arena.clear();
         tato.frame_start(backend.ray.get_frame_time());
+        dash.start_frame(&mut arena);
         backend.update_input(&mut tato.pad);
 
         // "Envelopes"
@@ -141,9 +144,8 @@ fn main() -> TatoResult<()> {
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&tato, &mut dash);
-        backend.present(&tato, Some(&dash));
-        dash.clear();
+        backend.render_dashboard(&tato, &mut dash, &mut arena);
+        backend.present(&tato, Some(&dash), &arena);
     }
 
     audio_backend.write_wav_file();

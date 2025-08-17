@@ -7,7 +7,7 @@ use core::marker::PhantomData;
 pub struct Slice<T, Idx = u16, Marker = ()> {
     pub(crate) offset: Idx,
     pub(crate) len: Idx,
-    pub(crate) generation: u16,
+    pub(crate) generation: u32,
     pub(crate) arena_id: u16,
     pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
@@ -17,7 +17,7 @@ where
     Idx: ArenaIndex,
 {
     /// Create a new Slice (internal use)
-    pub(crate) fn new(offset: Idx, len: Idx, generation: u16, arena_id: u16) -> Self {
+    pub(crate) fn new(offset: Idx, len: Idx, generation: u32, arena_id: u16) -> Self {
         Self { offset, len, generation, arena_id, _phantom: PhantomData }
     }
 
@@ -37,7 +37,7 @@ where
     }
 
     /// Get generation
-    pub fn generation(&self) -> u16 {
+    pub fn generation(&self) -> u32 {
         self.generation
     }
 

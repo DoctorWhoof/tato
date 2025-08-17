@@ -1,4 +1,4 @@
-use tato::prelude::*;
+use tato::{arena::Arena, prelude::*};
 
 use tato_raylib::*;
 
@@ -13,7 +13,8 @@ const MAP_LEN: usize = 1024;
 // Rects use "number of tiles" as the dimensions
 fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
-    let mut dash = Dashboard::new();
+    let mut arena = Arena::new();
+    let mut dash = Dashboard::new(&mut arena);
     let mut tato = Tato::new(240, 180, 60);
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
@@ -37,7 +38,9 @@ fn main() -> TatoResult<()> {
     backend.set_bg_color(RGBA32::BLACK);
 
     while !backend.ray.window_should_close() {
+        arena.clear();
         tato.frame_start(backend.ray.get_frame_time());
+        dash.start_frame(&mut arena);
         backend.update_input(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {
@@ -54,9 +57,8 @@ fn main() -> TatoResult<()> {
 
         tato.frame_finish();
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&tato, &mut dash);
-        backend.present(&tato, Some(&dash));
-        dash.clear();
+        backend.render_dashboard(&tato, &mut dash, &mut arena);
+        backend.present(&tato, Some(&dash), &arena);
     }
     Ok(())
 }

@@ -5,7 +5,7 @@ mod scene_c;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use tato::{Tato, prelude::*};
+use tato::{arena::Arena, Tato, prelude::*};
 
 use tato_raylib::*;
 
@@ -47,7 +47,8 @@ fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut scene = Scene::None;
     let mut t = Tato::new(240, 180, 60);
-    let mut dash = Dashboard::new();
+    let mut arena = Arena::new();
+    let mut dash = Dashboard::new(&mut arena);
 
     let mut state = State {
         pad: t.pad,
@@ -67,7 +68,9 @@ fn main() -> TatoResult<()> {
     let target_fps = 60.0;
     let mut back = RaylibBackend::new(&t);
     while !back.ray.window_should_close() {
+        arena.clear();
         t.frame_start(back.ray.get_frame_time());
+        dash.start_frame(&mut arena);
         back.update_input(&mut t.pad);
         state.time = back.ray.get_time();
         state.elapsed = 1.0 / target_fps as f64;
@@ -84,9 +87,8 @@ fn main() -> TatoResult<()> {
         // Update backend
         t.frame_finish();
         back.render_canvas(&t, &[&state.bg]);
-        back.render_dashboard(&t, &mut dash);
-        back.present(&t, Some(&dash));
-        dash.clear();
+        back.render_dashboard(&t, &mut dash, &mut arena);
+        back.present(&t, Some(&dash), &arena);
 
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {

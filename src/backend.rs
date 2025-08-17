@@ -1,6 +1,7 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
-use crate::{Tato, prelude::Dashboard};
+use crate::{prelude::Dashboard, Tato, FRAME_ARENA_LEN};
+use tato_arena::Arena;
 use tato_math::Vec2;
 use tato_pad::AnaloguePad;
 use tato_video::RGBA32;
@@ -29,7 +30,7 @@ pub trait Backend {
     fn clear(&mut self, color: RGBA32);
 
     /// Present the rendered frame to the screen
-    fn present(&mut self, tato: &Tato, dash: Option<&Dashboard>);
+    fn present(&mut self, tato: &Tato, dash: Option<&Dashboard>, arena:&Arena<FRAME_ARENA_LEN>);
 
     /// Check if the window should close
     fn should_close(&self) -> bool;

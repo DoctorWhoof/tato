@@ -5,9 +5,9 @@ use tato_math::{Rect, Vec2};
 
 use crate::*;
 
-const DEBUG_STR_COUNT: u16 = 200;
-const DEBUG_STR_LINE_LEN: u16 = 100;
-const DEBUG_POLY_COUNT: u16 = 500;
+const DEBUG_STR_COUNT: u16 = 100;
+const DEBUG_STR_LINE_LEN: u16 = 80;
+const DEBUG_POLY_COUNT: u16 = 100;
 
 #[derive(Debug)]
 pub struct Tato {
@@ -32,7 +32,7 @@ pub struct Tato {
     frame_started: bool,
     frame_finished: bool,
 
-    pub debug_arena: Arena<32768>, // Debug arena, cleared on every frame start
+    pub debug_arena: Arena<FRAME_ARENA_LEN>, // Debug arena, cleared on every frame start
     debug_strings: Buffer<Text>,
     debug_polys: Buffer<Slice<Vec2<i16>>>,
     debug_polys_world: Buffer<Slice<Vec2<i16>>>,

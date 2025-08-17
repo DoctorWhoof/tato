@@ -88,7 +88,7 @@ fn test_buffer_iter_empty() {
     let mut arena: Arena<1024> = Arena::new();
     let buffer = Buffer::<i32>::new(&mut arena, 5).unwrap();
 
-    let iter = buffer.iter(&arena).unwrap();
+    let iter = buffer.items(&arena).unwrap();
     assert_eq!(iter.count(), 0);
 }
 
@@ -101,14 +101,14 @@ fn test_buffer_iter_with_elements() {
     buffer.push(&mut arena, 20).unwrap();
     buffer.push(&mut arena, 30).unwrap();
 
-    let mut iter = buffer.iter(&arena).unwrap();
+    let mut iter = buffer.items(&arena).unwrap();
     assert_eq!(iter.next(), Some(&10));
     assert_eq!(iter.next(), Some(&20));
     assert_eq!(iter.next(), Some(&30));
     assert_eq!(iter.next(), None);
 
     // Verify it only iterates over used elements, not full capacity
-    assert_eq!(buffer.iter(&arena).unwrap().count(), 3);
+    assert_eq!(buffer.items(&arena).unwrap().count(), 3);
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn test_buffer_iter_after_clear() {
     buffer.push(&mut arena, 42).unwrap();
     buffer.clear();
 
-    let iter = buffer.iter(&arena).unwrap();
+    let iter = buffer.items(&arena).unwrap();
     assert_eq!(iter.count(), 0);
 }
 

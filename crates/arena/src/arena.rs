@@ -19,7 +19,7 @@ pub struct Arena<const LEN: usize, Idx = u16, Marker = ()> {
     /// Current allocation offset (bump pointer)
     offset: Idx,
     /// Current generation - incremented on restore_to()
-    generation: u16,
+    generation: u32,
     /// Unique arena ID for cross-arena safety
     arena_id: u16,
     /// Zero-sized type marker for compile-time arena safety
@@ -342,7 +342,7 @@ where
     }
 
     /// Current generation
-    pub fn generation(&self) -> u16 {
+    pub fn generation(&self) -> u32 {
         self.generation
     }
 
@@ -428,14 +428,14 @@ fn test_generation_wraparound() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Set generation near max
-    arena.generation = u16::MAX - 1;
+    arena.generation = u32::MAX - 1;
 
     let id1 = arena.alloc(42u32).unwrap();
-    assert_eq!(id1.generation(), u16::MAX - 1);
+    assert_eq!(id1.generation(), u32::MAX - 1);
 
     // This should wrap around
     arena.clear();
-    assert_eq!(arena.generation(), u16::MAX);
+    assert_eq!(arena.generation(), u32::MAX);
 
     arena.clear();
     assert_eq!(arena.generation(), 0); // Wrapped around

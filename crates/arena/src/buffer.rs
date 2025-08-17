@@ -34,6 +34,10 @@ where
         Some(Self { slice, len: capacity })
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == Idx::zero()
+    }
+
     pub fn clear(&mut self) {
         self.len = Idx::zero()
     }
@@ -93,7 +97,8 @@ where
         let temp_slice = arena.alloc_slice_from_fn(sub_buffer_count, |_| {
             core::mem::MaybeUninit::<Buffer<T, Idx, Marker>>::uninit()
         })?;
-        let temp_ptr = arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, Idx, Marker>;
+        let temp_ptr =
+            arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, Idx, Marker>;
 
         // Initialize each buffer in the temporary space
         for i in 0..sub_buffer_count.into() {
@@ -109,7 +114,7 @@ where
     }
 
     // Iterators
-    pub fn iter<'a, const LEN: usize>(
+    pub fn items<'a, const LEN: usize>(
         &self,
         arena: &'a Arena<LEN, Idx, Marker>,
     ) -> Option<Iter<'a, T>> {

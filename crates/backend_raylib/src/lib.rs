@@ -1,7 +1,10 @@
 pub use raylib;
 use raylib::prelude::*;
 use std::{time::Instant, vec};
-use tato::{Tato, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer};
+use tato::{
+    FRAME_ARENA_LEN, Tato, arena::*, backend::Backend, dashboard::*, prelude::*,
+    smooth_buffer::SmoothBuffer,
+};
 
 pub use tato;
 
@@ -177,23 +180,31 @@ impl RaylibBackend {
     }
 
     /// Process "Dashboard" draw ops
-    pub fn render_dashboard<'a>(&mut self, t: &'a Tato, dash: &mut Dashboard) {
+    pub fn render_dashboard<'a>(
+        &mut self,
+        t: &'a Tato,
+        dash: &mut Dashboard,
+        arena: &mut Arena<FRAME_ARENA_LEN>,
+    ) {
         if !self.debug_mode() {
             return;
         }
 
         // Push timing data before moving ops out of dashboard
-        dash.add_text(&format!(
-            "iter time: {:.1} ms", //
-            self.buffer_iter_time.average() * 1000.0
-        ));
-        dash.add_text(&format!(
-            "canvas time: {:.1} ms",
-            self.buffer_canvas_time.average() * 1000.0
-        ));
+        dash.add_text(
+            &format!(
+                "iter time: {:.1} ms", //
+                self.buffer_iter_time.average() * 1000.0
+            ),
+            arena,
+        );
+        dash.add_text(
+            &format!("canvas time: {:.1} ms", self.buffer_canvas_time.average() * 1000.0),
+            arena,
+        );
 
         // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-        dash.render(t, self.dash_args);
+        dash.render(t, arena, self.dash_args);
 
         // Copy tile pixels from dashboard to GPU textures
         for bank_index in 0..TILE_BANK_COUNT {
@@ -223,11 +234,11 @@ impl Backend for RaylibBackend {
     }
 
     /// Finish canvas and GUI drawing, present to window
-    fn present(&mut self, _tato: &Tato, dash: Option<&Dashboard>) {
+    fn present(&mut self, _tato: &Tato, dash: Option<&Dashboard>, arena: &Arena<FRAME_ARENA_LEN>) {
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
 
-        let mut process_draw_op = |dash: Option<&Dashboard>, cmd: DrawOp| match cmd {
+        let mut process_draw_op = |cmd: DrawOp| match cmd {
             DrawOp::None => {},
             DrawOp::Rect { rect, color } => {
                 canvas.draw_rectangle(
@@ -259,27 +270,25 @@ impl Backend for RaylibBackend {
                 }
             },
             DrawOp::Text { text, x, y, size, color } => {
-                if let Some(dash) = dash {
-                    let text = text.as_str(&dash.arena_text).unwrap();
-                    canvas.draw_text_ex(
-                        &self.font,
-                        text,
-                        Vector2::new(x as f32, y as f32),
-                        size,
-                        1.0,
-                        rgba32_to_rl_color(color),
-                    );
-                }
+                let text = text.as_str(arena).unwrap();
+                canvas.draw_text_ex(
+                    &self.font,
+                    text,
+                    Vector2::new(x as f32, y as f32),
+                    size,
+                    1.0,
+                    rgba32_to_rl_color(color),
+                );
             },
         };
 
         // Execute draw ops
         for cmd in self.draw_ops.drain(..) {
-            process_draw_op(dash, cmd)
+            process_draw_op(cmd)
         }
         if let Some(dash) = dash {
-            for cmd in dash.ops().unwrap() {
-                process_draw_op(Some(dash), cmd.clone())
+            for cmd in dash.ops.items(arena).unwrap() {
+                process_draw_op(cmd.clone())
             }
         }
 
@@ -290,7 +299,7 @@ impl Backend for RaylibBackend {
         // TODO: This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
         // I believe it's related to Efficiency cores Vs. Performance ones.
-        if self.print_frame_time{
+        if self.print_frame_time {
             let time = self.buffer_canvas_time.average() + self.buffer_iter_time.average();
             println!(
                 "Frame {} finished in {:.2} ms (max {} fps)",
