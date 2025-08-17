@@ -6,11 +6,11 @@ let mut arena: Arena<1024> = Arena::new();
 
 // Allocate values
 let id = arena.alloc(42u32)?;
-let pool = arena.alloc_pool::<i32>(10)?;
+let slice = arena.alloc_slice::<i32>(10)?;
 
 // Access safely (returns Option)
 let value = arena.get(&id)?;
-let slice = arena.get_pool(&pool)?;
+let slice = arena.get_slice(&slice)?;
 
 // Memory management
 println!("Used: {} bytes", arena.used());
@@ -28,7 +28,7 @@ let huge: Arena<1048576, usize> = Arena::new(); // 24-byte handles, unlimited
 The essential introduction to arena usage:
 - Single value allocation with `alloc()`
 - Safe access with `get()` and `get_mut()`
-- Slice allocation with `alloc_pool()` and `alloc_pool_from_fn()`
+- Slice allocation with `alloc_slice()` and `alloc_slice_from_fn()`
 - Memory management with `clear()`
 
 ```bash

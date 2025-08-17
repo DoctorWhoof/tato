@@ -12,6 +12,8 @@ pub use tato_video as video;
 pub mod assets;
 pub use assets::*;
 
+pub mod dashboard;
+
 mod error;
 pub use error::*;
 
@@ -28,6 +30,7 @@ pub mod default_assets;
 
 pub mod prelude {
     pub use crate::backend::*;
+    pub use crate::dashboard::*;
     pub use crate::default_assets::*;
     pub use crate::graphics::*;
     pub use crate::*;

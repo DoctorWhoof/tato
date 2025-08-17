@@ -55,6 +55,9 @@ where
     pub fn capacity(&self) -> Idx {
         self.len
     }
+
+    // Iterators
+
 }
 
 impl<T, Idx, Marker> Default for Slice<T, Idx, Marker>

@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 use core::mem::{MaybeUninit, align_of, size_of};
 use core::ptr;
+use core::slice::Iter;
 use core::sync::atomic::{AtomicU16, Ordering};
 
 use crate::{ArenaId, ArenaIndex, Slice};
@@ -80,8 +81,8 @@ where
         Some(id)
     }
 
-    /// Allocate pool with initialization function
-    pub fn alloc_pool_from_fn<T, F>(&mut self, count: Idx, mut f: F) -> Option<Slice<T, Idx, Marker>>
+    /// Allocate slice with initialization function
+    pub fn alloc_slice_from_fn<T, F>(&mut self, count: Idx, mut f: F) -> Option<Slice<T, Idx, Marker>>
     where
         F: FnMut(usize) -> T,
     {
@@ -120,19 +121,28 @@ where
             }
         }
 
-        let pool = Slice::new(self.offset, count, self.generation, self.arena_id);
+        let slice = Slice::new(self.offset, count, self.generation, self.arena_id);
 
         self.offset = self.offset + Idx::try_from(total_size).ok()?;
 
-        Some(pool)
+        Some(slice)
     }
 
-    /// Allocate pool with default values
-    pub fn alloc_pool<T>(&mut self, count: Idx) -> Option<Slice<T, Idx, Marker>>
+    /// Allocate slice with default values
+    pub fn alloc_slice<T>(&mut self, count: Idx) -> Option<Slice<T, Idx, Marker>>
     where
         T: Default,
     {
-        self.alloc_pool_from_fn(count, |_| T::default())
+        self.alloc_slice_from_fn(count, |_| T::default())
+    }
+
+    /// Allocate all of remaining space with a single slice
+    pub fn fill_with_slice<T>(&mut self) -> Option<Slice<T, Idx, Marker>>
+    where
+        T: Default,
+    {
+        let count = Idx::from_usize_checked(self.remaining() / size_of::<T>()).unwrap();
+        self.alloc_slice_from_fn(count, |_| T::default())
     }
 
     /// Validate an ArenaId for safe access
@@ -215,98 +225,98 @@ where
 
     /// Validate a Slice for safe access
     #[inline]
-    fn validate_pool<T>(&self, pool: &Slice<T, Idx, Marker>) -> bool {
+    fn validate_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> bool {
         // Check arena ID first (cross-arena safety)
-        if pool.arena_id != self.arena_id {
+        if slice.arena_id != self.arena_id {
             return false;
         }
 
         // Check generation (temporal safety)
-        if pool.generation != self.generation {
+        if slice.generation != self.generation {
             return false;
         }
 
-        let pool_end: usize = pool.offset.into() + pool.len.into() * size_of::<T>();
+        let slice_end: usize = slice.offset.into() + slice.len.into() * size_of::<T>();
         let offset_usize: usize = self.offset.into();
 
         // Bounds check
-        pool_end <= offset_usize
+        slice_end <= offset_usize
     }
 
-    /// Get pool as slice (safe - checks generation and arena)
+    /// Get slice as slice (safe - checks generation and arena)
     #[inline]
-    pub fn get_pool<T>(&self, pool: &Slice<T, Idx, Marker>) -> Option<&[T]> {
-        if !self.validate_pool(pool) {
+    pub fn get_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> Option<&[T]> {
+        if !self.validate_slice(slice) {
             return None;
         }
 
-        if pool.len.into() == 0 {
+        if slice.len.into() == 0 {
             return Some(&[]);
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(pool.offset.into()) as *const T;
-            Some(core::slice::from_raw_parts(ptr, pool.len.into()))
+            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
+            Some(core::slice::from_raw_parts(ptr, slice.len.into()))
         }
     }
 
-    /// Get pool as mutable slice (safe - checks generation and arena)
+    /// Get slice as mutable slice (safe - checks generation and arena)
     #[inline]
-    pub fn get_pool_mut<T>(&mut self, pool: &Slice<T, Idx, Marker>) -> Option<&mut [T]> {
-        if !self.validate_pool(pool) {
+    pub fn get_slice_mut<T>(&mut self, slice: &Slice<T, Idx, Marker>) -> Option<&mut [T]> {
+        if !self.validate_slice(slice) {
             return None;
         }
 
-        if pool.len.into() == 0 {
+        if slice.len.into() == 0 {
             return Some(&mut []);
         }
 
         unsafe {
-            let ptr = self.storage.as_mut_ptr().add(pool.offset.into()) as *mut T;
-            Some(core::slice::from_raw_parts_mut(ptr, pool.len.into()))
+            let ptr = self.storage.as_mut_ptr().add(slice.offset.into()) as *mut T;
+            Some(core::slice::from_raw_parts_mut(ptr, slice.len.into()))
         }
     }
 
-    /// Get pool as slice (unsafe - no generation check)
+    /// Get slice as slice (unsafe - no generation check)
     /// Only use this if you're certain the handle is valid
     #[inline]
-    pub unsafe fn get_pool_unchecked<T>(&self, pool: &Slice<T, Idx, Marker>) -> &[T] {
-        debug_assert_eq!(pool.arena_id, self.arena_id, "Arena ID mismatch in get_pool_unchecked");
+    pub unsafe fn get_slice_unchecked<T>(&self, slice: &Slice<T, Idx, Marker>) -> &[T] {
+        debug_assert_eq!(slice.arena_id, self.arena_id, "Arena ID mismatch in get_slice_unchecked");
         debug_assert_eq!(
-            pool.generation, self.generation,
-            "Generation mismatch in get_pool_unchecked"
+            slice.generation, self.generation,
+            "Generation mismatch in get_slice_unchecked"
         );
 
-        if pool.len.into() == 0 {
+        if slice.len.into() == 0 {
             return &[];
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(pool.offset.into()) as *const T;
-            core::slice::from_raw_parts(ptr, pool.len.into())
+            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
+            core::slice::from_raw_parts(ptr, slice.len.into())
         }
     }
 
-    /// Get pool as mutable slice (unsafe - no generation check)
+    /// Get slice as mutable slice (unsafe - no generation check)
     /// Only use this if you're certain the handle is valid
     #[inline]
-    pub unsafe fn get_pool_unchecked_mut<T>(&mut self, pool: &Slice<T, Idx, Marker>) -> &mut [T] {
+    pub unsafe fn get_slice_unchecked_mut<T>(&mut self, slice: &Slice<T, Idx, Marker>) -> &mut [T] {
         debug_assert_eq!(
-            pool.arena_id, self.arena_id,
-            "Arena ID mismatch in get_pool_unchecked_mut"
+            slice.arena_id, self.arena_id,
+            "Arena ID mismatch in get_slice_unchecked_mut"
         );
         debug_assert_eq!(
-            pool.generation, self.generation,
-            "Generation mismatch in get_pool_unchecked_mut"
+            slice.generation, self.generation,
+            "Generation mismatch in get_slice_unchecked_mut"
         );
 
-        if pool.len.into() == 0 {
+        if slice.len.into() == 0 {
             return &mut [];
         }
 
         unsafe {
-            let ptr = self.storage.as_mut_ptr().add(pool.offset.into()) as *mut T;
-            core::slice::from_raw_parts_mut(ptr, pool.len.into())
+            let ptr = self.storage.as_mut_ptr().add(slice.offset.into()) as *mut T;
+            core::slice::from_raw_parts_mut(ptr, slice.len.into())
         }
     }
 
@@ -351,14 +361,55 @@ where
         self.validate_id(id)
     }
 
-    /// Check if a pool handle is valid for this arena
-    pub fn is_pool_valid<T>(&self, pool: &Slice<T, Idx, Marker>) -> bool {
-        self.validate_pool(pool)
+    /// Check if a slice handle is valid for this arena
+    pub fn is_slice_valid<T>(&self, slice: &Slice<T, Idx, Marker>) -> bool {
+        self.validate_slice(slice)
     }
 
     /// Get this arena's unique ID
     pub fn arena_id(&self) -> u16 {
         self.arena_id
+    }
+
+    // Iterators
+    pub fn iter_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> Option<Iter<'_, T>> {
+        if !self.validate_slice(slice) {
+            return None;
+        }
+
+        if slice.len.into() == 0 {
+            return Some([].iter());
+        }
+
+        unsafe {
+            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
+            let slice_ref = core::slice::from_raw_parts(ptr, slice.len.into());
+            Some(slice_ref.iter())
+        }
+    }
+
+    pub fn iter_slice_range<T>(&self, slice: &Slice<T, Idx, Marker>, start: Idx, end: Idx) -> Option<Iter<'_, T>> {
+        if !self.validate_slice(slice) {
+            return None;
+        }
+
+        let start_usize: usize = start.into();
+        let end_usize: usize = end.into();
+        let len_usize: usize = slice.len.into();
+
+        if start_usize > end_usize || end_usize > len_usize {
+            return None;
+        }
+
+        if start_usize == end_usize {
+            return Some([].iter());
+        }
+
+        unsafe {
+            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
+            let slice_ref = core::slice::from_raw_parts(ptr, len_usize);
+            Some(slice_ref[start_usize..end_usize].iter())
+        }
     }
 }
 

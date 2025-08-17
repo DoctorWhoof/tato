@@ -43,7 +43,7 @@ pub enum TatoError {
     InvalidMapId(u8),
     /// Frame count exceeds u8 limit
     FrameCountTooLarge(usize),
-    /// Arena pool retrieval failed
+    /// Arena slice retrieval failed
     ArenaPoolRetrievalFailed,
 }
 
@@ -104,7 +104,7 @@ impl fmt::Display for TatoError {
             TatoError::FrameCountTooLarge(count) => {
                 write!(f, "Frame count {} exceeds u8 limit", count)
             },
-            TatoError::ArenaPoolRetrievalFailed => write!(f, "Arena pool retrieval failed"),
+            TatoError::ArenaPoolRetrievalFailed => write!(f, "Arena slice retrieval failed"),
         }
     }
 }

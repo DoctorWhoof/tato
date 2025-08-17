@@ -160,9 +160,9 @@ impl Tato {
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
     pub fn dash_poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
-        let handle = self.debug_arena.alloc_pool::<Vec2<i16>>(points.len() as u16).unwrap();
-        let pool = self.debug_arena.get_pool_mut(&handle).unwrap();
-        pool.copy_from_slice(points);
+        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len() as u16).unwrap();
+        let slice = self.debug_arena.get_slice_mut(&handle).unwrap();
+        slice.copy_from_slice(points);
         if world_space {
             let _ = self.debug_polys_world.push(&mut self.debug_arena, handle).unwrap();
         } else {
@@ -200,7 +200,7 @@ impl Tato {
     pub fn iter_dash_text(&self) -> impl Iterator<Item = &str> {
         let debug_handles = self.debug_strings.as_slice(&self.debug_arena).unwrap_or(&[]);
         debug_handles.iter().filter_map(|handle| {
-            let bytes = self.debug_arena.get_pool(&handle.pool)?;
+            let bytes = self.debug_arena.get_slice(&handle.slice)?;
             core::str::from_utf8(bytes).ok()
         })
     }
@@ -211,7 +211,7 @@ impl Tato {
         } else {
             self.debug_polys.as_slice(&self.debug_arena).unwrap_or(&[])
         };
-        debug_handles.iter().filter_map(|handle| self.debug_arena.get_pool(handle))
+        debug_handles.iter().filter_map(|handle| self.debug_arena.get_slice(handle))
     }
 
     pub fn iter_pixels<'a, T>(&'a self, bg_banks: &[&'a T]) -> PixelIter<'a>

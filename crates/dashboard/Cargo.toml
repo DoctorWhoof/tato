@@ -1,8 +1,0 @@
-[package]
-name = "tato_dashboard"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-tato = { path = "../.." }
-tato_arena = { path = "../arena" }

@@ -6,7 +6,7 @@ fn test_zero_size_arena() {
 
     // Should fail immediately
     assert!(arena.alloc(42u32).is_none());
-    assert!(arena.alloc_pool::<u32>(1).is_none());
+    assert!(arena.alloc_slice::<u32>(1).is_none());
 }
 
 #[test]

@@ -93,16 +93,16 @@ fn demonstrate_practical_usage() {
     // Simulate a game with many entities
     let mut game_arena: Arena<32768> = Arena::new(); // 32KB with default u16 indices
 
-    // Create pools of game objects
-    let players_pool = game_arena.alloc_pool::<Item>(64).unwrap();
-    let enemies_pool = game_arena
-        .alloc_pool_from_fn(128, |i| Item { value: i as u32 * 10, active: i % 3 == 0 })
+    // Create slices of game objects
+    let players_slice = game_arena.alloc_slice::<Item>(64).unwrap();
+    let enemies_slice = game_arena
+        .alloc_slice_from_fn(128, |i| Item { value: i as u32 * 10, active: i % 3 == 0 })
         .unwrap();
 
     println!("Game arena usage:");
     println!("  Arena capacity: 32KB with default u16 indices");
-    println!("  Players pool: {} items", players_pool.len());
-    println!("  Enemies pool: {} items", enemies_pool.len());
+    println!("  Players slice: {} items", players_slice.len());
+    println!("  Enemies slice: {} items", enemies_slice.len());
     println!("  Memory used: {} bytes", game_arena.used());
 
     // Show memory savings calculation
@@ -126,17 +126,17 @@ fn demonstrate_practical_usage() {
     println!("  🎉 u16 default gives you 64KB capacity with 3x smaller handles!");
 
     // Access some data to show it works normally
-    if let Some(enemies) = game_arena.get_pool(&enemies_pool) {
+    if let Some(enemies) = game_arena.get_slice(&enemies_slice) {
         println!("\nSample enemies:");
         for (i, enemy) in enemies.iter().take(5).enumerate() {
             println!("  Enemy {}: value={}, active={}", i, enemy.value, enemy.active);
         }
     }
 
-    // Show that players pool is also accessible
-    if let Some(players) = game_arena.get_pool(&players_pool) {
+    // Show that players slice is also accessible
+    if let Some(players) = game_arena.get_slice(&players_slice) {
         println!(
-            "Players pool has {} slots, first player active: {}",
+            "Players slice has {} slots, first player active: {}",
             players.len(),
             players.first().map(|p| p.active).unwrap_or(false)
         );

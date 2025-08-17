@@ -1,4 +1,4 @@
-//! Text utilities for Slice<u8> - treating byte pools as strings
+//! Text utilities for Slice<u8> - treating byte slices as strings
 mod debug_buffer;
 use debug_buffer::*;
 
@@ -16,7 +16,7 @@ where
     /// Get the text as &str (requires arena for safety)
     /// Returns None if the bytes are not valid UTF-8
     pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a str> {
-        let bytes = arena.get_pool(&self.pool)?;
+        let bytes = arena.get_slice(&self.slice)?;
         core::str::from_utf8(bytes).ok()
     }
 

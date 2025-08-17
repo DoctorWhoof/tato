@@ -1,5 +1,5 @@
 use tato::prelude::*;
-use tato_dashboard::Dashboard;
+
 use tato_raylib::*;
 
 mod patch;
@@ -54,8 +54,9 @@ fn main() -> TatoResult<()> {
 
         tato.frame_finish();
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&mut dash, &tato);
-        backend.present();
+        backend.render_dashboard(&tato, &mut dash);
+        backend.present(&tato, Some(&dash));
+        dash.clear();
     }
     Ok(())
 }

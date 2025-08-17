@@ -1,7 +1,7 @@
 //! This example shows the fundamental operations of the arena allocator:
 //! - Allocating values
 //! - Accessing values safely
-//! - Creating and using pools
+//! - Creating and using slices
 //! - Basic memory management
 
 use tato_arena::Arena;
@@ -40,28 +40,28 @@ fn main() {
     println!("\n2. Slice Allocations");
     println!("------------------");
 
-    // Create a pool of 5 integers, all starting at 0
-    let numbers_pool = arena.alloc_pool::<u32>(5).unwrap();
+    // Create a slice of 5 integers, all starting at 0
+    let numbers_slice = arena.alloc_slice::<u32>(5).unwrap();
 
-    // Create a pool with custom initialization
-    let scores_pool = arena.alloc_pool_from_fn(3, |i| (i + 1) * 100).unwrap();
+    // Create a slice with custom initialization
+    let scores_slice = arena.alloc_slice_from_fn(3, |i| (i + 1) * 100).unwrap();
 
-    // Access pools as slices
-    let numbers = arena.get_pool(&numbers_pool).unwrap();
-    let scores = arena.get_pool(&scores_pool).unwrap();
+    // Access slices as slices
+    let numbers = arena.get_slice(&numbers_slice).unwrap();
+    let scores = arena.get_slice(&scores_slice).unwrap();
 
-    println!("Numbers pool: {:?}", numbers);
-    println!("Scores pool: {:?}", scores);
+    println!("Numbers slice: {:?}", numbers);
+    println!("Scores slice: {:?}", scores);
 
-    // Modify pool data
+    // Modify slice data
     {
-        let numbers_mut = arena.get_pool_mut(&numbers_pool).unwrap();
+        let numbers_mut = arena.get_slice_mut(&numbers_slice).unwrap();
         numbers_mut[0] = 10;
         numbers_mut[1] = 20;
         numbers_mut[2] = 30;
     }
 
-    let numbers = arena.get_pool(&numbers_pool).unwrap();
+    let numbers = arena.get_slice(&numbers_slice).unwrap();
     println!("Modified numbers: {:?}", numbers);
 
     // 3. Memory usage

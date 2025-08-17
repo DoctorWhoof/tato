@@ -1,7 +1,7 @@
 //! Single-type arena with array-based allocation.
 //! Faster than dynamic Arena for single types.
 //! API matches Arena where possible: `alloc()`, `get()`, `clear()`, etc.
-//! Key differences: `alloc_many()` vs `alloc_pool()`, `as_slice()` vs `get_pool()`.
+//! Key differences: `alloc_many()` vs `alloc_slice()`, `as_slice()` vs `get_slice()`.
 
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;

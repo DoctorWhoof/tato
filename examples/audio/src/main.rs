@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, time::Instant};
 use tato::{Tato, prelude::*};
-use tato_dashboard::Dashboard;
+
 use tato_raylib::*;
 
 pub enum SoundType {
@@ -141,8 +141,9 @@ fn main() -> TatoResult<()> {
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
         backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&mut dash, &tato);
-        backend.present();
+        backend.render_dashboard(&tato, &mut dash);
+        backend.present(&tato, Some(&dash));
+        dash.clear();
     }
 
     audio_backend.write_wav_file();

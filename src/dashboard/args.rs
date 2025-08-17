@@ -1,4 +1,4 @@
-use tato::math::Vec2;
+use tato_math::Vec2;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DashArgs {
@@ -16,7 +16,7 @@ impl Default for DashArgs {
             mouse: Vec2 { x: 0, y: 0 },
             canvas_scale: 1.0,
             canvas_pos: Vec2 { x: 0, y: 0 },
-            gui_scale: 1.0,
+            gui_scale: 2.0,
         }
     }
 }

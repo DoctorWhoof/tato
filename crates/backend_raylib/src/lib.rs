@@ -1,8 +1,7 @@
 pub use raylib;
 use raylib::prelude::*;
 use std::{time::Instant, vec};
-use tato::{Tato, backend::Backend, prelude::*, smooth_buffer::SmoothBuffer};
-use tato_dashboard::*;
+use tato::{Tato, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer};
 
 pub use tato;
 
@@ -14,9 +13,10 @@ fn rgba32_to_rl_color(color: RGBA32) -> Color {
 }
 
 pub struct RaylibBackend {
-    bg_color: Color,
     pub ray: RaylibHandle,
     pub display_debug: bool,
+    pub bg_color: Color,
+    pub print_frame_time: bool,
     thread: RaylibThread,
     textures: Vec<Texture2D>,
     font: Font,
@@ -34,17 +34,23 @@ pub struct RaylibBackend {
 /// Raylib specific implementation
 impl RaylibBackend {
     pub fn new(tato: &Tato) -> Self {
+        // Sizing
+        let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
+        let total_panel_width = (Dashboard::PANEL_WIDTH * 4) + (Dashboard::MARGIN * 4);
+        let adjusted_w = total_panel_width as i32 + (w * multiplier);
+
+        // Init Raylib
         let (mut ray, thread) = raylib::init()
             .log_level(TraceLogLevel::LOG_WARNING)
-            .size(w * 4, h * 3)
+            .size(adjusted_w, h * multiplier)
             .title("Tato Demo")
             .vsync()
             .resizable()
             .build();
 
-        // Config raylib
+        // Config additional raylib options
         ray.set_target_fps(tato.target_fps as u32);
         unsafe {
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
@@ -61,6 +67,7 @@ impl RaylibBackend {
             bg_color: Color::new(32, 32, 32, 255),
             ray,
             display_debug: true,
+            print_frame_time: true,
             thread,
             // debug_pixels,
             textures: vec![],
@@ -170,17 +177,17 @@ impl RaylibBackend {
     }
 
     /// Process "Dashboard" draw ops
-    pub fn render_dashboard<'a>(&mut self, dash: &mut Dashboard, t: &'a Tato) {
+    pub fn render_dashboard<'a>(&mut self, t: &'a Tato, dash: &mut Dashboard) {
         if !self.debug_mode() {
             return;
         }
 
         // Push timing data before moving ops out of dashboard
-        dash.add_text_op(&format!(
+        dash.add_text(&format!(
             "iter time: {:.1} ms", //
             self.buffer_iter_time.average() * 1000.0
         ));
-        dash.add_text_op(&format!(
+        dash.add_text(&format!(
             "canvas time: {:.1} ms",
             self.buffer_canvas_time.average() * 1000.0
         ));
@@ -203,13 +210,6 @@ impl RaylibBackend {
                 }
             }
         }
-
-        // Transfer ops from dashboard to internal buffer
-        for op in dash.ops.drain(..) {
-            self.draw_ops.push(op);
-        }
-
-        dash.clear();
     }
 }
 
@@ -223,65 +223,82 @@ impl Backend for RaylibBackend {
     }
 
     /// Finish canvas and GUI drawing, present to window
-    fn present(&mut self) {
+    fn present(&mut self, _tato: &Tato, dash: Option<&Dashboard>) {
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
 
-        // Execute draw ops
-        for cmd in self.draw_ops.drain(..) {
-            match cmd {
-                DrawOp::Rect { rect, color } => {
-                    canvas.draw_rectangle(
-                        rect.x as i32,
-                        rect.y as i32,
-                        rect.w as i32,
-                        rect.h as i32,
-                        rgba32_to_rl_color(color),
+        let mut process_draw_op = |dash: Option<&Dashboard>, cmd: DrawOp| match cmd {
+            DrawOp::None => {},
+            DrawOp::Rect { rect, color } => {
+                canvas.draw_rectangle(
+                    rect.x as i32,
+                    rect.y as i32,
+                    rect.w as i32,
+                    rect.h as i32,
+                    rgba32_to_rl_color(color),
+                );
+            },
+            DrawOp::Line { x1, y1, x2, y2, color } => {
+                canvas.draw_line(
+                    x1 as i32,
+                    y1 as i32,
+                    x2 as i32,
+                    y2 as i32,
+                    rgba32_to_rl_color(color),
+                );
+            },
+            DrawOp::Texture { id, x, y, scale, tint } => {
+                if id < self.textures.len() {
+                    canvas.draw_texture_ex(
+                        &self.textures[id],
+                        Vector2::new(x as f32, y as f32),
+                        0.0,
+                        scale,
+                        rgba32_to_rl_color(tint),
                     );
-                },
-                DrawOp::Line { x1, y1, x2, y2, color } => {
-                    canvas.draw_line(
-                        x1 as i32,
-                        y1 as i32,
-                        x2 as i32,
-                        y2 as i32,
-                        rgba32_to_rl_color(color),
-                    );
-                },
-                DrawOp::Texture { id, x, y, scale, tint } => {
-                    if id < self.textures.len() {
-                        canvas.draw_texture_ex(
-                            &self.textures[id],
-                            Vector2::new(x as f32, y as f32),
-                            0.0,
-                            scale,
-                            rgba32_to_rl_color(tint),
-                        );
-                    }
-                },
-                DrawOp::Text { text, x, y, size, color } => {
+                }
+            },
+            DrawOp::Text { text, x, y, size, color } => {
+                if let Some(dash) = dash {
+                    let text = text.as_str(&dash.arena_text).unwrap();
                     canvas.draw_text_ex(
                         &self.font,
-                        &text,
-                        Vector2::new(x, y),
+                        text,
+                        Vector2::new(x as f32, y as f32),
                         size,
                         1.0,
                         rgba32_to_rl_color(color),
                     );
-                },
+                }
+            },
+        };
+
+        // Execute draw ops
+        for cmd in self.draw_ops.drain(..) {
+            process_draw_op(dash, cmd)
+        }
+        if let Some(dash) = dash {
+            for cmd in dash.ops().unwrap() {
+                process_draw_op(Some(dash), cmd.clone())
             }
         }
+
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
         self.buffer_canvas_time.push(self.time_profile.elapsed().as_secs_f64());
 
         // TODO: This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
-        println!(
-            "Frame {} finished in {:.2} ms",
-            self.frame_number,
-            (self.buffer_canvas_time.average() + self.buffer_iter_time.average()) * 1000.0
-        );
+        // I believe it's related to Efficiency cores Vs. Performance ones.
+        if self.print_frame_time{
+            let time = self.buffer_canvas_time.average() + self.buffer_iter_time.average();
+            println!(
+                "Frame {} finished in {:.2} ms (max {} fps)",
+                self.frame_number,
+                time * 1000.0,
+                (1.0 / time).floor()
+            );
+        }
     }
 
     fn should_close(&self) -> bool {

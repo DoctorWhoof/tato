@@ -6,4 +6,3 @@ edition = "2024"
 [dependencies]
 raylib = "5.5.1"
 tato = { path = "../../" }
-tato_dashboard = { path = "../dashboard" }

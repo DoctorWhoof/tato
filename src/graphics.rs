@@ -47,7 +47,7 @@ impl Tato {
         };
 
         let base_index = self.get_frame_from_anim_entry(anim_entry);
-        let Some(frames) = self.assets.arena.get_pool(&anim_entry.frames) else { return };
+        let Some(frames) = self.assets.arena.get_slice(&anim_entry.frames) else { return };
         let Some(anim_index) = frames.get(base_index) else { return };
         let start_index = strip_entry.start_index;
         let index = start_index + anim_index;
@@ -58,7 +58,7 @@ impl Tato {
             err!("Animation frame exceeds strip length")
         );
 
-        let Some(cells) = self.assets.arena.get_pool(&map_entry.cells) else { return };
+        let Some(cells) = self.assets.arena.get_slice(&map_entry.cells) else { return };
         self.video.draw_sprite(
             bundle,
             &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },

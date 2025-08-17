@@ -339,10 +339,10 @@ impl Tato {
         }
 
         // Allocate remapped cells in arena
-        let cells_pool = self
+        let cells_slice = self
             .assets
             .arena
-            .alloc_pool_from_fn(map.len() as u16, |i| {
+            .alloc_slice_from_fn(map.len() as u16, |i| {
                 let cell = &map.cells()[i];
                 // let mut flags = cell.flags;
                 // flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
@@ -357,7 +357,7 @@ impl Tato {
         // Store entry
         let map_idx = self.assets.map_head;
         self.assets.map_entries[map_idx as usize] =
-            TilemapEntry { cells: cells_pool, columns: map.columns(), rows: map.rows() };
+            TilemapEntry { cells: cells_slice, columns: map.columns(), rows: map.rows() };
 
         if self.assets.map_head == 255 {
             return Err(TatoError::TilemapCapacityReached);
@@ -431,7 +431,7 @@ impl Tato {
         let frames = self
             .assets
             .arena
-            .alloc_pool_from_fn(anim.frames.len() as u16, |i| anim.frames[i])
+            .alloc_slice_from_fn(anim.frames.len() as u16, |i| anim.frames[i])
             .ok_or(TatoError::ArenaOutOfSpace)?;
         self.assets.anim_entries[next_index as usize] =
             AnimEntry { frames, fps: anim.fps, rep: anim.rep, strip: anim.strip };
@@ -448,7 +448,7 @@ impl Tato {
             .get(map_id.0 as usize)
             .ok_or(TatoError::InvalidMapId(map_id.0))?;
         let cells =
-            self.assets.arena.get_pool(&entry.cells).ok_or(TatoError::ArenaPoolRetrievalFailed)?;
+            self.assets.arena.get_slice(&entry.cells).ok_or(TatoError::ArenaPoolRetrievalFailed)?;
         Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
@@ -459,7 +459,7 @@ impl Tato {
     // pub fn get_animation(&self, anim_id: AnimID) -> AnimRef {
     //     let entry = &self.assets.anim_entries[anim_id.0 as usize];
     //     AnimRef {
-    //         frames: self.assets.arena.get_pool(&entry.frames),
+    //         frames: self.assets.arena.get_slice(&entry.frames),
     //         fps: entry.fps,
     //         rep: entry.rep,
     //         // tileset: entry.tileset,

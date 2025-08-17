@@ -6,7 +6,7 @@ use scene_a::*;
 use scene_b::*;
 use scene_c::*;
 use tato::{Tato, prelude::*};
-use tato_dashboard::Dashboard;
+
 use tato_raylib::*;
 
 #[derive(Debug, Clone)]
@@ -84,8 +84,9 @@ fn main() -> TatoResult<()> {
         // Update backend
         t.frame_finish();
         back.render_canvas(&t, &[&state.bg]);
-        back.render_dashboard(&mut dash, &t);
-        back.present();
+        back.render_dashboard(&t, &mut dash);
+        back.present(&t, Some(&dash));
+        dash.clear();
 
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {

@@ -16,18 +16,18 @@ fn test_unchecked_access() {
 }
 
 #[test]
-fn test_unchecked_pool_access() {
+fn test_unchecked_slice_access() {
     let mut arena: Arena<1024> = Arena::new();
 
-    let pool = arena.alloc_pool_from_fn(3, |i| i as u32).unwrap();
+    let slice = arena.alloc_slice_from_fn(3, |i| i as u32).unwrap();
 
     // Safe access
-    let safe_slice = arena.get_pool(&pool).unwrap();
+    let safe_slice = arena.get_slice(&slice).unwrap();
     assert_eq!(safe_slice, &[0, 1, 2]);
 
     // Unsafe unchecked access
     unsafe {
-        let unsafe_slice = arena.get_pool_unchecked(&pool);
+        let unsafe_slice = arena.get_slice_unchecked(&slice);
         assert_eq!(unsafe_slice, &[0, 1, 2]);
     }
 }

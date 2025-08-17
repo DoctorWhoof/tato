@@ -39,19 +39,19 @@ use tato_arena::Arena;
 let mut arena: Arena<1024> = Arena::new();
 
 // Allocate a collection of 10 sprites (size determined at runtime)
-let sprites = arena.alloc_pool::<Sprite>(10).unwrap();
+let sprites = arena.alloc_slice::<Sprite>(10).unwrap();
 
 // Access as slices
-let sprite_slice = arena.get_pool_mut(&sprites);
+let sprite_slice = arena.get_slice_mut(&sprites);
 sprite_slice[0] = Sprite { x: 32, y: 64, .. };
 sprite_slice[1] = Sprite { x: 48, y: 80, .. };
 
 // Read back
-let sprite_slice = arena.get_pool(&sprites);
+let sprite_slice = arena.get_slice(&sprites);
 assert_eq!(sprite_slice.len(), 10);
 
 // Or initialize with a closure for more control
-let numbers = arena.alloc_pool_from_fn(5, |i| i as u32 * 10).unwrap();
-let slice = arena.get_pool(&numbers);
+let numbers = arena.alloc_slice_from_fn(5, |i| i as u32 * 10).unwrap();
+let slice = arena.get_slice(&numbers);
 assert_eq!(slice, &[0, 10, 20, 30, 40]);
 ```
