@@ -136,6 +136,41 @@ where
         self.alloc_slice_from_fn(count, |_| T::default())
     }
 
+    /// Allocate uninitialized slice
+    pub fn alloc_slice_uninit<T>(&mut self, count: Idx) -> Option<Slice<T, Idx, Marker>> {
+        if count == Idx::zero() {
+            return Some(Slice::new(
+                self.offset,
+                Idx::try_from(0).ok()?,
+                self.generation,
+                self.arena_id,
+            ));
+        }
+
+        let size = size_of::<T>();
+        let align = align_of::<T>();
+        let total_size = size * count.into();
+        let offset_usize: usize = self.offset.into();
+
+        // Align offset
+        let misalignment = offset_usize % align;
+        let aligned_offset =
+            if misalignment != 0 { offset_usize + align - misalignment } else { offset_usize };
+
+        // Check space
+        if aligned_offset + total_size > LEN {
+            return None;
+        }
+
+        self.offset = Idx::try_from(aligned_offset).map_err(|_| ()).ok()?;
+
+        let slice = Slice::new(self.offset, count, self.generation, self.arena_id);
+
+        self.offset = self.offset + Idx::try_from(total_size).ok()?;
+
+        Some(slice)
+    }
+
     /// Allocate all of remaining space with a single slice
     pub fn fill_with_slice<T>(&mut self) -> Option<Slice<T, Idx, Marker>>
     where

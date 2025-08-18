@@ -1,8 +1,8 @@
-// #![no_std]
+#![no_std]
 
 pub use smooth_buffer;
-pub use tato_audio as audio;
 pub use tato_arena as arena;
+pub use tato_audio as audio;
 pub use tato_collision as collision;
 pub use tato_layout as layout;
 pub use tato_math as math;
@@ -12,8 +12,6 @@ pub use tato_video as video;
 
 pub mod assets;
 pub use assets::*;
-
-
 pub mod dashboard;
 
 mod error;
@@ -46,4 +44,4 @@ pub mod prelude {
     pub use tato_video::*;
 }
 
-pub const FRAME_ARENA_LEN:usize = 65536;
+pub const FRAME_ARENA_LEN: usize = 65536;

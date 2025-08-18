@@ -11,7 +11,7 @@ pub(crate) enum FormatSpec {
 /// Parse a simple format string to extract format specifier
 /// Supports: "{}", "{:?}", "{:.N}"
 /// Returns (start_pos, end_pos, format_spec) of the first format specifier found
-pub(crate) fn parse_format_string(s: &str) -> Option<(usize, usize, FormatSpec)> {
+pub fn parse_format_string(s: &str) -> Option<(usize, usize, FormatSpec)> {
     let start = s.find('{')?;
     let end = s.find('}')? + 1;
 
@@ -111,70 +111,175 @@ impl DebugBuffer {
         }
     }
 
-    /// Format a message using only Debug trait - supports {:?} and fallback
-    pub(crate) fn format_debug_message<T>(
+    // /// Format a message using only Debug trait - supports {:?} and fallback
+    // pub(crate) fn format_debug_message<T>(
+    //     &mut self,
+    //     message: &str,
+    //     value: &T,
+    // ) -> Result<(), core::fmt::Error>
+    // where
+    //     T: Debug,
+    // {
+    //     if let Some((start, end, spec)) = parse_format_string(message) {
+    //         match spec {
+    //             FormatSpec::Debug => {
+    //                 self.write_str(&message[..start])?;
+    //                 write!(self, "{:?}", value)?;
+    //                 self.write_str(&message[end..])?;
+    //                 Ok(())
+    //             }
+    //             _ => {
+    //                 // Unsupported format for Debug-only, fall back to debug with separator
+    //                 self.write_str(message)?;
+    //                 write!(self, "{:?}", value)
+    //             }
+    //         }
+    //     } else {
+    //         // No format specifier found
+    //         self.write_str(message)?;
+    //         write!(self, "{:?}", value)
+    //     }
+    // }
+
+    // /// Format a message using only Display trait - supports {} and {:.N} and fallback
+    // pub(crate) fn format_display_message<T>(
+    //     &mut self,
+    //     message: &str,
+    //     value: &T,
+    // ) -> Result<(), core::fmt::Error>
+    // where
+    //     T: Display,
+    // {
+    //     if let Some((start, end, spec)) = parse_format_string(message) {
+    //         match spec {
+    //             FormatSpec::Display => {
+    //                 self.write_str(&message[..start])?;
+    //                 write!(self, "{}", value)?;
+    //                 self.write_str(&message[end..])?;
+    //                 Ok(())
+    //             }
+    //             FormatSpec::DisplayWithPrecision(precision) => {
+    //                 self.write_str(&message[..start])?;
+    //                 self.format_with_precision(value, precision)?;
+    //                 self.write_str(&message[end..])?;
+    //                 Ok(())
+    //             }
+    //             FormatSpec::Debug => {
+    //                 // Debug format not supported for Display-only, fall back
+    //                 self.write_str(message)?;
+    //                 write!(self, "{}", value)
+    //             }
+    //         }
+    //     } else {
+    //         // No format specifier found
+    //         self.write_str(message)?;
+    //         write!(self, "{}", value)
+    //     }
+    // }
+
+    /// Format a message using Debug trait with indexed values
+    /// Replaces "{:?}" placeholders with values by index
+    pub(crate) fn format_debug_message_indexed<T>(
         &mut self,
         message: &str,
-        value: &T,
+        values: &[T],
     ) -> Result<(), core::fmt::Error>
     where
         T: Debug,
     {
-        if let Some((start, end, spec)) = parse_format_string(message) {
+        let mut remaining = message;
+        // let mut offset = 0;
+        let mut value_index = 0;
+
+        while let Some((start, end, spec)) = parse_format_string(remaining) {
+            // Write text before placeholder
+            self.write_str(&remaining[..start])?;
+
+            // Check if we have enough values
+            if value_index >= values.len() {
+                return Err(core::fmt::Error);
+            }
+
+            // Format the value based on spec (always using Debug trait)
             match spec {
                 FormatSpec::Debug => {
-                    self.write_str(&message[..start])?;
-                    write!(self, "{:?}", value)?;
-                    self.write_str(&message[end..])?;
-                    Ok(())
+                    write!(self, "{:?}", &values[value_index])?;
                 }
-                _ => {
-                    // Unsupported format for Debug-only, fall back to debug with separator
-                    self.write_str(message)?;
-                    write!(self, "{:?}", value)
+                FormatSpec::Display => {
+                    write!(self, "{:?}", &values[value_index])?;
+                }
+                FormatSpec::DisplayWithPrecision(_) => {
+                    write!(self, "{:?}", &values[value_index])?;
                 }
             }
-        } else {
-            // No format specifier found
-            self.write_str(message)?;
-            write!(self, "{:?}", value)
+
+            value_index += 1;
+            // offset += end;
+            remaining = &remaining[end..];
         }
+
+        // Write remaining text
+        self.write_str(remaining)?;
+
+        // Check if all values were used
+        if value_index != values.len() {
+            return Err(core::fmt::Error);
+        }
+
+        Ok(())
     }
 
-    /// Format a message using only Display trait - supports {} and {:.N} and fallback
-    pub(crate) fn format_display_message<T>(
+    /// Format a message using Display trait with indexed values
+    /// Replaces "{}" and "{:.N}" placeholders with values by index
+    pub(crate) fn format_display_message_indexed<T>(
         &mut self,
         message: &str,
-        value: &T,
+        values: &[T],
     ) -> Result<(), core::fmt::Error>
     where
         T: Display,
     {
-        if let Some((start, end, spec)) = parse_format_string(message) {
+        let mut remaining = message;
+        // let mut offset = 0;
+        let mut value_index = 0;
+
+        while let Some((start, end, spec)) = parse_format_string(remaining) {
+            // Write text before placeholder
+            self.write_str(&remaining[..start])?;
+
+            // Check if we have enough values
+            if value_index >= values.len() {
+                return Err(core::fmt::Error);
+            }
+
+            // Format the value based on spec
             match spec {
                 FormatSpec::Display => {
-                    self.write_str(&message[..start])?;
-                    write!(self, "{}", value)?;
-                    self.write_str(&message[end..])?;
-                    Ok(())
+                    write!(self, "{}", &values[value_index])?;
                 }
                 FormatSpec::DisplayWithPrecision(precision) => {
-                    self.write_str(&message[..start])?;
-                    self.format_with_precision(value, precision)?;
-                    self.write_str(&message[end..])?;
-                    Ok(())
+                    self.format_with_precision(&values[value_index], precision)?;
                 }
                 FormatSpec::Debug => {
-                    // Debug format not supported for Display-only, fall back
-                    self.write_str(message)?;
-                    write!(self, "{}", value)
+                    // Debug format not supported for Display-only
+                    return Err(core::fmt::Error);
                 }
             }
-        } else {
-            // No format specifier found
-            self.write_str(message)?;
-            write!(self, "{}", value)
+
+            value_index += 1;
+            // offset += end;
+            remaining = &remaining[end..];
         }
+
+        // Write remaining text
+        self.write_str(remaining)?;
+
+        // Check if all values were used
+        if value_index != values.len() {
+            return Err(core::fmt::Error);
+        }
+
+        Ok(())
     }
 }
 

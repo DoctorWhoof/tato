@@ -27,12 +27,59 @@ where
         Buffer::from_fn(arena, len, |i| bytes[i])
     }
 
+    /// Count placeholders in a format string
+    fn count_placeholders(message: &str) -> usize {
+        let mut count = 0;
+        let mut remaining = message;
+        while let Some((_, end, _)) = crate::text::debug_buffer::parse_format_string(remaining) {
+            count += 1;
+            remaining = &remaining[end..];
+        }
+        count
+    }
+
+    /// Validate format string and provide clear error for invalid placeholders
+    fn validate_format_string(message: &str) -> Result<(), &'static str> {
+        let mut remaining = message;
+
+        while let Some(start) = remaining.find('{') {
+            if let Some(end_pos) = remaining[start..].find('}') {
+                let placeholder = &remaining[start..start + end_pos + 1];
+
+                // Try to parse this placeholder
+                if crate::text::debug_buffer::parse_format_string(&remaining[start..]).is_none() {
+                    // Check for common invalid patterns
+                    if placeholder.contains("?}") && !placeholder.ends_with(":?}") {
+                        return Err("Invalid format specifier: precision with debug (?), use either {:.N} or {:?}");
+                    }
+                    if placeholder.contains(":.") && placeholder.contains("?") {
+                        return Err("Invalid format specifier: cannot combine precision and debug formatting");
+                    }
+                    return Err("Invalid format specifier: supported formats are {}, {:?}, {:.N}");
+                }
+
+                remaining = &remaining[start + end_pos + 1..];
+            } else {
+                return Err("Invalid format string: found '{' without matching '}'");
+            }
+        }
+
+        // Check for unmatched '}'
+        if remaining.contains('}') {
+            return Err("Invalid format string: found '}' without matching '{'");
+        }
+
+        Ok(())
+    }
+
+
+
     /// Create formatted text using Debug trait
-    /// Supports format specifiers: "{:?}" and fallback behavior
-    pub fn format_debug<const LEN: usize, M, V>(
+    /// Replaces "{:?}" placeholders with values by index
+    pub fn format_dbg<const LEN: usize, M, V>(
         arena: &mut Arena<LEN, Idx>,
         message: M,
-        value: V,
+        values: &[V],
     ) -> Option<Self>
     where
         M: AsRef<str>,
@@ -41,11 +88,22 @@ where
         let message_str = message.as_ref();
         debug_assert!(message_str.is_ascii());
 
-        // Format using debug trait
-        let mut debug_buf = DebugBuffer::new();
-        if debug_buf.format_debug_message(message_str, &value).is_err() {
-            return None;
+        // Validate format string first
+        if let Err(err_msg) = Self::validate_format_string(message_str) {
+            panic!("Debug format error: {} in: '{}'", err_msg, message_str);
         }
+
+        // Check placeholder count matches value count
+        let placeholder_count = Self::count_placeholders(message_str);
+        if placeholder_count != values.len() {
+            panic!("Debug format placeholder mismatch: found {} placeholders but {} values provided in: '{}'",
+                   placeholder_count, values.len(), message_str);
+        }
+
+        // Format using debug trait with indexed values
+        let mut debug_buf = DebugBuffer::new();
+        debug_buf.format_debug_message_indexed(message_str, values)
+            .expect("Failed to format debug message");
 
         let formatted_str = debug_buf.as_str();
         let total_len = Idx::from_usize_checked(formatted_str.len())?;
@@ -54,11 +112,11 @@ where
     }
 
     /// Create formatted text using Display trait
-    /// Supports format specifiers: "{}", "{:.N}" and fallback behavior
+    /// Replaces "{}" and "{:.N}" placeholders with values by index
     pub fn format_display<const LEN: usize, M, V>(
         arena: &mut Arena<LEN, Idx>,
         message: M,
-        value: V,
+        values: &[V],
     ) -> Option<Self>
     where
         M: AsRef<str>,
@@ -67,11 +125,22 @@ where
         let message_str = message.as_ref();
         debug_assert!(message_str.is_ascii());
 
-        // Format using display trait
-        let mut debug_buf = DebugBuffer::new();
-        if debug_buf.format_display_message(message_str, &value).is_err() {
-            return None;
+        // Validate format string first
+        if let Err(err_msg) = Self::validate_format_string(message_str) {
+            panic!("Display format error: {} in: '{}'", err_msg, message_str);
         }
+
+        // Check placeholder count matches value count
+        let placeholder_count = Self::count_placeholders(message_str);
+        if placeholder_count != values.len() {
+            panic!("Display format placeholder mismatch: found {} placeholders but {} values provided in: '{}'",
+                   placeholder_count, values.len(), message_str);
+        }
+
+        // Format using display trait with indexed values
+        let mut debug_buf = DebugBuffer::new();
+        debug_buf.format_display_message_indexed(message_str, values)
+            .expect("Failed to format display message");
 
         let formatted_str = debug_buf.as_str();
         let total_len = Idx::from_usize_checked(formatted_str.len())?;

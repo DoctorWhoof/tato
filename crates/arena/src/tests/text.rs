@@ -12,7 +12,7 @@ fn test_text_from_str() {
 }
 
 #[test]
-fn test_text_format_display() {
+fn test_text_format_display_single() {
     let mut arena: Arena<1024> = Arena::new();
 
     let text = Text::format(&mut arena, "value: {}", 42).unwrap();
@@ -21,7 +21,7 @@ fn test_text_format_display() {
 }
 
 #[test]
-fn test_text_format_debug() {
+fn test_text_format_debug_single() {
     let mut arena: Arena<1024> = Arena::new();
 
     let text = Text::format(&mut arena, "debug: {:?}", "Hello").unwrap();
@@ -30,75 +30,97 @@ fn test_text_format_debug() {
 }
 
 #[test]
-fn test_text_format_precision() {
+fn test_text_format_display_indexed() {
     let mut arena: Arena<1024> = Arena::new();
 
-    let text = Text::format(&mut arena, "pi: {:.2}", 3.14159).unwrap();
+    let values = [42, 100];
+    let text = Text::format_display(&mut arena, "first: {}, second: {}", &values).unwrap();
     let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "pi: 3.14");
+    assert_eq!(s, "first: 42, second: 100");
 }
 
 #[test]
-fn test_text_format_fallback() {
+fn test_text_format_debug_indexed() {
     let mut arena: Arena<1024> = Arena::new();
 
-    let text = Text::format(&mut arena, "no format:", 42).unwrap();
+    let values = ["hello", "world"];
+    let text = Text::format_dbg(&mut arena, "first: {:?}, second: {:?}", &values).unwrap();
     let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "no format:42");
-}
-
-#[test]
-fn test_text_format_string_display() {
-    let mut arena: Arena<1024> = Arena::new();
-
-    let text = Text::format(&mut arena, "greeting: {}", "Hello").unwrap();
-    let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "greeting: Hello"); // No quotes with Display
-}
-
-#[test]
-fn test_text_format_debug_only() {
-    let mut arena: Arena<1024> = Arena::new();
-
-    // Test with a Debug-only type (tuples implement Debug but not Display)
-    let tuple = (1, 2, 3);
-    let text = Text::format_debug(&mut arena, "data: {:?}", &tuple).unwrap();
-    let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "data: (1, 2, 3)");
-}
-
-#[test]
-fn test_text_format_debug_fallback() {
-    let mut arena: Arena<1024> = Arena::new();
-
-    let text = Text::format_debug(&mut arena, "no format:", 42).unwrap();
-    let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "no format:42");
-}
-
-#[test]
-fn test_text_format_display_only() {
-    let mut arena: Arena<1024> = Arena::new();
-
-    let text = Text::format_display(&mut arena, "value: {}", 42).unwrap();
-    let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "value: 42");
+    assert_eq!(s, "first: \"hello\", second: \"world\"");
 }
 
 #[test]
 fn test_text_format_display_precision() {
     let mut arena: Arena<1024> = Arena::new();
 
-    let text = Text::format_display(&mut arena, "pi: {:.3}", 3.14159).unwrap();
+    let values = [3.14159, 2.71828];
+    let text = Text::format_display(&mut arena, "pi: {:.2}, e: {:.3}", &values).unwrap();
     let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "pi: 3.142");
+    assert_eq!(s, "pi: 3.14, e: 2.718");
+}
+
+
+
+#[test]
+fn test_text_format_empty_values() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    let values: &[i32] = &[];
+    let text = Text::format_display(&mut arena, "no placeholders", values).unwrap();
+    let s = text.as_str(&arena).unwrap();
+    assert_eq!(s, "no placeholders");
 }
 
 #[test]
-fn test_text_format_display_fallback() {
+fn test_text_format_debug_with_display_specifier() {
     let mut arena: Arena<1024> = Arena::new();
 
-    let text = Text::format_display(&mut arena, "no format:", 42).unwrap();
+    // format_dbg should now accept {} specifiers but still use Debug formatting
+    let values = ["hello", "world"];
+    let text = Text::format_dbg(&mut arena, "first: {}, second: {}", &values).unwrap();
     let s = text.as_str(&arena).unwrap();
-    assert_eq!(s, "no format:42");
+    assert_eq!(s, "first: \"hello\", second: \"world\"");
+
+    // Test with precision specifier too  
+    let values = [42];
+    let text = Text::format_dbg(&mut arena, "value: {:.2}", &values).unwrap();
+    let s = text.as_str(&arena).unwrap();
+    assert_eq!(s, "value: 42"); // Debug formatting ignores precision for integers
+}
+
+#[test] 
+#[should_panic(expected = "precision with debug (?), use either {:.N} or {:?}")]
+fn test_text_format_invalid_precision_debug() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    // This should panic with a clear error message
+    let values = [42];
+    let _text = Text::format_dbg(&mut arena, "value: {:.1?}", &values);
+}
+
+#[test]
+#[should_panic(expected = "Invalid format string: found '{' without matching '}'")]  
+fn test_text_format_unmatched_brace_open() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    let values = [42];
+    let _text = Text::format_display(&mut arena, "value: {", &values);
+}
+
+#[test]
+#[should_panic(expected = "Invalid format string: found '}' without matching '{'")]
+fn test_text_format_unmatched_brace_close() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    let values = [42];
+    let _text = Text::format_display(&mut arena, "value: }", &values);
+}
+
+#[test]
+#[should_panic(expected = "Invalid format specifier: supported formats are {}, {:?}, {:.N}")]
+fn test_text_format_invalid_specifier() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    let values = [42];
+    let _text = Text::format_display(&mut arena, "value: {:x}", &values);
 }

@@ -216,7 +216,7 @@ impl RaylibBackend {
                         &mut self.ray,
                         &self.thread,
                         bank_index,
-                        pixels.as_slice(),
+                        pixels.as_slice(arena).unwrap(),
                     );
                 }
             }
@@ -287,8 +287,9 @@ impl Backend for RaylibBackend {
             process_draw_op(cmd)
         }
         if let Some(dash) = dash {
-            for cmd in dash.ops.items(arena).unwrap() {
-                process_draw_op(cmd.clone())
+            for id in dash.ops.items(arena).unwrap() {
+                let op = arena.get(id).unwrap();
+                process_draw_op(op.clone());
             }
         }
 

@@ -14,11 +14,11 @@ impl<T, Idx, Marker> Buffer<T, Idx, Marker>
 where
     Idx: ArenaIndex,
 {
-    pub fn new<const LEN: usize>(arena: &mut Arena<LEN, Idx, Marker>, capacity: Idx) -> Option<Self>
-    where
-        T: Default,
-    {
-        let slice = arena.alloc_slice::<T>(capacity)?;
+    pub fn new<const LEN: usize>(
+        arena: &mut Arena<LEN, Idx, Marker>,
+        capacity: Idx,
+    ) -> Option<Self> {
+        let slice = arena.alloc_slice_uninit::<T>(capacity)?;
         Some(Self { slice, len: Idx::zero() })
     }
 
@@ -30,7 +30,9 @@ where
     where
         F: FnMut(usize) -> T,
     {
-        let slice = arena.alloc_slice_from_fn(capacity, func)?;
+        let slice = arena
+            .alloc_slice_from_fn(capacity, func)
+            .expect("Failed to allocate buffer from function");
         Some(Self { slice, len: capacity })
     }
 
@@ -66,9 +68,7 @@ where
         if self.len >= self.slice.capacity() {
             return Err("Arena: Capacity reached"); // Return the value back if full
         }
-        let slice = arena
-            .get_slice_mut(&self.slice) //
-            .expect("Arena: Can't push new item");
+        let slice = arena.get_slice_mut(&self.slice).expect("Arena: Can't acquire arena slice");
         slice[self.len.into()] = value;
         self.len += Idx::one();
         Ok(())
@@ -78,7 +78,7 @@ where
         &self,
         arena: &'a Arena<LEN, Idx, Marker>,
     ) -> Option<&'a [T]> {
-        let full_slice = arena.get_slice(&self.slice)?;
+        let full_slice = arena.get_slice(&self.slice).expect("Failed to get slice from arena");
         Some(&full_slice[..self.len.into()])
     }
 

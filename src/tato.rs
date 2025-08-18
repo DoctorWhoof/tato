@@ -142,17 +142,17 @@ impl Tato {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
         assert!(text.is_ascii());
         let text = Text::from_str(&mut self.debug_arena, text).unwrap();
-        let _ = self.debug_strings.push(&mut self.debug_arena, text).unwrap();
+        self.debug_strings.push(&mut self.debug_arena, text).unwrap();
     }
 
     /// Allows basic text formatting when sending text to the dashboard
-    pub fn dash_dbg<T>(&mut self, message: &str, value: T)
+    pub fn dash_dbg<T>(&mut self, message: &str, values: &[T])
     where
         T: Debug,
     {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
-        let handle = Text::format_debug(&mut self.debug_arena, message, value).unwrap();
-        let _ = self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
+        let handle = Text::format_dbg(&mut self.debug_arena, message, values).unwrap();
+        self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
     }
 
     /// Sends an open polygon to the dashboard (to close, simply ensure the last
