@@ -40,7 +40,7 @@ fn main() -> TatoResult<()> {
     while !backend.ray.window_should_close() {
         arena.clear();
         tato.frame_start(backend.ray.get_frame_time());
-        dash.start_frame(&mut arena);
+        dash.frame_start(&mut arena);
         backend.update_input(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {

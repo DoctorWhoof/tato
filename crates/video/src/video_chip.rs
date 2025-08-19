@@ -239,7 +239,7 @@ impl VideoChip {
         );
     }
 
-    pub fn start_frame(&mut self) {
+    pub fn frame_start(&mut self) {
         self.frame_number += 1;
         self.reset_sprites();
     }

@@ -26,7 +26,7 @@ where
     /// Will NOT catch all problems, i.e. if types are different but have same size.
     pub fn typed<T, Marker>(self) -> ArenaId<T, Idx, Marker> {
         let expected_size = core::mem::size_of::<T>();
-        let stored_size: usize = self.type_size.into();
+        let stored_size: usize = self.type_size.to_usize();
         debug_assert_eq!(
             stored_size, expected_size,
             "Type size mismatch: attempted to convert RawId to wrong type. \
@@ -76,19 +76,19 @@ impl<T, Idx, Marker> ArenaId<T, Idx, Marker> {
     }
 
     /// Get byte offset in arena
-    pub fn offset(&self) -> usize
+    pub fn offset(self) -> usize
     where
         Idx: ArenaIndex,
     {
-        self.offset.into()
+        self.offset.to_usize()
     }
 
     /// Get allocation size in bytes
-    pub fn size(&self) -> usize
+    pub fn size(self) -> usize
     where
         Idx: ArenaIndex,
     {
-        self.size.into()
+        self.size.to_usize()
     }
 
     /// Get generation
@@ -102,19 +102,19 @@ impl<T, Idx, Marker> ArenaId<T, Idx, Marker> {
     }
 
     /// Get (offset, size) tuple
-    pub fn info(&self) -> (usize, usize)
+    pub fn info(self) -> (usize, usize)
     where
         Idx: ArenaIndex,
     {
-        (self.offset.into(), self.size.into())
+        (self.offset.to_usize(), self.size.to_usize())
     }
 
     /// Check if ID has non-zero size
-    pub fn is_valid(&self) -> bool
+    pub fn is_valid(self) -> bool
     where
         Idx: ArenaIndex,
     {
-        self.size.into() > 0
+        self.size.to_usize() > 0
     }
 
     /// Convert to type-erased RawId

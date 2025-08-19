@@ -45,7 +45,7 @@ where
     }
 
     pub fn len(&self) -> usize {
-        self.len.into()
+        self.len.to_usize()
     }
 
     pub fn capacity(&self) -> Idx {
@@ -69,9 +69,32 @@ where
             return Err("Arena: Capacity reached"); // Return the value back if full
         }
         let slice = arena.get_slice_mut(&self.slice).expect("Arena: Can't acquire arena slice");
-        slice[self.len.into()] = value;
+        slice[self.len.to_usize()] = value;
         self.len += Idx::one();
         Ok(())
+    }
+
+    pub fn truncate(&mut self, new_len:Idx){
+        if new_len >= self.len {
+            return
+        }
+        self.len = new_len;
+    }
+
+    /// Resizes the buffer within the capacity boundaries. If new length is longer
+    /// than the current, the new items are filled with the default value.
+    pub fn resize<const LEN: usize>(&mut self, arena:&mut Arena<LEN, Idx, Marker>, new_len:Idx)
+    where T:Default
+    {
+        if new_len >= self.slice.capacity() {
+            return
+        }
+        if new_len >= self.len {
+            for item in arena.get_slice_mut(&self.slice).unwrap(){
+                *item =T::default()
+            }
+        }
+        self.len = new_len;
     }
 
     pub fn as_slice<'a, const LEN: usize>(
@@ -79,7 +102,15 @@ where
         arena: &'a Arena<LEN, Idx, Marker>,
     ) -> Option<&'a [T]> {
         let full_slice = arena.get_slice(&self.slice).expect("Failed to get slice from arena");
-        Some(&full_slice[..self.len.into()])
+        Some(&full_slice[..self.len.to_usize()])
+    }
+
+    pub fn as_slice_mut<'a, const LEN: usize>(
+        &self,
+        arena: &'a mut Arena<LEN, Idx, Marker>,
+    ) -> Option<&'a mut [T]> {
+        let full_slice = arena.get_slice_mut(&self.slice).expect("Failed to get slice from arena");
+        Some(&mut full_slice[..self.len.to_usize()])
     }
 
     /// A Buffer of smaller buffers.
@@ -101,7 +132,7 @@ where
             arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, Idx, Marker>;
 
         // Initialize each buffer in the temporary space
-        for i in 0..sub_buffer_count.into() {
+        for i in 0..sub_buffer_count.to_usize() {
             let buffer =
                 Buffer::new(arena, sub_buffer_len).expect("Arena: Could not create buffer");
             unsafe {
@@ -125,7 +156,7 @@ where
         &'a mut self,
         arena: &'a Arena<LEN, Idx, Marker>,
     ) -> DrainIterator<'a, T, LEN, Idx, Marker> {
-        let end = self.len.into();
+        let end = self.len.to_usize();
         let iter = DrainIterator {
             arena,
             slice: Slice::new(

@@ -108,6 +108,9 @@ where
     }
 
     pub fn shrink(self, margin: T) -> Self {
+        if margin == T::zero() {
+            return self;
+        }
         Self {
             x: self.x + margin,
             y: self.y + margin,
@@ -117,6 +120,9 @@ where
     }
 
     pub fn expand(self, margin: T) -> Self {
+        if margin == T::zero() {
+            return self;
+        }
         Self {
             x: self.x - margin,
             y: self.y - margin,

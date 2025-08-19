@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 pub use smooth_buffer;
 pub use tato_arena as arena;
@@ -43,5 +43,3 @@ pub mod prelude {
     pub use tato_rng::*;
     pub use tato_video::*;
 }
-
-pub const FRAME_ARENA_LEN: usize = 65536;

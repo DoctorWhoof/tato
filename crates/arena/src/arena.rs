@@ -53,7 +53,7 @@ where
     {
         let size = size_of::<T>();
         let align = align_of::<T>();
-        let offset_usize: usize = self.offset.into();
+        let offset_usize: usize = self.offset.to_usize();
 
         // Align offset
         let misalignment = offset_usize % align;
@@ -82,7 +82,11 @@ where
     }
 
     /// Allocate slice with initialization function
-    pub fn alloc_slice_from_fn<T, F>(&mut self, count: Idx, mut f: F) -> Option<Slice<T, Idx, Marker>>
+    pub fn alloc_slice_from_fn<T, F>(
+        &mut self,
+        count: Idx,
+        mut f: F,
+    ) -> Option<Slice<T, Idx, Marker>>
     where
         F: FnMut(usize) -> T,
     {
@@ -97,8 +101,8 @@ where
 
         let size = size_of::<T>();
         let align = align_of::<T>();
-        let total_size = size * count.into();
-        let offset_usize: usize = self.offset.into();
+        let total_size = size * count.to_usize();
+        let offset_usize: usize = self.offset.to_usize();
 
         // Align offset
         let misalignment = offset_usize % align;
@@ -115,7 +119,7 @@ where
         // Initialize elements
         unsafe {
             let dst = self.storage.as_mut_ptr().add(aligned_offset) as *mut T;
-            let count: usize = count.into();
+            let count: usize = count.to_usize();
             for i in 0..count {
                 ptr::write(dst.add(i), f(i));
             }
@@ -149,8 +153,8 @@ where
 
         let size = size_of::<T>();
         let align = align_of::<T>();
-        let total_size = size * count.into();
-        let offset_usize: usize = self.offset.into();
+        let total_size = size * count.to_usize();
+        let offset_usize: usize = self.offset.to_usize();
 
         // Align offset
         let misalignment = offset_usize % align;
@@ -193,8 +197,8 @@ where
             return false;
         }
 
-        let id_end: usize = id.offset.into() + id.size.into();
-        let offset_usize: usize = self.offset.into();
+        let id_end: usize = id.offset.to_usize() + id.size.to_usize();
+        let offset_usize: usize = self.offset.to_usize();
 
         // Bounds check
         if id_end > offset_usize {
@@ -202,7 +206,7 @@ where
         }
 
         // Size check
-        id.size.into() == size_of::<T>()
+        id.size.to_usize() == size_of::<T>()
     }
 
     /// Get reference to value (safe - checks generation and arena)
@@ -213,7 +217,7 @@ where
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(id.offset.into()) as *const T;
+            let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
             Some(&*ptr)
         }
     }
@@ -226,7 +230,7 @@ where
         }
 
         unsafe {
-            let ptr = self.storage.as_mut_ptr().add(id.offset.into()) as *mut T;
+            let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;
             Some(&mut *ptr)
         }
     }
@@ -238,7 +242,7 @@ where
         debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch in get_unchecked");
         debug_assert_eq!(id.generation, self.generation, "Generation mismatch in get_unchecked");
         unsafe {
-            let ptr = self.storage.as_ptr().add(id.offset.into()) as *const T;
+            let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
             &*ptr
         }
     }
@@ -253,7 +257,7 @@ where
             "Generation mismatch in get_unchecked_mut"
         );
         unsafe {
-            let ptr = self.storage.as_mut_ptr().add(id.offset.into()) as *mut T;
+            let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;
             &mut *ptr
         }
     }
@@ -263,19 +267,32 @@ where
     fn validate_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> bool {
         // Check arena ID first (cross-arena safety)
         if slice.arena_id != self.arena_id {
+            debug_assert!(
+                false, // TODO: Should become an error result
+                "Arena Error: Invalid arena id in handle"
+            );
             return false;
         }
 
         // Check generation (temporal safety)
         if slice.generation != self.generation {
+            debug_assert!(
+                false, // TODO: Should become an error result
+                "Arena Error: Invalid arena generation in handle"
+            );
             return false;
         }
 
-        let slice_end: usize = slice.offset.into() + slice.len.into() * size_of::<T>();
-        let offset_usize: usize = self.offset.into();
+        let slice_end: usize = slice.offset.to_usize() + slice.len.to_usize() * size_of::<T>();
+        let offset_usize: usize = self.offset.to_usize();
 
         // Bounds check
-        slice_end <= offset_usize
+        let bounds_check = slice_end <= offset_usize;
+        debug_assert!(
+            bounds_check, // TODO: Should become an error result
+            "Arena Error: Invalid bounds check, slice end must less or equal than slice start"
+        );
+        bounds_check
     }
 
     /// Get slice as slice (safe - checks generation and arena)
@@ -285,13 +302,13 @@ where
             return None;
         }
 
-        if slice.len.into() == 0 {
+        if slice.len.to_usize() == 0 {
             return Some(&[]);
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
-            Some(core::slice::from_raw_parts(ptr, slice.len.into()))
+            let ptr = self.storage.as_ptr().add(slice.offset.to_usize()) as *const T;
+            Some(core::slice::from_raw_parts(ptr, slice.len.to_usize()))
         }
     }
 
@@ -302,13 +319,13 @@ where
             return None;
         }
 
-        if slice.len.into() == 0 {
+        if slice.len.to_usize() == 0 {
             return Some(&mut []);
         }
 
         unsafe {
-            let ptr = self.storage.as_mut_ptr().add(slice.offset.into()) as *mut T;
-            Some(core::slice::from_raw_parts_mut(ptr, slice.len.into()))
+            let ptr = self.storage.as_mut_ptr().add(slice.offset.to_usize()) as *mut T;
+            Some(core::slice::from_raw_parts_mut(ptr, slice.len.to_usize()))
         }
     }
 
@@ -322,13 +339,13 @@ where
             "Generation mismatch in get_slice_unchecked"
         );
 
-        if slice.len.into() == 0 {
+        if slice.len.to_usize() == 0 {
             return &[];
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
-            core::slice::from_raw_parts(ptr, slice.len.into())
+            let ptr = self.storage.as_ptr().add(slice.offset.to_usize()) as *const T;
+            core::slice::from_raw_parts(ptr, slice.len.to_usize())
         }
     }
 
@@ -345,13 +362,13 @@ where
             "Generation mismatch in get_slice_unchecked_mut"
         );
 
-        if slice.len.into() == 0 {
+        if slice.len.to_usize() == 0 {
             return &mut [];
         }
 
         unsafe {
-            let ptr = self.storage.as_mut_ptr().add(slice.offset.into()) as *mut T;
-            core::slice::from_raw_parts_mut(ptr, slice.len.into())
+            let ptr = self.storage.as_mut_ptr().add(slice.offset.to_usize()) as *mut T;
+            core::slice::from_raw_parts_mut(ptr, slice.len.to_usize())
         }
     }
 
@@ -363,12 +380,12 @@ where
 
     /// Bytes used
     pub fn used(&self) -> usize {
-        self.offset.into()
+        self.offset.to_usize()
     }
 
     /// Bytes remaining
     pub fn remaining(&self) -> usize {
-        LEN - self.offset.into()
+        LEN - self.offset.to_usize()
     }
 
     /// Total Bytes
@@ -412,25 +429,30 @@ where
             return None;
         }
 
-        if slice.len.into() == 0 {
+        if slice.len.to_usize() == 0 {
             return Some([].iter());
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
-            let slice_ref = core::slice::from_raw_parts(ptr, slice.len.into());
+            let ptr = self.storage.as_ptr().add(slice.offset.to_usize()) as *const T;
+            let slice_ref = core::slice::from_raw_parts(ptr, slice.len.to_usize());
             Some(slice_ref.iter())
         }
     }
 
-    pub fn iter_slice_range<T>(&self, slice: &Slice<T, Idx, Marker>, start: Idx, end: Idx) -> Option<Iter<'_, T>> {
+    pub fn iter_slice_range<T>(
+        &self,
+        slice: &Slice<T, Idx, Marker>,
+        start: Idx,
+        end: Idx,
+    ) -> Option<Iter<'_, T>> {
         if !self.validate_slice(slice) {
             return None;
         }
 
-        let start_usize: usize = start.into();
-        let end_usize: usize = end.into();
-        let len_usize: usize = slice.len.into();
+        let start_usize: usize = start.to_usize();
+        let end_usize: usize = end.to_usize();
+        let len_usize: usize = slice.len.to_usize();
 
         if start_usize > end_usize || end_usize > len_usize {
             return None;
@@ -441,7 +463,7 @@ where
         }
 
         unsafe {
-            let ptr = self.storage.as_ptr().add(slice.offset.into()) as *const T;
+            let ptr = self.storage.as_ptr().add(slice.offset.to_usize()) as *const T;
             let slice_ref = core::slice::from_raw_parts(ptr, len_usize);
             Some(slice_ref[start_usize..end_usize].iter())
         }

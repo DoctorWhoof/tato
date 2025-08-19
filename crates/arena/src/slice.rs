@@ -28,7 +28,7 @@ where
 
     /// Check if empty
     pub fn is_empty(&self) -> bool {
-        self.len.into() == 0
+        self.len.to_usize() == 0
     }
 
     /// Get arena offset
@@ -48,7 +48,7 @@ where
 
     /// Get size in bytes
     pub fn size_bytes(&self) -> usize {
-        self.len.into() * core::mem::size_of::<T>()
+        self.len.to_usize() * core::mem::size_of::<T>()
     }
 
     /// Get capacity as (used, total)

@@ -5,6 +5,7 @@ use tato_math::{Rect, Vec2};
 
 use crate::*;
 
+pub const FRAME_ARENA_LEN: usize = 65536;
 const DEBUG_STR_COUNT: u16 = 100;
 const DEBUG_STR_LINE_LEN: u16 = 80;
 const DEBUG_POLY_COUNT: u16 = 100;
@@ -103,7 +104,7 @@ impl Tato {
         let reference_frame_time = 1.0 / 60.0;
         self.delta = self.elapsed_time / reference_frame_time;
 
-        self.video.start_frame();
+        self.video.frame_start();
         self.time += elapsed as f64;
         self.elapsed_time = elapsed;
         self.frame_finished = false;
@@ -151,7 +152,7 @@ impl Tato {
         T: Debug,
     {
         // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
-        let handle = Text::format_dbg(&mut self.debug_arena, message, values).unwrap();
+        let handle = Text::format_dbg(&mut self.debug_arena, message, values, "").unwrap();
         self.debug_strings.push(&mut self.debug_arena, handle).unwrap();
     }
 

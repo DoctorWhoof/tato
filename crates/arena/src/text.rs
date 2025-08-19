@@ -3,6 +3,7 @@ mod debug_buffer;
 use debug_buffer::*;
 
 use crate::{Arena, ArenaIndex, Buffer};
+use core::fmt::Write;
 
 /// Type alias for text stored as a Slice<u8>
 pub type Text<Idx = u16> = Buffer<u8, Idx>;
@@ -50,10 +51,14 @@ where
                 if crate::text::debug_buffer::parse_format_string(&remaining[start..]).is_none() {
                     // Check for common invalid patterns
                     if placeholder.contains("?}") && !placeholder.ends_with(":?}") {
-                        return Err("Invalid format specifier: precision with debug (?), use either {:.N} or {:?}");
+                        return Err(
+                            "Invalid format specifier: precision with debug (?), use either {:.N} or {:?}",
+                        );
                     }
                     if placeholder.contains(":.") && placeholder.contains("?") {
-                        return Err("Invalid format specifier: cannot combine precision and debug formatting");
+                        return Err(
+                            "Invalid format specifier: cannot combine precision and debug formatting",
+                        );
                     }
                     return Err("Invalid format specifier: supported formats are {}, {:?}, {:.N}");
                 }
@@ -72,38 +77,48 @@ where
         Ok(())
     }
 
-
-
     /// Create formatted text using Debug trait
-    /// Replaces "{:?}" placeholders with values by index
-    pub fn format_dbg<const LEN: usize, M, V>(
+    /// Replaces "{:?}" placeholders with values by index, with message2 appended after
+    pub fn format_dbg<const LEN: usize, M1, M2, V>(
         arena: &mut Arena<LEN, Idx>,
-        message: M,
+        message1: M1,
         values: &[V],
+        message2: M2,
     ) -> Option<Self>
     where
-        M: AsRef<str>,
+        M1: AsRef<str>,
+        M2: AsRef<str>,
         V: core::fmt::Debug,
     {
-        let message_str = message.as_ref();
-        debug_assert!(message_str.is_ascii());
+        let message1_str = message1.as_ref();
+        let message2_str = message2.as_ref();
+        debug_assert!(message1_str.is_ascii());
+        debug_assert!(message2_str.is_ascii());
 
         // Validate format string first
-        if let Err(err_msg) = Self::validate_format_string(message_str) {
-            panic!("Debug format error: {} in: '{}'", err_msg, message_str);
+        if let Err(err_msg) = Self::validate_format_string(message1_str) {
+            panic!("Debug format error: {} in: '{}'", err_msg, message1_str);
         }
 
         // Check placeholder count matches value count
-        let placeholder_count = Self::count_placeholders(message_str);
+        let placeholder_count = Self::count_placeholders(message1_str);
         if placeholder_count != values.len() {
-            panic!("Debug format placeholder mismatch: found {} placeholders but {} values provided in: '{}'",
-                   placeholder_count, values.len(), message_str);
+            panic!(
+                "Debug format placeholder mismatch: found {} placeholders but {} values provided in: '{}'",
+                placeholder_count,
+                values.len(),
+                message1_str
+            );
         }
 
         // Format using debug trait with indexed values
         let mut debug_buf = DebugBuffer::new();
-        debug_buf.format_debug_message_indexed(message_str, values)
+        debug_buf
+            .format_debug_message_indexed(message1_str, values)
             .expect("Failed to format debug message");
+
+        // Append second message
+        debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
         let total_len = Idx::from_usize_checked(formatted_str.len())?;
@@ -112,35 +127,47 @@ where
     }
 
     /// Create formatted text using Display trait
-    /// Replaces "{}" and "{:.N}" placeholders with values by index
-    pub fn format_display<const LEN: usize, M, V>(
+    /// Replaces "{}" and "{:.N}" placeholders with values by index, with message2 appended after
+    pub fn format_display<const LEN: usize, M1, M2, V>(
         arena: &mut Arena<LEN, Idx>,
-        message: M,
+        message1: M1,
         values: &[V],
+        message2: M2,
     ) -> Option<Self>
     where
-        M: AsRef<str>,
+        M1: AsRef<str>,
+        M2: AsRef<str>,
         V: core::fmt::Display,
     {
-        let message_str = message.as_ref();
-        debug_assert!(message_str.is_ascii());
+        let message1_str = message1.as_ref();
+        let message2_str = message2.as_ref();
+        debug_assert!(message1_str.is_ascii());
+        debug_assert!(message2_str.is_ascii());
 
         // Validate format string first
-        if let Err(err_msg) = Self::validate_format_string(message_str) {
-            panic!("Display format error: {} in: '{}'", err_msg, message_str);
+        if let Err(err_msg) = Self::validate_format_string(message1_str) {
+            panic!("Display format error: {} in: '{}'", err_msg, message1_str);
         }
 
         // Check placeholder count matches value count
-        let placeholder_count = Self::count_placeholders(message_str);
+        let placeholder_count = Self::count_placeholders(message1_str);
         if placeholder_count != values.len() {
-            panic!("Display format placeholder mismatch: found {} placeholders but {} values provided in: '{}'",
-                   placeholder_count, values.len(), message_str);
+            panic!(
+                "Display format placeholder mismatch: found {} placeholders but {} values provided in: '{}'",
+                placeholder_count,
+                values.len(),
+                message1_str
+            );
         }
 
         // Format using display trait with indexed values
         let mut debug_buf = DebugBuffer::new();
-        debug_buf.format_display_message_indexed(message_str, values)
+        debug_buf
+            .format_display_message_indexed(message1_str, values)
             .expect("Failed to format display message");
+
+        // Append second message
+        debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
         let total_len = Idx::from_usize_checked(formatted_str.len())?;
@@ -151,21 +178,30 @@ where
     /// Create formatted text with full format support
     /// Supports format specifiers: "{}", "{:?}", "{:.N}"
     /// Requires both Debug and Display traits
-    pub fn format<const LEN: usize, M, V>(
+    pub fn format<const LEN: usize, M1, M2, V>(
         arena: &mut Arena<LEN, Idx>,
-        message: M,
+        message1: M1,
         value: V,
+        message2: M2,
     ) -> Option<Self>
     where
-        M: AsRef<str>,
+        M1: AsRef<str>,
+        M2: AsRef<str>,
         V: core::fmt::Display + core::fmt::Debug,
     {
-        let message_str = message.as_ref();
-        debug_assert!(message_str.is_ascii());
+        let message1_str = message1.as_ref();
+        let message2_str = message2.as_ref();
+        debug_assert!(message1_str.is_ascii());
+        debug_assert!(message2_str.is_ascii());
 
         // Format the complete message with value into a buffer
         let mut debug_buf = DebugBuffer::new();
-        if debug_buf.format_message(message_str, &value).is_err() {
+        if debug_buf.format_message(message1_str, &value).is_err() {
+            return None;
+        }
+
+        // Append second message
+        if debug_buf.write_str(message2_str).is_err() {
             return None;
         }
 
@@ -175,6 +211,8 @@ where
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
 
+    // TODO: Delete this. A buffer of arena Ids is much more memory friendly,
+    // since it doesn't pre-allocate all items. Still in use in Tato.debug_strings
     /// A Buffer of Text lines (which are, themselves, buffers).
     /// Helps to get around borrowing issues since the buffer and the text lines
     /// are in the same arena.

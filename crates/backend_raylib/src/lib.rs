@@ -56,6 +56,7 @@ impl RaylibBackend {
         // Config additional raylib options
         ray.set_target_fps(tato.target_fps as u32);
         unsafe {
+            raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_VSYNC_HINT as u32);
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
             // Disable ESC to close window. "Cmd + Q" still works!
             raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
@@ -67,7 +68,7 @@ impl RaylibBackend {
 
         // Build struct
         let mut result = Self {
-            bg_color: Color::new(32, 32, 32, 255),
+            bg_color: Color::new(16, 16, 16, 255),
             ray,
             display_debug: true,
             print_frame_time: true,
@@ -109,10 +110,9 @@ impl RaylibBackend {
         if id < textures.len() {
             let texture_pixel_count =
                 textures[id].width as usize * textures[id].height as usize * 4;
+            // resize texture to match
             if pixels.len() != texture_pixel_count {
-                // resize texture to match
-                println!("Backend texture {} resized", id);
-
+                println!("Souce pixels: {}, dest pixels: {}", pixels.len(), texture_pixel_count);
                 // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
                 let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
                 let complete_rows = total_tiles / TILES_PER_ROW as usize;
@@ -125,6 +125,7 @@ impl RaylibBackend {
                 let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
                 let texture = ray.load_texture_from_image(thread, &image).unwrap();
                 textures[id] = texture;
+                println!("Backend texture {} resized", id);
             }
             textures[id].update_texture(&pixels).unwrap();
         }
@@ -216,7 +217,7 @@ impl RaylibBackend {
                         &mut self.ray,
                         &self.thread,
                         bank_index,
-                        pixels.as_slice(arena).unwrap(),
+                        pixels.as_slice(&dash.pixel_arena).unwrap(),
                     );
                 }
             }
