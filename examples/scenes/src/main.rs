@@ -66,14 +66,14 @@ fn main() -> TatoResult<()> {
 
     // Backend
     let target_fps = 60.0;
-    let mut back = RaylibBackend::new(&tato);
-    while !back.ray.window_should_close() {
+    let mut backend = RaylibBackend::new(&tato);
+    while !backend.ray.window_should_close() {
         arena.clear();
         dash.frame_start(&mut arena);
-        tato.frame_start(back.ray.get_frame_time());
+        tato.frame_start(backend.ray.get_frame_time());
 
-        back.update_input(&mut tato.pad);
-        state.time = back.ray.get_time();
+        backend.update_input(&mut tato.pad);
+        state.time = backend.ray.get_time();
         state.elapsed = 1.0 / target_fps as f64;
         state.pad = tato.pad;
 
@@ -87,9 +87,7 @@ fn main() -> TatoResult<()> {
 
         // Update backend
         tato.frame_finish();
-        back.render_canvas(&tato, &[&state.bg]);
-        back.render_dashboard(&tato, &mut dash, &mut arena);
-        back.present(&tato, Some(&dash), &arena);
+        backend.present(&tato, Some(&mut dash), &mut arena, &[&state.bg]);
 
 
         // Prepare next frame if scene change was requested

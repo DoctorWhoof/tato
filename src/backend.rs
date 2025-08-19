@@ -1,25 +1,42 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
-use crate::{prelude::Dashboard, Tato, FRAME_ARENA_LEN};
+use crate::{FRAME_ARENA_LEN, Tato, prelude::Dashboard};
 use tato_arena::Arena;
-use tato_math::Vec2;
+use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
-use tato_video::RGBA32;
+use tato_video::{RGBA32, TilemapRef};
 
 /// Texture identifier
 pub type TextureId = usize;
 
 /// Calculate position and scale for centered integer scaling with correct aspect ratio
-pub fn canvas_position_and_scale(
-    screen_size: Vec2<i16>,
+pub fn canvas_rect_and_scale(
+    screen_rect: Rect<i16>,
     video_size: Vec2<i16>,
-) -> (Vec2<i16>, f32) {
-    let scale = (screen_size.y as f32 / video_size.y as f32).floor();
+    integer: bool,
+) -> (Rect<i16>, f32) {
+    // Calculate aspect ratios
+    let screen_aspect = screen_rect.w as f32 / screen_rect.h as f32;
+    let video_aspect = video_size.x as f32 / video_size.y as f32;
+
+    // Obtain scale, respect aspect ratio
+    let mut scale = if screen_aspect < video_aspect {
+        // Screen is narrower than video, fit to width
+        screen_rect.w as f32 / video_size.x as f32
+    } else {
+        // Screen is wider than video, fit to height
+        screen_rect.h as f32 / video_size.y as f32
+    };
+
+    if integer {
+        scale = scale.floor()
+    }
+    // Generate output
     let w = (video_size.x as f32 * scale) as i16;
     let h = (video_size.y as f32 * scale) as i16;
-    let x = (screen_size.x - w) / 2;
-    let y = (screen_size.y - h) / 2;
-    (Vec2::new(x, y), scale)
+    let x = ((screen_rect.w - w) / 2) + screen_rect.x;
+    let y = ((screen_rect.h - h) / 2) + screen_rect.y;
+    (Rect { x, y, w, h }, scale)
 }
 
 /// Core backend trait for rendering operations
@@ -30,7 +47,14 @@ pub trait Backend {
     fn clear(&mut self, color: RGBA32);
 
     /// Present the rendered frame to the screen
-    fn present(&mut self, tato: &Tato, dash: Option<&Dashboard>, arena:&Arena<FRAME_ARENA_LEN>);
+    fn present<'a, T>(
+        &mut self,
+        tato: &'a Tato,
+        dash: Option<&'a mut Dashboard>,
+        arena: &'a mut Arena<FRAME_ARENA_LEN>,
+        bg_banks: &[&'a T],
+    ) where
+        &'a T: Into<TilemapRef<'a>>;
 
     /// Check if the window should close
     fn should_close(&self) -> bool;
@@ -58,7 +82,7 @@ pub trait Backend {
     fn update_texture(&mut self, id: TextureId, pixels: &[u8]);
 
     /// Draw a texture at the specified position with scaling and tint
-    fn draw_texture(&mut self, id: TextureId, x: i16, y: i16, scale: f32, tint: RGBA32);
+    fn draw_texture(&mut self, id: TextureId, rect: Rect<i16>, tint: RGBA32);
 
     // ---------------------- Input ----------------------
 

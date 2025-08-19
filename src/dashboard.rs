@@ -37,6 +37,7 @@ pub struct Dashboard {
     pub ops: Buffer<ArenaId<DrawOp>>,
     pub console_buffer: Buffer<Text, u16>,
     pub additional_text: Buffer<Text>,
+    pub canvas_rect: Option<Rect<i16>>,
 }
 
 const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
@@ -58,10 +59,11 @@ impl Dashboard {
             tile_pixels,
             mouse_over_text: Text::new(arena, LINE_LEN).unwrap(),
             font_size: 8.0,
-            console: true,
+            console: false,
             ops: Buffer::new(arena, OP_COUNT).unwrap(),
             console_buffer: Buffer::new(arena, MAX_LINES).unwrap(),
             additional_text: Buffer::new(arena, MAX_LINES).unwrap(),
+            canvas_rect: None,
         }
     }
 
@@ -214,30 +216,6 @@ impl Dashboard {
             }
         }
 
-        // World space polys (follow scrolling)
-        for world_poly in tato.iter_dash_polys(true) {
-            let scale = args.canvas_scale;
-            let pos = args.canvas_pos;
-            let scroll_x = tato.video.scroll_x as f32;
-            let scroll_y = tato.video.scroll_y as f32;
-            if world_poly.len() >= 2 {
-                for i in 0..(world_poly.len() - 1) {
-                    let current = world_poly[i];
-                    let next = world_poly[i + 1];
-                    let handle = arena
-                        .alloc(DrawOp::Line {
-                            x1: ((current.x as f32 - scroll_x) * scale) as i16 + pos.x,
-                            y1: ((current.y as f32 - scroll_y) * scale) as i16 + pos.y,
-                            x2: ((next.x as f32 - scroll_x) * scale) as i16 + pos.x,
-                            y2: ((next.y as f32 - scroll_y) * scale) as i16 + pos.y,
-                            color: RGBA32::WHITE,
-                        })
-                        .unwrap();
-                    self.ops.push(arena, handle).expect("Dashboard: Can't insert World poly");
-                }
-            }
-        }
-
         // Console
         if self.console {
             layout.push_edge(Edge::Bottom, 80, |console| {
@@ -250,6 +228,36 @@ impl Dashboard {
                     .unwrap();
                 self.ops.push(arena, handle).unwrap();
             });
+        }
+
+        // Canvas
+        layout.fill(|canvas| {
+            self.canvas_rect = Some(canvas.rect());
+        });
+
+        // World space polys (follow scrolling)
+        if let Some(canvas_rect) = self.canvas_rect {
+            for world_poly in tato.iter_dash_polys(true) {
+                let scale = args.screen_size.y as f32 / args.canvas_size.y as f32;
+                let scroll_x = tato.video.scroll_x as f32;
+                let scroll_y = tato.video.scroll_y as f32;
+                if world_poly.len() >= 2 {
+                    for i in 0..(world_poly.len() - 1) {
+                        let current = world_poly[i];
+                        let next = world_poly[i + 1];
+                        let handle = arena
+                            .alloc(DrawOp::Line {
+                                x1: ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
+                                y1: ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
+                                x2: ((next.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
+                                y2: ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
+                                color: RGBA32::WHITE,
+                            })
+                            .unwrap();
+                        self.ops.push(arena, handle).expect("Dashboard: Can't insert World poly");
+                    }
+                }
+            }
         }
 
         // Generate tooltip command
@@ -359,7 +367,6 @@ impl Dashboard {
         let font_size = (self.font_size * args.gui_scale) as i16;
         let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
-        let tile_scale = tile_size as f32 / TILE_SIZE as f32;
 
         let gap = args.gui_scale as i16;
         let bank = &tato.banks[bank_index];
@@ -540,15 +547,8 @@ impl Dashboard {
             });
             self.ops.push(arena, rect_handle.unwrap()).unwrap();
 
-            let texture_handle = arena
-                .alloc(DrawOp::Texture {
-                    x: rect.x,
-                    y: rect.y,
-                    id: bank_index,
-                    scale: tile_scale,
-                    tint: RGBA32::WHITE,
-                })
-                .unwrap();
+            let texture_handle =
+                arena.alloc(DrawOp::Texture { id: bank_index, rect, tint: RGBA32::WHITE }).unwrap();
             self.ops.push(arena, texture_handle).unwrap();
 
             // Mouse hover detection for tiles

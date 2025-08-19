@@ -16,10 +16,11 @@ fn rgba32_to_rl_color(color: RGBA32) -> Color {
 }
 
 pub struct RaylibBackend {
-    pub ray: RaylibHandle,
-    pub display_debug: bool,
     pub bg_color: Color,
+    pub integer_scaling: bool,
     pub print_frame_time: bool,
+    pub display_debug: bool,
+    pub ray: RaylibHandle,
     thread: RaylibThread,
     textures: Vec<Texture2D>,
     font: Font,
@@ -31,7 +32,6 @@ pub struct RaylibBackend {
     time_profile: Instant,
     buffer_iter_time: SmoothBuffer<120, f64>,
     buffer_canvas_time: SmoothBuffer<120, f64>,
-    frame_number: usize,
 }
 
 /// Raylib specific implementation
@@ -41,7 +41,7 @@ impl RaylibBackend {
         let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
-        let total_panel_width = (Dashboard::PANEL_WIDTH * 4) + (Dashboard::MARGIN * 4);
+        let total_panel_width = (Dashboard::PANEL_WIDTH * 4) + (Dashboard::MARGIN * 2);
         let adjusted_w = total_panel_width as i32 + (w * multiplier);
 
         // Init Raylib
@@ -69,9 +69,10 @@ impl RaylibBackend {
         // Build struct
         let mut result = Self {
             bg_color: Color::new(16, 16, 16, 255),
-            ray,
-            display_debug: true,
+            integer_scaling: true,
             print_frame_time: true,
+            display_debug: true,
+            ray,
             thread,
             // debug_pixels,
             textures: vec![],
@@ -83,7 +84,6 @@ impl RaylibBackend {
             time_profile: std::time::Instant::now(),
             buffer_iter_time: SmoothBuffer::new(),
             buffer_canvas_time: SmoothBuffer::new(),
-            frame_number: 0,
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
@@ -130,19 +130,39 @@ impl RaylibBackend {
             textures[id].update_texture(&pixels).unwrap();
         }
     }
+}
 
-    /// Copy from framebuffer to raylib texture
-    pub fn render_canvas<'a, T>(&mut self, t: &'a Tato, bg_banks: &[&'a T])
-    where
+/// Main API, using Backend trait
+impl Backend for RaylibBackend {
+    // ---------------------- Core Rendering ----------------------
+
+    fn clear(&mut self, color: RGBA32) {
+        // This will be called in the render loop, storing for later use
+        self.bg_color = rgba32_to_rl_color(color);
+    }
+
+    /// Finish canvas and GUI drawing, present to window
+    fn present<'a, T>(
+        &mut self,
+        tato: &'a Tato,
+        dash: Option<&'a mut Dashboard>,
+        arena: &'a mut Arena<FRAME_ARENA_LEN>,
+        bg_banks: &[&'a T],
+    ) where
         &'a T: Into<TilemapRef<'a>>,
     {
-        self.frame_number = t.video.frame_number();
         self.time_profile = Instant::now();
-        let video_width = t.video.width() as usize;
-        let video_height = t.video.height() as usize;
-        debug_assert!({ video_width * video_height * 4 } == self.pixels.len(),);
 
-        for (i, color) in t.iter_pixels(bg_banks).enumerate() {
+        assert!(
+            {
+                let video_width = tato.video.width() as usize;
+                let video_height = tato.video.height() as usize;
+                video_width * video_height * 4
+            } == self.pixels.len(),
+        );
+
+        // Copy pixels from video chip
+        for (i, color) in tato.iter_pixels(bg_banks).enumerate() {
             let index = i * 4;
             self.pixels[index] = color.r;
             self.pixels[index + 1] = color.g;
@@ -164,78 +184,72 @@ impl RaylibBackend {
             self.pixels.as_slice(),
         );
 
-        // Calculate and queue main texture draw
-        let screen_size = self.get_screen_size();
-        let (pos, scale) = canvas_position_and_scale(
-            screen_size,
-            Vec2::new(t.video.width() as i16, t.video.height() as i16),
-        );
-        self.draw_texture(self.canvas_texture, pos.x, pos.y, scale, RGBA32::WHITE);
-        self.dash_args = DashArgs {
-            screen_size,
-            mouse: self.get_mouse(),
-            canvas_scale: scale,
-            canvas_pos: pos,
-            ..self.dash_args
-        }
-    }
-
-    /// Process "Dashboard" draw ops
-    pub fn render_dashboard<'a>(
-        &mut self,
-        t: &'a Tato,
-        dash: &mut Dashboard,
-        arena: &mut Arena<FRAME_ARENA_LEN>,
-    ) {
-        if !self.debug_mode() {
-            return;
+        // Draw canvas, if not in debug mode or dashboard not available
+        if !self.debug_mode() || dash.is_none() {
+            let screen_size = self.get_screen_size();
+            let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
+            let (canvas_rect, _scale) = canvas_rect_and_scale(screen_rect, tato.video.size(), true);
+            self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
         }
 
-        // Push timing data before moving ops out of dashboard
-        dash.add_text(
-            &format!(
-                "iter time: {:.1} ms", //
-                self.buffer_iter_time.average() * 1000.0
-            ),
-            arena,
-        );
-        dash.add_text(
-            &format!("canvas time: {:.1} ms", self.buffer_canvas_time.average() * 1000.0),
-            arena,
-        );
+        // But if dashboard is available, queue GUI drawing
+        if let Some(dash) = dash {
+            if self.debug_mode() {
+                if let Some(canvas_rect) = dash.canvas_rect {
+                    // Adjust canvas to fit rect
+                    let (rect, _scale) =
+                        canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
+                    // Queue drawing
+                    self.draw_texture(self.canvas_texture, rect, RGBA32::WHITE);
+                }
 
-        // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-        dash.render(t, arena, self.dash_args);
+                self.dash_args = DashArgs {
+                    screen_size: self.get_screen_size(),
+                    canvas_size: tato.video.size(),
+                    mouse: self.get_mouse(),
+                    ..self.dash_args
+                };
 
-        // Copy tile pixels from dashboard to GPU textures
-        for bank_index in 0..TILE_BANK_COUNT {
-            // texture ID = bank_index
-            if let Some(pixels) = dash.tile_pixels.get(bank_index) {
-                if !pixels.is_empty() {
-                    Self::update_texture_internal(
-                        &mut self.textures,
-                        &mut self.ray,
-                        &self.thread,
-                        bank_index,
-                        pixels.as_slice(&dash.pixel_arena).unwrap(),
-                    );
+                // Push timing data before moving ops out of dashboard
+                dash.add_text(
+                    &format!(
+                        "iter time: {:.1} ms", //
+                        self.buffer_iter_time.average() * 1000.0
+                    ),
+                    arena,
+                );
+                dash.add_text(
+                    &format!("canvas time: {:.1} ms", self.buffer_canvas_time.average() * 1000.0),
+                    arena,
+                );
+
+                // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
+                dash.render(tato, arena, self.dash_args);
+
+                // Copy tile pixels from dashboard to GPU textures
+                for bank_index in 0..TILE_BANK_COUNT {
+                    // texture ID = bank_index
+                    if let Some(pixels) = dash.tile_pixels.get(bank_index) {
+                        if !pixels.is_empty() {
+                            Self::update_texture_internal(
+                                &mut self.textures,
+                                &mut self.ray,
+                                &self.thread,
+                                bank_index,
+                                pixels.as_slice(&dash.pixel_arena).unwrap(),
+                            );
+                        }
+                    }
                 }
             }
+
+            for id in dash.ops.items(arena).unwrap() {
+                let op = arena.get(id).unwrap();
+                self.draw_ops.push(op.clone());
+            }
         }
-    }
-}
 
-/// Main API, using Backend trait
-impl Backend for RaylibBackend {
-    // ---------------------- Core Rendering ----------------------
-
-    fn clear(&mut self, color: RGBA32) {
-        // This will be called in the render loop, storing for later use
-        self.bg_color = rgba32_to_rl_color(color);
-    }
-
-    /// Finish canvas and GUI drawing, present to window
-    fn present(&mut self, _tato: &Tato, dash: Option<&Dashboard>, arena: &Arena<FRAME_ARENA_LEN>) {
+        // Start canvas drawing
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
 
@@ -259,11 +273,13 @@ impl Backend for RaylibBackend {
                     rgba32_to_rl_color(color),
                 );
             },
-            DrawOp::Texture { id, x, y, scale, tint } => {
+            DrawOp::Texture { id, rect, tint } => {
                 if id < self.textures.len() {
+                    let w = self.textures[id].width() as f32;
+                    let scale = rect.w as f32 / w;
                     canvas.draw_texture_ex(
                         &self.textures[id],
-                        Vector2::new(x as f32, y as f32),
+                        Vector2::new(rect.x as f32, rect.y as f32),
                         0.0,
                         scale,
                         rgba32_to_rl_color(tint),
@@ -287,12 +303,6 @@ impl Backend for RaylibBackend {
         for cmd in self.draw_ops.drain(..) {
             process_draw_op(cmd)
         }
-        if let Some(dash) = dash {
-            for id in dash.ops.items(arena).unwrap() {
-                let op = arena.get(id).unwrap();
-                process_draw_op(op.clone());
-            }
-        }
 
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
@@ -305,7 +315,7 @@ impl Backend for RaylibBackend {
             let time = self.buffer_canvas_time.average() + self.buffer_iter_time.average();
             println!(
                 "Frame {} finished in {:.2} ms (max {} fps)",
-                self.frame_number,
+                tato.video.frame_number(),
                 time * 1000.0,
                 (1.0 / time).floor()
             );
@@ -330,8 +340,8 @@ impl Backend for RaylibBackend {
     //     self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
     // }
 
-    fn draw_texture(&mut self, id: TextureId, x: i16, y: i16, scale: f32, tint: RGBA32) {
-        self.draw_ops.push(DrawOp::Texture { id, x, y, scale, tint });
+    fn draw_texture(&mut self, id: TextureId, rect: Rect<i16>, tint: RGBA32) {
+        self.draw_ops.push(DrawOp::Texture { id, rect, tint });
     }
 
     fn measure_text(&self, text: &str, font_size: f32) -> (f32, f32) {

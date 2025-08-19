@@ -20,9 +20,7 @@ pub enum DrawOp {
     },
     Texture {
         id: usize,
-        x: i16,
-        y: i16,
-        scale: f32,
+        rect: Rect<i16>,
         tint: RGBA32,
     },
     Text {

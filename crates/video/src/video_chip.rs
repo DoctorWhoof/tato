@@ -1,3 +1,5 @@
+use tato_math::Vec2;
+
 use crate::*;
 
 /// A convenient packet of data used to draw a single tile as a sprite.
@@ -110,6 +112,11 @@ impl VideoChip {
     #[inline]
     pub fn height(&self) -> u16 {
         self.h
+    }
+
+    #[inline]
+    pub fn size(&self) -> Vec2<i16> {
+        Vec2 { x: self.w as i16, y: self.h as i16 }
     }
 
     #[inline]

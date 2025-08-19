@@ -29,6 +29,10 @@ where
         Vec2 { x: self.x, y: self.y }
     }
 
+    pub fn size(&self) -> Vec2<T> {
+        Vec2 { x: self.w, y: self.h }
+    }
+
     pub fn left(self) -> T {
         self.x
     }

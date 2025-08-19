@@ -56,9 +56,7 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&tato, &mut dash, &mut arena);
-        backend.present(&tato, Some(&dash), &arena);
+        backend.present(&tato, Some(&mut dash), &mut arena, &[&bg_map]);
     }
     Ok(())
 }

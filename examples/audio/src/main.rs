@@ -143,9 +143,7 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
-        backend.render_canvas(&tato, &[&bg_map]);
-        backend.render_dashboard(&tato, &mut dash, &mut arena);
-        backend.present(&tato, Some(&dash), &arena);
+        backend.present(&tato, Some(&mut dash), &mut arena, &[&bg_map]);
     }
 
     audio_backend.write_wav_file();
