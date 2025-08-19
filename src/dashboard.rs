@@ -41,7 +41,7 @@ pub struct Dashboard {
 
 const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
 const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
-const MEDIUM_GRAY: RGBA32 = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
+// const MEDIUM_GRAY: RGBA32 = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
 
 impl Dashboard {
     pub const PANEL_WIDTH: i16 = 150;
