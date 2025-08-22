@@ -197,10 +197,10 @@ impl Backend for RaylibBackend {
             if self.debug_mode() {
                 if let Some(canvas_rect) = dash.canvas_rect {
                     // Adjust canvas to fit rect
-                    let (rect, _scale) =
-                        canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
+                    // let (rect, _scale) =
+                    //     canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
                     // Queue drawing
-                    self.draw_texture(self.canvas_texture, rect, RGBA32::WHITE);
+                    self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
                 }
 
                 self.dash_args = DashArgs {

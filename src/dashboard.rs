@@ -2,8 +2,7 @@
 //! Provides a buffer of DrawOps that the Backend can render
 
 use crate::{
-    FRAME_ARENA_LEN,
-    prelude::{Edge, Frame, Rect, Tato},
+    backend::canvas_rect_and_scale, prelude::{Edge, Frame, Rect, Tato}, FRAME_ARENA_LEN
 };
 use tato_layout::Fitting;
 use tato_video::{
@@ -149,14 +148,14 @@ impl Dashboard {
         layout.set_scale(args.gui_scale);
         layout.set_margin(Self::MARGIN);
         layout.set_margin(10);
-        layout.set_gap(0);
+        layout.set_gap(3);
 
         // Left panel
         {
             let mut temp_buffer = Buffer::<DrawOp>::new(&mut temp, 200).unwrap();
             layout.push_edge(Edge::Left, Self::PANEL_WIDTH, |panel| {
                 panel.set_margin(5);
-                // panel.set_gap(0);
+                panel.set_gap(0);
                 let op =
                     arena.alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY }).unwrap();
                 self.ops.push(arena, op).unwrap();
@@ -178,7 +177,7 @@ impl Dashboard {
         {
             layout.push_edge(Edge::Right, Self::PANEL_WIDTH, |panel| {
                 panel.set_margin(5);
-                // panel.set_gap(0);
+                panel.set_gap(0);
                 panel.set_scale(args.gui_scale);
                 panel.fitting = Fitting::Clamp;
 
@@ -195,6 +194,28 @@ impl Dashboard {
                 }
             });
         }
+
+        // Console
+        if self.console {
+            layout.push_edge(Edge::Bottom, 80, |console| {
+                console.set_margin(5);
+                let handle = arena
+                    .alloc(DrawOp::Rect {
+                        rect: console.rect(),
+                        color: RGBA32 { r: 18, g: 18, b: 18, a: 230 },
+                    })
+                    .unwrap();
+                self.ops.push(arena, handle).unwrap();
+            });
+        }
+
+        // Canvas
+        layout.fill(|canvas| {
+            // Calculate canvas placement within this frame, taking aspect ratio into account.
+            // The canvas texture can then be drawn by the backend using this rectangle.
+            let (rect, _scale) = canvas_rect_and_scale(canvas.rect(), tato.video.size(), false);
+            self.canvas_rect = Some(rect);
+        });
 
         // Generate ops for debug polygons
         for poly in tato.iter_dash_polys(false) {
@@ -216,29 +237,10 @@ impl Dashboard {
             }
         }
 
-        // Console
-        if self.console {
-            layout.push_edge(Edge::Bottom, 80, |console| {
-                console.set_margin(5);
-                let handle = arena
-                    .alloc(DrawOp::Rect {
-                        rect: console.rect(),
-                        color: RGBA32 { r: 18, g: 18, b: 18, a: 230 },
-                    })
-                    .unwrap();
-                self.ops.push(arena, handle).unwrap();
-            });
-        }
-
-        // Canvas
-        layout.fill(|canvas| {
-            self.canvas_rect = Some(canvas.rect());
-        });
-
         // World space polys (follow scrolling)
         if let Some(canvas_rect) = self.canvas_rect {
             for world_poly in tato.iter_dash_polys(true) {
-                let scale = args.screen_size.y as f32 / args.canvas_size.y as f32;
+                let scale = canvas_rect.h as f32 / args.canvas_size.y as f32;
                 let scroll_x = tato.video.scroll_x as f32;
                 let scroll_y = tato.video.scroll_y as f32;
                 if world_poly.len() >= 2 {
