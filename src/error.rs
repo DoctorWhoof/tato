@@ -1,4 +1,5 @@
 use core::fmt;
+use tato_arena::ArenaError;
 
 /// Convenience type alias (lets you omit "TatoError", so you can return
 /// "TatoResult<T>" instead of "Result<T, TatoError>")
@@ -25,8 +26,8 @@ pub enum TatoError {
     TilemapCapacityReached,
     /// Invalid tilemap dimensions
     InvalidTilemapDimensions { len: usize, columns: u16 },
-    /// Arena out of space
-    ArenaOutOfSpace,
+    /// Arena operation failed
+    Arena(ArenaError),
     /// Animation frames capacity exceeded
     AnimationFramesCapacityExceeded,
     /// Not enough space for animation frames
@@ -43,8 +44,7 @@ pub enum TatoError {
     InvalidMapId(u8),
     /// Frame count exceeds u8 limit
     FrameCountTooLarge(usize),
-    /// Arena slice retrieval failed
-    ArenaPoolRetrievalFailed,
+
 }
 
 impl core::error::Error for TatoError {}
@@ -83,7 +83,7 @@ impl fmt::Display for TatoError {
                     len, columns
                 )
             },
-            TatoError::ArenaOutOfSpace => write!(f, "Arena out of space"),
+            TatoError::Arena(arena_error) => write!(f, "Arena error: {}", arena_error),
             TatoError::AnimationFramesCapacityExceeded => {
                 write!(f, "Animation frames capacity exceeded")
             },
@@ -104,7 +104,59 @@ impl fmt::Display for TatoError {
             TatoError::FrameCountTooLarge(count) => {
                 write!(f, "Frame count {} exceeds u8 limit", count)
             },
-            TatoError::ArenaPoolRetrievalFailed => write!(f, "Arena slice retrieval failed"),
+
+        }
+    }
+}
+
+impl From<ArenaError> for TatoError {
+    fn from(value: ArenaError) -> Self {
+        TatoError::Arena(value)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_arena_error_payload() {
+        // Test that TatoError::Arena can wrap ArenaError
+        let arena_error = ArenaError::OutOfSpace { requested: 256, available: 128 };
+        let tato_error = TatoError::Arena(arena_error);
+
+        // Verify we can match on the wrapped error
+        match tato_error {
+            TatoError::Arena(ArenaError::OutOfSpace { requested, available }) => {
+                assert_eq!(requested, 256);
+                assert_eq!(available, 128);
+            }
+            _ => panic!("Expected Arena error with OutOfSpace"),
+        }
+
+        // Test generation mismatch error
+        let gen_error = ArenaError::InvalidGeneration { expected: 5, found: 3 };
+        let tato_gen_error = TatoError::Arena(gen_error);
+
+        match tato_gen_error {
+            TatoError::Arena(ArenaError::InvalidGeneration { expected, found }) => {
+                assert_eq!(expected, 5);
+                assert_eq!(found, 3);
+            }
+            _ => panic!("Expected Arena error with InvalidGeneration"),
+        }
+
+        // Test cross-arena access error
+        let cross_error = ArenaError::CrossArenaAccess { expected_id: 10, found_id: 20 };
+        let tato_cross_error = TatoError::Arena(cross_error);
+
+        match tato_cross_error {
+            TatoError::Arena(ArenaError::CrossArenaAccess { expected_id, found_id }) => {
+                assert_eq!(expected_id, 10);
+                assert_eq!(found_id, 20);
+            }
+            _ => panic!("Expected Arena error with CrossArenaAccess"),
         }
     }
 }

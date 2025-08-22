@@ -352,7 +352,7 @@ impl Tato {
                     ..*cell
                 }
             })
-            .ok_or(TatoError::ArenaOutOfSpace)?;
+            .map_err(TatoError::Arena)?;
 
         // Store entry
         let map_idx = self.assets.map_head;
@@ -432,7 +432,7 @@ impl Tato {
             .assets
             .arena
             .alloc_slice_from_fn(anim.frames.len() as u16, |i| anim.frames[i])
-            .ok_or(TatoError::ArenaOutOfSpace)?;
+            .map_err(TatoError::Arena)?;
         self.assets.anim_entries[next_index as usize] =
             AnimEntry { frames, fps: anim.fps, rep: anim.rep, strip: anim.strip };
 
@@ -448,7 +448,7 @@ impl Tato {
             .get(map_id.0 as usize)
             .ok_or(TatoError::InvalidMapId(map_id.0))?;
         let cells =
-            self.assets.arena.get_slice(&entry.cells).ok_or(TatoError::ArenaPoolRetrievalFailed)?;
+            self.assets.arena.get_slice(&entry.cells).map_err(TatoError::Arena)?;
         Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 

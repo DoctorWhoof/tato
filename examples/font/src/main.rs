@@ -5,8 +5,8 @@ use tato_raylib::*;
 fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
-    let mut arena = Arena::new();
-    let mut dash = Dashboard::new(&mut arena);
+    let mut arena = Arena::<32768>::new();
+    let mut dash = Dashboard::new(&mut arena).unwrap();
 
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);

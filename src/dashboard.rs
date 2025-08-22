@@ -2,7 +2,9 @@
 //! Provides a buffer of DrawOps that the Backend can render
 
 use crate::{
-    backend::canvas_rect_and_scale, prelude::{Edge, Frame, Rect, Tato}, FRAME_ARENA_LEN
+    TatoResult,
+    backend::canvas_rect_and_scale,
+    prelude::{Edge, Frame, Rect, Tato},
 };
 use tato_layout::Fitting;
 use tato_video::{
@@ -47,34 +49,34 @@ impl Dashboard {
     pub const PANEL_WIDTH: i16 = 150;
     pub const MARGIN: i16 = 10;
 
-    pub fn new(arena: &mut Arena<FRAME_ARENA_LEN>) -> Self {
+    pub fn new<const LEN: usize>(arena: &mut Arena<LEN>) -> TatoResult<Self> {
         let mut pixel_arena = Arena::<MAX_TILE_PIXELS, u32>::new(); // persistent
         let tile_pixels = core::array::from_fn(|_| {
             const CAP: u32 = TILE_COUNT as u32 * TILE_SIZE as u32 * TILE_SIZE as u32 * 4; // 4 bytes per pixel (RGBA)
             Buffer::<u8, u32>::from_fn(&mut pixel_arena, CAP, |_| 0).unwrap()
         });
-        Self {
+        Ok(Self {
             pixel_arena,
             tile_pixels,
-            mouse_over_text: Text::new(arena, LINE_LEN).unwrap(),
+            mouse_over_text: Text::new(arena, LINE_LEN)?,
             font_size: 8.0,
             console: false,
-            ops: Buffer::new(arena, OP_COUNT).unwrap(),
-            console_buffer: Buffer::new(arena, MAX_LINES).unwrap(),
-            additional_text: Buffer::new(arena, MAX_LINES).unwrap(),
+            ops: Buffer::new(arena, OP_COUNT)?,
+            console_buffer: Buffer::new(arena, MAX_LINES)?,
+            additional_text: Buffer::new(arena, MAX_LINES)?,
             canvas_rect: None,
-        }
+        })
     }
 
     /// Must be called at the end of each frame.
-    pub fn frame_start(&mut self, arena: &mut Arena<FRAME_ARENA_LEN>) {
+    pub fn frame_start<const LEN: usize>(&mut self, arena: &mut Arena<LEN>) {
         self.mouse_over_text = Buffer::new(arena, LINE_LEN).unwrap();
         self.ops = Buffer::new(arena, OP_COUNT).unwrap();
         self.console_buffer = Buffer::new(arena, MAX_LINES).unwrap();
         self.additional_text = Buffer::new(arena, MAX_LINES).unwrap();
     }
 
-    pub fn add_text(&mut self, text: &str, arena: &mut Arena<FRAME_ARENA_LEN>) {
+    pub fn add_text<const LEN: usize>(&mut self, text: &str, arena: &mut Arena<LEN>) {
         let text = Text::from_str(arena, text).unwrap();
         self.additional_text.push(arena, text).unwrap();
     }
@@ -96,7 +98,12 @@ impl Dashboard {
     }
 
     /// Generate debug UI ops
-    pub fn render(&mut self, tato: &Tato, arena: &mut Arena<FRAME_ARENA_LEN>, args: DashArgs) {
+    pub fn render<const LEN: usize>(
+        &mut self,
+        tato: &Tato,
+        arena: &mut Arena<LEN>,
+        args: DashArgs,
+    ) {
         // We'll re-use as much memory as possible with a temporary arena + buffers.
         let mut temp = Arena::<16_384>::new();
 
@@ -104,42 +111,53 @@ impl Dashboard {
         // to the Layout frames. Try to do as much as possible outside of the closures.
 
         // Add debug info
-        let debug_text =
-            Text::format_display(arena, "Debug mem.: {}", &[tato.debug_arena.used() / 1024], " Kb");
-        self.additional_text.push(arena, debug_text.unwrap()).unwrap();
+        {
+            let frame_text = Text::format_display(
+                arena,
+                "Frame mem.: {} / {}",
+                &[arena.used() / 1024, arena.capacity() / 1024],
+                " Kb",
+            );
+            self.additional_text.push(arena, frame_text.unwrap()).unwrap();
 
-        let tiles_text = Text::format_display(
-            arena,
-            "Tile Debug mem.: {}",
-            &[self.pixel_arena.used() / 1024],
-            " Kb",
-        );
-        self.additional_text.push(arena, tiles_text.unwrap()).unwrap();
+            let debug_text = Text::format_display(
+                arena,
+                "Tato Debug mem.: {} / {}",
+                &[tato.debug_arena.used() / 1024, tato.debug_arena.capacity() / 1024],
+                " Kb",
+            );
+            self.additional_text.push(arena, debug_text.unwrap()).unwrap();
 
-        let asset_text = Text::format_display(
-            arena,
-            "Asset mem.: {}",
-            &[tato.assets.arena.used() / 1024],
-            " Kb",
-        );
-        self.additional_text.push(arena, asset_text.unwrap()).unwrap();
+            let tiles_text = Text::format_display(
+                arena,
+                "Tileset Debug mem.: {} / {}",
+                &[self.pixel_arena.used() / 1024, self.pixel_arena.capacity() / 1024],
+                " Kb",
+            );
+            self.additional_text.push(arena, tiles_text.unwrap()).unwrap();
 
-        let frame_text =
-            Text::format_display(arena, "Frame mem.: {}", &[arena.used() / 1024], " Kb");
-        self.additional_text.push(arena, frame_text.unwrap()).unwrap();
+            let asset_text = Text::format_display(
+                arena,
+                "Asset mem.: {} / {}",
+                &[tato.assets.arena.used() / 1024, tato.assets.arena.capacity() / 1024],
+                " Kb",
+            );
+            self.additional_text.push(arena, asset_text.unwrap()).unwrap();
 
-        let fps_text = Text::format_display(arena, "fps: {:.1}", &[1.0 / tato.elapsed_time()], "");
-        self.additional_text.push(arena, fps_text.unwrap()).unwrap();
+            let fps_text =
+                Text::format_display(arena, "fps: {:.1}", &[1.0 / tato.elapsed_time()], "");
+            self.additional_text.push(arena, fps_text.unwrap()).unwrap();
 
-        let elapsed_text =
-            Text::format_display(arena, "elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
-        self.additional_text.push(arena, elapsed_text.unwrap()).unwrap();
+            let elapsed_text =
+                Text::format_display(arena, "elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
+            self.additional_text.push(arena, elapsed_text.unwrap()).unwrap();
 
-        let separator = Text::from_str(arena, "------------------------");
-        self.additional_text.push(arena, separator.unwrap()).unwrap();
+            let separator = Text::from_str(arena, "------------------------");
+            self.additional_text.push(arena, separator.unwrap()).unwrap();
 
-        for text in tato.iter_dash_text() {
-            self.add_text(text, arena);
+            for text in tato.iter_dash_text() {
+                self.add_text(text, arena);
+            }
         }
 
         // Start Layout
@@ -358,12 +376,12 @@ impl Dashboard {
         }
     }
 
-    fn process_bank(
+    fn process_bank<const LEN: usize>(
         &mut self,
         bank_index: usize,
         args: &DashArgs,
         tato: &Tato,
-        arena: &mut Arena<FRAME_ARENA_LEN>,
+        arena: &mut Arena<LEN>,
         panel: &mut Frame<i16>,
     ) {
         let font_size = (self.font_size * args.gui_scale) as i16;

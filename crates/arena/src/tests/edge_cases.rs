@@ -5,8 +5,8 @@ fn test_zero_size_arena() {
     let mut arena: Arena<0> = Arena::new();
 
     // Should fail immediately
-    assert!(arena.alloc(42u32).is_none());
-    assert!(arena.alloc_slice::<u32>(1).is_none());
+    assert!(arena.alloc(42u32).is_err());
+    assert!(arena.alloc_slice::<u32>(1).is_err());
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn test_arena_full() {
     assert_eq!(*arena.get(&id2).unwrap(), 24);
 
     // Should be full now
-    assert!(arena.alloc(1u8).is_none());
+    assert!(arena.alloc(1u8).is_err());
 }
 
 #[test]

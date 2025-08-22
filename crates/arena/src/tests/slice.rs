@@ -63,7 +63,7 @@ fn test_slice_generational_safety() {
     assert_eq!(slice.generation(), gen1);
 
     // Should work
-    assert!(arena.get_slice(&slice).is_some());
+    assert!(arena.get_slice(&slice).is_ok());
     assert!(arena.is_slice_valid(&slice));
 
     // Clear arena
@@ -72,7 +72,7 @@ fn test_slice_generational_safety() {
     assert_eq!(gen2, gen1 + 1);
 
     // Pool should be invalid
-    assert!(arena.get_slice(&slice).is_none());
+    assert!(arena.get_slice(&slice).is_err());
     assert!(!arena.is_slice_valid(&slice));
 }
 
@@ -109,13 +109,13 @@ fn test_slice_restore_safety() {
     let slice2 = arena.alloc_slice::<u32>(2).unwrap();
 
     // Both should work initially
-    assert!(arena.get_slice(&slice1).is_some());
-    assert!(arena.get_slice(&slice2).is_some());
+    assert!(arena.get_slice(&slice1).is_ok());
+    assert!(arena.get_slice(&slice2).is_ok());
 
     // Restore to checkpoint
     arena.restore_to(checkpoint);
 
     // Both should be invalid due to generation change
-    assert!(arena.get_slice(&slice1).is_none());
-    assert!(arena.get_slice(&slice2).is_none());
+    assert!(arena.get_slice(&slice1).is_err());
+    assert!(arena.get_slice(&slice2).is_err());
 }

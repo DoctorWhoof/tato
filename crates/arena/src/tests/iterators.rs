@@ -29,7 +29,7 @@ fn test_arena_iter_slice_invalid_after_clear() {
     let slice = arena.alloc_slice_from_fn(3, |i| i as u32).unwrap();
 
     arena.clear();
-    assert!(arena.iter_slice(&slice).is_none());
+    assert!(arena.iter_slice(&slice).is_err());
 }
 
 #[test]
@@ -68,10 +68,10 @@ fn test_arena_iter_slice_range_out_of_bounds() {
     let slice = arena.alloc_slice_from_fn(10, |i| i as u32).unwrap();
 
     // End beyond slice length
-    assert!(arena.iter_slice_range(&slice, 5, 15).is_none());
+    assert!(arena.iter_slice_range(&slice, 5, 15).is_err());
 
     // Start > end
-    assert!(arena.iter_slice_range(&slice, 8, 5).is_none());
+    assert!(arena.iter_slice_range(&slice, 8, 5).is_err());
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_arena_iter_slice_range_invalid_after_clear() {
     let slice = arena.alloc_slice_from_fn(5, |i| i as u32).unwrap();
 
     arena.clear();
-    assert!(arena.iter_slice_range(&slice, 0, 3).is_none());
+    assert!(arena.iter_slice_range(&slice, 0, 3).is_err());
 }
 
 #[test]

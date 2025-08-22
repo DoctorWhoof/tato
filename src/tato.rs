@@ -199,20 +199,20 @@ impl Tato {
     // --------------------- Iterators ---------------------
 
     pub fn iter_dash_text(&self) -> impl Iterator<Item = &str> {
-        let debug_handles = self.debug_strings.as_slice(&self.debug_arena).unwrap_or(&[]);
+        let debug_handles = self.debug_strings.as_slice(&self.debug_arena).ok().unwrap_or(&[]);
         debug_handles.iter().filter_map(|handle| {
-            let bytes = self.debug_arena.get_slice(&handle.slice)?;
+            let bytes = self.debug_arena.get_slice(&handle.slice).ok()?;
             core::str::from_utf8(bytes).ok()
         })
     }
 
     pub fn iter_dash_polys(&self, world_space: bool) -> impl Iterator<Item = &[Vec2<i16>]> {
         let debug_handles = if world_space {
-            self.debug_polys_world.as_slice(&self.debug_arena).unwrap_or(&[])
+            self.debug_polys_world.as_slice(&self.debug_arena).ok().unwrap_or(&[])
         } else {
-            self.debug_polys.as_slice(&self.debug_arena).unwrap_or(&[])
+            self.debug_polys.as_slice(&self.debug_arena).ok().unwrap_or(&[])
         };
-        debug_handles.iter().filter_map(|handle| self.debug_arena.get_slice(handle))
+        debug_handles.iter().filter_map(|handle| self.debug_arena.get_slice(handle).ok())
     }
 
     pub fn iter_pixels<'a, T>(&'a self, bg_banks: &[&'a T]) -> PixelIter<'a>

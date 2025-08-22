@@ -18,7 +18,7 @@ where
             return None;
         }
 
-        let slice = self.arena.get_slice(&self.slice)?;
+        let slice = self.arena.get_slice(&self.slice).ok()?;
         let value = unsafe { core::ptr::read(&slice[self.current]) };
         self.current += 1;
         Some(value)

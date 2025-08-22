@@ -2,7 +2,7 @@
 mod debug_buffer;
 use debug_buffer::*;
 
-use crate::{Arena, ArenaIndex, Buffer};
+use crate::{Arena, ArenaIndex, ArenaResult, ArenaError, Buffer};
 use core::fmt::Write;
 
 /// Type alias for text stored as a Slice<u8>
@@ -17,14 +17,14 @@ where
     /// Get the text as &str (requires arena for safety)
     /// Returns None if the bytes are not valid UTF-8
     pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a str> {
-        let bytes = arena.get_slice(&self.slice)?;
+        let bytes = arena.get_slice(&self.slice).ok()?;
         core::str::from_utf8(bytes).ok()
     }
 
     /// Create text from a string slice
-    pub fn from_str<const LEN: usize>(arena: &mut Arena<LEN, Idx>, s: &str) -> Option<Self> {
+    pub fn from_str<const LEN: usize>(arena: &mut Arena<LEN, Idx>, s: &str) -> ArenaResult<Self> {
         let bytes = s.as_bytes();
-        let len = Idx::from_usize_checked(s.len()).unwrap();
+        let len = Idx::from_usize_checked(s.len()).ok_or(ArenaError::IndexConversion)?;
         Buffer::from_fn(arena, len, |i| bytes[i])
     }
 
@@ -84,7 +84,7 @@ where
         message1: M1,
         values: &[V],
         message2: M2,
-    ) -> Option<Self>
+    ) -> ArenaResult<Self>
     where
         M1: AsRef<str>,
         M2: AsRef<str>,
@@ -121,7 +121,7 @@ where
         debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
-        let total_len = Idx::from_usize_checked(formatted_str.len())?;
+        let total_len = Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
@@ -133,7 +133,7 @@ where
         message1: M1,
         values: &[V],
         message2: M2,
-    ) -> Option<Self>
+    ) -> ArenaResult<Self>
     where
         M1: AsRef<str>,
         M2: AsRef<str>,
@@ -170,7 +170,7 @@ where
         debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
-        let total_len = Idx::from_usize_checked(formatted_str.len())?;
+        let total_len = Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
@@ -183,7 +183,7 @@ where
         message1: M1,
         value: V,
         message2: M2,
-    ) -> Option<Self>
+    ) -> ArenaResult<Self>
     where
         M1: AsRef<str>,
         M2: AsRef<str>,
@@ -197,16 +197,16 @@ where
         // Format the complete message with value into a buffer
         let mut debug_buf = DebugBuffer::new();
         if debug_buf.format_message(message1_str, &value).is_err() {
-            return None;
+            return Err(ArenaError::InvalidBounds);
         }
 
         // Append second message
         if debug_buf.write_str(message2_str).is_err() {
-            return None;
+            return Err(ArenaError::InvalidBounds);
         }
 
         let formatted_str = debug_buf.as_str();
-        let total_len = Idx::from_usize_checked(formatted_str.len())?;
+        let total_len = Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
@@ -223,11 +223,11 @@ where
         item_count: Idx,
         item_length: Idx,
         init_with_zero_len: bool,
-    ) -> Option<Buffer<Text<Idx>, Idx>> {
+    ) -> ArenaResult<Buffer<Text<Idx>, Idx>> {
         let mut result = Self::multi_buffer::<ARENA_LEN>(arena, item_count, item_length)?;
         if init_with_zero_len {
             result.clear();
         }
-        Some(result)
+        Ok(result)
     }
 }

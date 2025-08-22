@@ -47,8 +47,8 @@ fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut scene = Scene::None;
     let mut tato = Tato::new(240, 180, 60);
-    let mut arena = Arena::new();
-    let mut dash = Dashboard::new(&mut arena);
+    let mut arena = Arena::<32768>::new();
+    let mut dash = Dashboard::new(&mut arena).unwrap();
 
     let mut state = State {
         pad: tato.pad,

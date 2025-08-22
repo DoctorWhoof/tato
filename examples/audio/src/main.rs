@@ -13,8 +13,8 @@ pub enum SoundType {
 fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
-    let mut arena = Arena::new();
-    let mut dash = Dashboard::new(&mut arena);
+    let mut arena = Arena::<32768>::new();
+    let mut dash = Dashboard::new(&mut arena).unwrap();
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;

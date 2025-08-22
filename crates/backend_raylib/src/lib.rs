@@ -2,8 +2,7 @@ pub use raylib;
 use raylib::prelude::*;
 use std::{time::Instant, vec};
 use tato::{
-    FRAME_ARENA_LEN, Tato, arena::*, backend::Backend, dashboard::*, prelude::*,
-    smooth_buffer::SmoothBuffer,
+    Tato, arena::*, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer,
 };
 
 pub use tato;
@@ -142,11 +141,11 @@ impl Backend for RaylibBackend {
     }
 
     /// Finish canvas and GUI drawing, present to window
-    fn present<'a, T>(
+    fn present<'a, const LEN: usize, T>(
         &mut self,
         tato: &'a Tato,
         dash: Option<&'a mut Dashboard>,
-        arena: &'a mut Arena<FRAME_ARENA_LEN>,
+        arena: &'a mut Arena<LEN>,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,

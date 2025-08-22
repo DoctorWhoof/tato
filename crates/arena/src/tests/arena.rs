@@ -60,7 +60,7 @@ fn test_capacity_limits() {
     let _id2 = arena.alloc(24u64).unwrap();
 
     // Should fail - not enough space
-    assert!(arena.alloc(100u64).is_none());
+    assert!(arena.alloc(100u64).is_err());
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn test_clear() {
     assert_eq!(arena.used(), 0);
 
     // Old ID should be invalid
-    assert!(arena.get(&id).is_none());
+    assert!(arena.get(&id).is_err());
 }
 
 #[test]
@@ -127,10 +127,10 @@ fn test_restore_to() {
     assert_eq!(arena.generation(), gen_before + 1);
 
     // id1 should still be valid (created before checkpoint)
-    assert!(arena.get(&id1).is_none()); // Actually, it becomes invalid too since generation changed
+    assert!(arena.get(&id1).is_err()); // Actually, it becomes invalid too since generation changed
 
     // id2 should be invalid (created after checkpoint)
-    assert!(arena.get(&id2).is_none());
+    assert!(arena.get(&id2).is_err());
 
     // Can allocate new data in the restored space
     let id3 = arena.alloc(200u32).unwrap();
@@ -152,7 +152,7 @@ fn test_generational_safety() {
     assert_eq!(gen2, gen1 + 1);
 
     // Old ID should be invalid
-    assert!(arena.get(&id1).is_none());
+    assert!(arena.get(&id1).is_err());
     assert!(!arena.is_valid(&id1));
 
     // New allocation should work

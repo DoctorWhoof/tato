@@ -1,6 +1,6 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
-use crate::{FRAME_ARENA_LEN, Tato, prelude::Dashboard};
+use crate::{Tato, prelude::Dashboard};
 use tato_arena::Arena;
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
@@ -47,11 +47,11 @@ pub trait Backend {
     fn clear(&mut self, color: RGBA32);
 
     /// Present the rendered frame to the screen
-    fn present<'a, T>(
+    fn present<'a, const LEN:usize, T>(
         &mut self,
         tato: &'a Tato,
         dash: Option<&'a mut Dashboard>,
-        arena: &'a mut Arena<FRAME_ARENA_LEN>,
+        arena: &'a mut Arena<LEN>,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>;
