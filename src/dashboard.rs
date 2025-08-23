@@ -21,7 +21,6 @@ use tato_arena::{Arena, ArenaId, ArenaResult, Buffer, Text};
 
 const TEMP_ARENA_LEN: usize = 16384;
 const MAX_LINES: u32 = 200;
-const LINE_LEN: u32 = 80;
 const OP_COUNT: u32 = 200;
 
 // 256 tiles per bank
@@ -50,6 +49,8 @@ const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
 const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
 
 impl<const LEN: usize> Dashboard<LEN> {
+    /// Creates a new Dashboard where LEN is the memory available to its
+    /// temporary memory buffer, in bytes.
     pub fn new() -> TatoResult<Self> {
         let mut pixel_arena = Arena::<MAX_TILE_PIXELS, u32>::new(); // persistent
         let tile_pixels = {
@@ -89,27 +90,34 @@ impl<const LEN: usize> Dashboard<LEN> {
         })
     }
 
+    /// A reference to the internal temp arena. Can be useful to extract
+    /// any ArenaID directly (i.e. when processing a DrawOp::Text)
     pub fn arena(&self) -> &Arena<LEN, u32> {
         &self.arena
     }
 
+    /// A reference to the pixel buffer used to debug tile pixels, if
+    /// the desired bank contains one
     pub fn tile_pixels(&self, bank_index: usize) -> Option<&[u8]> {
         let pixel_buffer = self.tile_pixels.get(bank_index)?;
         pixel_buffer.as_slice(&self.pixel_arena).ok()
     }
 
+    /// The space allocated to draw the canvas
     pub fn canvas_rect(&self) -> Option<Rect<i16>> {
         self.canvas_rect
     }
 
+    /// An iterator with every DrawOp processed so far
+    pub fn draw_ops(&self) -> ArenaResult<impl Iterator<Item = &DrawOp>> {
+        self.ops.items(&self.arena).map(|iter| iter.filter_map(|id| self.arena.get(id).ok()))
+    }
+
+    /// An iterator with every console command so far
     pub fn console_buffer(&self) -> ArenaResult<impl Iterator<Item = &str>> {
         self.console_buffer
             .items(&self.arena)
             .map(|iter| iter.filter_map(|text| text.as_str(&self.arena)))
-    }
-
-    pub fn draw_ops(&self) -> ArenaResult<impl Iterator<Item = &DrawOp>> {
-        self.ops.items(&self.arena).map(|iter| iter.filter_map(|id| self.arena.get(id).ok()))
     }
 
     /// Must be called at the beginning of each frame, clears buffers.
@@ -121,11 +129,15 @@ impl<const LEN: usize> Dashboard<LEN> {
         self.additional_text = Buffer::new(&mut self.arena, MAX_LINES).unwrap();
     }
 
+    /// Creates an internal arena-allocated Text buffer, stores its ID
+    /// in a list so it can be drawn when "render" is called.
     pub fn add_text(&mut self, text: &str) {
         let text = Text::from_str(&mut self.arena, text).unwrap();
         self.additional_text.push(&mut self.arena, text).unwrap();
     }
 
+    /// Generates a Text DrawOp with coordinates relative to a layout Frame
+    /// (will push a new edge from the Top in the frame to reserve room for the text)
     pub fn get_text_op(&self, text: Text<u32>, frame: &mut Frame<i16>) -> DrawOp {
         let mut rect = Rect::default();
         let mut line_height = 0.0;
