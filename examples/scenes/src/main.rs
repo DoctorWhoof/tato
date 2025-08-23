@@ -5,7 +5,7 @@ mod scene_c;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use tato::{arena::Arena, Tato, prelude::*};
+use tato::prelude::*;
 
 use tato_raylib::*;
 
@@ -47,7 +47,6 @@ fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut scene = Scene::None;
     let mut tato = Tato::new(240, 180, 60);
-    let mut arena = Arena::<32768>::new();
     let mut dash = Dashboard::<24_576>::new().unwrap();
 
     let mut state = State {

@@ -257,7 +257,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                 // Process each video memory bank
                 for bank_index in 0..TILE_BANK_COUNT {
                     // Draw each bank debug data
-                    self.process_bank(bank_index, &args, tato, panel, &mut temp);
+                    self.process_bank(bank_index, &args, tato, panel);
                     // Small separator
                     panel.push_edge(Edge::Top, 5, |_separator| {});
                 }
@@ -452,7 +452,6 @@ impl<const LEN: usize> Dashboard<LEN> {
         args: &DashArgs,
         tato: &Tato,
         panel: &mut Frame<i16>,
-        temp: &mut Arena<TEMP_ARENA_LEN>,
     ) {
         let font_size = (self.font_size * args.gui_scale) as i16;
         let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;

@@ -1,7 +1,6 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
 use crate::{Tato, prelude::Dashboard};
-use tato_arena::Arena;
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
 use tato_video::{RGBA32, TilemapRef};

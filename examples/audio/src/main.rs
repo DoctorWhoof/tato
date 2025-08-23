@@ -1,5 +1,5 @@
 use std::{f32::consts::PI, time::Instant};
-use tato::{arena::Arena, Tato, prelude::*};
+use tato::prelude::*;
 
 use tato_raylib::*;
 
@@ -13,7 +13,6 @@ pub enum SoundType {
 fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
-    let mut arena = Arena::<32768>::new();
     let mut dash = Dashboard::<24_576>::new().unwrap();
 
     // Tato Video Setup
