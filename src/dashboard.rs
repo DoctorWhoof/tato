@@ -1,5 +1,5 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
-//! Provides a buffer of DrawOps that the Backend can render
+//! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
 use crate::{
     TatoResult,
@@ -17,11 +17,12 @@ pub use ops::*;
 
 mod args;
 pub use args::*;
-use tato_arena::{Arena, ArenaId, Buffer, Text};
+use tato_arena::{Arena, ArenaId, ArenaResult, Buffer, Text};
 
-const MAX_LINES: u16 = 200;
-const LINE_LEN: u16 = 80;
-const OP_COUNT: u16 = 200;
+const TEMP_ARENA_LEN: usize = 16384;
+const MAX_LINES: u32 = 200;
+const LINE_LEN: u32 = 80;
+const OP_COUNT: u32 = 200;
 
 // 256 tiles per bank
 const MAX_TILE_PIXELS: usize =
@@ -29,59 +30,103 @@ const MAX_TILE_PIXELS: usize =
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
-pub struct Dashboard {
-    pub pixel_arena: Arena<MAX_TILE_PIXELS, u32>,
-    pub tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
-    pub mouse_over_text: Text,
+pub struct Dashboard<const LEN: usize> {
+    pub mouse_over_text: Text<u32>,
     pub font_size: f32,
     pub console: bool,
-    pub ops: Buffer<ArenaId<DrawOp>>,
-    pub console_buffer: Buffer<Text, u16>,
-    pub additional_text: Buffer<Text>,
-    pub canvas_rect: Option<Rect<i16>>,
+    arena: Arena<LEN, u32>,
+    pixel_arena: Arena<MAX_TILE_PIXELS, u32>,
+    canvas_rect: Option<Rect<i16>>,
+    ops: Buffer<ArenaId<DrawOp, u32>, u32>,
+    console_buffer: Buffer<Text<u32>, u32>,
+    additional_text: Buffer<Text<u32>, u32>,
+    tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
+    last_frame_arena_use: usize,
 }
 
+pub const PANEL_WIDTH: i16 = 150;
+pub const MARGIN: i16 = 10;
 const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
 const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
-// const MEDIUM_GRAY: RGBA32 = RGBA32 { r: 48, g: 48, b: 48, a: 255 };
 
-impl Dashboard {
-    pub const PANEL_WIDTH: i16 = 150;
-    pub const MARGIN: i16 = 10;
-
-    pub fn new<const LEN: usize>(arena: &mut Arena<LEN>) -> TatoResult<Self> {
+impl<const LEN: usize> Dashboard<LEN> {
+    pub fn new() -> TatoResult<Self> {
         let mut pixel_arena = Arena::<MAX_TILE_PIXELS, u32>::new(); // persistent
-        let tile_pixels = core::array::from_fn(|_| {
-            const CAP: u32 = TILE_COUNT as u32 * TILE_SIZE as u32 * TILE_SIZE as u32 * 4; // 4 bytes per pixel (RGBA)
-            Buffer::<u8, u32>::from_fn(&mut pixel_arena, CAP, |_| 0).unwrap()
-        });
+        let tile_pixels = {
+            const CAP: u32 = TILE_COUNT as u32 * TILE_SIZE as u32 * TILE_SIZE as u32 * 4;
+            // 4 bytes per pixel (RGBA)
+            // Slightly messy, but allows using '?' to return the arena error code, if any
+            let mut result: [core::mem::MaybeUninit<Buffer<u8, u32>>; TILE_BANK_COUNT] =
+                unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+
+            for i in 0..TILE_BANK_COUNT {
+                result[i] = core::mem::MaybeUninit::new(Buffer::<u8, u32>::from_fn(
+                    &mut pixel_arena,
+                    CAP,
+                    |_| 0,
+                )?);
+            }
+            unsafe { core::mem::transmute(result) }
+        };
+
+        let mut arena = Arena::<LEN, u32>::new(); // cleared every frame
+        let ops = Buffer::new(&mut arena, OP_COUNT)?;
+        let console_buffer = Buffer::new(&mut arena, MAX_LINES)?;
+        let additional_text = Buffer::new(&mut arena, MAX_LINES)?;
+
         Ok(Self {
+            arena,
             pixel_arena,
             tile_pixels,
-            mouse_over_text: Text::new(arena, LINE_LEN)?,
+            mouse_over_text: Buffer::default(),
             font_size: 8.0,
             console: false,
-            ops: Buffer::new(arena, OP_COUNT)?,
-            console_buffer: Buffer::new(arena, MAX_LINES)?,
-            additional_text: Buffer::new(arena, MAX_LINES)?,
+            ops,
+            console_buffer,
+            additional_text,
             canvas_rect: None,
+            last_frame_arena_use: 0,
         })
     }
 
-    /// Must be called at the end of each frame.
-    pub fn frame_start<const LEN: usize>(&mut self, arena: &mut Arena<LEN>) {
-        self.mouse_over_text = Buffer::new(arena, LINE_LEN).unwrap();
-        self.ops = Buffer::new(arena, OP_COUNT).unwrap();
-        self.console_buffer = Buffer::new(arena, MAX_LINES).unwrap();
-        self.additional_text = Buffer::new(arena, MAX_LINES).unwrap();
+    pub fn arena(&self) -> &Arena<LEN, u32> {
+        &self.arena
     }
 
-    pub fn add_text<const LEN: usize>(&mut self, text: &str, arena: &mut Arena<LEN>) {
-        let text = Text::from_str(arena, text).unwrap();
-        self.additional_text.push(arena, text).unwrap();
+    pub fn tile_pixels(&self, bank_index: usize) -> Option<&[u8]> {
+        let pixel_buffer = self.tile_pixels.get(bank_index)?;
+        pixel_buffer.as_slice(&self.pixel_arena).ok()
     }
 
-    pub fn get_text_op(&mut self, text: &Text, frame: &mut Frame<i16>) -> DrawOp {
+    pub fn canvas_rect(&self) -> Option<Rect<i16>> {
+        self.canvas_rect
+    }
+
+    pub fn console_buffer(&self) -> ArenaResult<impl Iterator<Item = &str>> {
+        self.console_buffer
+            .items(&self.arena)
+            .map(|iter| iter.filter_map(|text| text.as_str(&self.arena)))
+    }
+
+    pub fn draw_ops(&self) -> ArenaResult<impl Iterator<Item = &DrawOp>> {
+        self.ops.items(&self.arena).map(|iter| iter.filter_map(|id| self.arena.get(id).ok()))
+    }
+
+    /// Must be called at the beginning of each frame, clears buffers.
+    pub fn frame_start(&mut self) {
+        self.arena.clear();
+        self.ops = Buffer::new(&mut self.arena, OP_COUNT).unwrap();
+        self.mouse_over_text = Buffer::default(); // Buffer unallocated, essentially same as "None"
+        self.console_buffer = Buffer::new(&mut self.arena, MAX_LINES).unwrap();
+        self.additional_text = Buffer::new(&mut self.arena, MAX_LINES).unwrap();
+    }
+
+    pub fn add_text(&mut self, text: &str) {
+        let text = Text::from_str(&mut self.arena, text).unwrap();
+        self.additional_text.push(&mut self.arena, text).unwrap();
+    }
+
+    pub fn get_text_op(&self, text: Text<u32>, frame: &mut Frame<i16>) -> DrawOp {
         let mut rect = Rect::default();
         let mut line_height = 0.0;
         frame.push_edge(Edge::Top, self.font_size as i16, |text_frame| {
@@ -89,7 +134,7 @@ impl Dashboard {
             line_height = self.font_size * text_frame.get_scale();
         });
         DrawOp::Text {
-            text: text.clone(),
+            text,
             x: rect.x,
             y: rect.y,
             size: line_height,
@@ -98,65 +143,69 @@ impl Dashboard {
     }
 
     /// Generate debug UI ops
-    pub fn render<const LEN: usize>(
-        &mut self,
-        tato: &Tato,
-        arena: &mut Arena<LEN>,
-        args: DashArgs,
-    ) {
-        // We'll re-use as much memory as possible with a temporary arena + buffers.
-        let mut temp = Arena::<16_384>::new();
+    pub fn render(&mut self, tato: &Tato, args: DashArgs) {
+        // Internal temp memory
+        let mut temp = Arena::<TEMP_ARENA_LEN>::new();
 
         // HINT: The tricky part of dodging the borrow checker is all the closures necessary
         // to the Layout frames. Try to do as much as possible outside of the closures.
 
         // Add debug info
         {
-            let frame_text = Text::format_display(
-                arena,
-                "Frame mem.: {} / {}",
-                &[arena.used() / 1024, arena.capacity() / 1024],
-                " Kb",
-            );
-            self.additional_text.push(arena, frame_text.unwrap()).unwrap();
+            {
+                let arena_cap = self.arena.capacity();
+                let frame_text = Text::format_display(
+                    &mut self.arena,
+                    "Dashboard mem.: {:.1} / {:.1}",
+                    &[self.last_frame_arena_use as f32 / 1024.0, arena_cap as f32 / 1024.0],
+                    " Kb",
+                );
+                self.additional_text.push(&mut self.arena, frame_text.unwrap()).unwrap();
+            }
 
             let debug_text = Text::format_display(
-                arena,
-                "Tato Debug mem.: {} / {}",
-                &[tato.debug_arena.used() / 1024, tato.debug_arena.capacity() / 1024],
+                &mut self.arena,
+                "Tato Debug mem.: {:.1} / {:.1}",
+                &[
+                    tato.debug_arena.used() as f32 / 1024.0,
+                    tato.debug_arena.capacity() as f32 / 1024.0,
+                ],
                 " Kb",
             );
-            self.additional_text.push(arena, debug_text.unwrap()).unwrap();
-
-            let tiles_text = Text::format_display(
-                arena,
-                "Tileset Debug mem.: {} / {}",
-                &[self.pixel_arena.used() / 1024, self.pixel_arena.capacity() / 1024],
-                " Kb",
-            );
-            self.additional_text.push(arena, tiles_text.unwrap()).unwrap();
+            self.additional_text.push(&mut self.arena, debug_text.unwrap()).unwrap();
 
             let asset_text = Text::format_display(
-                arena,
-                "Asset mem.: {} / {}",
-                &[tato.assets.arena.used() / 1024, tato.assets.arena.capacity() / 1024],
+                &mut self.arena,
+                "Asset mem.: {:.1} / {:.1}",
+                &[
+                    tato.assets.arena.used() as f32 / 1024.0,
+                    tato.assets.arena.capacity() as f32 / 1024.0,
+                ],
                 " Kb",
             );
-            self.additional_text.push(arena, asset_text.unwrap()).unwrap();
+            self.additional_text.push(&mut self.arena, asset_text.unwrap()).unwrap();
 
-            let fps_text =
-                Text::format_display(arena, "fps: {:.1}", &[1.0 / tato.elapsed_time()], "");
-            self.additional_text.push(arena, fps_text.unwrap()).unwrap();
+            let fps_text = Text::format_display(
+                &mut self.arena,
+                "fps: {:.1}",
+                &[1.0 / tato.elapsed_time()],
+                "",
+            );
+            self.additional_text.push(&mut self.arena, fps_text.unwrap()).unwrap();
 
-            let elapsed_text =
-                Text::format_display(arena, "elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
-            self.additional_text.push(arena, elapsed_text.unwrap()).unwrap();
+            let elapsed_text = Text::format_display(
+                &mut self.arena,
+                "elapsed: {:.1}",
+                &[tato.elapsed_time() * 1000.0],
+                "",
+            );
+            self.additional_text.push(&mut self.arena, elapsed_text.unwrap()).unwrap();
 
-            let separator = Text::from_str(arena, "------------------------");
-            self.additional_text.push(arena, separator.unwrap()).unwrap();
+            let separator = Text::from_str(&mut self.arena, "------------------------");
+            self.additional_text.push(&mut self.arena, separator.unwrap()).unwrap();
 
             for text in tato.iter_dash_text() {
-                self.add_text(text, arena);
+                self.add_text(text);
             }
         }
 
@@ -164,49 +213,51 @@ impl Dashboard {
         let screen_rect = Rect { x: 0, y: 0, w: args.screen_size.x, h: args.screen_size.y };
         let mut layout = Frame::new(screen_rect);
         layout.set_scale(args.gui_scale);
-        layout.set_margin(Self::MARGIN);
+        layout.set_margin(MARGIN);
         layout.set_margin(10);
         layout.set_gap(3);
 
         // Left panel
         {
             let mut temp_buffer = Buffer::<DrawOp>::new(&mut temp, 200).unwrap();
-            layout.push_edge(Edge::Left, Self::PANEL_WIDTH, |panel| {
+            layout.push_edge(Edge::Left, PANEL_WIDTH, |panel| {
                 panel.set_margin(5);
                 panel.set_gap(0);
-                let op =
-                    arena.alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY }).unwrap();
-                self.ops.push(arena, op).unwrap();
-                let items = self.additional_text.items(arena).unwrap();
+                let op = self
+                    .arena
+                    .alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY })
+                    .unwrap();
+                self.ops.push(&mut self.arena, op).unwrap();
+                let items = self.additional_text.items(&self.arena).unwrap();
                 for text in items {
-                    let op = self.get_text_op(text, panel);
+                    let op = self.get_text_op(text.clone(), panel);
                     temp_buffer.push(&mut temp, op).unwrap();
                 }
             });
 
             for op in temp_buffer.items(&temp).unwrap() {
-                let handle = arena.alloc(op.clone()).unwrap();
-                self.ops.push(arena, handle).unwrap()
+                let handle = self.arena.alloc(op.clone()).unwrap();
+                self.ops.push(&mut self.arena, handle).unwrap()
             }
             temp.clear();
         }
 
         // Right panel
         {
-            layout.push_edge(Edge::Right, Self::PANEL_WIDTH, |panel| {
+            layout.push_edge(Edge::Right, PANEL_WIDTH, |panel| {
                 panel.set_margin(5);
                 panel.set_gap(0);
                 panel.set_scale(args.gui_scale);
                 panel.fitting = Fitting::Clamp;
 
                 let rect_handle =
-                    arena.alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY });
-                self.ops.push(arena, rect_handle.unwrap()).unwrap();
+                    self.arena.alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY });
+                self.ops.push(&mut self.arena, rect_handle.unwrap()).unwrap();
 
                 // Process each video memory bank
                 for bank_index in 0..TILE_BANK_COUNT {
                     // Draw each bank debug data
-                    self.process_bank(bank_index, &args, tato, arena, panel);
+                    self.process_bank(bank_index, &args, tato, panel, &mut temp);
                     // Small separator
                     panel.push_edge(Edge::Top, 5, |_separator| {});
                 }
@@ -217,13 +268,14 @@ impl Dashboard {
         if self.console {
             layout.push_edge(Edge::Bottom, 80, |console| {
                 console.set_margin(5);
-                let handle = arena
+                let handle = self
+                    .arena
                     .alloc(DrawOp::Rect {
                         rect: console.rect(),
                         color: RGBA32 { r: 18, g: 18, b: 18, a: 230 },
                     })
                     .unwrap();
-                self.ops.push(arena, handle).unwrap();
+                self.ops.push(&mut self.arena, handle).unwrap();
             });
         }
 
@@ -241,7 +293,8 @@ impl Dashboard {
                 for i in 0..(poly.len() - 1) {
                     let current = poly[i];
                     let next = poly[i + 1];
-                    let handle = arena
+                    let handle = self
+                        .arena
                         .alloc(DrawOp::Line {
                             x1: current.x,
                             y1: current.y,
@@ -250,7 +303,9 @@ impl Dashboard {
                             color: RGBA32::WHITE,
                         })
                         .unwrap();
-                    self.ops.push(arena, handle).expect("Dashboard: Can't insert GUI poly");
+                    self.ops
+                        .push(&mut self.arena, handle)
+                        .expect("Dashboard: Can't insert GUI poly");
                 }
             }
         }
@@ -265,7 +320,8 @@ impl Dashboard {
                     for i in 0..(world_poly.len() - 1) {
                         let current = world_poly[i];
                         let next = world_poly[i + 1];
-                        let handle = arena
+                        let handle = self
+                            .arena
                             .alloc(DrawOp::Line {
                                 x1: ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
                                 y1: ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
@@ -274,7 +330,9 @@ impl Dashboard {
                                 color: RGBA32::WHITE,
                             })
                             .unwrap();
-                        self.ops.push(arena, handle).expect("Dashboard: Can't insert World poly");
+                        self.ops
+                            .push(&mut self.arena, handle)
+                            .expect("Dashboard: Can't insert World poly");
                     }
                 }
             }
@@ -294,7 +352,8 @@ impl Dashboard {
 
             // Background
             let black = RGBA32 { r: 0, g: 0, b: 0, a: 255 };
-            let handle = arena
+            let handle = self
+                .arena
                 .alloc(DrawOp::Rect {
                     rect: Rect {
                         x: text_x - pad,
@@ -305,11 +364,14 @@ impl Dashboard {
                     color: black,
                 })
                 .unwrap();
-            self.ops.push(arena, handle).expect("Dashboard: Can't insert mouse-over rect ");
+            self.ops
+                .push(&mut self.arena, handle)
+                .expect("Dashboard: Can't insert mouse-over rect ");
 
             // Text
             let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
-            let handle = arena
+            let handle = self
+                .arena
                 .alloc(DrawOp::Text {
                     text: self.mouse_over_text.clone(),
                     x: text_x,
@@ -318,8 +380,12 @@ impl Dashboard {
                     color: white,
                 })
                 .unwrap();
-            self.ops.push(arena, handle).expect("Dashboard: Can't insert mouse-over text ");
+            self.ops
+                .push(&mut self.arena, handle)
+                .expect("Dashboard: Can't insert mouse-over text ");
         }
+
+        self.last_frame_arena_use = self.arena.used();
     }
 
     fn update_tile_texture(
@@ -342,6 +408,10 @@ impl Dashboard {
         let h = num_rows as usize * TILE_SIZE as usize;
         let expected_size = w * h * 4; // RGBA
 
+        // TODO: This may run of of space... we're reallocating within the arena, without
+        // clearing the arena! May need to reset entire arena if a single bank doesn't match.
+        // Needs testing, I think I'm not running into a problem simply because the pixel count
+        // always matches
         if expected_size != self.tile_pixels[bank_index].len() {
             // Allocate buffer with correct size
             self.tile_pixels[bank_index].resize(&mut self.pixel_arena, expected_size as u32);
@@ -376,13 +446,13 @@ impl Dashboard {
         }
     }
 
-    fn process_bank<const LEN: usize>(
+    fn process_bank(
         &mut self,
         bank_index: usize,
         args: &DashArgs,
         tato: &Tato,
-        arena: &mut Arena<LEN>,
         panel: &mut Frame<i16>,
+        temp: &mut Arena<TEMP_ARENA_LEN>,
     ) {
         let font_size = (self.font_size * args.gui_scale) as i16;
         let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;
@@ -398,8 +468,10 @@ impl Dashboard {
         let h = font_size / args.gui_scale as i16;
         panel.push_edge(Edge::Top, h, |frame| {
             let rect = frame.rect();
-            let text = Text::format_display(arena, "bank: {}", &[bank_index], "").unwrap();
-            let handle = arena
+            let text =
+                Text::format_display(&mut self.arena, "bank: {}", &[bank_index], "").unwrap();
+            let handle = self
+                .arena
                 .alloc(DrawOp::Text {
                     text,
                     x: rect.x + gap,
@@ -408,7 +480,7 @@ impl Dashboard {
                     color: RGBA32::WHITE,
                 })
                 .unwrap();
-            self.ops.push(arena, handle).unwrap();
+            self.ops.push(&mut self.arena, handle).unwrap();
         });
 
         // Bank info
@@ -417,14 +489,15 @@ impl Dashboard {
             let values =
                 [bank.tile_count(), bank.color_count() as usize, bank.sub_palette_count() as usize];
             let text = Text::format_display(
-                arena,
+                &mut self.arena,
                 "{} tiles, {} custom colors, {} sub-palettes",
                 &values,
                 "",
             )
             .unwrap();
 
-            let handle = arena
+            let handle = self
+                .arena
                 .alloc(DrawOp::Text {
                     text,
                     x: rect.x + gap,
@@ -433,7 +506,7 @@ impl Dashboard {
                     color: RGBA32::WHITE,
                 })
                 .unwrap();
-            self.ops.push(arena, handle).unwrap();
+            self.ops.push(&mut self.arena, handle).unwrap();
         });
 
         if bank.tile_count() == 0 {
@@ -443,8 +516,8 @@ impl Dashboard {
         // Color palette swatches
         panel.push_edge(Edge::Top, 8, |frame| {
             let rect = frame.rect();
-            let rect_handle = arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
-            self.ops.push(arena, rect_handle).unwrap();
+            let rect_handle = self.arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
+            self.ops.push(&mut self.arena, rect_handle).unwrap();
 
             let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
             for c in 0..COLORS_PER_PALETTE as usize {
@@ -453,13 +526,13 @@ impl Dashboard {
                     let color = bank.palette[c];
                     let rgba32 = RGBA32::from(color);
 
-                    let handle = arena.alloc(DrawOp::Rect { rect, color: rgba32 }).unwrap();
-                    self.ops.push(arena, handle).unwrap();
+                    let handle = self.arena.alloc(DrawOp::Rect { rect, color: rgba32 }).unwrap();
+                    self.ops.push(&mut self.arena, handle).unwrap();
 
                     // Mouse hover detection
                     if rect.contains(args.mouse.x, args.mouse.y) {
                         self.mouse_over_text = Text::format_display(
-                            arena,
+                            &mut self.arena,
                             "Color {} = {}, {}, {}, {}",
                             &[c as u8, color.r(), color.g(), color.b(), color.a()],
                             "",
@@ -487,8 +560,8 @@ impl Dashboard {
 
                         let rect = frame_column.rect();
                         let rect_handle =
-                            arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
-                        self.ops.push(arena, rect_handle).unwrap();
+                            self.arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
+                        self.ops.push(&mut self.arena, rect_handle).unwrap();
 
                         let row_h = frame_column.divide_height(rows);
                         for row in 0..rows {
@@ -509,7 +582,8 @@ impl Dashboard {
                                             let swatch_rect = swatch.rect();
                                             let color_index = subp[n].0 as usize;
                                             if color_index < bank.palette.len() {
-                                                let sub_rect_handle = arena
+                                                let sub_rect_handle = self
+                                                    .arena
                                                     .alloc(DrawOp::Rect {
                                                         rect: swatch_rect,
                                                         color: RGBA32::from(
@@ -517,7 +591,9 @@ impl Dashboard {
                                                         ),
                                                     })
                                                     .unwrap();
-                                                self.ops.push(arena, sub_rect_handle).unwrap();
+                                                self.ops
+                                                    .push(&mut self.arena, sub_rect_handle)
+                                                    .unwrap();
                                             }
                                         });
                                     }
@@ -535,7 +611,7 @@ impl Dashboard {
                                             subp[3].0,
                                         ];
                                         self.mouse_over_text = Text::format_dbg(
-                                            arena,
+                                            &mut self.arena,
                                             "Sub Palette {} = [{},{},{},{}]",
                                             &colors,
                                             "",
@@ -561,15 +637,17 @@ impl Dashboard {
             // tiles.set_margin(0);
             // tiles.set_gap(0);
             let rect = tiles.rect();
-            let rect_handle = arena.alloc(DrawOp::Rect {
+            let rect_handle = self.arena.alloc(DrawOp::Rect {
                 rect, //
                 color: RGBA32 { r: 106, g: 96, b: 128, a: 255 },
             });
-            self.ops.push(arena, rect_handle.unwrap()).unwrap();
+            self.ops.push(&mut self.arena, rect_handle.unwrap()).unwrap();
 
-            let texture_handle =
-                arena.alloc(DrawOp::Texture { id: bank_index, rect, tint: RGBA32::WHITE }).unwrap();
-            self.ops.push(arena, texture_handle).unwrap();
+            let texture_handle = self
+                .arena
+                .alloc(DrawOp::Texture { id: bank_index, rect, tint: RGBA32::WHITE })
+                .unwrap();
+            self.ops.push(&mut self.arena, texture_handle).unwrap();
 
             // Mouse hover detection for tiles
             if rect.contains(args.mouse.x, args.mouse.y) {
@@ -578,7 +656,8 @@ impl Dashboard {
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text =
-                        Text::format_display(arena, "Tile {}", &[tile_index], "").unwrap();
+                        Text::format_display(&mut self.arena, "Tile {}", &[tile_index], "")
+                            .unwrap();
                 }
             }
         });

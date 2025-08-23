@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 pub use smooth_buffer;
 pub use tato_arena as arena;

@@ -1,6 +1,6 @@
 use super::*;
+use crate::{ArenaError, ArenaResult};
 use core::slice::Iter;
-use crate::{ArenaResult, ArenaError};
 
 mod drain;
 pub use drain::*;
@@ -9,6 +9,15 @@ pub use drain::*;
 pub struct Buffer<T, Idx = u16, Marker = ()> {
     pub slice: Slice<T, Idx, Marker>,
     len: Idx, // Current number of elements used
+}
+
+impl<T, Idx, Marker> Default for Buffer<T, Idx, Marker>
+where
+    Idx: ArenaIndex,
+{
+    fn default() -> Self {
+        Self { slice: Default::default(), len: Default::default() }
+    }
 }
 
 impl<T, Idx, Marker> Buffer<T, Idx, Marker>
@@ -73,20 +82,21 @@ where
         Ok(())
     }
 
-    pub fn truncate(&mut self, new_len:Idx){
+    pub fn truncate(&mut self, new_len: Idx) {
         if new_len >= self.len {
-            return
+            return;
         }
         self.len = new_len;
     }
 
     /// Resizes the buffer within the capacity boundaries. If new length is longer
     /// than the current, the new items are filled with the default value.
-    pub fn resize<const LEN: usize>(&mut self, arena:&mut Arena<LEN, Idx, Marker>, new_len:Idx)
-    where T:Default
+    pub fn resize<const LEN: usize>(&mut self, arena: &mut Arena<LEN, Idx, Marker>, new_len: Idx)
+    where
+        T: Default,
     {
         if new_len >= self.slice.capacity() {
-            return
+            return;
         }
         if new_len >= self.len {
             if let Ok(slice) = arena.get_slice_mut(&self.slice) {
@@ -172,3 +182,7 @@ where
         iter
     }
 }
+
+
+
+

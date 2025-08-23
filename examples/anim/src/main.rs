@@ -24,8 +24,7 @@ fn main() -> TatoResult<()> {
     let bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(W, H, 60);
     let mut backend = RaylibBackend::new(&tato);
-    let mut arena = Arena::<32768>::new();
-    let mut dash = Dashboard::new(&mut arena).unwrap();
+    let mut dash = Dashboard::<24_576>::new().unwrap();
 
     tato.video.bg_color = RGBA12::new(2, 3, 4);
     tato.video.bg_tile_bank = BANK_BG;
@@ -68,9 +67,9 @@ fn main() -> TatoResult<()> {
 
     // Main loop
     while !backend.ray.window_should_close() {
-        arena.clear();
+
         tato.frame_start(backend.ray.get_frame_time());
-        dash.frame_start(&mut arena);
+        dash.frame_start();
         backend.update_input(&mut tato.pad);
 
         for entity in &mut entities {
@@ -110,7 +109,7 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        backend.present(&tato, Some(&mut dash), &mut arena, &[&bg_map]);
+        backend.present(&tato, Some(&mut dash), &[&bg_map]);
     }
     Ok(())
 }

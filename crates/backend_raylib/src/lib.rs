@@ -40,7 +40,7 @@ impl RaylibBackend {
         let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
-        let total_panel_width = (Dashboard::PANEL_WIDTH * 4) + (Dashboard::MARGIN * 2);
+        let total_panel_width = (PANEL_WIDTH * 4) + (MARGIN * 2);
         let adjusted_w = total_panel_width as i32 + (w * multiplier);
 
         // Init Raylib
@@ -144,13 +144,14 @@ impl Backend for RaylibBackend {
     fn present<'a, const LEN: usize, T>(
         &mut self,
         tato: &'a Tato,
-        dash: Option<&'a mut Dashboard>,
-        arena: &'a mut Arena<LEN>,
+        dash: Option<&'a mut Dashboard<LEN>>,
+        // arena: &'a mut Arena<LEN>,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
     {
         self.time_profile = Instant::now();
+        let mut temp_texts = Arena::<32768, u32>::new();
 
         assert!(
             {
@@ -194,7 +195,7 @@ impl Backend for RaylibBackend {
         // But if dashboard is available, queue GUI drawing
         if let Some(dash) = dash {
             if self.debug_mode() {
-                if let Some(canvas_rect) = dash.canvas_rect {
+                if let Some(canvas_rect) = dash.canvas_rect() {
                     // Adjust canvas to fit rect
                     // let (rect, _scale) =
                     //     canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
@@ -210,41 +211,54 @@ impl Backend for RaylibBackend {
                 };
 
                 // Push timing data before moving ops out of dashboard
-                dash.add_text(
-                    &format!(
-                        "iter time: {:.1} ms", //
-                        self.buffer_iter_time.average() * 1000.0
-                    ),
-                    arena,
-                );
-                dash.add_text(
-                    &format!("canvas time: {:.1} ms", self.buffer_canvas_time.average() * 1000.0),
-                    arena,
-                );
+                dash.add_text(&format!(
+                    "iter time: {:.1} ms", //
+                    self.buffer_iter_time.average() * 1000.0
+                ));
+                dash.add_text(&format!(
+                    "canvas time: {:.1} ms",
+                    self.buffer_canvas_time.average() * 1000.0
+                ));
 
                 // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-                dash.render(tato, arena, self.dash_args);
+                dash.render(tato, self.dash_args);
 
                 // Copy tile pixels from dashboard to GPU textures
                 for bank_index in 0..TILE_BANK_COUNT {
                     // texture ID = bank_index
-                    if let Some(pixels) = dash.tile_pixels.get(bank_index) {
+                    if let Some(pixels) = dash.tile_pixels(bank_index) {
                         if !pixels.is_empty() {
                             Self::update_texture_internal(
                                 &mut self.textures,
                                 &mut self.ray,
                                 &self.thread,
                                 bank_index,
-                                pixels.as_slice(&dash.pixel_arena).unwrap(),
+                                pixels,
                             );
                         }
                     }
                 }
             }
 
-            for id in dash.ops.items(arena).unwrap() {
-                let op = arena.get(id).unwrap();
-                self.draw_ops.push(op.clone());
+            for op in dash.draw_ops().unwrap() {
+                match op {
+                    DrawOp::None => {},
+                    DrawOp::Text { text, x, y, size, color } => {
+                        if let Some(text_str) = text.as_str(dash.arena()) {
+                            let new_text = Text::from_str(&mut temp_texts, text_str);
+                            if let Ok(text) = new_text {
+                                self.draw_ops.push(DrawOp::Text {
+                                    text,
+                                    x: *x,
+                                    y: *y,
+                                    size: *size,
+                                    color: *color,
+                                })
+                            }
+                        }
+                    },
+                    _ => self.draw_ops.push(op.clone()),
+                }
             }
         }
 
@@ -252,55 +266,54 @@ impl Backend for RaylibBackend {
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
 
-        let mut process_draw_op = |cmd: DrawOp| match cmd {
-            DrawOp::None => {},
-            DrawOp::Rect { rect, color } => {
-                canvas.draw_rectangle(
-                    rect.x as i32,
-                    rect.y as i32,
-                    rect.w as i32,
-                    rect.h as i32,
-                    rgba32_to_rl_color(color),
-                );
-            },
-            DrawOp::Line { x1, y1, x2, y2, color } => {
-                canvas.draw_line(
-                    x1 as i32,
-                    y1 as i32,
-                    x2 as i32,
-                    y2 as i32,
-                    rgba32_to_rl_color(color),
-                );
-            },
-            DrawOp::Texture { id, rect, tint } => {
-                if id < self.textures.len() {
-                    let w = self.textures[id].width() as f32;
-                    let scale = rect.w as f32 / w;
-                    canvas.draw_texture_ex(
-                        &self.textures[id],
-                        Vector2::new(rect.x as f32, rect.y as f32),
-                        0.0,
-                        scale,
-                        rgba32_to_rl_color(tint),
-                    );
-                }
-            },
-            DrawOp::Text { text, x, y, size, color } => {
-                let text = text.as_str(arena).unwrap();
-                canvas.draw_text_ex(
-                    &self.font,
-                    text,
-                    Vector2::new(x as f32, y as f32),
-                    size,
-                    1.0,
-                    rgba32_to_rl_color(color),
-                );
-            },
-        };
-
         // Execute draw ops
         for cmd in self.draw_ops.drain(..) {
-            process_draw_op(cmd)
+            match cmd {
+                DrawOp::None => {},
+                DrawOp::Rect { rect, color } => {
+                    canvas.draw_rectangle(
+                        rect.x as i32,
+                        rect.y as i32,
+                        rect.w as i32,
+                        rect.h as i32,
+                        rgba32_to_rl_color(color),
+                    );
+                },
+                DrawOp::Line { x1, y1, x2, y2, color } => {
+                    canvas.draw_line(
+                        x1 as i32,
+                        y1 as i32,
+                        x2 as i32,
+                        y2 as i32,
+                        rgba32_to_rl_color(color),
+                    );
+                },
+                DrawOp::Texture { id, rect, tint } => {
+                    if id < self.textures.len() {
+                        let w = self.textures[id].width() as f32;
+                        let scale = rect.w as f32 / w;
+                        canvas.draw_texture_ex(
+                            &self.textures[id],
+                            Vector2::new(rect.x as f32, rect.y as f32),
+                            0.0,
+                            scale,
+                            rgba32_to_rl_color(tint),
+                        );
+                    }
+                },
+                DrawOp::Text { text, x, y, size, color } => {
+                    if let Some(text) = text.as_str(&temp_texts) {
+                        canvas.draw_text_ex(
+                            &self.font,
+                            text,
+                            Vector2::new(x as f32, y as f32),
+                            size,
+                            1.0,
+                            rgba32_to_rl_color(color),
+                        );
+                    }
+                },
+            }
         }
 
         // Time to queue all backed drawing, does not include actual render time,

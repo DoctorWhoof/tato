@@ -14,7 +14,7 @@ fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
     let mut arena = Arena::<32768>::new();
-    let mut dash = Dashboard::new(&mut arena).unwrap();
+    let mut dash = Dashboard::<24_576>::new().unwrap();
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
@@ -67,9 +67,9 @@ fn main() -> TatoResult<()> {
     // Main Loop
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
-        arena.clear();
+
         tato.frame_start(backend.ray.get_frame_time());
-        dash.frame_start(&mut arena);
+        dash.frame_start();
         backend.update_input(&mut tato.pad);
 
         // "Envelopes"
@@ -143,7 +143,7 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
-        backend.present(&tato, Some(&mut dash), &mut arena, &[&bg_map]);
+        backend.present(&tato, Some(&mut dash), &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

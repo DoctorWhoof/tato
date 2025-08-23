@@ -16,6 +16,7 @@ where
 {
     /// Get the text as &str (requires arena for safety)
     /// Returns None if the bytes are not valid UTF-8
+    // TODO: Return result intead of option
     pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a str> {
         let bytes = arena.get_slice(&self.slice).ok()?;
         core::str::from_utf8(bytes).ok()

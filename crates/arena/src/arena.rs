@@ -62,9 +62,9 @@ where
 
         // Check space
         if aligned_offset + size > LEN {
-            return Err(ArenaError::OutOfSpace { 
-                requested: size, 
-                available: LEN - aligned_offset 
+            return Err(ArenaError::OutOfSpace {
+                requested: size,
+                available: LEN - aligned_offset
             });
         }
 
@@ -77,9 +77,9 @@ where
         }
 
         let id = ArenaId::new(
-            self.offset, 
-            Idx::try_from(size).map_err(|_| ArenaError::IndexConversion)?, 
-            self.generation, 
+            self.offset,
+            Idx::try_from(size).map_err(|_| ArenaError::IndexConversion)?,
+            self.generation,
             self.arena_id
         );
 
@@ -152,9 +152,9 @@ where
 
         // Check space
         if aligned_offset + total_size > LEN {
-            return Err(ArenaError::OutOfSpace { 
-                requested: total_size, 
-                available: LEN - aligned_offset 
+            return Err(ArenaError::OutOfSpace {
+                requested: total_size,
+                available: LEN - aligned_offset
             });
         }
 
@@ -266,9 +266,9 @@ where
 
         // Check space
         if aligned_offset + total_size > LEN {
-            return Err(ArenaError::OutOfSpace { 
-                requested: total_size, 
-                available: LEN - aligned_offset 
+            return Err(ArenaError::OutOfSpace {
+                requested: total_size,
+                available: LEN - aligned_offset
             });
         }
 
@@ -330,17 +330,17 @@ where
     fn validate_id<T>(&self, id: &ArenaId<T, Idx, Marker>) -> ArenaResult<()> {
         // Check arena ID first (cross-arena safety)
         if id.arena_id != self.arena_id {
-            return Err(ArenaError::CrossArenaAccess { 
-                expected_id: self.arena_id, 
-                found_id: id.arena_id 
+            return Err(ArenaError::CrossArenaAccess {
+                expected_id: self.arena_id,
+                found_id: id.arena_id
             });
         }
 
         // Check generation (temporal safety)
         if id.generation != self.generation {
-            return Err(ArenaError::InvalidGeneration { 
-                expected: self.generation, 
-                found: id.generation 
+            return Err(ArenaError::InvalidGeneration {
+                expected: self.generation,
+                found: id.generation
             });
         }
 
@@ -414,17 +414,17 @@ where
     fn validate_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> ArenaResult<()> {
         // Check arena ID first (cross-arena safety)
         if slice.arena_id != self.arena_id {
-            return Err(ArenaError::CrossArenaAccess { 
-                expected_id: self.arena_id, 
-                found_id: slice.arena_id 
+            return Err(ArenaError::CrossArenaAccess {
+                expected_id: self.arena_id,
+                found_id: slice.arena_id
             });
         }
 
         // Check generation (temporal safety)
         if slice.generation != self.generation {
-            return Err(ArenaError::InvalidGeneration { 
-                expected: self.generation, 
-                found: slice.generation 
+            return Err(ArenaError::InvalidGeneration {
+                expected: self.generation,
+                found: slice.generation
             });
         }
 

@@ -50,8 +50,8 @@ pub trait Backend {
     fn present<'a, const LEN:usize, T>(
         &mut self,
         tato: &'a Tato,
-        dash: Option<&'a mut Dashboard>,
-        arena: &'a mut Arena<LEN>,
+        dash: Option<&'a mut Dashboard<LEN>>,
+        // arena: &'a mut Arena<LEN>,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>;
