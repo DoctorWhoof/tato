@@ -81,7 +81,7 @@ impl<const LEN: usize> Dashboard<LEN> {
             temp_arena,
             fixed_arena,
             tile_pixels,
-            mouse_over_text: Buffer::default(),
+            mouse_over_text: Text::default(),
             font_size: 8.0,
             ops,
             console_buffer,
@@ -129,7 +129,7 @@ impl<const LEN: usize> Dashboard<LEN> {
     pub fn frame_start(&mut self) {
         self.temp_arena.clear();
         self.ops = Buffer::new(&mut self.temp_arena, OP_COUNT).unwrap();
-        self.mouse_over_text = Buffer::default(); // Buffer unallocated, essentially same as "None"
+        self.mouse_over_text = Text::default(); // Text unallocated, essentially same as "None"
         self.additional_text = Buffer::new(&mut self.temp_arena, MAX_LINES).unwrap();
     }
 

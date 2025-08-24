@@ -2,11 +2,24 @@
 mod debug_buffer;
 use debug_buffer::*;
 
-use crate::{Arena, ArenaError, ArenaIndex, ArenaResult, Buffer};
+use crate::{Arena, ArenaError, ArenaIndex, ArenaResult, Slice};
 use core::fmt::Write;
 
-/// Type alias for text stored as a Slice<u8>
-pub type Text<Idx = u16> = Buffer<u8, Idx>;
+/// Text stored as bytes in the arena
+#[derive(Debug, Clone)]
+pub struct Text<Idx = u16> {
+    pub slice: Slice<u8, Idx>,
+}
+
+/// Unnalocated Text (will fail any attempt to obtain its data from an arena)
+impl<Idx> Default for Text<Idx>
+where
+    Idx: ArenaIndex,
+{
+    fn default() -> Self {
+        Self { slice: Default::default() }
+    }
+}
 
 /// Implementation for "Slice<u8>"" specifically to add text functionality. You can convert to and from
 /// &str, and use [Text::format] for very basic message+value formatting in no_std environments.
@@ -14,6 +27,15 @@ impl<Idx> Text<Idx>
 where
     Idx: ArenaIndex,
 {
+    /// Get the length of the text in bytes
+    pub fn len(&self) -> usize {
+        self.slice.len().to_usize()
+    }
+
+    /// Check if the text is empty
+    pub fn is_empty(&self) -> bool {
+        self.slice.len() == Idx::zero()
+    }
     /// Get the text as &str (requires arena for safety)
     /// Returns None if the bytes are not valid UTF-8
     // TODO: Return result intead of option
@@ -26,7 +48,8 @@ where
     pub fn from_str<const LEN: usize>(arena: &mut Arena<LEN, Idx>, s: &str) -> ArenaResult<Self> {
         let bytes = s.as_bytes();
         let len = Idx::from_usize_checked(s.len()).ok_or(ArenaError::IndexConversion)?;
-        Buffer::from_fn(arena, len, |i| bytes[i])
+        let slice = arena.alloc_slice_from_fn(len, |i| bytes[i])?;
+        Ok(Self { slice })
     }
 
     /// Create text from a valid (but non-zero) ASCII slice
@@ -44,59 +67,63 @@ where
             }
         }
         if len > Idx::zero() {
-            Buffer::from_fn(arena, len, |i| bytes[i])
+            let slice = arena.alloc_slice_from_fn(len, |i| bytes[i])?;
+            Ok(Self { slice })
         } else {
             ArenaResult::Err(ArenaError::InvalidOrEmptyUTF8)
         }
     }
 
-    /// Count placeholders in a format string
-    fn count_placeholders(message: &str) -> usize {
-        let mut count = 0;
-        let mut remaining = message;
-        while let Some((_, end, _)) = crate::text::debug_buffer::parse_format_string(remaining) {
-            count += 1;
-            remaining = &remaining[end..];
-        }
-        count
+    /// Create text from a function that generates bytes
+    pub fn from_fn<const LEN: usize, F>(
+        arena: &mut Arena<LEN, Idx>,
+        length: Idx,
+        func: F,
+    ) -> ArenaResult<Self>
+    where
+        F: FnMut(usize) -> u8,
+    {
+        let slice = arena.alloc_slice_from_fn(length, func)?;
+        Ok(Self { slice })
     }
 
-    /// Validate format string and provide clear error for invalid placeholders
-    fn validate_format_string(message: &str) -> Result<(), &'static str> {
-        let mut remaining = message;
+    /// Join multiple text instances into a single text. Will fail for lengths over 1Kb.
+    pub fn join<const LEN: usize>(
+        arena: &mut Arena<LEN, Idx>,
+        sources: &[Text<Idx>],
+    ) -> ArenaResult<Self> {
+        if sources.is_empty() {
+            return Ok(Self::default());
+        }
 
-        while let Some(start) = remaining.find('{') {
-            if let Some(end_pos) = remaining[start..].find('}') {
-                let placeholder = &remaining[start..start + end_pos + 1];
+        // Calculate total length first
+        let mut total_len = 0usize;
+        for text in sources {
+            total_len += text.slice.len().to_usize();
+        }
+        let final_len = Idx::from_usize_checked(total_len).ok_or(ArenaError::IndexConversion)?;
 
-                // Try to parse this placeholder
-                if crate::text::debug_buffer::parse_format_string(&remaining[start..]).is_none() {
-                    // Check for common invalid patterns
-                    if placeholder.contains("?}") && !placeholder.ends_with(":?}") {
-                        return Err(
-                            "Invalid format specifier: precision with debug (?), use either {:.N} or {:?}",
-                        );
-                    }
-                    if placeholder.contains(":.") && placeholder.contains("?") {
-                        return Err(
-                            "Invalid format specifier: cannot combine precision and debug formatting",
-                        );
-                    }
-                    return Err("Invalid format specifier: supported formats are {}, {:?}, {:.N}");
+        // Use a temp arena to collect all the bytes, then copy to dest arena
+        let mut temp_arena = Arena::<1024, Idx>::new();
+        let temp_slice = temp_arena.alloc_slice_from_fn(final_len, |i| {
+            // Find which source this byte belongs to
+            let mut offset = 0usize;
+            for text in sources {
+                let text_len = text.slice.len().to_usize();
+                if i < offset + text_len {
+                    // Get the byte from this text
+                    let bytes = arena.get_slice(&text.slice).unwrap();
+                    return bytes[i - offset];
                 }
-
-                remaining = &remaining[start + end_pos + 1..];
-            } else {
-                return Err("Invalid format string: found '{' without matching '}'");
+                offset += text_len;
             }
-        }
+            0 // Should never reach here
+        })?;
 
-        // Check for unmatched '}'
-        if remaining.contains('}') {
-            return Err("Invalid format string: found '}' without matching '{'");
-        }
-
-        Ok(())
+        // Now copy from temp arena to dest arena
+        let temp_bytes = temp_arena.get_slice(&temp_slice)?;
+        let slice = arena.alloc_slice_from_fn(final_len, |i| temp_bytes[i])?;
+        Ok(Self { slice })
     }
 
     /// Create formatted text using Debug trait
@@ -146,7 +173,8 @@ where
         let total_len =
             Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
-        Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
+        let slice = arena.alloc_slice_from_fn(total_len, |i| formatted_str.as_bytes()[i])?;
+        Ok(Self { slice })
     }
 
     /// Create formatted text using Display trait
@@ -196,7 +224,8 @@ where
         let total_len =
             Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
-        Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
+        let slice = arena.alloc_slice_from_fn(total_len, |i| formatted_str.as_bytes()[i])?;
+        Ok(Self { slice })
     }
 
     /// Create formatted text with full format support
@@ -233,26 +262,56 @@ where
         let total_len =
             Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
-        Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
+        let slice = arena.alloc_slice_from_fn(total_len, |i| formatted_str.as_bytes()[i])?;
+        Ok(Self { slice })
     }
 
-    // TODO: Delete this. A buffer of arena Ids is much more memory friendly,
-    // since it doesn't pre-allocate all items. Still in use in Tato.debug_strings
-    /// A Buffer of Text lines (which are, themselves, buffers).
-    /// Helps to get around borrowing issues since the buffer and the text lines
-    /// are in the same arena.
-    /// Warning: All text lines are pre-initialized!
-    /// Use clear() after creating if you want to start empty.
-    pub fn text_multi_buffer<const ARENA_LEN: usize>(
-        arena: &mut Arena<ARENA_LEN, Idx>,
-        item_count: Idx,
-        item_length: Idx,
-        init_with_zero_len: bool,
-    ) -> ArenaResult<Buffer<Text<Idx>, Idx>> {
-        let mut result = Self::multi_buffer::<ARENA_LEN>(arena, item_count, item_length)?;
-        if init_with_zero_len {
-            result.clear();
+    /// Count placeholders in a format string
+    fn count_placeholders(message: &str) -> usize {
+        let mut count = 0;
+        let mut remaining = message;
+        while let Some((_, end, _)) = crate::text::debug_buffer::parse_format_string(remaining) {
+            count += 1;
+            remaining = &remaining[end..];
         }
-        Ok(result)
+        count
+    }
+
+    /// Validate format string and provide clear error for invalid placeholders
+    fn validate_format_string(message: &str) -> Result<(), &'static str> {
+        let mut remaining = message;
+
+        while let Some(start) = remaining.find('{') {
+            if let Some(end_pos) = remaining[start..].find('}') {
+                let placeholder = &remaining[start..start + end_pos + 1];
+
+                // Try to parse this placeholder
+                if crate::text::debug_buffer::parse_format_string(&remaining[start..]).is_none() {
+                    // Check for common invalid patterns
+                    if placeholder.contains("?}") && !placeholder.ends_with(":?}") {
+                        return Err(
+                            "Invalid format specifier: precision with debug (?), use either {:.N} or {:?}",
+                        );
+                    }
+                    if placeholder.contains(":.") && placeholder.contains("?") {
+                        return Err(
+                            "Invalid format specifier: cannot combine precision and debug formatting",
+                        );
+                    }
+                    return Err("Invalid format specifier: supported formats are {}, {:?}, {:.N}");
+                }
+
+                remaining = &remaining[start + end_pos + 1..];
+            } else {
+                return Err("Invalid format string: found '{' without matching '}'");
+            }
+        }
+
+        // Check for unmatched '}'
+        if remaining.contains('}') {
+            return Err("Invalid format string: found '}' without matching '{'");
+        }
+
+        Ok(())
     }
 }

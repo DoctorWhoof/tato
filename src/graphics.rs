@@ -240,6 +240,6 @@ impl Tato {
     fn get_frame_from_anim_entry(&self, anim: &AnimEntry) -> usize {
         assert!(anim.fps > 0, "Animation FPS must be higher than zero");
         let frame_duration = 1.0 / anim.fps as f32;
-        ((self.time as f32 / frame_duration) % anim.frames.len() as f32) as usize
+        ((self.time() as f32 / frame_duration) % anim.frames.len() as f32) as usize
     }
 }

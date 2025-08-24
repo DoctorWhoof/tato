@@ -31,7 +31,7 @@ pub enum ArenaError {
     IndexConversion,
     /// Slice capacity exceeded
     CapacityExceeded,
-    ///
+    /// Text generation failed due to empty source bytes or invalid characters
     InvalidOrEmptyUTF8
 }
 

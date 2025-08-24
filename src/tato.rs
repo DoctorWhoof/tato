@@ -27,9 +27,9 @@ pub struct Tato {
 
     // Internals
     pub target_fps: u8,
-    pub(crate) time: f64,
-    pub(crate) delta: f32,
-    pub(crate) elapsed_time: f32,
+    time: f64,
+    delta: f32,
+    elapsed_time: f32,
     frame_started: bool,
     frame_finished: bool,
 
@@ -44,9 +44,9 @@ impl Tato {
         let mut debug_arena = Arena::new();
         let debug_polys = Buffer::new(&mut debug_arena, DEBUG_POLY_COUNT).unwrap();
         let debug_polys_world = Buffer::new(&mut debug_arena, DEBUG_POLY_COUNT).unwrap();
-        let debug_strings =
-            Buffer::text_multi_buffer(&mut debug_arena, DEBUG_STR_COUNT, DEBUG_STR_LINE_LEN, true)
-                .unwrap();
+        let debug_strings = Buffer::new(&mut debug_arena, DEBUG_STR_COUNT).unwrap();
+            // Text::multi_buffer(&mut debug_arena, DEBUG_STR_COUNT, DEBUG_STR_LINE_LEN, true)
+            //     .unwrap();
 
         Self {
             assets: Assets::new(),
@@ -114,13 +114,7 @@ impl Tato {
         // Re-inits buffers. (if I just clear, all arena handles are invalidated!)
         self.debug_polys = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
         self.debug_polys_world = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
-        self.debug_strings = Buffer::text_multi_buffer(
-            &mut self.debug_arena,
-            DEBUG_STR_COUNT,
-            DEBUG_STR_LINE_LEN,
-            true,
-        )
-        .unwrap();
+        self.debug_strings = Buffer::new(&mut self.debug_arena, DEBUG_STR_COUNT).unwrap();
     }
 
     pub fn frame_finish(&mut self) {
