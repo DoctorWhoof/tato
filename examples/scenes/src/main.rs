@@ -5,7 +5,8 @@ mod scene_c;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use tato::{Tato, prelude::*};
+use tato::prelude::*;
+
 use tato_raylib::*;
 
 #[derive(Debug, Clone)]
@@ -45,52 +46,58 @@ pub enum Scene {
 fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut scene = Scene::None;
-    let mut t = Tato::new(240, 180, 60);
+    let mut tato = Tato::new(240, 180, 60);
+    let mut dash = Dashboard::<24_576>::new().unwrap();
 
     let mut state = State {
-        pad: t.pad,
+        pad: tato.pad,
         time: 0.0,
         elapsed: 0.0,
         bg: Tilemap::<1600>::new(42, 28),
     };
 
     // Line scrolling effect, adjusts scroll on every line
-    t.video.irq_line = Some(|iter, video, _bg| {
+    tato.video.irq_line = Some(|iter, video, _bg| {
         let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;
-        let phase = ((video.frame_count() as f32 / 30.0) + line_offset).sin();
+        let phase = ((video.frame_number() as f32 / 30.0) + line_offset).sin();
         iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
     });
 
     // Backend
     let target_fps = 60.0;
-    let mut back = RaylibBackend::new(&t);
-    while !back.ray.window_should_close() {
-        t.frame_start(back.ray.get_frame_time());
-        back.update_gamepad(&mut t.pad);
-        state.time = back.ray.get_time();
+    let mut backend = RaylibBackend::new(&tato);
+    backend.print_frame_time = false;
+    while !backend.ray.window_should_close() {
+
+        dash.frame_start();
+        tato.frame_start(backend.ray.get_frame_time());
+
+        backend.update_input(&mut tato.pad);
+        state.time = backend.ray.get_time();
         state.elapsed = 1.0 / target_fps as f64;
-        state.pad = t.pad;
+        state.pad = tato.pad;
 
         // If scene_change is None, immediately switch to A, otherwise process it.
         let scene_change = match &mut scene {
             Scene::None => Some(SceneChange::A),
-            Scene::A(scn) => scn.update(&mut t, &mut state),
-            Scene::B(scn) => scn.update(&mut t, &mut state),
-            Scene::C(scn) => scn.update(&mut t, &mut state),
+            Scene::A(scn) => scn.update(&mut tato, &mut state),
+            Scene::B(scn) => scn.update(&mut tato, &mut state),
+            Scene::C(scn) => scn.update(&mut tato, &mut state),
         };
 
         // Update backend
-        t.frame_finish();
-        back.render(&mut t, &[&state.bg]);
+        tato.frame_finish();
+        backend.present(&tato, Some(&mut dash), &[&state.bg]);
+
 
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {
-            t.video.reset_all();
-            t.reset();
+            tato.video.reset_all();
+            tato.reset();
             match choice {
-                SceneChange::A => scene = Scene::A(SceneA::new(&mut t, &mut state)?),
-                SceneChange::B => scene = Scene::B(SceneB::new(&mut t, &mut state)?),
-                SceneChange::C => scene = Scene::C(SceneC::new(&mut t, &mut state)?),
+                SceneChange::A => scene = Scene::A(SceneA::new(&mut tato, &mut state)?),
+                SceneChange::B => scene = Scene::B(SceneB::new(&mut tato, &mut state)?),
+                SceneChange::C => scene = Scene::C(SceneC::new(&mut tato, &mut state)?),
             }
         }
     }

@@ -8,7 +8,7 @@ mod palette_image;
 pub(crate) use palette_image::*;
 
 // Public API
-pub use {PaletteBuilder, TilesetBuilder};
+pub use {GroupBuilder, PaletteBuilder, TilesetBuilder};
 
 /// Initializes build script integration with cargo
 pub fn init_build() {

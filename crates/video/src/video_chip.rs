@@ -1,3 +1,5 @@
+use tato_math::Vec2;
+
 use crate::*;
 
 /// A convenient packet of data used to draw a single tile as a sprite.
@@ -50,7 +52,7 @@ pub struct VideoChip {
     pub(crate) view_right: u16,
     pub(crate) view_bottom: u16,
     // Internal timer.
-    frame_count: usize,
+    frame_number: usize,
 }
 
 impl VideoChip {
@@ -59,7 +61,7 @@ impl VideoChip {
         assert!(h > 7 && h <= MAX_LINES as u16, err!("Screen height range is 8 to MAX_LINES"));
 
         let mut result = Self {
-            bg_color: RGBA12::new(0, 0, 0, 7), // TODO: replace with RGBA12::BLACK
+            bg_color: RGBA12::BLACK,
             wrap_sprites: true,
             wrap_bg: true,
             sprite_gen: SpriteGenerator::new(),
@@ -71,7 +73,7 @@ impl VideoChip {
             h,
             scroll_x: 0,
             scroll_y: 0,
-            frame_count: 0,
+            frame_number: 0,
             // Video IRQs
             // irq_x_callback: None,
             irq_line: None,
@@ -92,24 +94,34 @@ impl VideoChip {
         result
     }
 
+    #[inline]
     pub fn max_x(&self) -> u16 {
         self.w - 1
     }
 
+    #[inline]
     pub fn max_y(&self) -> u16 {
         self.h - 1
     }
 
+    #[inline]
     pub fn width(&self) -> u16 {
         self.w
     }
 
+    #[inline]
     pub fn height(&self) -> u16 {
         self.h
     }
 
-    pub fn frame_count(&self) -> usize {
-        self.frame_count
+    #[inline]
+    pub fn size(&self) -> Vec2<i16> {
+        Vec2 { x: self.w as i16, y: self.h as i16 }
+    }
+
+    #[inline]
+    pub fn frame_number(&self) -> usize {
+        self.frame_number
     }
 
     /// Does not affect BG or Sprites calculation, but "masks" PixelIter pixels outside
@@ -123,9 +135,9 @@ impl VideoChip {
 
     /// Resets the chip to its initial state.
     pub fn reset_all(&mut self) {
-        self.bg_color = RGBA12::new(0, 0, 0, 7); // TODO: replace with RGBA12::BLACK
+        self.bg_color = RGBA12::BLACK;
         self.wrap_sprites = true;
-        self.frame_count = 0;
+        self.frame_number = 0;
         self.fg_tile_bank = 0;
         self.bg_tile_bank = 0;
         self.reset_scroll();
@@ -223,11 +235,19 @@ impl VideoChip {
             }
         }
 
-        self.sprite_gen.insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id, data.sub_palette);
+        self.sprite_gen.insert(
+            wrapped_x,
+            wrapped_y,
+            self.w,
+            self.h,
+            data.flags,
+            data.id,
+            data.sub_palette,
+        );
     }
 
-    pub fn start_frame(&mut self) {
-        self.frame_count += 1;
+    pub fn frame_start(&mut self) {
+        self.frame_number += 1;
         self.reset_sprites();
     }
 

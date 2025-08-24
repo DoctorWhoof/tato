@@ -14,10 +14,7 @@ const DEFAULT_VALUE: u32 = 0b_01100010_10101111_01101010_10101011;
 impl Rng {
     /// Creates a new LFSR with `n` bits and an initial state.
     pub fn new(bit_count: u32, initial_state: u32) -> Self {
-        debug_assert!(
-            bit_count >= 3 && bit_count <= 32,
-            "bit_count must be between 3 and 32"
-        );
+        debug_assert!(bit_count >= 3 && bit_count <= 32, "bit_count must be between 3 and 32");
         let bit_count = bit_count.clamp(3, 32);
         let mask = ((1u64 << bit_count) - 1) as u32;
         let state = if (initial_state & mask) == 0 {
@@ -54,8 +51,6 @@ impl Rng {
     pub fn next_f32(&mut self) -> f32 {
         self.next_u32() as f32 / self.f32_max
     }
-
-
 }
 
 #[inline(always)]

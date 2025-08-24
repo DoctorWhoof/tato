@@ -3,27 +3,8 @@ pub use text::*;
 
 use crate::prelude::*;
 
+/// Drawing functions and graphics helpers.
 impl Tato {
-    pub fn draw_tilemap_to<const LEN: usize>(
-        &self,
-        dest: &mut Tilemap<LEN>,
-        dest_rect: Option<Rect<u16>>,
-        src: MapID,
-        src_rect: Option<Rect<u16>>,
-    ) {
-        let Ok(src) = self.get_tilemap(src) else { return };
-        dest.copy_from(&src, src_rect, dest_rect);
-    }
-
-    // Internal way to get the current frame from an already obtained AnimEntry
-    #[inline(always)]
-    fn get_frame_from_anim_entry(&self, anim: &AnimEntry) -> usize {
-        assert!(anim.fps > 0, "Animation FPS must be higher than zero");
-        let frame_duration = 1.0 / anim.fps as f32;
-        ((self.time as f32 / frame_duration) % anim.frames.len() as f32) as usize
-    }
-
-    // Public way to obtain the animation frame
     /// Obtains the frame index on a given Animation based on the video chip's
     /// internal frame counter.
     #[inline(always)]
@@ -38,8 +19,21 @@ impl Tato {
         self.get_frame_from_anim_entry(anim_entry)
     }
 
-    /// Draws a sprite's frame, which is calculated using the video chip's
-    /// internal frame counter.
+    /// Copies a rectangular area from a tilemap into another.
+    /// If any rect is "None" the entire map is used.
+    pub fn draw_tilemap_to<const LEN: usize>(
+        &self,
+        dest: &mut Tilemap<LEN>,
+        dest_rect: Option<Rect<u16>>,
+        src: MapID,
+        src_rect: Option<Rect<u16>>,
+    ) {
+        let Ok(src) = self.get_tilemap(src) else { return };
+        dest.copy_from(&src, src_rect, dest_rect);
+    }
+
+    /// Draws a sprite's current frame (calculated using the video chip's
+    /// internal time counter).
     pub fn draw_anim(&mut self, anim: AnimID, bundle: SpriteBundle) {
         // AnimID(0) means no animation - don't draw anything
         if anim.0 == 0 {
@@ -48,13 +42,12 @@ impl Tato {
         let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
             return;
         };
-        let Some(strip_entry) = self.assets.strip_entries.get(anim_entry.strip_id.0 as usize)
-        else {
+        let Some(strip_entry) = self.assets.strip_entries.get(anim_entry.strip.0 as usize) else {
             return;
         };
 
         let base_index = self.get_frame_from_anim_entry(anim_entry);
-        let Some(frames) = self.assets.arena.get_pool(&anim_entry.frames) else { return };
+        let Ok(frames) = self.assets.arena.get_slice(&anim_entry.frames) else { return };
         let Some(anim_index) = frames.get(base_index) else { return };
         let start_index = strip_entry.start_index;
         let index = start_index + anim_index;
@@ -65,21 +58,24 @@ impl Tato {
             err!("Animation frame exceeds strip length")
         );
 
-        let Some(cells) = self.assets.arena.get_pool(&map_entry.cells) else { return };
+        let Ok(cells) = self.assets.arena.get_slice(&map_entry.cells) else { return };
         self.video.draw_sprite(
             bundle,
             &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },
         );
     }
 
+    /// Draws a "patch" (sometimes called "9-Patch") into a tilemap.
+    /// Patches are always 3x3 tilemaps, where each cell
+    /// can represent a corner, and edge or the center tile.
     pub fn draw_patch<const LEN: usize>(
         &mut self,
         bg: &mut Tilemap<LEN>,
         bg_rect: Rect<i16>,
-        map_id: MapID,
+        patch_id: MapID,
     ) {
         // let map = &self.assets.map_entries[map_id.0 as usize];
-        let Ok(map) = self.get_tilemap(map_id) else { return };
+        let Ok(map) = self.get_tilemap(patch_id) else { return };
 
         if map.columns != 3 || map.rows != 3 {
             return; // Silently return for invalid patch dimensions
@@ -182,14 +178,15 @@ impl Tato {
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_right.id,
             flags: bottom_right.flags,
-            sub_palette: bottom.sub_palette
+            sub_palette: bottom.sub_palette,
         });
     }
 
-    /// "Draws" a text string to the BG Map, returns the resulting height (in rows), if any.
+    /// Draws a text string to a target Tilemap, using a tilemap as a character font.
+    /// Returns the resulting height (in rows), if any.
     pub fn draw_text<const LEN: usize>(
         &mut self,
-        bg: &mut Tilemap<LEN>,
+        target: &mut Tilemap<LEN>,
         text: &str,
         op: TextOp,
     ) -> Option<i16> {
@@ -206,12 +203,12 @@ impl Tato {
             let col = char_index % font_cols;
             let row = char_index / font_cols;
             if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
-                bg.set_cell(BgOp {
+                target.set_cell(BgOp {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
                     tile_id: TileID(cell.id.0 + tile_start),
                     flags: cell.flags,
-                    sub_palette: op.palette
+                    sub_palette: op.palette,
                 });
             }
         };
@@ -236,5 +233,13 @@ impl Tato {
 
         // If successful, return number of lines written
         Some(cursor_y + 1)
+    }
+
+    // Internal way to get the current frame from an already obtained AnimEntry
+    #[inline(always)]
+    fn get_frame_from_anim_entry(&self, anim: &AnimEntry) -> usize {
+        assert!(anim.fps > 0, "Animation FPS must be higher than zero");
+        let frame_duration = 1.0 / anim.fps as f32;
+        ((self.time() as f32 / frame_duration) % anim.frames.len() as f32) as usize
     }
 }

@@ -1,12 +1,13 @@
-use tato::video::*;
 use std::fs::File;
 use std::io::Write;
+use tato::video::*;
 
 fn main() {
     println!("Generating RGBA12 palette with 512 colors...");
 
     // Create the .gpl file
-    let mut file = File::create("examples/palette_save/rgb_512_colors.gpl").expect("Failed to create rgb_512_colors.gpl");
+    let mut file = File::create("examples/palette_save/rgb_512_colors.gpl")
+        .expect("Failed to create rgb_512_colors.gpl");
 
     // Write the header
     writeln!(file, "GIMP Palette").expect("Failed to write to file");
@@ -19,16 +20,19 @@ fn main() {
         for g in 0..8 {
             for b in 0..8 {
                 // Create RGBA12 color with full alpha (7)
-                let color12 = RGBA12::new(r, g, b, 7);
+                let color12 = RGBA12::new(r, g, b);
 
                 // Convert to RGBA32 to get the actual color values
                 let color32 = RGBA32::from(color12);
 
                 // Write the color to the file
                 // Format: R G B A Name
-                writeln!(file, "{:3} {:3} {:3} {:3} RGB_{}_{}_{}",
-                         color32.r, color32.g, color32.b, color32.a,
-                         r, g, b).expect("Failed to write color to file");
+                writeln!(
+                    file,
+                    "{:3} {:3} {:3} {:3} RGB_{}_{}_{}",
+                    color32.r, color32.g, color32.b, color32.a, r, g, b
+                )
+                .expect("Failed to write color to file");
 
                 count += 1;
             }

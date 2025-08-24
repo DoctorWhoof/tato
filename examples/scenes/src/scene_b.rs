@@ -19,9 +19,9 @@ impl SceneB {
 
         // Colors
         t.video.bg_color = RGBA12::DARK_GREEN;
-        let palette_bg = t.banks[0].push_subpalette([DARK_GREEN, GREEN, DARK_GREEN, DARK_GREEN]);
-        let palette_smiley = t.banks[0].push_subpalette([BG_COLOR, YELLOW, BLACK, BLACK]);
-        let palette_cycler = t.banks[0].push_subpalette([BG_COLOR, WHITE, BLACK, BLACK]);
+        let palette_bg = t.banks[0].push_subpalette([9, 10, 9, 9]);
+        let palette_smiley = t.banks[0].push_subpalette([0, 8, 1, 1]);
+        let palette_cycler = t.banks[0].push_subpalette([0, 3, 1, 1]);
         let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let tile = TILE_SMILEY;
 

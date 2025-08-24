@@ -1,5 +1,5 @@
 use crate::TilesetID;
-use tato_video::{color::PaletteID, DynTilemap};
+use tato_video::{DynTilemap, color::PaletteID};
 
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
@@ -9,7 +9,6 @@ pub struct TextOp<'a> {
     pub width: i16,
     pub palette: PaletteID,
 }
-
 
 /// Extended from the previous functions to include lowercase letters and additional punctuation.
 #[allow(dead_code)]

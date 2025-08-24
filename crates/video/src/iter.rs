@@ -3,9 +3,9 @@ use core::array::from_fn;
 use crate::*;
 
 // Z-buffer priority constants for compositing
-const Z_BG_COLOR: u8 = 0;      // Background color (lowest priority)
-const Z_BG_TILE: u8 = 1;       // Normal background tiles
-const Z_SPRITE: u8 = 2;        // Sprites
+const Z_BG: u8 = 0; // Background color (lowest priority)
+const Z_BG_TILE: u8 = 1; // Normal background tiles
+const Z_SPRITE: u8 = 2; // Sprites
 const Z_BG_FOREGROUND: u8 = 3; // Background tiles with is_fg() flag (highest priority)
 
 /// Renders every pixel as it iterates the entire screen.
@@ -30,18 +30,11 @@ pub struct PixelIter<'a> {
     pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
-    pub scanline: Scanline, // current sprite scanline
-    pub bg_color: RGBA12,   // Background color
+    pub bg_color: RGBA12, // Background color
 
     // Dual buffers for parallel processing
-    sprite_buffer: [RGBA12; 512], // Sprite layer
-    bg_buffer: [RGBA12; 512],     // Background layer (tiles + bg_color)
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Coords {
-    pub x: i16,
-    pub y: i16,
+    sprite_buffer: [RGBA12; MAX_VERTICAL_LINES], // Sprite layer
+    bg_buffer: [RGBA12; MAX_VERTICAL_LINES],     // Background layer (tiles + bg_color)
 }
 
 impl<'a> PixelIter<'a> {
@@ -87,15 +80,15 @@ impl<'a> PixelIter<'a> {
             scroll_x: vid.scroll_x,
             scroll_y: vid.scroll_y,
             bg_color: vid.bg_color,
-            scanline: vid.sprite_gen.scanlines[0].clone(),
-            sprite_buffer: [RGBA12::BG.with_z(Z_SPRITE); 512],
-            bg_buffer: [RGBA12::BG.with_z(Z_BG_COLOR); 512],
+            // scanline: vid.sprite_gen.scanlines[0].clone(),
+            sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES],
+            bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES],
         };
         // Run Y IRQ on first line before anything else
         result.call_line_irq();
 
         // Pre-render first line
-        result.pre_render_line();
+        // result.pre_render_line();
         result
     }
 
@@ -116,21 +109,65 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline(always)]
-    fn pre_render_sprites(&mut self, width: u16) {
+    fn pre_render_line(&mut self) {
         // Pre-calculate viewport bounds
-        let viewport_start = self.vid.view_left.max(0) as usize;
-        let viewport_end = (self.vid.view_right + 1).min(width) as usize;
+        let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
+        let view_start = self.vid.view_left.max(0) as usize;
+        let view_end = (self.vid.view_right + 1).min(width) as usize;
+        if view_start >= view_end {
+            return;
+        }
 
+        if self.y < self.vid.view_top {
+            return;
+        }
+
+        if self.y > self.vid.view_bottom {
+            // Clear bg bottom. This can probably be eliminated if I change how BG renders
+            self.bg_buffer = [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES];
+            self.sprite_buffer = [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES];
+            return;
+        }
+
+        // Render both buffers independently (I hope CPU parallelism kicks in!)
         // Clear sprite buffer only in viewport
         unsafe {
             let ptr = self.sprite_buffer.as_mut_ptr();
-            for x in viewport_start..viewport_end {
-                *ptr.add(x) = RGBA12::BG;
+            for x in view_start..view_end {
+                *ptr.add(x) = RGBA12::TRANSPARENT;
             }
         }
+        self.pre_render_sprites(width, view_start, view_end);
+
+        // Fast fill non-viewport areas with bg_color
+        unsafe {
+            let bg_color = self.bg_color;
+            // Fill start
+            if view_start > 0 {
+                let ptr = self.bg_buffer.as_mut_ptr();
+                for i in 0..view_start {
+                    *ptr.add(i) = bg_color.with_z(Z_BG);
+                }
+            }
+            // Fill end
+            if view_end < width as usize {
+                let ptr = self.bg_buffer.as_mut_ptr();
+                for i in view_end..width as usize {
+                    *ptr.add(i) = bg_color.with_z(Z_BG);
+                }
+            }
+        }
+        self.pre_render_background(width);
+    }
+
+    #[inline(always)]
+    fn pre_render_sprites(&mut self, width: u16, view_start: usize, view_end: usize) {
+        self.x = 0;
+        // self.scanline = self.vid.sprite_gen.scanlines[self.y as usize].clone();
+        let scanline = &self.vid.sprite_gen.scanlines[self.y as usize];
 
         // Early exit if no sprites or no viewport
-        if self.scanline.mask == 0 || viewport_start >= viewport_end {
+        if scanline.mask == 0 {
             return;
         }
 
@@ -138,8 +175,8 @@ impl<'a> PixelIter<'a> {
         let bank = self.tile_banks[self.fg_tile_bank as usize];
 
         // Process sprites from back to front
-        for n in (0..self.scanline.sprite_count as usize).rev() {
-            let sprite_id = self.scanline.sprites[n] as usize;
+        for n in (0..scanline.sprite_count as usize).rev() {
+            let sprite_id = scanline.sprites[n] as usize;
             let sprite = &self.vid.sprite_gen.sprites[sprite_id];
 
             let sprite_y = line_y - sprite.y;
@@ -152,8 +189,8 @@ impl<'a> PixelIter<'a> {
             let sprite_end = ((sprite.x + TILE_SIZE as i16).min(width as i16)) as usize;
 
             // Clamp to viewport
-            let start_x = sprite_start.max(viewport_start);
-            let end_x = sprite_end.min(viewport_end);
+            let start_x = sprite_start.max(view_start);
+            let end_x = sprite_end.min(view_end);
 
             if start_x >= end_x {
                 continue;
@@ -176,7 +213,7 @@ impl<'a> PixelIter<'a> {
                 0
             };
 
-            if self.scanline.mask & slot_mask == 0 {
+            if scanline.mask & slot_mask == 0 {
                 continue;
             }
 
@@ -191,7 +228,7 @@ impl<'a> PixelIter<'a> {
             for x in start_x..end_x {
                 // Check if this pixel is in an active slot
                 let pixel_slot = (x as f32 / self.slot_width) as u16;
-                if self.scanline.mask & (1 << pixel_slot) == 0 {
+                if scanline.mask & (1 << pixel_slot) == 0 {
                     continue;
                 }
 
@@ -232,37 +269,15 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_background(&mut self, width: u16) {
+        // Reset x position for iteration
+        self.x = 0;
         let bg = self.bg_banks[self.bg_map_bank as usize];
         let line_y = self.y as i16;
         let bank = self.tile_banks[self.bg_tile_bank as usize];
 
         // Pre-calculate viewport bounds
-        let viewport_start = self.vid.view_left.max(0) as usize;
-        let viewport_end = (self.vid.view_right + 1).min(width) as usize;
-
-        // Fast fill non-viewport areas with bg_color
-        unsafe {
-            let bg_color = self.bg_color;
-            // Fill start
-            if viewport_start > 0 {
-                let ptr = self.bg_buffer.as_mut_ptr();
-                for i in 0..viewport_start {
-                    *ptr.add(i) = bg_color.with_z(Z_BG_COLOR);
-                }
-            }
-            // Fill end
-            if viewport_end < width as usize {
-                let ptr = self.bg_buffer.as_mut_ptr();
-                for i in viewport_end..width as usize {
-                    *ptr.add(i) = bg_color.with_z(Z_BG_COLOR);
-                }
-            }
-        }
-
-        // Early exit if no viewport pixels
-        if viewport_start >= viewport_end {
-            return;
-        }
+        let view_start = self.vid.view_left.max(0) as usize;
+        let view_end = (self.vid.view_right + 1).min(width) as usize;
 
         // Pre-calculate Y coordinates once
         let bg_y_base = line_y + self.scroll_y;
@@ -272,8 +287,8 @@ impl<'a> PixelIter<'a> {
         // Check Y bounds once for entire line (when wrap_bg is false)
         if !self.wrap_bg && (bg_y_base < 0 || bg_y_base >= bg_height) {
             let bg_color = self.bg_color;
-            for x in viewport_start..viewport_end {
-                self.bg_buffer[x] = bg_color.with_z(Z_BG_COLOR);
+            for x in view_start..view_end {
+                self.bg_buffer[x] = bg_color.with_z(Z_BG);
             }
             return;
         }
@@ -284,9 +299,9 @@ impl<'a> PixelIter<'a> {
         let bg_columns = bg.columns() as usize;
 
         // Process viewport pixels in tile-aligned batches
-        let mut x = viewport_start;
+        let mut x = view_start;
 
-        while x < viewport_end {
+        while x < view_end {
             // Calculate starting BG X coordinate
             let bg_x_base = x as i16 + self.scroll_x;
 
@@ -294,18 +309,18 @@ impl<'a> PixelIter<'a> {
             if !self.wrap_bg {
                 if bg_x_base < 0 {
                     // Skip negative pixels
-                    let skip = (-bg_x_base).min((viewport_end - x) as i16) as usize;
+                    let skip = (-bg_x_base).min((view_end - x) as i16) as usize;
                     let bg_color = self.bg_color;
                     for i in 0..skip {
-                        self.bg_buffer[x + i] = bg_color.with_z(Z_BG_COLOR);
+                        self.bg_buffer[x + i] = bg_color.with_z(Z_BG);
                     }
                     x += skip;
                     continue;
                 } else if bg_x_base >= bg_width {
                     // Fill rest with bg_color and exit
                     let bg_color = self.bg_color;
-                    for i in x..viewport_end {
-                        self.bg_buffer[i] = bg_color.with_z(Z_BG_COLOR);
+                    for i in x..view_end {
+                        self.bg_buffer[i] = bg_color.with_z(Z_BG);
                     }
                     break;
                 }
@@ -334,7 +349,7 @@ impl<'a> PixelIter<'a> {
 
             // Calculate pixels to process in this tile
             let tile_pixels_remaining = (TILE_SIZE as usize) - tile_x_start as usize;
-            let viewport_pixels_remaining = viewport_end - x;
+            let viewport_pixels_remaining = view_end - x;
             let pixels_to_process = tile_pixels_remaining.min(viewport_pixels_remaining);
 
             // Additional constraint for wrap_bg=false
@@ -366,7 +381,7 @@ impl<'a> PixelIter<'a> {
                             let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
                             color.with_z(z_value)
                         } else {
-                            bg_color.with_z(Z_BG_COLOR)
+                            bg_color.with_z(Z_BG)
                         };
 
                         *dst_ptr.add(base_idx + i) = final_color;
@@ -385,7 +400,7 @@ impl<'a> PixelIter<'a> {
                         let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
                         color.with_z(z_value)
                     } else {
-                        bg_color.with_z(Z_BG_COLOR)
+                        bg_color.with_z(Z_BG)
                     };
 
                     *dst_ptr.add(idx) = final_color;
@@ -395,26 +410,31 @@ impl<'a> PixelIter<'a> {
             x += pixels_to_process;
         }
     }
-
-    #[inline(always)]
-    fn pre_render_line(&mut self) {
-        let width = self.vid.width().min(512);
-
-        // Render both buffers independently (I hope CPU parallelism kicks in!)
-        self.pre_render_background(width);
-        self.pre_render_sprites(width);
-
-        // Reset x position for iteration
-        self.x = 0;
-    }
 }
 
 impl<'a> Iterator for PixelIter<'a> {
-    type Item = (RGBA32, Coords);
+    type Item = RGBA32;
+
+    // Performance goal: iterator with no actual rendering.
+    // Currently getting 0.2ms to 0.3ms in release
+    // fn next(&mut self) -> Option<Self::Item> {
+    //     // End line reached
+    //     if self.y > self.vid.max_y() as u16 {
+    //         return None;
+    //     }
+    //     // Increment screen position
+    //     self.x += 1;
+    //     // Check if we need to go to the next line
+    //     if self.x == self.vid.width() {
+    //         self.x = 0;
+    //         self.y += 1;
+    //     }
+    //     Some(RGBA32 { r: 255, g: 100, b: 255, a: 255 })
+    // }
 
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
-        if self.y == self.vid.max_y() as u16 {
+        if self.y > self.vid.max_y() as u16 {
             return None;
         }
 
@@ -422,33 +442,17 @@ impl<'a> Iterator for PixelIter<'a> {
         let sprite = self.sprite_buffer[self.x as usize];
         let bg = self.bg_buffer[self.x as usize];
 
-        // Check viewport in y
-        // let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
-        // // Simple alpha check - sprite wins if it has any alpha
-        // let final_color = if in_viewport {
-        //     if sprite.a() > 0 { sprite } else { bg }
-        // } else {
-        //     self.bg_color
-        // };
-
-        // Z-buffer based compositing - higher z value wins
-        let in_viewport = self.y >= self.vid.view_top && self.y <= self.vid.view_bottom;
-        let final_color = if in_viewport {
+        // results
+        let color = RGBA32::from(
             // Compare z values: sprite has alpha and higher/equal z wins
             if sprite.a() > 0 && sprite.z() >= bg.z() {
                 sprite
             } else if bg.a() > 0 {
                 bg
             } else {
-                self.bg_color.with_z(Z_BG_COLOR)
-            }
-        } else {
-            self.bg_color.with_z(Z_BG_COLOR)
-        };
-
-        // results
-        let color = RGBA32::from(final_color);
-        let coords = Coords { x: self.x as i16, y: self.y as i16 };
+                self.bg_color.with_z(Z_BG)
+            },
+        );
 
         // Increment screen position
         self.x += 1;
@@ -457,22 +461,13 @@ impl<'a> Iterator for PixelIter<'a> {
         if self.x == self.vid.width() {
             self.x = 0;
             self.y += 1;
-
-            // Prepare next line if not at end
-            if self.y < self.vid.max_y() as u16 {
-                // Cache scanline
-                let fg_y = self.y as usize;
-                if fg_y < MAX_LINES {
-                    self.scanline = self.vid.sprite_gen.scanlines[fg_y as usize].clone();
-                }
-                // Run Y IRQ for the new line
-                self.call_line_irq();
-                // Pre-render the new line
-                self.pre_render_line();
-            }
+            // Run Y IRQ for the new line
+            self.call_line_irq();
+            // Pre-render the new line
+            self.pre_render_line();
         }
 
         // Return the pixel color
-        Some((color, coords))
+        Some(color)
     }
 }

@@ -8,10 +8,10 @@ pub const PATCH_TILESET: TilesetData = TilesetData {
 };
 
 pub const PATCH_COLORS: [RGBA12; 4] = [
-    RGBA12::new(0, 0, 0, 0),
-    RGBA12::new(4, 4, 5, 7),
-    RGBA12::new(2, 2, 2, 7),
-    RGBA12::new(0, 0, 1, 7),
+    RGBA12::with_transparency(0, 0, 0, 0),
+    RGBA12::with_transparency(4, 4, 5, 7),
+    RGBA12::with_transparency(2, 2, 2, 7),
+    RGBA12::with_transparency(0, 0, 1, 7),
 ];
 
 pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];

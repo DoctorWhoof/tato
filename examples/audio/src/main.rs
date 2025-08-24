@@ -1,5 +1,6 @@
 use std::{f32::consts::PI, time::Instant};
-use tato::{Tato, prelude::*};
+use tato::prelude::*;
+
 use tato_raylib::*;
 
 pub enum SoundType {
@@ -12,11 +13,12 @@ pub enum SoundType {
 fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut bg_map = Tilemap::<1024>::new(32, 32);
+    let mut dash = Dashboard::<24_576>::new().unwrap();
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
-    let palette_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let palette_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
+    let palette_default = tato.new_subpalette(0, [0, 14, 2, 2]);
+    let palette_light = tato.new_subpalette(0, [0, 3, 2, 2]);
 
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
     let font = tato.push_tileset(0, FONT_TILESET)?;
@@ -38,7 +40,14 @@ fn main() -> TatoResult<()> {
     tato.draw_text(
         &mut bg_map,
         "Currently playing:",
-        TextOp { font:&FONT_MAP, id: font, col: 2, row: 6, width: 20, palette: palette_light },
+        TextOp {
+            font: &FONT_MAP,
+            id: font,
+            col: 2,
+            row: 6,
+            width: 20,
+            palette: palette_light,
+        },
     );
 
     // Audio setup
@@ -57,7 +66,10 @@ fn main() -> TatoResult<()> {
     // Main Loop
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
+
         tato.frame_start(backend.ray.get_frame_time());
+        dash.frame_start();
+        backend.update_input(&mut tato.pad);
 
         // "Envelopes"
         let env_len = 2.0;
@@ -91,7 +103,14 @@ fn main() -> TatoResult<()> {
                     format!("Wave Type: White Noise        ")
                 }
             },
-            TextOp { font:&FONT_MAP, id: font, col: 2, row: 8, width: 100, palette: palette_light },
+            TextOp {
+                font: &FONT_MAP,
+                id: font,
+                col: 2,
+                row: 8,
+                width: 100,
+                palette: palette_light,
+            },
         );
 
         tato.draw_text(
@@ -123,7 +142,7 @@ fn main() -> TatoResult<()> {
         // Update backends
         tato.frame_finish();
         audio_backend.process_frame(&mut audio);
-        backend.render(&tato, &[&bg_map]);
+        backend.present(&tato, Some(&mut dash), &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

@@ -5,15 +5,3 @@ edition = "2024"
 
 [dependencies]
 tato_math = { path = "../math"}
-
-[[example]]
-name = "basic_usage"
-path = "examples/basic_usage.rs"
-
-[[example]]
-name = "safety_features"
-path = "examples/safety_features.rs"
-
-[[example]]
-name = "memory_optimization"
-path = "examples/memory_optimization.rs"

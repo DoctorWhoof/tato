@@ -74,11 +74,6 @@ where
     type Output = Self;
 
     fn mul(self, other: T) -> Self::Output {
-        Rect {
-            x: self.x * other,
-            y: self.y * other,
-            w: self.w,
-            h: self.h,
-        }
+        Rect { x: self.x * other, y: self.y * other, w: self.w, h: self.h }
     }
 }

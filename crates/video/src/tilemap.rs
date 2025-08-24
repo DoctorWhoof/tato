@@ -2,7 +2,7 @@ use crate::*;
 use tato_math::rect::Rect;
 
 /// This trait allows read-only references to BGMaps of different sizes.
-/// Also allows function to take either "Tilemap" or "TilemapRef"
+/// Also allows functions to take either "Tilemap" or "TilemapRef"
 pub trait DynTilemap: core::fmt::Debug {
     fn cells(&self) -> &[Cell];
     fn columns(&self) -> u16;
@@ -10,7 +10,6 @@ pub trait DynTilemap: core::fmt::Debug {
     fn width(&self) -> i16;
     fn height(&self) -> i16;
     fn len(&self) -> usize;
-    // fn set_size(&mut self, columns: u16, rows: u16);
     fn get_index(&self, col: i16, row: i16) -> Option<usize>;
     fn get_coords(&self, index: usize) -> Option<(u16, u16)>;
     fn get_cell(&self, col: i16, row: i16) -> Option<Cell>;
@@ -34,7 +33,7 @@ pub struct BgOp {
     pub row: i16,
     pub tile_id: TileID,
     pub flags: TileFlags,
-    pub sub_palette: PaletteID
+    pub sub_palette: PaletteID,
 }
 
 impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {

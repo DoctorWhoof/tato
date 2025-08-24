@@ -16,7 +16,7 @@ pub struct AudioBackend {
 }
 
 impl AudioBackend {
-    pub fn new(tato:&Tato) -> Self {
+    pub fn new(tato: &Tato) -> Self {
         let host = cpal::default_host();
         let device = host.default_output_device().expect("No output device");
         let config = device.default_output_config().unwrap();
@@ -110,7 +110,7 @@ impl AudioBackend {
         }
 
         // Generate samples for this frame, plus any additional if needed
-        let total_samples = self.samples_per_frame + additional_samples/2; // Divide by 2 for stereo
+        let total_samples = self.samples_per_frame + additional_samples / 2; // Divide by 2 for stereo
         let mut frame_samples = Vec::with_capacity(total_samples * 2);
 
         for _ in 0..total_samples {
@@ -125,7 +125,7 @@ impl AudioBackend {
         let _ = self.tx.send(frame_samples);
     }
 
-    pub fn write_wav_file(self){
+    pub fn write_wav_file(self) {
         if let Some(wav_file) = self.wav_file {
             wav_file.write_file();
         }

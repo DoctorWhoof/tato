@@ -13,13 +13,8 @@ pub struct Cluster<const BITS_PER_PIXEL: usize> {
 
 impl<const BITS_PER_PIXEL: usize> Default for Cluster<BITS_PER_PIXEL> {
     fn default() -> Self {
-        assert!(
-            BITS_PER_PIXEL > 0 && BITS_PER_PIXEL < 9,
-            err!("Invalid BITS_PER_PIXEL")
-        );
-        Self {
-            data: [0; BITS_PER_PIXEL],
-        }
+        assert!(BITS_PER_PIXEL > 0 && BITS_PER_PIXEL < 9, err!("Invalid BITS_PER_PIXEL"));
+        Self { data: [0; BITS_PER_PIXEL] }
     }
 }
 
@@ -32,10 +27,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
 
     #[inline(always)]
     pub fn get_subpixel(&self, index: u8) -> u8 {
-        debug_assert!(
-            index < PIXELS_PER_CLUSTER,
-            err!("Pixel index out of bounds")
-        );
+        debug_assert!(index < PIXELS_PER_CLUSTER, err!("Pixel index out of bounds"));
 
         // Calculate which byte contains this pixel
         let byte_idx = index as usize / Self::PIXELS_PER_BYTE;
@@ -50,10 +42,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
 
     #[inline(always)]
     pub fn set_subpixel(&mut self, value: u8, index: u8) {
-        debug_assert!(
-            index < PIXELS_PER_CLUSTER,
-            err!("Pixel index out of bounds")
-        );
+        debug_assert!(index < PIXELS_PER_CLUSTER, err!("Pixel index out of bounds"));
 
         // Limit value to valid range
         let value = value & Self::MASK;
@@ -75,9 +64,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
 
     #[inline]
     pub fn flip(&self) -> Self {
-        let mut flipped = Self {
-            data: [0; BITS_PER_PIXEL],
-        };
+        let mut flipped = Self { data: [0; BITS_PER_PIXEL] };
 
         let mut left_pixel = 0;
         let mut right_pixel = PIXELS_PER_CLUSTER - 1;
@@ -170,19 +157,12 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
             // No rotation, just handle flipping
             let source_row = if flags.is_flipped_y() { 7 - row } else { row };
             let source_cluster = &tile_pixels[source_row as usize];
-            if flags.is_flipped_x() {
-                source_cluster.flip()
-            } else {
-                source_cluster.clone()
-            }
+            if flags.is_flipped_x() { source_cluster.flip() } else { source_cluster.clone() }
         }
     }
 
     pub fn from_pixels(pixels: &[u8]) -> Self {
-        assert!(
-            pixels.len() == 8,
-            err!("Length of pixels array must be 8 to convert to Cluster")
-        );
+        assert!(pixels.len() == 8, err!("Length of pixels array must be 8 to convert to Cluster"));
         let mut cluster = Self::default();
         for (i, &pixel) in pixels.iter().enumerate() {
             cluster.set_subpixel(pixel, i as u8);

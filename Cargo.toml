@@ -14,7 +14,6 @@ tato_audio = { path = "crates/audio" }
 tato_video = { path = "crates/video" }
 tato_math = { path = "crates/math" }
 tato_rng = { path = "crates/rng" }
-# smooth-buffer = { path = "crates/smooth_buffer" }
 tato_arena = { path = "crates/arena" }
 tato_collision = { path = "crates/collision" }
 smooth_buffer = { path = "crates/smooth_buffer" }
@@ -39,3 +38,10 @@ exclude = [
     "crates/layout/example_mquad",
     "crates/layout/example_sdl",
 ]
+
+[profile.release]
+debug = true
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

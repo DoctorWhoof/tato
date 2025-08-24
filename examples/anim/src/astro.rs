@@ -9,10 +9,10 @@ pub const ASTRO_TILESET: TilesetData = TilesetData {
 };
 
 pub const ASTRO_COLORS: [RGBA12; 4] = [
-    RGBA12::new(0, 0, 0, 0),
-    RGBA12::new(7, 7, 7, 7),
-    RGBA12::new(0, 0, 0, 7),
-    RGBA12::new(1, 1, 6, 7),
+    RGBA12::with_transparency(0, 0, 0, 0),
+    RGBA12::with_transparency(7, 7, 7, 7),
+    RGBA12::with_transparency(0, 0, 0, 7),
+    RGBA12::with_transparency(1, 1, 6, 7),
 ];
 
 pub const ASTRO_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];

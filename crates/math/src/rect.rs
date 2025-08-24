@@ -29,6 +29,10 @@ where
         Vec2 { x: self.x, y: self.y }
     }
 
+    pub fn size(&self) -> Vec2<T> {
+        Vec2 { x: self.w, y: self.h }
+    }
+
     pub fn left(self) -> T {
         self.x
     }
@@ -108,6 +112,9 @@ where
     }
 
     pub fn shrink(self, margin: T) -> Self {
+        if margin == T::zero() {
+            return self;
+        }
         Self {
             x: self.x + margin,
             y: self.y + margin,
@@ -117,6 +124,9 @@ where
     }
 
     pub fn expand(self, margin: T) -> Self {
+        if margin == T::zero() {
+            return self;
+        }
         Self {
             x: self.x - margin,
             y: self.y - margin,

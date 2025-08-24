@@ -12,14 +12,15 @@ const MAP_LEN: usize = 1024;
 // Rects use "number of tiles" as the dimensions
 fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
-
+    let mut dash = Dashboard::<24_576>::new().unwrap();
     let mut tato = Tato::new(240, 180, 60);
-    tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
+
+    tato.video.bg_color = RGBA12::new(1, 2, 3);
 
     // Populate tilesets
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let _transparent = tato.banks[0].push_color(RGBA12::new(0, 0, 0, 0));
-    let _empty_palette = tato.new_subpalette(0, [BG_COLOR, BLACK, GRAY, WHITE]);
+    let _transparent = tato.banks[0].push_color(RGBA12::TRANSPARENT);
+    let _empty_palette = tato.new_subpalette(0, [0, 1, 2, 3]);
 
     let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;
@@ -32,10 +33,13 @@ fn main() -> TatoResult<()> {
     println!("Asset arena: {} Bytes", tato.assets.used_memory());
     // Backend
     let mut backend = RaylibBackend::new(&tato);
-    backend.bg_color = raylib::prelude::Color::BLACK;
+    backend.set_bg_color(RGBA32::BLACK);
+
     while !backend.ray.window_should_close() {
+
         tato.frame_start(backend.ray.get_frame_time());
-        backend.update_gamepad(&mut tato.pad);
+        dash.frame_start();
+        backend.update_input(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {
             tato.video.scroll_x += 1;
@@ -50,7 +54,7 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        backend.render(&mut tato, &[&bg_map]);
+        backend.present(&tato, Some(&mut dash), &[&bg_map]);
     }
     Ok(())
 }

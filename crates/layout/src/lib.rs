@@ -158,7 +158,9 @@ where
     /// taking into account the size of the gaps between each column.
     /// The number of columns stays consistent regardless of scale.
     pub fn divide_width(&self, columns: u32) -> T {
-        if columns <= 1 { return T::from_f32(self.cursor.w) }
+        if columns <= 1 {
+            return T::from_f32(self.cursor.w);
+        }
         let unscaled_gap = self.gap * (columns - 1) as f32;
         let available_width = (self.cursor.w / self.scale) - unscaled_gap;
         let size = available_width / columns as f32;
@@ -169,7 +171,9 @@ where
     /// taking into account the size of the gaps between each row.
     /// The number of rows stays consistent regardless of scale.
     pub fn divide_height(&self, rows: u32) -> T {
-        if rows <= 1 { return T::from_f32(self.cursor.h) }
+        if rows <= 1 {
+            return T::from_f32(self.cursor.h);
+        }
         let unscaled_gap = self.gap * (rows - 1) as f32;
         let available_height = (self.cursor.h / self.scale) - unscaled_gap;
         let size = available_height / rows as f32;
@@ -221,10 +225,7 @@ where
             Align::BottomRight => ((self.cursor.w - w).max(0.0), 0.0),
 
             // Center alignment
-            Align::Center => (
-                (self.cursor.w - w) / 2.0,
-                (self.cursor.h - h) / 2.0,
-            ),
+            Align::Center => ((self.cursor.w - w) / 2.0, (self.cursor.h - h) / 2.0),
         };
 
         // Ensure offsets are non-negative
@@ -266,7 +267,7 @@ where
                 } else {
                     self.scale.min(fit_scale)
                 }
-            }
+            },
         }
     }
 
@@ -420,13 +421,8 @@ where
                 if self.cursor.x > self.rect.x + self.rect.w {
                     return;
                 }
-                Rect::new(
-                    self.cursor.x + extra_x,
-                    self.cursor.y + extra_y,
-                    scaled_w,
-                    scaled_h,
-                )
-            }
+                Rect::new(self.cursor.x + extra_x, self.cursor.y + extra_y, scaled_w, scaled_h)
+            },
             Edge::Right => Rect::new(
                 (self.cursor.x + self.cursor.w - scaled_w).max(0.0) - extra_x,
                 self.cursor.y + extra_y,
@@ -437,13 +433,8 @@ where
                 if self.cursor.y > self.rect.y + self.rect.h {
                     return;
                 }
-                Rect::new(
-                    self.cursor.x + extra_x,
-                    self.cursor.y + extra_y,
-                    scaled_w,
-                    scaled_h,
-                )
-            }
+                Rect::new(self.cursor.x + extra_x, self.cursor.y + extra_y, scaled_w, scaled_h)
+            },
             Edge::Bottom => Rect::new(
                 self.cursor.x + extra_x,
                 (self.cursor.y + self.cursor.h - scaled_h).max(0.0) - extra_y,
@@ -461,7 +452,7 @@ where
         }
 
         match fitting {
-            Fitting::Relaxed => {}
+            Fitting::Relaxed => {},
             Fitting::Aggressive => {
                 if (child_rect_f32.x + child_rect_f32.w) as i32 as f32
                     > (self.cursor.x + self.cursor.w) as i32 as f32 + 1.0
@@ -473,7 +464,7 @@ where
                 {
                     return;
                 }
-            }
+            },
             Fitting::Clamp => {
                 // Clamp to ensure the rect stays within cursor boundaries
                 // Clamp x position
@@ -499,10 +490,10 @@ where
                 if child_rect_f32.y + child_rect_f32.h > self.cursor.y + self.cursor.h {
                     child_rect_f32.h = self.cursor.y + self.cursor.h - child_rect_f32.y;
                 }
-            }
+            },
             Fitting::Scale => {
                 // The scaling is now handled prior to this function in the calling methods
-            }
+            },
         }
 
         if child_rect_f32.w < 1.0 || child_rect_f32.h < 1.0 {
@@ -516,20 +507,20 @@ where
                     // Add extra_x to the cursor movement
                     self.cursor.x += scaled_w + gap + extra_x;
                     self.cursor.w = (self.cursor.w - scaled_w - gap - extra_x).max(0.0);
-                }
+                },
                 Edge::Right => {
                     // Subtract extra_x in width reduction
                     self.cursor.w = (self.cursor.w - scaled_w - gap - extra_x).max(0.0);
-                }
+                },
                 Edge::Top => {
                     // Add extra_y to the cursor movement
                     self.cursor.y += scaled_h + gap + extra_y;
                     self.cursor.h = (self.cursor.h - scaled_h - gap - extra_y).max(0.0);
-                }
+                },
                 Edge::Bottom => {
                     // Subtract extra_y in height reduction
                     self.cursor.h = (self.cursor.h - scaled_h - gap - extra_y).max(0.0);
-                }
+                },
             }
         }
 

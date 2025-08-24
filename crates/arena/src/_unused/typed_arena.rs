@@ -1,7 +1,7 @@
 //! Single-type arena with array-based allocation.
 //! Faster than dynamic Arena for single types.
 //! API matches Arena where possible: `alloc()`, `get()`, `clear()`, etc.
-//! Key differences: `alloc_many()` vs `alloc_pool()`, `as_slice()` vs `get_pool()`.
+//! Key differences: `alloc_many()` vs `alloc_slice()`, `as_slice()` vs `get_slice()`.
 
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
@@ -14,9 +14,9 @@ static TYPED_ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(10000);
 
 /// Handle to a value in a typed arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct TypedId<T, SizeType = u16, Marker = ()> {
+pub struct TypedId<T, Idx = u16, Marker = ()> {
     /// Array index (not byte offset)
-    index: SizeType,
+    index: Idx,
     /// Generation when this ID was created
     generation: u16,
     /// Arena ID for cross-arena safety
@@ -25,21 +25,16 @@ pub struct TypedId<T, SizeType = u16, Marker = ()> {
     _phantom: PhantomData<(T, Marker)>,
 }
 
-impl<T, SizeType, Marker> TypedId<T, SizeType, Marker> {
+impl<T, Idx, Marker> TypedId<T, Idx, Marker> {
     /// Create a new TypedId (internal use)
-    pub(crate) fn new(index: SizeType, generation: u16, arena_id: u16) -> Self {
-        Self {
-            index,
-            generation,
-            arena_id,
-            _phantom: PhantomData,
-        }
+    pub(crate) fn new(index: Idx, generation: u16, arena_id: u16) -> Self {
+        Self { index, generation, arena_id, _phantom: PhantomData }
     }
 
     /// Get array index
     pub fn index(&self) -> usize
     where
-        SizeType: ArenaIndex,
+        Idx: ArenaIndex,
     {
         self.index.into()
     }
@@ -56,9 +51,9 @@ impl<T, SizeType, Marker> TypedId<T, SizeType, Marker> {
 }
 
 /// TypedIds are equal if they have the same index, generation, and arena_id
-impl<T, SizeType, Marker> PartialEq for TypedId<T, SizeType, Marker>
+impl<T, Idx, Marker> PartialEq for TypedId<T, Idx, Marker>
 where
-    SizeType: PartialEq,
+    Idx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index
@@ -67,18 +62,15 @@ where
     }
 }
 
-impl<T, SizeType, Marker> Eq for TypedId<T, SizeType, Marker>
-where
-    SizeType: Eq,
-{}
+impl<T, Idx, Marker> Eq for TypedId<T, Idx, Marker> where Idx: Eq {}
 
 /// Fixed-capacity typed arena optimized for single type
 #[derive(Debug)]
-pub struct TypedArena<T, const CAPACITY: usize, SizeType = u16, Marker = ()> {
+pub struct TypedArena<T, const CAPACITY: usize, Idx = u16, Marker = ()> {
     /// Storage for exactly CAPACITY elements of type T
     storage: [MaybeUninit<T>; CAPACITY],
     /// Number of allocated elements
-    len: SizeType,
+    len: Idx,
     /// Current generation - incremented on clear/restore
     generation: u16,
     /// Unique arena ID for cross-arena safety
@@ -87,9 +79,9 @@ pub struct TypedArena<T, const CAPACITY: usize, SizeType = u16, Marker = ()> {
     _marker: PhantomData<Marker>,
 }
 
-impl<T, const CAPACITY: usize, SizeType, Marker> TypedArena<T, CAPACITY, SizeType, Marker>
+impl<T, const CAPACITY: usize, Idx, Marker> TypedArena<T, CAPACITY, Idx, Marker>
 where
-    SizeType: ArenaIndex,
+    Idx: ArenaIndex,
 {
     /// Create a new typed arena
     pub fn new() -> Self {
@@ -97,7 +89,7 @@ where
         let storage = unsafe { MaybeUninit::uninit().assume_init() };
         Self {
             storage,
-            len: SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small")),
+            len: Idx::try_from(0).unwrap_or_else(|_| panic!("Idx too small")),
             generation: 0,
             arena_id: TYPED_ARENA_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
             _marker: PhantomData,
@@ -105,7 +97,7 @@ where
     }
 
     /// Allocate and store a value - much simpler than dynamic arena
-    pub fn alloc(&mut self, value: T) -> Option<TypedId<T, SizeType, Marker>> {
+    pub fn alloc(&mut self, value: T) -> Option<TypedId<T, Idx, Marker>> {
         let len_usize: usize = self.len.into();
 
         // Simple capacity check - no alignment calculation needed
@@ -116,20 +108,16 @@ where
         // Store value using simple array indexing
         self.storage[len_usize] = MaybeUninit::new(value);
 
-        let id = TypedId::new(
-            self.len,
-            self.generation,
-            self.arena_id,
-        );
+        let id = TypedId::new(self.len, self.generation, self.arena_id);
 
         // Increment length
-        self.len = self.len + SizeType::one();
+        self.len = self.len + Idx::one();
 
         Some(id)
     }
 
     /// Allocate value using a closure
-    pub fn alloc_with<F>(&mut self, f: F) -> Option<TypedId<T, SizeType, Marker>>
+    pub fn alloc_with<F>(&mut self, f: F) -> Option<TypedId<T, Idx, Marker>>
     where
         F: FnOnce() -> T,
     {
@@ -143,20 +131,16 @@ where
         // Store value using closure
         self.storage[len_usize] = MaybeUninit::new(f());
 
-        let id = TypedId::new(
-            self.len,
-            self.generation,
-            self.arena_id,
-        );
+        let id = TypedId::new(self.len, self.generation, self.arena_id);
 
         // Increment length
-        self.len = self.len + SizeType::one();
+        self.len = self.len + Idx::one();
 
         Some(id)
     }
 
     /// Allocate multiple default values
-    pub fn alloc_many(&mut self, count: usize) -> Option<TypedId<T, SizeType, Marker>>
+    pub fn alloc_many(&mut self, count: usize) -> Option<TypedId<T, Idx, Marker>>
     where
         T: Default,
     {
@@ -167,11 +151,7 @@ where
         }
 
         // Store the starting index
-        let start_id = TypedId::new(
-            self.len,
-            self.generation,
-            self.arena_id,
-        );
+        let start_id = TypedId::new(self.len, self.generation, self.arena_id);
 
         // Initialize all elements
         for i in 0..count {
@@ -179,13 +159,13 @@ where
         }
 
         // Update length
-        self.len = self.len + SizeType::try_from(count).ok()?;
+        self.len = self.len + Idx::try_from(count).ok()?;
 
         Some(start_id)
     }
 
     /// Allocate multiple values with closure
-    pub fn alloc_many_with<F>(&mut self, count: usize, mut f: F) -> Option<TypedId<T, SizeType, Marker>>
+    pub fn alloc_many_with<F>(&mut self, count: usize, mut f: F) -> Option<TypedId<T, Idx, Marker>>
     where
         F: FnMut(usize) -> T,
     {
@@ -196,11 +176,7 @@ where
         }
 
         // Store the starting index
-        let start_id = TypedId::new(
-            self.len,
-            self.generation,
-            self.arena_id,
-        );
+        let start_id = TypedId::new(self.len, self.generation, self.arena_id);
 
         // Initialize all elements with closure
         for i in 0..count {
@@ -208,14 +184,14 @@ where
         }
 
         // Update length
-        self.len = self.len + SizeType::try_from(count).ok()?;
+        self.len = self.len + Idx::try_from(count).ok()?;
 
         Some(start_id)
     }
 
     /// Validate TypedId for safe access
     #[inline]
-    fn validate_id(&self, id: &TypedId<T, SizeType, Marker>) -> bool {
+    fn validate_id(&self, id: &TypedId<T, Idx, Marker>) -> bool {
         // Check arena ID first (cross-arena safety)
         if id.arena_id != self.arena_id {
             return false;
@@ -234,51 +210,43 @@ where
 
     /// Get reference to value
     #[inline]
-    pub fn get(&self, id: &TypedId<T, SizeType, Marker>) -> Option<&T> {
+    pub fn get(&self, id: &TypedId<T, Idx, Marker>) -> Option<&T> {
         if !self.validate_id(id) {
             return None;
         }
 
         // Simple array access - no pointer arithmetic
-        unsafe {
-            Some(self.storage[id.index.into()].assume_init_ref())
-        }
+        unsafe { Some(self.storage[id.index.into()].assume_init_ref()) }
     }
 
     /// Get mutable reference to value
     #[inline]
-    pub fn get_mut(&mut self, id: &TypedId<T, SizeType, Marker>) -> Option<&mut T> {
+    pub fn get_mut(&mut self, id: &TypedId<T, Idx, Marker>) -> Option<&mut T> {
         if !self.validate_id(id) {
             return None;
         }
 
-        unsafe {
-            Some(self.storage[id.index.into()].assume_init_mut())
-        }
+        unsafe { Some(self.storage[id.index.into()].assume_init_mut()) }
     }
 
     /// Get reference (unsafe - no checks)
     #[inline]
-    pub unsafe fn get_unchecked(&self, id: &TypedId<T, SizeType, Marker>) -> &T {
+    pub unsafe fn get_unchecked(&self, id: &TypedId<T, Idx, Marker>) -> &T {
         debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch");
         debug_assert_eq!(id.generation, self.generation, "Generation mismatch");
         debug_assert!(id.index.into() < self.len.into(), "Index out of bounds");
 
-        unsafe {
-            self.storage[id.index.into()].assume_init_ref()
-        }
+        unsafe { self.storage[id.index.into()].assume_init_ref() }
     }
 
     /// Get mutable reference (unsafe - no checks)
     #[inline]
-    pub unsafe fn get_unchecked_mut(&mut self, id: &TypedId<T, SizeType, Marker>) -> &mut T {
+    pub unsafe fn get_unchecked_mut(&mut self, id: &TypedId<T, Idx, Marker>) -> &mut T {
         debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch");
         debug_assert_eq!(id.generation, self.generation, "Generation mismatch");
         debug_assert!(id.index.into() < self.len.into(), "Index out of bounds");
 
-        unsafe {
-            self.storage[id.index.into()].assume_init_mut()
-        }
+        unsafe { self.storage[id.index.into()].assume_init_mut() }
     }
 
     /// Get slice (unsafe - no checks)
@@ -337,7 +305,7 @@ where
 
     /// Clear arena (doesn't drop values)
     pub fn clear(&mut self) {
-        self.len = SizeType::try_from(0).unwrap_or_else(|_| panic!("SizeType too small"));
+        self.len = Idx::try_from(0).unwrap_or_else(|_| panic!("Idx too small"));
         self.generation = self.generation.wrapping_add(1);
     }
 
@@ -406,7 +374,7 @@ where
     /// Restore to previous length
     pub fn restore_to(&mut self, len: usize) {
         if len <= CAPACITY && len <= self.len.into() {
-            if let Ok(new_len) = SizeType::try_from(len) {
+            if let Ok(new_len) = Idx::try_from(len) {
                 self.len = new_len;
                 self.generation = self.generation.wrapping_add(1);
             }
@@ -414,7 +382,7 @@ where
     }
 
     /// Check if handle is valid
-    pub fn is_valid(&self, id: &TypedId<T, SizeType, Marker>) -> bool {
+    pub fn is_valid(&self, id: &TypedId<T, Idx, Marker>) -> bool {
         self.validate_id(id)
     }
 
@@ -424,15 +392,11 @@ where
     }
 
     /// Iterator over elements with IDs
-    pub fn iter_with_ids(&self) -> impl Iterator<Item = (TypedId<T, SizeType, Marker>, &T)> {
+    pub fn iter_with_ids(&self) -> impl Iterator<Item = (TypedId<T, Idx, Marker>, &T)> {
         let len: usize = self.len.into();
         (0..len).filter_map(move |i| {
-            if let Ok(index) = SizeType::try_from(i) {
-                let id = TypedId::new(
-                    index,
-                    self.generation,
-                    self.arena_id,
-                );
+            if let Ok(index) = Idx::try_from(i) {
+                let id = TypedId::new(index, self.generation, self.arena_id);
                 let value = unsafe { self.storage[i].assume_init_ref() };
                 Some((id, value))
             } else {
@@ -442,9 +406,9 @@ where
     }
 }
 
-impl<T, const CAPACITY: usize, SizeType, Marker> Default for TypedArena<T, CAPACITY, SizeType, Marker>
+impl<T, const CAPACITY: usize, Idx, Marker> Default for TypedArena<T, CAPACITY, Idx, Marker>
 where
-    SizeType: ArenaIndex,
+    Idx: ArenaIndex,
 {
     fn default() -> Self {
         Self::new()
@@ -524,11 +488,7 @@ mod tests {
 
         // All should be default values (0)
         for i in 0..5 {
-            let id = TypedId::new(
-                u16::try_from(i).unwrap(),
-                arena.generation(),
-                arena.arena_id(),
-            );
+            let id = TypedId::new(u16::try_from(i).unwrap(), arena.generation(), arena.arena_id());
             assert_eq!(*arena.get(&id).unwrap(), 0);
         }
     }
@@ -576,12 +536,12 @@ mod tests {
 
         // Stats methods (should match Arena API naming)
         assert_eq!(arena.len(), 2);
-        assert_eq!(arena.used(), 2);  // Alias for len()
+        assert_eq!(arena.used(), 2); // Alias for len()
         assert_eq!(arena.remaining(), 98);
         assert_eq!(arena.capacity(), 100);
-        assert_eq!(arena.used_bytes(), 8);  // 2 * 4 bytes
-        assert_eq!(arena.remaining_bytes(), 392);  // 98 * 4 bytes
-        assert_eq!(arena.capacity_bytes(), 400);  // 100 * 4 bytes
+        assert_eq!(arena.used_bytes(), 8); // 2 * 4 bytes
+        assert_eq!(arena.remaining_bytes(), 392); // 98 * 4 bytes
+        assert_eq!(arena.capacity_bytes(), 400); // 100 * 4 bytes
 
         // Generation and validity
         let gen1 = arena.generation();
@@ -606,7 +566,7 @@ mod tests {
         arena.clear();
         assert_eq!(arena.generation(), gen1 + 1);
         assert_eq!(arena.len(), 0);
-        assert!(!arena.is_valid(&id1));  // Old IDs invalid
+        assert!(!arena.is_valid(&id1)); // Old IDs invalid
         assert!(arena.is_empty());
 
         // Arena ID consistency

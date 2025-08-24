@@ -1,41 +1,61 @@
-use std::vec;
-
 pub use raylib;
 use raylib::prelude::*;
-use tato::{Tato, prelude::*, smooth_buffer::SmoothBuffer};
+use std::{time::Instant, vec};
+use tato::{
+    Tato, arena::*, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer,
+};
 
 pub use tato;
 
-// pub struct RaylibBackend<const PIXEL_COUNT: usize> {
-pub struct RaylibBackend {
-    pub bg_color: Color,
-    pub ray: RaylibHandle,
-    pub display_debug: bool,
-    pub display_debug_scale: i32,
-    thread: RaylibThread,
-    pixels: Vec<u8>,
-    debug_pixels: Vec<Vec<u8>>,
-    render_texture: Texture2D,
-    debug_texture: Vec<Texture2D>,
-    font: Font,
-    iter_time_buffer: SmoothBuffer<300, f64>,
+const TILES_PER_ROW: i16 = 16;
+
+#[inline]
+fn rgba32_to_rl_color(color: RGBA32) -> Color {
+    Color::new(color.r, color.g, color.b, color.a)
 }
 
+pub struct RaylibBackend {
+    pub bg_color: Color,
+    pub integer_scaling: bool,
+    pub print_frame_time: bool,
+    pub display_debug: bool,
+    pub ray: RaylibHandle,
+    thread: RaylibThread,
+    textures: Vec<Texture2D>,
+    font: Font,
+    draw_ops: Vec<DrawOp>,
+    canvas_texture: TextureId,
+    // Cached then passed to Dashboard later
+    dash_args: DashArgs,
+    pixels: Vec<u8>,
+    time_profile: Instant,
+    buffer_iter_time: SmoothBuffer<120, f64>,
+    buffer_canvas_time: SmoothBuffer<120, f64>,
+}
+
+/// Raylib specific implementation
 impl RaylibBackend {
     pub fn new(tato: &Tato) -> Self {
+        // Sizing
+        let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
+        let total_panel_width = (PANEL_WIDTH * 4) + (MARGIN * 2);
+        let adjusted_w = total_panel_width as i32 + (w * multiplier);
+
+        // Init Raylib
         let (mut ray, thread) = raylib::init()
             .log_level(TraceLogLevel::LOG_WARNING)
-            .size(w * 4, h * 3)
+            .size(adjusted_w, h * multiplier)
             .title("Tato Demo")
             .vsync()
             .resizable()
             .build();
 
-        // Config raylib
+        // Config additional raylib options
         ray.set_target_fps(tato.target_fps as u32);
         unsafe {
+            raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_VSYNC_HINT as u32);
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);
             // Disable ESC to close window. "Cmd + Q" still works!
             raylib::ffi::SetExitKey(raylib::ffi::KeyboardKey::KEY_NULL as i32);
@@ -45,424 +65,402 @@ impl RaylibBackend {
         let font_data = include_bytes!("font.ttf");
         let font = ray.load_font_from_memory(&thread, ".ttf", font_data, 32, None).unwrap();
 
-        // Create texture for rendering
-        let pixels = vec![0u8; w as usize * h as usize * 4];
-        let render_texture = {
-            let render_image = Image::gen_image_color(w, h, Color::BLACK);
-            ray.load_texture_from_image(&thread, &render_image).unwrap()
-        };
-
-        // Pre-populate textures and pixel buffers
-        let mut debug_texture = vec![];
-        let mut debug_pixels = vec![];
-        let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
-        let tiles_w = tiles_per_row * TILE_SIZE as usize;
-        for _bank in &tato.banks {
-            // Allocate for maximum possible tiles (TILE_COUNT) instead of current tile count
-            // since tiles may be loaded after backend initialization
-            let max_rows = (TILE_COUNT / tiles_per_row) + 1;
-            let tiles_h = max_rows * TILE_SIZE as usize;
-            let debug_image = Image::gen_image_color(tiles_w as i32, tiles_h as i32, Color::BLACK);
-            debug_texture.push(ray.load_texture_from_image(&thread, &debug_image).unwrap());
-            debug_pixels.push(vec![0u8; tiles_w * tiles_h * 4]);
-        }
-
         // Build struct
-        Self {
-            bg_color: Color::new(32, 32, 32, 255),
-            ray,
+        let mut result = Self {
+            bg_color: Color::new(16, 16, 16, 255),
+            integer_scaling: true,
+            print_frame_time: true,
             display_debug: true,
-            display_debug_scale: 1,
+            ray,
             thread,
-            pixels,
-            debug_pixels,
-            render_texture,
-            debug_texture,
+            // debug_pixels,
+            textures: vec![],
             font,
-            iter_time_buffer: SmoothBuffer::pre_filled(1.0 / 120.0),
-        }
-    }
-
-    pub fn update_gamepad(&self, pad: &mut AnaloguePad) {
-        // Ensures gamepad can detect button changes
-        pad.copy_current_to_previous_state();
-
-        // Handle keyboard input
-        if self.ray.is_key_down(KeyboardKey::KEY_LEFT) {
-            pad.set_button(Button::Left, true);
-        } else {
-            pad.set_button(Button::Left, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_RIGHT) {
-            pad.set_button(Button::Right, true);
-        } else {
-            pad.set_button(Button::Right, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_UP) {
-            pad.set_button(Button::Up, true);
-        } else {
-            pad.set_button(Button::Up, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_DOWN) {
-            pad.set_button(Button::Down, true);
-        } else {
-            pad.set_button(Button::Down, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_ESCAPE) {
-            pad.set_button(Button::Menu, true);
-        } else {
-            pad.set_button(Button::Menu, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_ENTER) {
-            pad.set_button(Button::Start, true);
-        } else {
-            pad.set_button(Button::Start, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_Z) {
-            pad.set_button(Button::A, true);
-        } else {
-            pad.set_button(Button::A, false);
-        }
-
-        if self.ray.is_key_down(KeyboardKey::KEY_ONE) {
-            pad.set_button(Button::LeftShoulder, true);
-        } else {
-            pad.set_button(Button::LeftShoulder, false);
-        }
-    }
-
-    pub fn render<'a, T>(&mut self, t: &'a Tato, bg_banks: &[&'a T])
-    where
-        &'a T: Into<TilemapRef<'a>>,
-    {
-        let mouse_x = self.ray.get_mouse_x();
-        let mouse_y = self.ray.get_mouse_y();
-
-        if self.ray.is_key_pressed(KeyboardKey::KEY_TAB) {
-            self.display_debug = !self.display_debug
-        }
-        if self.ray.is_key_pressed(KeyboardKey::KEY_EQUAL) {
-            self.display_debug_scale += 1
-        }
-        if self.ray.is_key_pressed(KeyboardKey::KEY_MINUS) {
-            if self.display_debug_scale > 1 {
-                self.display_debug_scale -= 1;
-            }
-        }
-
-        // ---------------------- Copy from framebuffer to raylib texture ----------------------
-
-        let time = std::time::Instant::now();
-        for (color, coords) in t.iter_pixels(bg_banks) {
-            let i = ((coords.y as usize * t.video.width() as usize) + coords.x as usize) * 4;
-            self.pixels[i] = color.r;
-            self.pixels[i + 1] = color.g;
-            self.pixels[i + 2] = color.b;
-            self.pixels[i + 3] = color.a;
-        }
-        self.iter_time_buffer.push(time.elapsed().as_secs_f64() * 1000.0);
-
-        self.render_texture.update_texture(&self.pixels).unwrap();
-
-        let tiles_per_row = (TILE_COUNT as f64).sqrt().ceil() as usize;
-        let tiles_w = (tiles_per_row * TILE_SIZE as usize) as i32;
-
-        // Calculate rect with correct aspect ratio with integer scaling
-        let screen_width = self.ray.get_screen_width();
-        let screen_height = self.ray.get_screen_height();
-
-        let scale = (screen_height as f32 / t.video.height() as f32).floor() as i32;
-        let w = t.video.width() as i32 * scale;
-        let h = t.video.height() as i32 * scale;
-        let draw_rect_x = (screen_width - w) / 2;
-        let draw_rect_y = (screen_height - h) / 2;
-
-        // Present pixels
-        let mut canvas = self.ray.begin_drawing(&self.thread);
-        canvas.clear_background(self.bg_color);
-        canvas.draw_texture_ex(
-            &self.render_texture,
-            Vector2::new(draw_rect_x as f32, draw_rect_y as f32),
-            0.0,
-            scale as f32,
-            Color::WHITE,
-        );
-
-        // ---------------------- Copy tile pixels to debug texture ----------------------
-
-        if !self.display_debug {
-            return;
-        }
-
-        let font_size = 12 * self.display_debug_scale;
-        let dark_bg = Color::new(32, 32, 32, 255);
-        let light_bg = Color::new(48, 48, 48, 255);
-        let rect_bg = Rect {
-            x: screen_width - (tiles_w as i32 * self.display_debug_scale) - 8,
-            y: font_size,
-            w: tiles_w * self.display_debug_scale,
-            h: screen_height - font_size - font_size,
+            draw_ops: Vec::new(),
+            canvas_texture: 0,
+            dash_args: DashArgs::default(),
+            pixels: vec![0; w as usize * h as usize * 4],
+            time_profile: std::time::Instant::now(),
+            buffer_iter_time: SmoothBuffer::new(),
+            buffer_canvas_time: SmoothBuffer::new(),
         };
-        canvas.draw_rectangle(rect_bg.x, rect_bg.y, rect_bg.w, rect_bg.h, light_bg);
-        let mut layout = Frame::new(rect_bg);
 
-        // Reset on every loop since I may change it along the way!
-        layout.set_gap(1);
-        layout.set_margin(1);
-        layout.set_scale(self.display_debug_scale as f32);
-        layout.fitting = Fitting::Clamp;
-        let gap = self.display_debug_scale;
-        let mut mouse_over_text = String::new();
-
-        // Process each video memory bank
-        for bank_index in 0..TILE_BANK_COUNT {
-            let bank = &t.banks[bank_index];
-            if bank.tile_count() == 0 && bank.color_count() == 0 && bank.sub_palette_count() == 0 {
-                continue;
-            }
-
-            // Label
-            let h = font_size / self.display_debug_scale;
-            layout.push_edge(Edge::Top, h, |frame| {
-                let rect = frame.rect();
-                canvas.draw_text_ex(
-                    &self.font,
-                    &format!("bank {}:", bank_index),
-                    Vector2::new((rect.x + gap) as f32, rect.y as f32),
-                    font_size as f32,
-                    1.0,
-                    Color::WHITE,
-                );
-            });
-
-            layout.push_edge(Edge::Top, h, |frame| {
-                let rect = frame.rect();
-                canvas.draw_text_ex(
-                    &self.font,
-                    &format!(
-                        "{} tiles, {} custom colors, {} sub-palettes",
-                        bank.tile_count(),
-                        bank.color_count(),
-                        bank.sub_palette_count()
-                    ),
-                    Vector2::new((rect.x + gap) as f32, rect.y as f32),
-                    font_size as f32 * 0.75,
-                    1.0,
-                    Color::WHITE,
-                );
-            });
-
-            if bank.tile_count() == 0 {
-                continue;
-            }
-
-            // Color swatches
-            layout.push_edge(Edge::Top, 8, |frame| {
-                // draw bg
-                let rect = frame.rect();
-                canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, dark_bg);
-                let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
-                for c in 0..COLORS_PER_PALETTE as usize {
-                    let color = bank.palette[c];
-                    frame.push_edge(Edge::Left, swatch_w, |swatch| {
-                        let rect = swatch.rect();
-                        canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, rl_color(color));
-                        // mouse over
-                        if rect.contains(mouse_x, mouse_y) {
-                            mouse_over_text = format!(
-                                "Color {} = {}, {}, {}, {}",
-                                c,
-                                color.r(),
-                                color.g(),
-                                color.b(),
-                                color.a()
-                            );
-                        }
-                    });
-                }
-            });
-
-            // Subpalettes
-            let columns = 6;
-            let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
-            let frame_h = (rows as i32 * 4) + 2;
-
-            layout.push_edge(Edge::Top, frame_h, |frame| {
-                let column_w = frame.divide_width(columns);
-                for column in 0..columns {
-                    frame.push_edge(Edge::Left, column_w, |frame_column| {
-                        frame_column.set_gap(0);
-                        frame_column.set_margin(0);
-                        // draw bg
-                        let rect = frame_column.rect();
-                        canvas.draw_rectangle(rect.x, rect.y, rect.w, rect.h, dark_bg);
-                        // draw each row
-                        let row_h = frame_column.divide_height(rows);
-                        for row in 0..rows {
-                            frame_column.push_edge(Edge::Top, row_h, |frame_row| {
-                                frame_row.set_gap(0);
-                                frame_row.set_margin(1);
-                                let subp_index = ((row * COLORS_PER_TILE as u32) + column) as usize;
-                                let subp = &bank.sub_palettes[subp_index];
-                                // draw each swatch, but only if subpalette is defined
-                                let current_item = (row * columns) + column;
-                                if current_item < bank.sub_palette_count() as u32 {
-                                    let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
-                                    for n in 0..COLORS_PER_TILE as usize {
-                                        frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
-                                            let r = swatch.rect();
-                                            let color_index = subp[n].0 as usize;
-                                            let color = bank.palette[color_index];
-                                            canvas.draw_rectangle(
-                                                r.x,
-                                                r.y,
-                                                r.w,
-                                                r.h,
-                                                rl_color(color),
-                                            );
-                                        });
-                                    }
-                                }
-                                //mouse over
-                                if frame_row.rect().contains(mouse_x, mouse_y) {
-                                    let subp_text = format!(
-                                        "[{}]",
-                                        subp.iter()
-                                            .map(|color_id| color_id.0.to_string())
-                                            .collect::<Vec<String>>()
-                                            .join(",")
-                                    );
-                                    mouse_over_text = format!(
-                                        "Sub Palette {} = Indices {}",
-                                        subp_index, subp_text
-                                    )
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-
-            // Tiles
-            let max_row = (bank.tile_count() / tiles_per_row) + 1;
-            let max_index = max_row * tiles_per_row;
-            let tiles_height = max_row as i32 * TILE_SIZE as i32;
-            for tile_index in 0..max_index {
-                let tile_x = tile_index % tiles_per_row;
-                let tile_y = tile_index / tiles_per_row;
-
-                for y in 0..TILE_SIZE as usize {
-                    for x in 0..TILE_SIZE as usize {
-                        let color_index = bank.tiles[tile_index].get_pixel(x as u8, y as u8);
-                        let gray_value = color_index * 63; // Map 0-4 to 0-252
-
-                        let pixel_x = tile_x * TILE_SIZE as usize + x;
-                        let pixel_y = tile_y * TILE_SIZE as usize + y;
-                        let pixel_offset = (pixel_y * tiles_w as usize + pixel_x) * 4;
-
-                        // Set RGBA values
-                        self.debug_pixels[bank_index][pixel_offset] = gray_value; // R
-                        self.debug_pixels[bank_index][pixel_offset + 1] = gray_value; // G
-                        self.debug_pixels[bank_index][pixel_offset + 2] = gray_value; // B
-                        self.debug_pixels[bank_index][pixel_offset + 3] = 255; // A
-                    }
-                }
-            }
-
-            layout.push_edge(Edge::Top, tiles_height, |frame_tiles| {
-                self.debug_texture[bank_index]
-                    .update_texture(&self.debug_pixels[bank_index])
-                    .unwrap();
-                let r = frame_tiles.rect();
-                canvas.draw_texture_ex(
-                    &self.debug_texture[bank_index],
-                    Vector2::new((r.x - 1) as f32, r.y as f32),
-                    0.0,
-                    self.display_debug_scale as f32,
-                    Color::WHITE,
-                );
-                // mouse over
-                if r.contains(mouse_x, mouse_y) {
-                    let col = ((mouse_x - r.x) / TILE_SIZE as i32) / self.display_debug_scale;
-                    let row = ((mouse_y - r.y) / TILE_SIZE as i32) / self.display_debug_scale;
-                    let tile_index = (row * tiles_per_row as i32) + col;
-                    if tile_index < bank.tile_count() as i32 {
-                        mouse_over_text = format!("Tile {}", tile_index);
-                    }
-                }
-            });
+        let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
+        for _ in 0..TILE_BANK_COUNT {
+            // Each texture ID is the same as the bank
+            result.create_texture(size, size);
         }
 
-        // Mouse over
-        if !mouse_over_text.is_empty() {
-            let size = self.font.measure_text(&mouse_over_text, font_size as f32, 1.0);
-            let text_x = mouse_x - size.x as i32 - 12;
-            let text_y = mouse_y + 12;
-            let pad = self.display_debug_scale;
-            canvas.draw_rectangle(
-                text_x - pad,
-                text_y,
-                size.x as i32 + pad + pad,
-                font_size,
-                Color::BLACK,
-            );
-            canvas.draw_text_ex(
-                &self.font,
-                &mouse_over_text,
-                Vector2::new(text_x as f32, text_y as f32),
-                font_size as f32,
-                1.0,
-                Color::WHITE,
-            );
-        }
+        // Main render texture
+        let id = result.create_texture(tato.video.width() as i16, tato.video.height() as i16);
+        result.canvas_texture = id;
 
-        // Text dashboard (screen space)
-        // Copying to a Vec allows us to add a few lines without mutating "t"
-        let mut text_lines: Vec<String> = t.get_dash_text().map(|s| s.into()).collect();
-        text_lines.push(format!("Iter time: {:.2}", self.iter_time_buffer.average()));
-        text_lines.push(format!("   max: {:.2}", self.iter_time_buffer.max()));
-        text_lines.push(format!("   min: {:.2}", self.iter_time_buffer.min()));
-        text_lines.push(format!("fps: {:.2}", 1.0 / t.elapsed_time()));
-        text_lines.push(format!("elapsed: {:.2} ms", t.elapsed_time() * 1000.0));
-        for (i, text) in text_lines.iter().enumerate() {
-            canvas.draw_text_ex(
-                &self.font,
-                text,
-                Vector2::new(10.0, font_size as f32 * i as f32),
-                font_size as f32,
-                1.0,
-                Color::WHITE,
-            );
-        }
+        result
+    }
 
-        // Polygons dashboard (world space)
-        for poly in t.get_dash_polys() {
-            if poly.len() >= 2 {
-                for i in 0..(poly.len() - 1) {
-                    let current = poly[i];
-                    let next = poly[i + 1];
-                    let current_x = draw_rect_x + ((current.x - t.video.scroll_x) as i32 * scale);
-                    let current_y = draw_rect_y + ((current.y - t.video.scroll_y) as i32 * scale);
-                    let next_x = draw_rect_x + ((next.x - t.video.scroll_x) as i32 * scale);
-                    let next_y = draw_rect_y + ((next.y - t.video.scroll_y) as i32 * scale);
-                    canvas.draw_line(current_x, current_y, next_x, next_y, Color::WHITE);
-                }
+    #[inline(always)]
+    fn update_texture_internal(
+        textures: &mut [Texture2D],
+        ray: &mut RaylibHandle,
+        thread: &RaylibThread,
+        id: TextureId,
+        pixels: &[u8],
+    ) {
+        if id < textures.len() {
+            let texture_pixel_count =
+                textures[id].width as usize * textures[id].height as usize * 4;
+            // resize texture to match
+            if pixels.len() != texture_pixel_count {
+                println!("Souce pixels: {}, dest pixels: {}", pixels.len(), texture_pixel_count);
+                // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
+                let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
+                let complete_rows = total_tiles / TILES_PER_ROW as usize;
+                let remaining_tiles = total_tiles % TILES_PER_ROW as usize;
+
+                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
+                let complete_lines = complete_rows * TILE_SIZE as usize;
+                let incomplete_lines = if remaining_tiles > 0 { TILE_SIZE as usize } else { 0 };
+                let new_h = (complete_lines + incomplete_lines) as i32;
+                let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
+                let texture = ray.load_texture_from_image(thread, &image).unwrap();
+                textures[id] = texture;
+                println!("Backend texture {} resized", id);
             }
+            textures[id].update_texture(&pixels).unwrap();
         }
     }
 }
 
-fn rl_color(color: RGBA12) -> Color {
-    Color::new(
-        ((color.r() as u16 * 255) / 7) as u8,
-        ((color.g() as u16 * 255) / 7) as u8,
-        ((color.b() as u16 * 255) / 7) as u8,
-        ((color.a() as u16 * 255) / 7) as u8,
-    )
+/// Main API, using Backend trait
+impl Backend for RaylibBackend {
+    // ---------------------- Core Rendering ----------------------
+
+    fn clear(&mut self, color: RGBA32) {
+        // This will be called in the render loop, storing for later use
+        self.bg_color = rgba32_to_rl_color(color);
+    }
+
+    /// Finish canvas and GUI drawing, present to window
+    fn present<'a, const LEN: usize, T>(
+        &mut self,
+        tato: &'a Tato,
+        dash: Option<&'a mut Dashboard<LEN>>,
+        // arena: &'a mut Arena<LEN>,
+        bg_banks: &[&'a T],
+    ) where
+        &'a T: Into<TilemapRef<'a>>,
+    {
+        self.time_profile = Instant::now();
+        let mut temp_texts = Arena::<32768, u32>::new();
+
+        assert!(
+            {
+                let video_width = tato.video.width() as usize;
+                let video_height = tato.video.height() as usize;
+                video_width * video_height * 4
+            } == self.pixels.len(),
+        );
+
+        // Copy pixels from video chip
+        for (i, color) in tato.iter_pixels(bg_banks).enumerate() {
+            let index = i * 4;
+            self.pixels[index] = color.r;
+            self.pixels[index + 1] = color.g;
+            self.pixels[index + 2] = color.b;
+            self.pixels[index + 3] = color.a;
+        }
+        self.buffer_iter_time.push(self.time_profile.elapsed().as_secs_f64());
+
+        // Will be used across functions, that's why it's a field
+        // TODO: Proper profiling...
+        self.time_profile = Instant::now();
+
+        // Update main render texture and queue draw operation
+        Self::update_texture_internal(
+            &mut self.textures,
+            &mut self.ray,
+            &self.thread,
+            self.canvas_texture,
+            self.pixels.as_slice(),
+        );
+
+        // Draw canvas, if not in debug mode or dashboard not available
+        if !self.debug_mode() || dash.is_none() {
+            let screen_size = self.get_screen_size();
+            let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
+            let (canvas_rect, _scale) = canvas_rect_and_scale(screen_rect, tato.video.size(), true);
+            self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
+        }
+
+        // But if dashboard is available, queue GUI drawing
+        if let Some(dash) = dash {
+            if self.debug_mode() {
+                if let Some(canvas_rect) = dash.canvas_rect() {
+                    // Adjust canvas to fit rect
+                    // let (rect, _scale) =
+                    //     canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
+                    // Queue drawing
+                    self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
+                }
+
+                self.dash_args = DashArgs {
+                    screen_size: self.get_screen_size(),
+                    canvas_size: tato.video.size(),
+                    mouse: self.get_mouse(),
+                    ..self.dash_args
+                };
+
+                // Push timing data before moving ops out of dashboard
+                dash.push_text(&format!(
+                    "iter time: {:.1} ms", //
+                    self.buffer_iter_time.average() * 1000.0
+                ));
+                dash.push_text(&format!(
+                    "canvas time: {:.1} ms",
+                    self.buffer_canvas_time.average() * 1000.0
+                ));
+
+                // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
+                dash.render(tato, self.dash_args);
+
+                // Copy tile pixels from dashboard to GPU textures
+                for bank_index in 0..TILE_BANK_COUNT {
+                    // texture ID = bank_index
+                    if let Some(pixels) = dash.tile_pixels(bank_index) {
+                        if !pixels.is_empty() {
+                            Self::update_texture_internal(
+                                &mut self.textures,
+                                &mut self.ray,
+                                &self.thread,
+                                bank_index,
+                                pixels,
+                            );
+                        }
+                    }
+                }
+            }
+
+            for op in dash.draw_ops().unwrap() {
+                match op {
+                    DrawOp::None => {},
+                    DrawOp::Text { text, x, y, size, color } => {
+                        if let Some(text_str) = text.as_str(dash.temp_arena()) {
+                            let new_text = Text::from_str(&mut temp_texts, text_str);
+                            if let Ok(text) = new_text {
+                                self.draw_ops.push(DrawOp::Text {
+                                    text,
+                                    x: *x,
+                                    y: *y,
+                                    size: *size,
+                                    color: *color,
+                                })
+                            }
+                        }
+                    },
+                    _ => self.draw_ops.push(op.clone()),
+                }
+            }
+        }
+
+        // Start canvas drawing
+        let mut canvas = self.ray.begin_drawing(&self.thread);
+        canvas.clear_background(self.bg_color);
+
+        // Execute draw ops
+        for cmd in self.draw_ops.drain(..) {
+            match cmd {
+                DrawOp::None => {},
+                DrawOp::Rect { rect, color } => {
+                    canvas.draw_rectangle(
+                        rect.x as i32,
+                        rect.y as i32,
+                        rect.w as i32,
+                        rect.h as i32,
+                        rgba32_to_rl_color(color),
+                    );
+                },
+                DrawOp::Line { x1, y1, x2, y2, color } => {
+                    canvas.draw_line(
+                        x1 as i32,
+                        y1 as i32,
+                        x2 as i32,
+                        y2 as i32,
+                        rgba32_to_rl_color(color),
+                    );
+                },
+                DrawOp::Texture { id, rect, tint } => {
+                    if id < self.textures.len() {
+                        let w = self.textures[id].width() as f32;
+                        let scale = rect.w as f32 / w;
+                        canvas.draw_texture_ex(
+                            &self.textures[id],
+                            Vector2::new(rect.x as f32, rect.y as f32),
+                            0.0,
+                            scale,
+                            rgba32_to_rl_color(tint),
+                        );
+                    }
+                },
+                DrawOp::Text { text, x, y, size, color } => {
+                    if let Some(text) = text.as_str(&temp_texts) {
+                        canvas.draw_text_ex(
+                            &self.font,
+                            text,
+                            Vector2::new(x as f32, y as f32),
+                            size,
+                            1.0,
+                            rgba32_to_rl_color(color),
+                        );
+                    }
+                },
+            }
+        }
+
+        // Time to queue all backed drawing, does not include actual render time,
+        // which will happen when this function returns
+        self.buffer_canvas_time.push(self.time_profile.elapsed().as_secs_f64());
+
+        // TODO: This print exists for a silly reason: the game actually runs slower if I don't! :-0
+        // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
+        // I believe it's related to Efficiency cores Vs. Performance ones.
+        if self.print_frame_time {
+            let time = self.buffer_canvas_time.average() + self.buffer_iter_time.average();
+            println!(
+                "Frame {} finished in {:.2} ms (max {} fps)",
+                tato.video.frame_number(),
+                time * 1000.0,
+                (1.0 / time).floor()
+            );
+        }
+    }
+
+    fn should_close(&self) -> bool {
+        self.ray.window_should_close()
+    }
+
+    // ---------------------- Drawing Primitives ----------------------
+
+    // fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32) {
+    //     self.draw_ops.push(DrawOp::Rect { rect: Rect { x, y, w, h }, color });
+    // }
+
+    // fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32) {
+    //     self.draw_ops.push(DrawOp::Text { text: text.to_string(), x, y, size: font_size, color });
+    // }
+
+    // fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32) {
+    //     self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
+    // }
+
+    fn draw_texture(&mut self, id: TextureId, rect: Rect<i16>, tint: RGBA32) {
+        self.draw_ops.push(DrawOp::Texture { id, rect, tint });
+    }
+
+    fn measure_text(&self, text: &str, font_size: f32) -> (f32, f32) {
+        let size = self.font.measure_text(text, font_size, 1.0);
+        (size.x, size.y)
+    }
+    // ---------------------- Texture Management ----------------------
+
+    fn create_texture(&mut self, width: i16, height: i16) -> TextureId {
+        let image = Image::gen_image_color(width as i32, height as i32, Color::BLACK);
+        let texture = self.ray.load_texture_from_image(&self.thread, &image).unwrap();
+        self.textures.push(texture);
+        self.textures.len() - 1
+    }
+
+    fn update_texture(&mut self, id: TextureId, pixels: &[u8]) {
+        Self::update_texture_internal(&mut self.textures, &mut self.ray, &self.thread, id, pixels);
+    }
+
+    // ---------------------- Input ----------------------
+
+    fn get_mouse(&self) -> Vec2<i16> {
+        Vec2::new(self.ray.get_mouse_x() as i16, self.ray.get_mouse_y() as i16)
+    }
+
+    fn update_input(&mut self, pad: &mut AnaloguePad) {
+        use KeyboardKey::*;
+        let ray = &mut self.ray;
+        self.dash_args.console_char = None;
+
+        // Copy existing update_gamepad logic
+        pad.copy_current_to_previous_state();
+
+        // Handle keyboard input
+        pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
+        pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
+        pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
+        pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
+        pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
+        pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
+        pad.set_button(Button::A, ray.is_key_down(KEY_Z));
+        pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
+
+        // TODO: Move all this input "parsing" to the Dashboard itself, possibly
+        // via self.dash_args!
+
+        // Dashboard
+        if ray.is_key_pressed(KEY_TAB) {
+            self.display_debug = !self.display_debug;
+        }
+        if ray.is_key_pressed(KEY_EQUAL) {
+            self.dash_args.gui_scale += 1.0;
+        }
+        if ray.is_key_pressed(KEY_MINUS) {
+            if self.dash_args.gui_scale > 1.0 {
+                self.dash_args.gui_scale -= 1.0;
+            }
+        }
+        if ray.is_key_pressed(KEY_GRAVE) {
+            self.dash_args.console_display = !self.dash_args.console_display;
+        }
+
+        // Console
+        if let Some(key) = ray.get_key_pressed() {
+            if key == KEY_ENTER {
+                self.dash_args.console_char = Some(13);
+            } else if (key as u32) < 128 {
+                if key as u32 >= KEY_A as u32 && key as u32 <= KEY_Z as u32 {
+                    // a to Z letters
+                    if ray.is_key_down(KEY_LEFT_SHIFT) {
+                        self.dash_args.console_char = Some(key as u8);
+                    } else {
+                        self.dash_args.console_char = Some(key as u8 + 32)
+                    }
+                }
+                // println!("{:?}", from_utf8(&[key as u8]));
+            }
+        };
+    }
+
+    // ---------------------- Window Info ----------------------
+
+    fn get_screen_size(&self) -> Vec2<i16> {
+        let width: i32 = self.ray.get_screen_width();
+        let height: i32 = self.ray.get_screen_height();
+        Vec2::new(width as i16, height as i16)
+    }
+
+    fn set_window_title(&mut self, title: &str) {
+        self.ray.set_window_title(&self.thread, title);
+    }
+
+    fn set_target_fps(&mut self, fps: u32) {
+        self.ray.set_target_fps(fps);
+    }
+
+    fn set_bg_color(&mut self, color: RGBA32) {
+        self.bg_color = rgba32_to_rl_color(color)
+    }
+    // ---------------------- Debug Features ----------------------
+
+    fn toggle_debug(&mut self) -> bool {
+        self.display_debug = !self.display_debug;
+        self.display_debug
+    }
+
+    fn debug_mode(&self) -> bool {
+        self.display_debug
+    }
 }

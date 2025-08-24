@@ -1,8 +1,41 @@
 ### General Engine
 
-[x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
+--->[ ] Proper error handling/messages when arena handles are invalid.
+    - Most "Option" types need to become "Result" with proper error messages
+    - It's super hard to debug arena related errors right now due to that
+    - maybe "expect" instead of unwrap, so i get error messages?
 
-[ ] Use "collider" flag on tiles, figure out a way for pipeline to mark it.
+[ ] Engine pausing
+    - toggle_pause() and is_paused() functions.
+    - Internal timer will freeze, but input can still be updated in the main loop.
+    - Game logic (update and draw) must be skipped in the main loop if tato.is_paused(), not in the engine.
+
+--->[ ] Implement command-agnostic console
+    - For common debug actions like "warp x,y", "reset", "toggle x", etc.
+    - Provides text input and parses the text line into command + args
+    - Does not actually process commands - that will be on the Game side
+    - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
+
+[?] New PixelIter that favors iteration speed over memory compactness (i.e. frame buffer)
+    - There's a bug "somewhere" (I blame the O.S...) where if I don't print anything, the game uses more CPU and takes longer to finish. Maybe it's using efficiency cores instead of performance ones?
+    - In any case, with printing (sigh) iter times are now around 0.5ms in release, solidly in the "Good Enough" zone. I still want to redesign the iterator like this, but it's not a priority
+
+[x] Groups must be tileset-independent!
+    . GroupBuilder is separate from each TilesetBuilder, saves to its own module.
+    . Gets passed to tilesetbuilder::new, just like palette?
+
+[ ] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
+    . I'm considering breaking away from default colors and requiring colors to be always defined by the user
+    . There could be a "default_colors()" function that pushes the default ones, if needed
+
+[ ] Collider should be a TileFlag bit, not a group
+    . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
+    . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
+    . Will be ready if i decide to implement sprite collisions
+    . Doesn't feel right: flags like "trigger" don't belong in the video chip, since they're gameplay related. Maybe just a "collider" bit, plus 3 "custom" bits that the user can choose how to use.
+    [ ] Use "collider" flag on tiles, figure out a way for pipeline to mark it.
+
+[x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
 
 [ ] Drawing
     [x] Tilemap to Tilemap
@@ -17,29 +50,28 @@
     . Simplify pipeline, reduce errors due to subpalette limit reached
     . 4 colors per tile stays. Maybe a "Mode 1" where we can have 16 colors per tile?...
     . Clusters can stay as is? (2 bits per pixel)
-        . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
+    . To draw a cluster you'll need a cell anyway, which means you'll know which color each index is.
     . Should still allow palette swap, will need a palette override mechanism
     . Subpalette bits can now be groups, up to 15 + None
-        . Instead of using bits, simply use named groups like WALL and DOOR
-        . This will keep Cell at 4 bytes:
-            - Id: 1 byte
-            - Flags: 1 bytes
-            - Palette: 2 bytes (4 bits per color)
+    . Instead of using bits, simply use named groups like WALL and DOOR
+    . This will keep Cell at 4 bytes: - Id: 1 byte - Flags: 1 byte - Palette: 2 bytes (4 bits per color)
     . UPDATE: Will simply use more subpalettes instead. Allows for more groups while still keeping Cell size to 4 bytes.
-    . May just adopt 16 color clusters in the future, with some way to override/remap colors.
+    . May just adopt 16 color clusters (i.e. Master System) in the future, with some way to override/remap colors.
 
-[ ] Collider should be a TileFlag bit, not a group
-    . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
-    . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
-    . Will be ready if i decide to implement sprite collisions
-    . Doesn't feel right: flags like "trigger" don't belong in the video chip, since they're gameplay related. Maybe just a "collider" bit, plus 3 "custom" bits that the user can choose how to use.
+### Arenas
+
+    [ ] Arena-backed strings
+        . Implements Into<&str>
+        . Some sort of string formatting would be great
+
+    [ ] Rename Buffer to something nicer!
 
 ### Backend and examples
 
---->[ ] Some way to easily send information to the backend.
+[x] Some way to easily send information to the backend.
     . Some static mut shenanigans? Should be OK since it won't affect gameplay. Investigate.
-        [ ] Debug rects with colors
-        [ ] Debug text
+    [x] Debug rects with colors
+    [x] Debug text
 
 [.] Use LIRQ (Line interrupt) to draw Game GUI
     . Will need to switch Tile bank halfway through
@@ -52,8 +84,8 @@
     [x] Use tato_layout, positioning everything manually is a pain!
     [x] Mouse over display debug
     [ ] Mouse over video output:
-        [ ] Inspect any BG tile being displayed by tato_video.
-        [ ] Inspect Sprites.
+    [ ] Inspect any BG tile being displayed by tato_video.
+    [ ] Inspect Sprites.
     [x] Shrink tile view to used tiles Only
     [x] Shrink subpalettes size
     [.] Indicate colors added Vs. default colors
@@ -76,28 +108,28 @@
 
 [x] Text and Fonts
     [/] Fonts will be Cell-based assets, like Anim and Tilemaps
-        . Using Tilemaps as fonts seems to work better, allows easy detection of flipped tiles, etc.
+    . Using Tilemaps as fonts seems to work better, allows easy detection of flipped tiles, etc.
     [x] Write directly to the BG Map
     [ ] Let the function accept a user defined slice of characters so that fonts of any length may be used. I.e. Very basic games may only need numbers.
 
 [.] Load & Unload Tilesets.
     . May do just a "pop" for now (won't be able to unload a tileset "in the middle", only the topmost one)
     [.] Arena approach!
-        [.] Basic push/pop implemented, needs testing!
-        [x] Once tilesets + tilemaps are working, implement Anims!
-        . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
-        . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
-        [ ] Detect and prevent loading "empty" animation frames
-        [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
+    [.] Basic push/pop implemented, needs testing!
+    [x] Once tilesets + tilemaps are working, implement Anims!
+    . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
+    . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
+    [ ] Detect and prevent loading "empty" animation frames
+    [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.
 
 [x] Tilemaps
     [x] Correctly map subpalettes when loading into Assets.
-        . Looks done? Needs more testing
+    . Looks done? Needs more testing
 
 [x] Anims: Update to latest Assets struct
     [x] Frames should just be Tilemaps?
     [x] Create Anims out of a "frame array"
-    [x] Add and use "tato.time" to draw animations, instead of video.frame_count(), to ensure frame rate independence.
+    [x] Add and use "tato.time" to draw animations, instead of video.frame_number(), to ensure frame rate independence.
     [x] AnimID(0) should mean "no animation"
 
 [x] Fonts: Replace text rendering using Anim to use Fonts.

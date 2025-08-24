@@ -102,30 +102,21 @@ impl Channel {
     }
 
     pub fn set_volume(&mut self, volume: u4) {
-        debug_assert!(
-            volume < SIZE_U4,
-            "Channel Error: Volume outside allowed range"
-        );
+        debug_assert!(volume < SIZE_U4, "Channel Error: Volume outside allowed range");
         let volume = volume.min(15);
         self.queued_volume = Some(volume);
     }
 
     /// Stereo panning, centered is zero.
     pub fn set_pan(&mut self, pan: i4) {
-        debug_assert!(
-            pan < SIZE_I4 && pan > -SIZE_I4,
-            "Channel Error: pan outside allowed range"
-        );
+        debug_assert!(pan < SIZE_I4 && pan > -SIZE_I4, "Channel Error: pan outside allowed range");
         let pan = pan.clamp(-7, 7);
         self.queued_pan = Some(pan);
     }
 
     /// Switches channel between tone and noise generation, if specs allow noise.
     pub fn set_noise_mix(&mut self, mix: u4) {
-        debug_assert!(
-            mix < SIZE_U4,
-            "Channel Error: Noise mix outside allowed range"
-        );
+        debug_assert!(mix < SIZE_U4, "Channel Error: Noise mix outside allowed range");
         let mix = mix.min(MAX_U4);
         // println!("mix: {}", mix);
         self.noise_mix = mix;
@@ -198,11 +189,11 @@ impl Channel {
                 WaveMode::Random1Bit => {
                     let lfsr_noise = self.lfsr.next_f32();
                     if lfsr_noise < 0.5 { 0 } else { MAX_U4 }
-                }
+                },
                 WaveMode::RandomSample => {
                     let lfsr_noise = self.lfsr.next_f32();
                     (quantize(lfsr_noise, SIZE_U4) * MAX_U4 as f32) as u8
-                }
+                },
             };
 
             // Avoids resetting attenuation if value hasn't changed

@@ -36,38 +36,21 @@ impl From<ColorID> for u8 {
     }
 }
 
-pub const BG_COLOR: ColorID = ColorID(0);
-pub const BLACK: ColorID = ColorID(1);
-pub const GRAY: ColorID = ColorID(2);
-pub const WHITE: ColorID = ColorID(3);
-pub const DARK_RED: ColorID = ColorID(4);
-pub const RED: ColorID = ColorID(5);
-pub const LIGHT_RED: ColorID = ColorID(6);
-pub const ORANGE: ColorID = ColorID(7);
-pub const YELLOW: ColorID = ColorID(8);
-pub const DARK_GREEN: ColorID = ColorID(9);
-pub const GREEN: ColorID = ColorID(10);
-pub const GREENLIGHT: ColorID = ColorID(11);
-pub const DARK_BLUE: ColorID = ColorID(12);
-pub const BLUE: ColorID = ColorID(13);
-pub const LIGHT_BLUE: ColorID = ColorID(14);
-pub const PINK: ColorID = ColorID(15);
-
 pub const PALETTE_DEFAULT: [RGBA12; 16] = [
-    RGBA12::BG,
-    RGBA12::BLACK,
-    RGBA12::GRAY,
-    RGBA12::WHITE,
-    RGBA12::DARK_RED,
-    RGBA12::RED,
-    RGBA12::LIGHT_RED,
-    RGBA12::ORANGE,
-    RGBA12::YELLOW,
-    RGBA12::DARK_GREEN,
-    RGBA12::GREEN,
-    RGBA12::LIGHT_GREEN,
-    RGBA12::DARK_BLUE,
-    RGBA12::BLUE,
-    RGBA12::LIGHT_BLUE,
-    RGBA12::PINK,
+    RGBA12::TRANSPARENT, // 0
+    RGBA12::BLACK,       // 1
+    RGBA12::GRAY,        // 2
+    RGBA12::WHITE,       // 3
+    RGBA12::DARK_RED,    // 4
+    RGBA12::RED,         // 5
+    RGBA12::LIGHT_RED,   // 6
+    RGBA12::ORANGE,      // 7
+    RGBA12::YELLOW,      // 8
+    RGBA12::DARK_GREEN,  // 9
+    RGBA12::GREEN,       // 10
+    RGBA12::LIGHT_GREEN, // 11
+    RGBA12::DARK_BLUE,   // 12
+    RGBA12::BLUE,        // 13
+    RGBA12::LIGHT_BLUE,  // 14
+    RGBA12::PINK,        // 15
 ];

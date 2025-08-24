@@ -22,25 +22,20 @@ const BANK_FG: u8 = 1;
 fn main() -> TatoResult<()> {
     // Init
     let bg_map = Tilemap::<1024>::new(32, 32);
-    let mut tato = Tato::new(W, H, 30);
+    let mut tato = Tato::new(W, H, 60);
     let mut backend = RaylibBackend::new(&tato);
+    let mut dash = Dashboard::<24_576>::new().unwrap();
 
-    tato.video.bg_color = RGBA12::new(2, 3, 4, 7);
+    tato.video.bg_color = RGBA12::new(2, 3, 4);
     tato.video.bg_tile_bank = BANK_BG;
     tato.video.fg_tile_bank = BANK_FG;
 
     // Animations
     let astro = tato.push_tileset(BANK_FG, ASTRO_TILESET)?;
-    let strip_id = tato.load_animation_strip(astro, &STRIP_ASTRO)?;
-
-    let anim_right =
-        tato.init_anim(Anim { strip_id, fps: 8, repeat: true, frames: [12, 13, 14, 13] })?;
-
-    let anim_down =
-        tato.init_anim(Anim { strip_id, fps: 8, repeat: true, frames: [4, 5, 6, 5] })?;
-
-    let anim_up =
-        tato.init_anim(Anim { strip_id, fps: 8, repeat: true, frames: [8, 9, 10, 9] })?;
+    let strip = tato.load_animation_strip(astro, &STRIP_ASTRO)?;
+    let anim_right = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [12, 13, 14, 13] })?;
+    let anim_down = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [4, 5, 6, 5] })?;
+    let anim_up = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [8, 9, 10, 9] })?;
 
     // Entities.
     // TODO: Obtain anims from tileset, so that we can probe a frame
@@ -72,7 +67,11 @@ fn main() -> TatoResult<()> {
 
     // Main loop
     while !backend.ray.window_should_close() {
+
         tato.frame_start(backend.ray.get_frame_time());
+        dash.frame_start();
+        backend.update_input(&mut tato.pad);
+
         for entity in &mut entities {
             // Velocity control
             entity.x += entity.vel_x as i16;
@@ -110,14 +109,14 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        backend.render(&tato, &[&bg_map]);
+        backend.present(&tato, Some(&mut dash), &[&bg_map]);
     }
     Ok(())
 }
 
 // Curiosity! To flicker sprites that go above the sprites-per-scanline
 // limit, you can do this:
-// let frame_offset = tato.video.frame_count() % 2;
+// let frame_offset = tato.video.frame_number() % 2;
 // for priority_group in 0..2 {
 //     let actual_group = (priority_group + frame_offset) % 2;
 //     for i in (0..entities.len()).filter(|&i| i % 2 == actual_group) {

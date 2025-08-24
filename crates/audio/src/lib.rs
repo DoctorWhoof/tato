@@ -90,7 +90,6 @@ impl AudioChip {
         let mut left: f32 = 0.0;
         let mut right: f32 = 0.0;
         for channel in &mut self.channels {
-
             let sample = channel.next_sample(self.sample_rate, white_noise);
             // Accumulate channels
             left += sample.left;

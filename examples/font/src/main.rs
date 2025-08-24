@@ -1,19 +1,20 @@
-use tato::{Tato, prelude::*};
+use tato::prelude::*;
 use tato_raylib::*;
 
 fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
+    let mut dash = Dashboard::<24_576>::new().unwrap();
 
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let ts_font = tato.push_tileset(0, FONT_TILESET)?;
 
-    let plt_default = tato.new_subpalette(0, [BG_COLOR, LIGHT_BLUE, GRAY, GRAY]);
-    let plt_light = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, GRAY]);
-    let plt_cycle = tato.new_subpalette(0, [BG_COLOR, WHITE, GRAY, BLACK]);
+    let plt_default = tato.new_subpalette(0, [0, 14, 2, 2]);
+    let plt_light = tato.new_subpalette(0, [0, 3, 2, 2]);
+    let plt_cycle = tato.new_subpalette(0, [0, 3, 2, 0]);
 
-    tato.video.bg_color = RGBA12::new(1, 2, 3, 7);
+    tato.video.bg_color = RGBA12::new(1, 2, 3);
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
@@ -110,9 +111,10 @@ fn main() -> TatoResult<()> {
     tato.video.wrap_bg = true;
     let mut backend = RaylibBackend::new(&tato);
     while !backend.ray.window_should_close() {
-        // Input
+
         tato.frame_start(backend.ray.get_frame_time());
-        backend.update_gamepad(&mut tato.pad);
+        dash.frame_start();
+        backend.update_input(&mut tato.pad);
 
         if tato.pad.is_down(Button::Right) {
             tato.video.scroll_x += 1;
@@ -136,7 +138,7 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        backend.render(&mut tato, &[&bg_map]);
+        backend.present(&tato, Some(&mut dash), &[&bg_map]);
     }
     Ok(())
 }

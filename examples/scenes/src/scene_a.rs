@@ -15,40 +15,40 @@ impl SceneA {
     // Initialize and retuns a new scene
     pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
-        t.video.bg_color = RGBA12::new(2, 1, 0, 7);
+        t.video.bg_color = RGBA12::new(2, 1, 0);
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
 
         // Palette test - defines BG palette with a golden tint!
         t.banks[1].palette = [
-            RGBA12::new(0, 0, 0, 0),
-            RGBA12::new(2, 1, 1, 7),
-            RGBA12::new(3, 1, 1, 7),
-            RGBA12::new(4, 2, 1, 7),
-            RGBA12::new(4, 2, 1, 7),
-            RGBA12::new(5, 2, 2, 7),
-            RGBA12::new(5, 3, 2, 7),
-            RGBA12::new(5, 4, 2, 7),
-            RGBA12::new(5, 4, 3, 7),
-            RGBA12::new(6, 4, 3, 7),
-            RGBA12::new(6, 4, 4, 7),
-            RGBA12::new(6, 5, 4, 7),
-            RGBA12::new(6, 6, 4, 7),
-            RGBA12::new(6, 6, 4, 7),
-            RGBA12::new(6, 6, 5, 7),
-            RGBA12::new(6, 6, 5, 7),
+            RGBA12::TRANSPARENT,
+            RGBA12::new(2, 1, 1),
+            RGBA12::new(3, 1, 1),
+            RGBA12::new(4, 2, 1),
+            RGBA12::new(4, 2, 1),
+            RGBA12::new(5, 2, 2),
+            RGBA12::new(5, 3, 2),
+            RGBA12::new(5, 4, 2),
+            RGBA12::new(5, 4, 3),
+            RGBA12::new(6, 4, 3),
+            RGBA12::new(6, 4, 4),
+            RGBA12::new(6, 5, 4),
+            RGBA12::new(6, 6, 4),
+            RGBA12::new(6, 6, 4),
+            RGBA12::new(6, 6, 5),
+            RGBA12::new(6, 6, 5),
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
         for i in 0..t.banks[1].palette.len() {
-            let _ = t.banks[0].push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
-            let _ = t.banks[1].push_subpalette([BG_COLOR, ColorID(i as u8), BLACK, BLACK]);
+            let _ = t.banks[0].push_subpalette([0, i as u8, 1, 1]);
+            let _ = t.banks[1].push_subpalette([0, i as u8, 1, 1]);
         }
 
         // Define new tiles
         let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
         let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET)?;
-        // let _tileset = t.add_tileset(0, &TILESET_DEFAULT).unwrap();
+
         let smiley = TILE_SMILEY;
         let arrow = TILE_ARROW;
 
@@ -177,9 +177,9 @@ impl SceneA {
                 x: entity.x as i16,
                 y: entity.y as i16,
                 id: entity.tile,
+                flags: entity.flags,
                 // Remember, we generated palettes that match the color indices
-                flags: entity.flags.with_custom_data(BLACK.0),
-                sub_palette: PaletteID(BLACK.0),
+                sub_palette: PaletteID(1),
             });
         };
 

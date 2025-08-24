@@ -35,8 +35,6 @@ impl From<Rect<i8>> for Rect<i32> {
     }
 }
 
-
-
 impl From<Rect<i32>> for Rect<f32> {
     fn from(rect: Rect<i32>) -> Self {
         Rect {
