@@ -7,7 +7,6 @@ use crate::*;
 
 const DEBUG_MEM_SIZE: usize = 32_768;
 const DEBUG_STR_COUNT: u16 = 100;
-const DEBUG_STR_LINE_LEN: u16 = 80;
 const DEBUG_POLY_COUNT: u16 = 100;
 
 #[derive(Debug)]
