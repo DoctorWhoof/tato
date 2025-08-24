@@ -1,6 +1,6 @@
 pub use raylib;
 use raylib::prelude::*;
-use std::{str::from_utf8, time::Instant, vec};
+use std::{time::Instant, vec};
 use tato::{
     Tato, arena::*, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer,
 };

@@ -2,8 +2,6 @@
 //! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
 use core::array::from_fn;
-use core::str::from_utf8;
-
 use crate::arena::{Arena, ArenaId, ArenaResult, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
