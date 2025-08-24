@@ -1,13 +1,10 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
-use crate::{
-    TatoResult,
-    backend::canvas_rect_and_scale,
-    prelude::{Edge, Frame, Rect, Tato},
-};
-use tato_layout::Fitting;
-use tato_video::{
+use crate::arena::{Arena, ArenaId, ArenaResult, Buffer, Text};
+use crate::layout::Fitting;
+use crate::prelude::*;
+use crate::video::{
     COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
     VideoMemory,
 };
@@ -17,7 +14,9 @@ pub use ops::*;
 
 mod args;
 pub use args::*;
-use tato_arena::{Arena, ArenaId, ArenaResult, Buffer, Text};
+
+mod command;
+pub use command::*;
 
 const TEMP_ARENA_LEN: usize = 16384;
 const MAX_LINES: u32 = 200;
@@ -32,7 +31,7 @@ const MAX_TILE_PIXELS: usize =
 pub struct Dashboard<const LEN: usize> {
     pub mouse_over_text: Text<u32>,
     pub font_size: f32,
-    pub console: bool,
+    pub display_console: bool,
     arena: Arena<LEN, u32>,
     pixel_arena: Arena<MAX_TILE_PIXELS, u32>,
     canvas_rect: Option<Rect<i16>>,
@@ -81,7 +80,7 @@ impl<const LEN: usize> Dashboard<LEN> {
             tile_pixels,
             mouse_over_text: Buffer::default(),
             font_size: 8.0,
-            console: false,
+            display_console: false,
             ops,
             console_buffer,
             additional_text,
@@ -277,7 +276,7 @@ impl<const LEN: usize> Dashboard<LEN> {
         }
 
         // Console
-        if self.console {
+        if self.display_console {
             layout.push_edge(Edge::Bottom, 80, |console| {
                 console.set_margin(5);
                 let handle = self
