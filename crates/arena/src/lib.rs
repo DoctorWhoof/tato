@@ -31,6 +31,8 @@ pub enum ArenaError {
     IndexConversion,
     /// Slice capacity exceeded
     CapacityExceeded,
+    ///
+    InvalidOrEmptyUTF8
 }
 
 impl core::fmt::Display for ArenaError {
@@ -48,6 +50,7 @@ impl core::fmt::Display for ArenaError {
             ArenaError::InvalidBounds => write!(f, "Invalid bounds or range"),
             ArenaError::IndexConversion => write!(f, "Index type conversion failed"),
             ArenaError::CapacityExceeded => write!(f, "Capacity exceeded"),
+            ArenaError::InvalidOrEmptyUTF8 => write!(f, "Invalid or empty UTF8"),
         }
     }
 }

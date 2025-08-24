@@ -1,6 +1,6 @@
 pub use raylib;
 use raylib::prelude::*;
-use std::{time::Instant, vec};
+use std::{str::from_utf8, time::Instant, vec};
 use tato::{
     Tato, arena::*, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer,
 };
@@ -211,11 +211,11 @@ impl Backend for RaylibBackend {
                 };
 
                 // Push timing data before moving ops out of dashboard
-                dash.add_text(&format!(
+                dash.push_text(&format!(
                     "iter time: {:.1} ms", //
                     self.buffer_iter_time.average() * 1000.0
                 ));
-                dash.add_text(&format!(
+                dash.push_text(&format!(
                     "canvas time: {:.1} ms",
                     self.buffer_canvas_time.average() * 1000.0
                 ));
@@ -244,7 +244,7 @@ impl Backend for RaylibBackend {
                 match op {
                     DrawOp::None => {},
                     DrawOp::Text { text, x, y, size, color } => {
-                        if let Some(text_str) = text.as_str(dash.arena()) {
+                        if let Some(text_str) = text.as_str(dash.temp_arena()) {
                             let new_text = Text::from_str(&mut temp_texts, text_str);
                             if let Ok(text) = new_text {
                                 self.draw_ops.push(DrawOp::Text {
@@ -382,6 +382,7 @@ impl Backend for RaylibBackend {
     fn update_input(&mut self, pad: &mut AnaloguePad) {
         use KeyboardKey::*;
         let ray = &mut self.ray;
+        self.dash_args.console_char = None;
 
         // Copy existing update_gamepad logic
         pad.copy_current_to_previous_state();
@@ -396,6 +397,9 @@ impl Backend for RaylibBackend {
         pad.set_button(Button::A, ray.is_key_down(KEY_Z));
         pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
 
+        // TODO: Move all this input "parsing" to the Dashboard itself, possibly
+        // via self.dash_args!
+
         // Dashboard
         if ray.is_key_pressed(KEY_TAB) {
             self.display_debug = !self.display_debug;
@@ -408,6 +412,26 @@ impl Backend for RaylibBackend {
                 self.dash_args.gui_scale -= 1.0;
             }
         }
+        if ray.is_key_pressed(KEY_GRAVE) {
+            self.dash_args.console_display = !self.dash_args.console_display;
+        }
+
+        // Console
+        if let Some(key) = ray.get_key_pressed() {
+            if key == KEY_ENTER {
+                self.dash_args.console_char = Some(13);
+            } else if (key as u32) < 128 {
+                if key as u32 >= KEY_A as u32 && key as u32 <= KEY_Z as u32 {
+                    // a to Z letters
+                    if ray.is_key_down(KEY_LEFT_SHIFT) {
+                        self.dash_args.console_char = Some(key as u8);
+                    } else {
+                        self.dash_args.console_char = Some(key as u8 + 32)
+                    }
+                }
+                // println!("{:?}", from_utf8(&[key as u8]));
+            }
+        };
     }
 
     // ---------------------- Window Info ----------------------

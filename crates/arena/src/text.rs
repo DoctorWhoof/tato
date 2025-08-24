@@ -2,7 +2,7 @@
 mod debug_buffer;
 use debug_buffer::*;
 
-use crate::{Arena, ArenaIndex, ArenaResult, ArenaError, Buffer};
+use crate::{Arena, ArenaError, ArenaIndex, ArenaResult, Buffer};
 use core::fmt::Write;
 
 /// Type alias for text stored as a Slice<u8>
@@ -27,6 +27,27 @@ where
         let bytes = s.as_bytes();
         let len = Idx::from_usize_checked(s.len()).ok_or(ArenaError::IndexConversion)?;
         Buffer::from_fn(arena, len, |i| bytes[i])
+    }
+
+    /// Create text from a valid (but non-zero) ASCII slice
+    pub fn from_ascii<const LEN: usize>(
+        arena: &mut Arena<LEN, Idx>,
+        bytes: &[u8],
+    ) -> ArenaResult<Self> {
+        let mut len = Idx::zero();
+        for i in 0..bytes.len() {
+            let value = bytes[i];
+            if value.is_ascii() && value > 0 {
+                len = Idx::from_usize_checked(i + 1).unwrap()
+            } else {
+                break;
+            }
+        }
+        if len > Idx::zero() {
+            Buffer::from_fn(arena, len, |i| bytes[i])
+        } else {
+            ArenaResult::Err(ArenaError::InvalidOrEmptyUTF8)
+        }
     }
 
     /// Count placeholders in a format string
@@ -122,7 +143,8 @@ where
         debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
-        let total_len = Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
+        let total_len =
+            Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
@@ -171,7 +193,8 @@ where
         debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
-        let total_len = Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
+        let total_len =
+            Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }
@@ -207,7 +230,8 @@ where
         }
 
         let formatted_str = debug_buf.as_str();
-        let total_len = Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
+        let total_len =
+            Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
 
         Buffer::from_fn(arena, total_len, |i| formatted_str.as_bytes()[i])
     }

@@ -2,10 +2,27 @@ use super::*;
 use core::ops::Range;
 use core::str::from_utf8;
 
-// 128 bytes!
+pub const COMMAND_MAX_LEN: usize = 111; // neatly gives us 128-byte commands
+
+#[derive(Debug, Clone, Copy)]
+pub enum Key {
+    None,
+    Letter(u8),
+    Number(u8),
+    Enter,
+    Grave,
+    Backspace,
+    Delete,
+    Space,
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
 #[derive(Debug)]
 pub struct Command {
-    data: [u8; 111],
+    data: [u8; COMMAND_MAX_LEN],
     item_count: u8,
     item_ranges: [Range<u8>; 8],
 }
@@ -32,7 +49,7 @@ impl Command {
             if slice[i as usize] == ' ' as u8 {
                 // Validate
                 if is_space {
-                    // Will ignore whitespace
+                    // Will ignore whitespaces
                     seg_start += 1;
                     continue;
                 }

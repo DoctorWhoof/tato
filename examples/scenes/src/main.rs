@@ -66,6 +66,7 @@ fn main() -> TatoResult<()> {
     // Backend
     let target_fps = 60.0;
     let mut backend = RaylibBackend::new(&tato);
+    backend.print_frame_time = false;
     while !backend.ray.window_should_close() {
 
         dash.frame_start();

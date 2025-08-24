@@ -9,6 +9,8 @@ pub struct DashArgs {
     // pub canvas_scale: f32,
     // pub canvas_pos: Vec2<i16>,
     pub gui_scale: f32,
+    pub console_display: bool,
+    pub console_char: Option<u8>
 }
 
 impl Default for DashArgs {
@@ -21,6 +23,8 @@ impl Default for DashArgs {
             // canvas_scale: 1.0,
             // canvas_pos: Vec2 { x: 0, y: 0 },
             gui_scale: 2.0,
+            console_display: false,
+            console_char: None
         }
     }
 }
