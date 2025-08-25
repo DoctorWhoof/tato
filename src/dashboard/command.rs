@@ -4,22 +4,6 @@ use core::str::from_utf8;
 
 pub const COMMAND_MAX_LEN: usize = 111; // neatly gives us 128-byte commands
 
-#[derive(Debug, Clone, Copy)]
-pub enum Key {
-    None,
-    Letter(u8),
-    Number(u8),
-    Enter,
-    Grave,
-    Backspace,
-    Delete,
-    Space,
-    Left,
-    Right,
-    Up,
-    Down,
-}
-
 #[derive(Debug)]
 pub struct Command {
     data: [u8; COMMAND_MAX_LEN],

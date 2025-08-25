@@ -1,7 +1,6 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
-use core::array::from_fn;
 use crate::arena::{Arena, ArenaId, ArenaResult, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
@@ -9,6 +8,10 @@ use crate::video::{
     COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
     VideoMemory,
 };
+use core::array::from_fn;
+
+mod key;
+pub use key::*;
 
 mod ops;
 pub use ops::*;
@@ -32,6 +35,7 @@ const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
 #[derive(Debug)]
 pub struct Dashboard<const LEN: usize> {
     pub font_size: f32,
+    pub gui_scale: f32,
     fixed_arena: Arena<FIXED_ARENA_LEN, u32>,
     temp_arena: Arena<LEN, u32>,
     canvas_rect: Option<Rect<i16>>,
@@ -43,6 +47,8 @@ pub struct Dashboard<const LEN: usize> {
     console_buffer: Buffer<[u8; COMMAND_MAX_LEN], u32>,
     console_line_buffer: [u8; COMMAND_MAX_LEN],
     console_line_len: u8,
+    // console_display: bool,
+    // last_key_received: Key,
 }
 
 pub const PANEL_WIDTH: i16 = 150;
@@ -78,18 +84,21 @@ impl<const LEN: usize> Dashboard<LEN> {
         let additional_text = Buffer::new(&mut temp_arena, MAX_LINES)?;
 
         Ok(Self {
+            font_size: 8.0,
+            gui_scale: 2.0,
             temp_arena,
             fixed_arena,
             tile_pixels,
             mouse_over_text: Text::default(),
-            font_size: 8.0,
             ops,
-            console_buffer,
             additional_text,
             canvas_rect: None,
             last_frame_arena_use: 0,
+            // console_display: false,
             console_line_buffer: from_fn(|_| 0),
             console_line_len: 0,
+            console_buffer,
+            // last_key_received: Key::None,
         })
     }
 
@@ -117,13 +126,6 @@ impl<const LEN: usize> Dashboard<LEN> {
             .items(&self.temp_arena)
             .map(|iter| iter.filter_map(|id| self.temp_arena.get(id).ok()))
     }
-
-    // /// An iterator with every console command so far
-    // pub fn console_buffer(&self) -> ArenaResult<impl Iterator<Item = &str>> {
-    //     self.console_buffer
-    //         .items(&self.temp_arena)
-    //         .map(|iter| iter.filter_map(|text| text.as_str(&self.temp_arena)))
-    // }
 
     /// Must be called at the beginning of each frame, clears buffers.
     pub fn frame_start(&mut self) {
@@ -162,7 +164,7 @@ impl<const LEN: usize> Dashboard<LEN> {
     pub fn render(&mut self, tato: &Tato, args: DashArgs) {
         // Internal temp memory
         let mut temp = Arena::<TEMP_ARENA_LEN>::new();
-        let font_size = self.font_size * args.gui_scale;
+        let font_size = self.font_size * self.gui_scale;
 
         // HINT: The tricky part of dodging the borrow checker is all the closures necessary
         // to the Layout frames. Try to do as much as possible outside of the closures.
@@ -173,8 +175,19 @@ impl<const LEN: usize> Dashboard<LEN> {
                 let arena_cap = self.temp_arena.capacity();
                 let frame_text = Text::format_display(
                     &mut self.temp_arena,
-                    "Dashboard mem.: {:.1} / {:.1}",
+                    "Dash mem. (temp): {:.1} / {:.1}",
                     &[self.last_frame_arena_use as f32 / 1024.0, arena_cap as f32 / 1024.0],
+                    " Kb",
+                );
+                self.additional_text.push(&mut self.temp_arena, frame_text.unwrap()).unwrap();
+            }
+
+            {
+                let fixed_arena_cap = self.fixed_arena.capacity();
+                let frame_text = Text::format_display(
+                    &mut self.temp_arena,
+                    "Dash mem. (fixed): {:.1} / {:.1}",
+                    &[self.fixed_arena.used() as f32 / 1024.0, fixed_arena_cap as f32 / 1024.0],
                     " Kb",
                 );
                 self.additional_text.push(&mut self.temp_arena, frame_text.unwrap()).unwrap();
@@ -229,7 +242,7 @@ impl<const LEN: usize> Dashboard<LEN> {
         // Start Layout
         let screen_rect = Rect { x: 0, y: 0, w: args.screen_size.x, h: args.screen_size.y };
         let mut layout = Frame::new(screen_rect);
-        layout.set_scale(args.gui_scale);
+        layout.set_scale(self.gui_scale);
         layout.set_margin(MARGIN);
         layout.set_margin(10);
         layout.set_gap(3);
@@ -264,7 +277,7 @@ impl<const LEN: usize> Dashboard<LEN> {
             layout.push_edge(Edge::Right, PANEL_WIDTH, |panel| {
                 panel.set_margin(5);
                 panel.set_gap(0);
-                panel.set_scale(args.gui_scale);
+                panel.set_scale(self.gui_scale);
                 panel.fitting = Fitting::Clamp;
 
                 let rect_handle =
@@ -281,10 +294,62 @@ impl<const LEN: usize> Dashboard<LEN> {
             });
         }
 
+        // Receive input
+        if args.display_console {
+            match args.key {
+                Key::None => {},
+                Key::Text(ch) => {
+                    if (self.console_line_len as usize) < COMMAND_MAX_LEN {
+                        if ch >= 32 && ch < 128 {
+                            self.console_line_buffer[self.console_line_len as usize] = ch;
+                            self.console_line_len += 1;
+                        }
+                    }
+                },
+                Key::Tab => {},
+                Key::Plus => {
+                    if self.gui_scale < 10.0 {
+                        self.gui_scale += 1.0
+                    }
+                },
+                Key::Minus => {
+                    if self.gui_scale > 0.5 {
+                        self.gui_scale -= 1.0
+                    }
+                },
+                Key::Enter => {
+                    if self.console_line_len > 0 {
+                        // Strip extra characters
+                        let line: [u8; COMMAND_MAX_LEN] = from_fn(|i| {
+                            if i < self.console_line_len as usize {
+                                self.console_line_buffer[i]
+                            } else {
+                                0
+                            }
+                        });
+                        self.console_buffer.push(&mut self.fixed_arena, line).unwrap();
+                        self.console_line_len = 0;
+                    }
+                },
+                Key::Backspace => {
+                    if self.console_line_len > 0 {
+                        self.console_line_len -= 1;
+                    }
+                },
+                Key::Delete => todo!(),
+                Key::Left => todo!(),
+                Key::Right => todo!(),
+                Key::Up => todo!(),
+                Key::Down => todo!(),
+            }
+        }
+        // self.last_key_received = args.key;
+
         // Console
-        if args.console_display {
+        if args.display_console {
             layout.push_edge(Edge::Bottom, 80, |console| {
                 console.set_margin(5);
+
                 // draw rect
                 let op_handle = self
                     .temp_arena
@@ -294,29 +359,6 @@ impl<const LEN: usize> Dashboard<LEN> {
                     })
                     .unwrap();
                 self.ops.push(&mut self.temp_arena, op_handle).unwrap();
-
-                // Receive characters
-                if let Some(character) = args.console_char {
-                    if character == 13 {
-                        if self.console_line_len > 0 {
-                            // Strip extra characters
-                            let line: [u8; COMMAND_MAX_LEN] = from_fn(|i| {
-                                if i < self.console_line_len as usize {
-                                    self.console_line_buffer[i]
-                                } else {
-                                    0
-                                }
-                            });
-                            self.console_buffer.push(&mut self.fixed_arena, line).unwrap();
-                            self.console_line_len = 0;
-                        }
-                    } else if (self.console_line_len as usize) < COMMAND_MAX_LEN {
-                        if character_is_valid(character) {
-                            self.console_line_buffer[self.console_line_len as usize] = character;
-                            self.console_line_len += 1;
-                        }
-                    }
-                }
 
                 // Draw main console line text
                 console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
@@ -349,7 +391,6 @@ impl<const LEN: usize> Dashboard<LEN> {
                 // Draw console buffer (previous lines)
                 let remaining_rect = console.rect();
                 for text in self.console_buffer.items(&self.fixed_arena).unwrap().rev() {
-                    // println!("Line: {:?}", text);
                     let mut line_rect = Rect::<i16>::default();
                     console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
                         line_rect = line.rect();
@@ -404,7 +445,7 @@ impl<const LEN: usize> Dashboard<LEN> {
             }
         }
 
-        // World space polys (follow scrolling)
+        // World space polys (will follow scrolling)
         if let Some(canvas_rect) = self.canvas_rect {
             for world_poly in tato.iter_dash_polys(true) {
                 let scale = canvas_rect.h as f32 / args.canvas_size.y as f32;
@@ -434,12 +475,12 @@ impl<const LEN: usize> Dashboard<LEN> {
 
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
-            let pad = args.gui_scale as i16;
+            let pad = self.gui_scale as i16;
             // TODO: Need a way to calculate font size... without knowing what the font is!
             // Maybe just a multiplier, or maybe even only work with monospaced fonts?
             let width = ((self.font_size / 1.9 * self.mouse_over_text.len() as f32)
-                * args.gui_scale) as i16;
-            let font_size = 12.0 * args.gui_scale as f32;
+                * self.gui_scale) as i16;
+            let font_size = 12.0 * self.gui_scale as f32;
 
             let text_x = args.mouse.x - width - 12;
             let text_y = args.mouse.y + 12;
@@ -550,7 +591,7 @@ impl<const LEN: usize> Dashboard<LEN> {
         let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
 
-        let gap = args.gui_scale as i16;
+        let gap = self.gui_scale as i16;
         let bank = &tato.banks[bank_index];
         if bank.tile_count() == 0 && bank.color_count() == 0 && bank.sub_palette_count() == 0 {
             return;
@@ -568,7 +609,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                     text,
                     x: rect.x + gap,
                     y: rect.y,
-                    size: self.font_size * args.gui_scale,
+                    size: self.font_size * self.gui_scale,
                     color: RGBA32::WHITE,
                 })
                 .unwrap();
@@ -594,7 +635,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                     text,
                     x: rect.x + gap,
                     y: rect.y,
-                    size: self.font_size * 0.75 * args.gui_scale,
+                    size: self.font_size * 0.75 * self.gui_scale,
                     color: RGBA32::WHITE,
                 })
                 .unwrap();
@@ -727,7 +768,7 @@ impl<const LEN: usize> Dashboard<LEN> {
         let max_row = (bank.tile_count() / tiles_per_row as usize) + 1;
         // tile_size is already in screen coordinates,
         // so I need to divide by the GUI scale.
-        let tiles_height = max_row as f32 * (tile_size / args.gui_scale);
+        let tiles_height = max_row as f32 * (tile_size / self.gui_scale);
 
         panel.push_edge(Edge::Top, tiles_height as i16, |tiles| {
             // tiles.set_margin(0);
@@ -758,11 +799,4 @@ impl<const LEN: usize> Dashboard<LEN> {
             }
         });
     }
-}
-
-fn character_is_valid(key: u8) -> bool {
-    if key as u32 >= 47 && key < 128 {
-        return true;
-    }
-    false
 }

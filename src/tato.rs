@@ -5,7 +5,7 @@ use tato_math::{Rect, Vec2};
 
 use crate::*;
 
-const DEBUG_MEM_SIZE: usize = 32_768;
+const DEBUG_MEM_SIZE: usize = 16 * 1024;
 const DEBUG_STR_COUNT: u16 = 100;
 const DEBUG_POLY_COUNT: u16 = 100;
 

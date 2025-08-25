@@ -212,11 +212,11 @@ impl Backend for RaylibBackend {
 
                 // Push timing data before moving ops out of dashboard
                 dash.push_text(&format!(
-                    "iter time: {:.1} ms", //
+                    "Pixel iter time: {:.1} ms", //
                     self.buffer_iter_time.average() * 1000.0
                 ));
                 dash.push_text(&format!(
-                    "canvas time: {:.1} ms",
+                    "Canvas queue time: {:.1} ms",
                     self.buffer_canvas_time.average() * 1000.0
                 ));
 
@@ -340,17 +340,17 @@ impl Backend for RaylibBackend {
 
     // ---------------------- Drawing Primitives ----------------------
 
-    // fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32) {
-    //     self.draw_ops.push(DrawOp::Rect { rect: Rect { x, y, w, h }, color });
-    // }
+    fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32) {
+        self.draw_ops.push(DrawOp::Rect { rect: Rect { x, y, w, h }, color });
+    }
 
-    // fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32) {
-    //     self.draw_ops.push(DrawOp::Text { text: text.to_string(), x, y, size: font_size, color });
-    // }
+    fn draw_text(&mut self, _text: &str, _x: f32, _y: f32, _font_size: f32, _color: RGBA32) {
+        // self.draw_ops.push(DrawOp::Text { text: text.to_string(), x, y, size: font_size, color });
+    }
 
-    // fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32) {
-    //     self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
-    // }
+    fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32) {
+        self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
+    }
 
     fn draw_texture(&mut self, id: TextureId, rect: Rect<i16>, tint: RGBA32) {
         self.draw_ops.push(DrawOp::Texture { id, rect, tint });
@@ -382,7 +382,6 @@ impl Backend for RaylibBackend {
     fn update_input(&mut self, pad: &mut AnaloguePad) {
         use KeyboardKey::*;
         let ray = &mut self.ray;
-        self.dash_args.console_char = None;
 
         // Copy existing update_gamepad logic
         pad.copy_current_to_previous_state();
@@ -397,39 +396,84 @@ impl Backend for RaylibBackend {
         pad.set_button(Button::A, ray.is_key_down(KEY_Z));
         pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
 
-        // TODO: Move all this input "parsing" to the Dashboard itself, possibly
-        // via self.dash_args!
-
-        // Dashboard
+        // Dashboard toggle
         if ray.is_key_pressed(KEY_TAB) {
             self.display_debug = !self.display_debug;
         }
-        if ray.is_key_pressed(KEY_EQUAL) {
-            self.dash_args.gui_scale += 1.0;
-        }
-        if ray.is_key_pressed(KEY_MINUS) {
-            if self.dash_args.gui_scale > 1.0 {
-                self.dash_args.gui_scale -= 1.0;
+
+        if ray.is_key_pressed(KEY_GRAVE) {
+            if self.display_debug {
+                self.dash_args.display_console = !self.dash_args.display_console;
             }
         }
-        if ray.is_key_pressed(KEY_GRAVE) {
-            self.dash_args.console_display = !self.dash_args.console_display;
-        }
 
-        // Console
+        // Dashboard keys. Always reset to none, then set most recent one, if any
+        self.dash_args.key = Key::None;
         if let Some(key) = ray.get_key_pressed() {
-            if key == KEY_ENTER {
-                self.dash_args.console_char = Some(13);
-            } else if (key as u32) < 128 {
-                if key as u32 >= KEY_A as u32 && key as u32 <= KEY_Z as u32 {
-                    // a to Z letters
-                    if ray.is_key_down(KEY_LEFT_SHIFT) {
-                        self.dash_args.console_char = Some(key as u8);
-                    } else {
-                        self.dash_args.console_char = Some(key as u8 + 32)
+            match key {
+                KEY_ENTER => {
+                    self.dash_args.key = Key::Enter;
+                },
+                KEY_TAB => {
+                    self.dash_args.key = Key::Tab;
+                },
+                KEY_MINUS | KEY_KP_SUBTRACT => {
+                    self.dash_args.key = Key::Minus;
+                },
+                KEY_EQUAL | KEY_KP_ADD => {
+                    self.dash_args.key = Key::Plus;
+                },
+                KEY_BACKSPACE => {
+                    self.dash_args.key = Key::Backspace;
+                },
+                KEY_DELETE => {
+                    self.dash_args.key = Key::Delete;
+                },
+                KEY_LEFT => {
+                    self.dash_args.key = Key::Left;
+                },
+                KEY_RIGHT => {
+                    self.dash_args.key = Key::Right;
+                },
+                KEY_UP => {
+                    self.dash_args.key = Key::Up;
+                },
+                KEY_DOWN => {
+                    self.dash_args.key = Key::Down;
+                },
+                _ if (key as u32) >= 32 && (key as u32) < 127 => {
+                    // Handle all printable ASCII characters (32-126)
+                    match key as u32 {
+                        k if k >= KEY_A as u32 && k <= KEY_Z as u32 => {
+                            // Letters: apply shift for case
+                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
+                                self.dash_args.key = Key::Text(key as u8); // uppercase
+                            } else {
+                                self.dash_args.key = Key::Text(key as u8 + 32); // lowercase
+                            }
+                        },
+                        k if k >= KEY_ZERO as u32 && k <= KEY_NINE as u32 => {
+                            // Number row: apply shift for symbols
+                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
+                                // Shift+number gives symbols: )!@#$%^&*(
+                                let symbols = b")!@#$%^&*(";
+                                self.dash_args.key =
+                                    Key::Text(symbols[(k - KEY_ZERO as u32) as usize]);
+                            } else {
+                                self.dash_args.key = Key::Text(b'0' + (k - KEY_ZERO as u32) as u8);
+                            }
+                        },
+                        k if k >= KEY_KP_0 as u32 && k <= KEY_KP_9 as u32 => {
+                            // Keypad numbers (no shift variants)
+                            self.dash_args.key = Key::Text(b'0' + (k - KEY_KP_0 as u32) as u8);
+                        },
+                        _ => {
+                            // All other printable characters
+                            self.dash_args.key = Key::Text(key as u8);
+                        },
                     }
-                }
-                // println!("{:?}", from_utf8(&[key as u8]));
+                },
+                _ => {},
             }
         };
     }

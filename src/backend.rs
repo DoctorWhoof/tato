@@ -63,14 +63,14 @@ pub trait Backend {
     /// Measure text dimensions for the given font size
     fn measure_text(&self, text: &str, font_size: f32) -> (f32, f32);
 
-    // /// Draw a filled rectangle
-    // fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32);
+    /// Draw a filled rectangle
+    fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32);
 
-    // /// Draw text at the specified position
-    // fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32);
+    /// Draw text at the specified position
+    fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32);
 
-    // /// Draw a line between two points
-    // fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32);
+    /// Draw a line between two points
+    fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32);
 
     // ---------------------- Texture Management ----------------------
 
