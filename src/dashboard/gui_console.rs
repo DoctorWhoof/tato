@@ -70,32 +70,23 @@ impl<const LEN: usize> Dashboard<LEN> {
                 self.ops.push(&mut self.temp_arena, op_handle).unwrap();
 
                 // Draw main console line text
-                console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
-                    let rect = line.rect();
-                    let text = Text::from_fn(
-                        &mut self.temp_arena,
-                        self.console_line_len as u32 + 1,
-                        |i| {
-                            if i < self.console_line_len as usize {
-                                self.console_line_buffer[i]
-                            } else {
-                                '_' as u8
-                            }
-                        },
-                    )
-                    .unwrap();
-                    let text_op_id = self
-                        .temp_arena
-                        .alloc(DrawOp::Text {
-                            text,
-                            x: rect.x,
-                            y: rect.y,
-                            size: font_size,
-                            color: RGBA32::WHITE,
-                        })
-                        .unwrap();
-                    self.ops.push(&mut self.temp_arena, text_op_id).unwrap();
-                });
+                let text_result = Text::from_ascii(&mut self.temp_arena, &self.console_line_buffer);
+                if let Ok(text) = text_result {
+                    console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
+                        let rect = line.rect();
+                        let text_op_id = self
+                            .temp_arena
+                            .alloc(DrawOp::Text {
+                                text: text.clone(),
+                                x: rect.x,
+                                y: rect.y,
+                                size: font_size,
+                                color: RGBA32::WHITE,
+                            })
+                            .unwrap();
+                        self.ops.push(&mut self.temp_arena, text_op_id).unwrap();
+                    });
+                }
 
                 // Draw console buffer (previous lines)
                 let remaining_rect = console.rect();
