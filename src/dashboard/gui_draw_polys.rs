@@ -1,0 +1,56 @@
+use super::*;
+
+impl<const LEN: usize> Dashboard<LEN> {
+    pub fn draw_polys(&mut self, tato: &Tato, args: &DashArgs) {
+        // Generate ops for debug polygons
+        for poly in tato.iter_dash_polys(false) {
+            if poly.len() >= 2 {
+                for i in 0..(poly.len() - 1) {
+                    let current = poly[i];
+                    let next = poly[i + 1];
+                    let handle = self
+                        .temp_arena
+                        .alloc(DrawOp::Line {
+                            x1: current.x,
+                            y1: current.y,
+                            x2: next.x,
+                            y2: next.y,
+                            color: RGBA32::WHITE,
+                        })
+                        .unwrap();
+                    self.ops
+                        .push(&mut self.temp_arena, handle)
+                        .expect("Dashboard: Can't insert GUI poly");
+                }
+            }
+        }
+
+        // World space polys (will follow scrolling)
+        if let Some(canvas_rect) = self.canvas_rect {
+            for world_poly in tato.iter_dash_polys(true) {
+                let scale = canvas_rect.h as f32 / args.canvas_size.y as f32;
+                let scroll_x = tato.video.scroll_x as f32;
+                let scroll_y = tato.video.scroll_y as f32;
+                if world_poly.len() >= 2 {
+                    for i in 0..(world_poly.len() - 1) {
+                        let current = world_poly[i];
+                        let next = world_poly[i + 1];
+                        let handle = self
+                            .temp_arena
+                            .alloc(DrawOp::Line {
+                                x1: ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
+                                y1: ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
+                                x2: ((next.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
+                                y2: ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
+                                color: RGBA32::WHITE,
+                            })
+                            .unwrap();
+                        self.ops
+                            .push(&mut self.temp_arena, handle)
+                            .expect("Dashboard: Can't insert World poly");
+                    }
+                }
+            }
+        }
+    }
+}

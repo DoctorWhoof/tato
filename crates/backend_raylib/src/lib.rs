@@ -441,6 +441,9 @@ impl Backend for RaylibBackend {
                 KEY_DOWN => {
                     self.dash_args.key = Key::Down;
                 },
+                KEY_GRAVE => {
+                    // Do nothing, to avoid being used as shortcut and entering text
+                },
                 _ if (key as u32) >= 32 && (key as u32) < 127 => {
                     // Handle all printable ASCII characters (32-126)
                     match key as u32 {
