@@ -3,7 +3,7 @@
 
 use tato_math::Num;
 
-/// Fixed size ring buffer with O(1) statistical functions
+/// Fast fixed size ring buffer with O(1) basic statistical functions
 #[derive(Debug, Clone)]
 pub struct AvgBuffer<const CAP: usize, T: Num> {
     data: [T; CAP],
@@ -70,7 +70,7 @@ impl<const CAP: usize, T: Num> AvgBuffer<CAP, T> {
         self.head = 0;
     }
 
-    /// True is buffer is empty.
+    /// True if buffer is empty.
     pub fn is_empty(&self) -> bool {
         self.filled_len == 0
     }
@@ -215,7 +215,7 @@ impl<const CAP: usize, T: Num> AvgBuffer<CAP, T> {
         (self.min() + self.max()) / two
     }
 
-    /// True if second half of buffer has higher average than first half
+    /// True if second half of buffer has higher average than first half (requires iteration)
     pub fn is_trending_up(&self) -> bool {
         if self.filled_len < 4 {
             return false;
