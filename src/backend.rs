@@ -1,9 +1,6 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
-use crate::{
-    Tato,
-    prelude::{DashArgs, DrawOp},
-};
+use crate::{prelude::{DrawOp, Key}, Tato};
 use tato_arena::{Arena, ArenaId, Buffer};
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
@@ -49,7 +46,7 @@ pub trait Backend {
     /// Clear the screen with the given color
     fn clear(&mut self, color: RGBA32);
 
-    fn frame_start<const LEN:usize>(&mut self, frame_arena:&mut Arena<LEN, u32>);
+    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>);
 
     /// Present the rendered frame to the screen
     fn frame_present<'a, const LEN: usize, T>(
@@ -81,13 +78,12 @@ pub trait Backend {
     /// Get current mouse position
     fn get_mouse(&self) -> Vec2<i16>;
 
+    fn get_pressed_key(&self) -> Option<Key>;
+
     /// Update gamepad/input state
     fn update_input(&mut self, pad: &mut AnaloguePad);
 
     // ---------------------- Window Info ----------------------
-
-    /// Get screen dimensions
-    fn get_screen_size(&self) -> Vec2<i16>;
 
     /// Set window title
     fn set_window_title(&mut self, title: &str);
@@ -101,5 +97,11 @@ pub trait Backend {
     /// Optional canvas texture rect, useful to draw the main canvas inside a GUI
     fn set_canvas_rect(&mut self, canvas_rect: Option<Rect<i16>>);
 
-    fn get_dashboard_args(&self) -> Option<DashArgs>;
+    /// Get screen dimensions
+    fn get_screen_size(&self) -> Vec2<i16>;
+
+    fn get_pixel_iter_elapsed_time(&self) -> f32;
+
+    fn get_drawing_elapsed_time(&self) -> f32;
+
 }

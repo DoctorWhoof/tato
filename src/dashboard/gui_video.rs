@@ -6,7 +6,7 @@ impl Dashboard {
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut Arena<LEN, u32>,
-        args: &DashArgs,
+        backend: &impl Backend,
         tato: &Tato,
     ) {
         layout.push_edge(Edge::Right, PANEL_WIDTH, |panel| {
@@ -22,7 +22,7 @@ impl Dashboard {
             // Process each video memory bank
             for bank_index in 0..TILE_BANK_COUNT {
                 // Draw each bank debug data
-                self.process_bank(frame_arena, bank_index, &args, tato, panel);
+                self.process_bank(frame_arena, bank_index, backend, tato, panel);
                 // Small separator
                 panel.push_edge(Edge::Top, 5, |_separator| {});
             }
@@ -91,7 +91,7 @@ impl Dashboard {
         &mut self,
         frame_arena: &mut Arena<LEN, u32>,
         bank_index: usize,
-        args: &DashArgs,
+        backend: &impl Backend,
         tato: &Tato,
         panel: &mut Frame<i16>,
     ) {
@@ -103,6 +103,8 @@ impl Dashboard {
         if bank.tile_count() == 0 && bank.color_count() == 0 && bank.sub_palette_count() == 0 {
             return;
         }
+
+        let mouse = backend.get_mouse();
 
         // Bank label
         let h = self.font_size as i16;
@@ -168,7 +170,7 @@ impl Dashboard {
                     self.ops.push(frame_arena, handle).unwrap();
 
                     // Mouse hover detection
-                    if rect.contains(args.mouse.x, args.mouse.y) {
+                    if rect.contains(mouse.x, mouse.y) {
                         self.mouse_over_text = Text::format_display(
                             frame_arena,
                             "Color {} = {}, {}, {}, {}",
@@ -238,7 +240,7 @@ impl Dashboard {
                                     // Mouse hover detection
                                     if frame_row
                                         .rect()
-                                        .contains(args.mouse.x as i16, args.mouse.y as i16)
+                                        .contains(mouse.x as i16, mouse.y as i16)
                                     {
                                         let colors = [
                                             subp_index as u8,
@@ -286,9 +288,9 @@ impl Dashboard {
             self.ops.push(frame_arena, texture_handle).unwrap();
 
             // Mouse hover detection for tiles
-            if rect.contains(args.mouse.x, args.mouse.y) {
-                let col = ((args.mouse.x - rect.x) as f32 / tile_size) as i16;
-                let row = ((args.mouse.y - rect.y) as f32 / tile_size) as i16;
+            if rect.contains(mouse.x, mouse.y) {
+                let col = ((mouse.x - rect.x) as f32 / tile_size) as i16;
+                let row = ((mouse.y - rect.y) as f32 / tile_size) as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text =

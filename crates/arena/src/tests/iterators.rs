@@ -196,3 +196,61 @@ fn test_buffer_drain_collect_pattern() {
     assert_eq!(sum, 600);
     assert_eq!(buffer.len(), 0);
 }
+
+#[test]
+fn test_buffer_pop_basic() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = Buffer::new(&mut arena, 5).unwrap();
+
+    // Pop from empty buffer should return None
+    assert_eq!(buffer.pop(&arena), None);
+    assert_eq!(buffer.len(), 0);
+
+    // Add some elements
+    buffer.push(&mut arena, 10).unwrap();
+    buffer.push(&mut arena, 20).unwrap();
+    buffer.push(&mut arena, 30).unwrap();
+    assert_eq!(buffer.len(), 3);
+
+    // Pop elements in reverse order
+    assert_eq!(buffer.pop(&arena), Some(30));
+    assert_eq!(buffer.len(), 2);
+    
+    assert_eq!(buffer.pop(&arena), Some(20));
+    assert_eq!(buffer.len(), 1);
+    
+    assert_eq!(buffer.pop(&arena), Some(10));
+    assert_eq!(buffer.len(), 0);
+    
+    // Pop from empty buffer again
+    assert_eq!(buffer.pop(&arena), None);
+    assert_eq!(buffer.len(), 0);
+}
+
+#[test]
+fn test_buffer_pop_after_operations() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = Buffer::new(&mut arena, 10).unwrap();
+
+    // Fill buffer
+    for i in 0..5 {
+        buffer.push(&mut arena, i * 10).unwrap();
+    }
+    assert_eq!(buffer.len(), 5);
+
+    // Pop some elements
+    assert_eq!(buffer.pop(&arena), Some(40));
+    assert_eq!(buffer.pop(&arena), Some(30));
+    assert_eq!(buffer.len(), 3);
+
+    // Push more elements
+    buffer.push(&mut arena, 100).unwrap();
+    buffer.push(&mut arena, 200).unwrap();
+    assert_eq!(buffer.len(), 5);
+
+    // Pop should get the most recently added
+    assert_eq!(buffer.pop(&arena), Some(200));
+    assert_eq!(buffer.pop(&arena), Some(100));
+    assert_eq!(buffer.pop(&arena), Some(20));
+    assert_eq!(buffer.len(), 2);
+}

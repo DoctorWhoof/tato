@@ -1,7 +1,12 @@
 use super::*;
 
 impl Dashboard {
-    pub fn draw_polys<const LEN: usize>(&mut self, frame_arena:&mut Arena<LEN, u32>, tato: &Tato, args: &DashArgs) {
+    pub fn draw_polys<const LEN: usize>(
+        &mut self,
+        frame_arena: &mut Arena<LEN, u32>,
+        tato: &Tato,
+        backend: &impl Backend,
+    ) {
         // Generate ops for debug polygons
         for poly in tato.iter_dash_polys(false) {
             if poly.len() >= 2 {
@@ -17,17 +22,16 @@ impl Dashboard {
                             color: RGBA32::WHITE,
                         })
                         .unwrap();
-                    self.ops
-                        .push(frame_arena, handle)
-                        .expect("Dashboard: Can't insert GUI poly");
+                    self.ops.push(frame_arena, handle).expect("Dashboard: Can't insert GUI poly");
                 }
             }
         }
 
-        // World space polys (will follow scrolling)
+        // World space polys (will follow scrolling)\
         if let Some(canvas_rect) = self.canvas_rect {
+            let video_size = tato.video.size();
             for world_poly in tato.iter_dash_polys(true) {
-                let scale = canvas_rect.h as f32 / args.canvas_size.y as f32;
+                let scale = canvas_rect.h as f32 / video_size.y as f32;
                 let scroll_x = tato.video.scroll_x as f32;
                 let scroll_y = tato.video.scroll_y as f32;
                 if world_poly.len() >= 2 {

@@ -1,9 +1,10 @@
 use super::*;
 
 impl Dashboard {
-    pub fn draw_tooltip<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>, args: &DashArgs) {
+    pub fn draw_tooltip<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>, backend: &impl Backend) {
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
+            let mouse = backend.get_mouse();
             let pad = self.gui_scale as i16;
             // TODO: Need a way to calculate font size... without knowing what the font is!
             // Maybe just a multiplier, or maybe even only work with monospaced fonts?
@@ -11,8 +12,8 @@ impl Dashboard {
                 * self.gui_scale) as i16;
             let font_size = 12.0 * self.gui_scale as f32;
 
-            let text_x = args.mouse.x - width - 12;
-            let text_y = args.mouse.y + 12;
+            let text_x = mouse.x - width - 12;
+            let text_y = mouse.y + 12;
 
             // Background
             let black = RGBA32 { r: 0, g: 0, b: 0, a: 255 };

@@ -82,6 +82,22 @@ where
         Ok(())
     }
 
+    pub fn pop<const LEN: usize>(
+        &mut self,
+        arena: &Arena<LEN, Idx, Marker>,
+    ) -> Option<T>
+    where
+        T: Copy,
+    {
+        if self.len == Idx::zero() {
+            return None;
+        }
+
+        self.len -= Idx::one();
+        let slice = arena.get_slice(&self.slice).expect("Buffer slice should always be valid");
+        Some(slice[self.len.to_usize()])
+    }
+
     pub fn truncate(&mut self, new_len: Idx) {
         if new_len >= self.len {
             return;

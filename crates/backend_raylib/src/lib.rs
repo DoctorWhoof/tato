@@ -26,11 +26,10 @@ pub struct RaylibBackend {
     draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>,
     draw_ops_additional: Buffer<ArenaId<DrawOp, u32>, u32>,
     canvas_texture: TextureId,
-    // Cached then passed to Dashboard later
-    dash_args: DashArgs,
     pixels: Vec<u8>,
     buffer_iter_time: SmoothBuffer<120, f64>,
     buffer_canvas_time: SmoothBuffer<120, f64>,
+    pressed_key: Option<Key>,
 }
 
 /// Raylib specific implementation
@@ -79,10 +78,10 @@ impl RaylibBackend {
             draw_ops: Buffer::new(frame_arena, 1000).unwrap(),
             draw_ops_additional: Buffer::default(),
             canvas_texture: 0,
-            dash_args: DashArgs::default(),
             pixels: vec![0; w as usize * h as usize * 4],
             buffer_iter_time: SmoothBuffer::new(),
             buffer_canvas_time: SmoothBuffer::new(),
+            pressed_key: None,
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
@@ -142,6 +141,7 @@ impl Backend for RaylibBackend {
 
     fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>) {
         self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
+        self.pressed_key = None;
     }
 
     /// Finish canvas and GUI drawing, present to window
@@ -174,7 +174,6 @@ impl Backend for RaylibBackend {
         }
         self.buffer_iter_time.push(time_profile.elapsed().as_secs_f64());
 
-
         // Update main render texture and queue draw operation
         Self::update_texture_internal(
             &mut self.textures,
@@ -184,22 +183,15 @@ impl Backend for RaylibBackend {
             self.pixels.as_slice(),
         );
 
-        // Draw canvas, if not in debug mode or dashboard not available
-        if self.dash_args.display_debug {
-            if let Some(canvas_rect) = self.canvas_rect {
-                // Adjust canvas to fit rect
-                let (rect, _scale) =
-                    canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
-                // Queue drawing
-                let op_id = frame_arena
-                    .alloc(DrawOp::Texture {
-                        id: self.canvas_texture,
-                        rect,
-                        tint: RGBA32::WHITE,
-                    })
-                    .unwrap();
-                self.draw_ops.push(frame_arena, op_id).unwrap();
-            }
+        // Draw canvas, using canvas_rect if available
+        if let Some(canvas_rect) = self.canvas_rect {
+            // Adjust canvas to fit rect
+            let (rect, _scale) = canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
+            // Queue drawing
+            let op_id = frame_arena
+                .alloc(DrawOp::Texture { id: self.canvas_texture, rect, tint: RGBA32::WHITE })
+                .unwrap();
+            self.draw_ops.push(frame_arena, op_id).unwrap();
         } else {
             let screen_size = self.get_screen_size();
             let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
@@ -213,14 +205,6 @@ impl Backend for RaylibBackend {
                 .unwrap();
             self.draw_ops.push(frame_arena, op_id).unwrap();
         }
-
-        self.dash_args = DashArgs {
-            iter_time: self.buffer_iter_time.average() as f32,
-            screen_size: self.get_screen_size(),
-            canvas_size: tato.video.size(),
-            mouse: self.get_mouse(),
-            ..self.dash_args
-        };
 
         // But if dashboard is available, queue GUI drawing
         // if let Some(dash) = dash {
@@ -424,53 +408,41 @@ impl Backend for RaylibBackend {
         pad.set_button(Button::A, ray.is_key_down(KEY_Z));
         pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
 
-        // Dashboard toggle
-        if ray.is_key_pressed(KEY_TAB) {
-            self.dash_args.display_debug = !self.dash_args.display_debug;
-        }
-
-        if ray.is_key_pressed(KEY_GRAVE) {
-            if self.dash_args.display_debug {
-                self.dash_args.display_console = !self.dash_args.display_console;
-            }
-        }
-
         // Dashboard keys. Always reset to none, then set most recent one, if any
-        self.dash_args.key = Key::None;
         if let Some(key) = ray.get_key_pressed() {
             match key {
                 KEY_ENTER => {
-                    self.dash_args.key = Key::Enter;
+                    self.pressed_key = Some(Key::Enter);
                 },
                 KEY_TAB => {
-                    self.dash_args.key = Key::Tab;
+                    self.pressed_key = Some(Key::Tab);
                 },
                 KEY_MINUS | KEY_KP_SUBTRACT => {
-                    self.dash_args.key = Key::Minus;
+                    self.pressed_key = Some(Key::Minus);
                 },
                 KEY_EQUAL | KEY_KP_ADD => {
-                    self.dash_args.key = Key::Plus;
+                    self.pressed_key = Some(Key::Plus);
                 },
                 KEY_BACKSPACE => {
-                    self.dash_args.key = Key::Backspace;
+                    self.pressed_key = Some(Key::Backspace);
                 },
                 KEY_DELETE => {
-                    self.dash_args.key = Key::Delete;
+                    self.pressed_key = Some(Key::Delete);
                 },
                 KEY_LEFT => {
-                    self.dash_args.key = Key::Left;
+                    self.pressed_key = Some(Key::Left);
                 },
                 KEY_RIGHT => {
-                    self.dash_args.key = Key::Right;
+                    self.pressed_key = Some(Key::Right);
                 },
                 KEY_UP => {
-                    self.dash_args.key = Key::Up;
+                    self.pressed_key = Some(Key::Up);
                 },
                 KEY_DOWN => {
-                    self.dash_args.key = Key::Down;
+                    self.pressed_key = Some(Key::Down);
                 },
                 KEY_GRAVE => {
-                    // Do nothing, to avoid being used as shortcut and entering text
+                    self.pressed_key = Some(Key::Grave);
                 },
                 _ if (key as u32) >= 32 && (key as u32) < 127 => {
                     // Handle all printable ASCII characters (32-126)
@@ -478,9 +450,9 @@ impl Backend for RaylibBackend {
                         k if k >= KEY_A as u32 && k <= KEY_Z as u32 => {
                             // Letters: apply shift for case
                             if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
-                                self.dash_args.key = Key::Text(key as u8); // uppercase
+                                self.pressed_key = Some(Key::Text(key as u8)); // uppercase
                             } else {
-                                self.dash_args.key = Key::Text(key as u8 + 32); // lowercase
+                                self.pressed_key = Some(Key::Text(key as u8 + 32)); // lowercase
                             }
                         },
                         k if k >= KEY_ZERO as u32 && k <= KEY_NINE as u32 => {
@@ -488,19 +460,20 @@ impl Backend for RaylibBackend {
                             if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
                                 // Shift+number gives symbols: )!@#$%^&*(
                                 let symbols = b")!@#$%^&*(";
-                                self.dash_args.key =
-                                    Key::Text(symbols[(k - KEY_ZERO as u32) as usize]);
+                                self.pressed_key =
+                                    Some(Key::Text(symbols[(k - KEY_ZERO as u32) as usize]));
                             } else {
-                                self.dash_args.key = Key::Text(b'0' + (k - KEY_ZERO as u32) as u8);
+                                self.pressed_key =
+                                    Some(Key::Text(b'0' + (k - KEY_ZERO as u32) as u8));
                             }
                         },
                         k if k >= KEY_KP_0 as u32 && k <= KEY_KP_9 as u32 => {
                             // Keypad numbers (no shift variants)
-                            self.dash_args.key = Key::Text(b'0' + (k - KEY_KP_0 as u32) as u8);
+                            self.pressed_key = Some(Key::Text(b'0' + (k - KEY_KP_0 as u32) as u8));
                         },
                         _ => {
                             // All other printable characters
-                            self.dash_args.key = Key::Text(key as u8);
+                            self.pressed_key = Some(Key::Text(key as u8));
                         },
                     }
                 },
@@ -533,8 +506,16 @@ impl Backend for RaylibBackend {
         self.canvas_rect = canvas_rect;
     }
 
-    fn get_dashboard_args(&self) -> Option<DashArgs> {
-        Some(self.dash_args)
+    fn get_pressed_key(&self) -> Option<Key> {
+        self.pressed_key
+    }
+
+    fn get_pixel_iter_elapsed_time(&self) -> f32 {
+        self.buffer_iter_time.average() as f32
+    }
+
+    fn get_drawing_elapsed_time(&self) -> f32 {
+        todo!()
     }
 
     // ---------------------- Debug Features ----------------------

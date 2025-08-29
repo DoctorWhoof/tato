@@ -3,6 +3,7 @@ pub enum Key {
     None,
     Text(u8),
     Tab,
+    Grave,
     Plus,
     Minus,
     Enter,

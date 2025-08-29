@@ -8,10 +8,6 @@ use crate::video::{
     COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
     VideoMemory,
 };
-use core::array::from_fn;
-
-mod args;
-pub use args::*;
 
 mod command;
 pub use command::*;
@@ -25,6 +21,7 @@ pub use ops::*;
 mod gui_console;
 mod gui_draw_polys;
 mod gui_draw_tooltip;
+mod gui_input;
 mod gui_text;
 mod gui_video;
 
@@ -47,10 +44,12 @@ pub struct Dashboard {
     additional_text: Buffer<Text<u32>, u32>,
     tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
     last_frame_arena_use: usize,
-    console_buffer: Buffer<[u8; COMMAND_MAX_LEN], u32>,
-    console_line_buffer: [u8; COMMAND_MAX_LEN],
-    console_line_len: u8,
+    console_buffer: Buffer<Text>,
+    console_line_buffer: Buffer<u8>,
     canvas_rect: Option<Rect<i16>>,
+    // input related
+    display_debug_info: bool,
+    display_console: bool,
 }
 
 pub const PANEL_WIDTH: i16 = 150;
@@ -80,6 +79,7 @@ impl Dashboard {
             unsafe { core::mem::transmute(result) }
         };
         let console_buffer = Buffer::new(&mut fixed_arena, MAX_LINES)?;
+        let console_line_buffer = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN as u32).unwrap();
 
         let ops = Buffer::new(frame_arena, OP_COUNT)?;
         let additional_text = Buffer::new(frame_arena, MAX_LINES)?;
@@ -95,11 +95,12 @@ impl Dashboard {
             additional_text,
             last_frame_arena_use: 0,
             // console_display: false,
-            console_line_buffer: from_fn(|_| 0),
-            console_line_len: 0,
+            console_line_buffer,
             console_buffer,
             canvas_rect: None,
             // last_key_received: Key::None,
+            display_debug_info: true,
+            display_console: false,
         })
     }
 
@@ -164,23 +165,25 @@ impl Dashboard {
         backend: &mut impl Backend,
         tato: &Tato,
     ) {
-        let Some(args) = backend.get_dashboard_args() else { return };
-        if !args.display_debug {
-            return;
-        }
-
         // Start Layout
-        let screen_rect = Rect { x: 0, y: 0, w: args.screen_size.x, h: args.screen_size.y };
+        let screen_size = backend.get_screen_size();
+        let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
         let mut layout = Frame::new(screen_rect);
         layout.set_scale(self.gui_scale);
         layout.set_margin(MARGIN);
         layout.set_margin(10);
         layout.set_gap(3);
 
+        // We need to process
+        self.process_input(backend);
+        if !self.display_debug_info {
+            return;
+        }
+
         // Panels have their own modules, for organization
-        self.process_text_panel(&mut layout, frame_arena, &args, tato);
-        self.process_video_panel(&mut layout, frame_arena, &args, tato);
-        self.process_console(&mut layout, frame_arena, &args);
+        self.process_text_panel(&mut layout, frame_arena, backend, tato);
+        self.process_video_panel(&mut layout, frame_arena, backend, tato);
+        self.process_console(&mut layout, frame_arena);
 
         // Canvas
         layout.fill(|canvas| {
@@ -202,8 +205,8 @@ impl Dashboard {
         }
 
         // Draw additional items over everything
-        self.draw_polys(frame_arena, &tato, &args);
-        self.draw_tooltip(frame_arena, &args);
+        self.draw_polys(frame_arena, &tato, backend);
+        self.draw_tooltip(frame_arena, backend);
 
         backend.set_additional_draw_ops(self.ops.clone());
         // if let Ok(ops) = self.ops.as_slice(frame_arena) {

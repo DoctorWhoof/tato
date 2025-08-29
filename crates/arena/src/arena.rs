@@ -18,6 +18,8 @@ pub struct Arena<const LEN: usize, Idx = u32, Marker = ()> {
     storage: [MaybeUninit<u8>; LEN],
     /// Current allocation offset (bump pointer)
     offset: Idx,
+    /// Current tail allocation offset (allocates backwards from end)
+    tail_offset: Idx,
     /// Current generation - incremented on restore_to()
     generation: u32,
     /// Unique arena ID for cross-arena safety
@@ -40,6 +42,7 @@ where
         Self {
             storage,
             offset: Idx::try_from(0).unwrap_or_else(|_| panic!("Idx too small")),
+            tail_offset: Idx::try_from(LEN).unwrap_or_else(|_| panic!("Idx too small for LEN")),
             generation: 0,
             arena_id: ARENA_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
             _marker: PhantomData,
@@ -515,6 +518,7 @@ where
     /// Clear arena (doesn't drop values!)
     pub fn clear(&mut self) {
         self.offset = Idx::try_from(0).unwrap_or_else(|_| panic!("Idx too small"));
+        self.tail_offset = Idx::try_from(LEN).unwrap_or_else(|_| panic!("Idx too small for LEN"));
         self.generation = self.generation.wrapping_add(1);
     }
 
@@ -603,6 +607,58 @@ where
             let slice_ref = core::slice::from_raw_parts(ptr, len_usize);
             Ok(slice_ref[start_usize..end_usize].iter())
         }
+    }
+
+    /// Internal method to allocate from tail (backwards from end)
+    fn tail_alloc_bytes(&mut self, size: Idx) -> ArenaResult<Idx> {
+        let size_usize = size.to_usize();
+        let current_tail = self.tail_offset.to_usize();
+        let front_used = self.offset.to_usize();
+        
+        if current_tail < size_usize || (current_tail - size_usize) < front_used {
+            return Err(ArenaError::OutOfSpace { requested: size_usize, available: current_tail - front_used });
+        }
+        
+        let new_tail_offset = current_tail - size_usize;
+        self.tail_offset = Idx::try_from(new_tail_offset).map_err(|_| ArenaError::IndexConversion)?;
+        Ok(Idx::try_from(new_tail_offset).map_err(|_| ArenaError::IndexConversion)?)
+    }
+
+    /// Internal method to copy slice data via tail allocation
+    pub(crate) fn copy_slice_via_tail<T>(&mut self, source_slice: &Slice<T, Idx, Marker>, used_len: Idx) -> ArenaResult<Slice<T, Idx, Marker>>
+    where
+        T: Copy,
+    {
+        let size_bytes = Idx::try_from(used_len.to_usize() * core::mem::size_of::<T>()).map_err(|_| ArenaError::IndexConversion)?;
+        
+        // Validate slice first
+        self.validate_slice(source_slice)?;
+        
+        // Get source pointer directly to avoid borrow conflicts
+        let source_start = source_slice.offset().to_usize();
+        let source_ptr = unsafe { self.storage.as_ptr().add(source_start) as *const T };
+        
+        // Allocate tail space for temporary copy
+        let tail_start = self.tail_alloc_bytes(size_bytes)?;
+        let tail_ptr = unsafe { self.storage.as_mut_ptr().add(tail_start.to_usize()) as *mut T };
+        
+        // Copy to tail using raw pointers
+        for i in 0..used_len.to_usize() {
+            unsafe {
+                let item = source_ptr.add(i).read();
+                tail_ptr.add(i).write(item);
+            }
+        }
+        
+        // Allocate final destination normally
+        let dest_slice = self.alloc_slice_from_fn(used_len, |i| {
+            unsafe { tail_ptr.add(i).read() }
+        })?;
+        
+        // Clear tail allocation
+        self.tail_offset = Idx::try_from(LEN).map_err(|_| ArenaError::IndexConversion)?;
+        
+        Ok(dest_slice)
     }
 }
 

@@ -2,7 +2,7 @@
 mod debug_buffer;
 use debug_buffer::*;
 
-use crate::{Arena, ArenaError, ArenaIndex, ArenaResult, Slice};
+use crate::{Arena, ArenaError, ArenaIndex, ArenaResult, Buffer, Slice};
 use core::fmt::Write;
 
 /// Text stored as bytes in the arena
@@ -49,6 +49,16 @@ where
         let bytes = s.as_bytes();
         let len = Idx::from_usize_checked(s.len()).ok_or(ArenaError::IndexConversion)?;
         let slice = arena.alloc_slice_from_fn(len, |i| bytes[i])?;
+        Ok(Self { slice })
+    }
+
+    /// Create text from a Buffer<u8>
+    pub fn from_buffer<const LEN: usize>(
+        arena: &mut Arena<LEN, Idx>,
+        buffer: &Buffer<u8, Idx>,
+    ) -> ArenaResult<Self> {
+        let used_len = Idx::from_usize_checked(buffer.len()).ok_or(ArenaError::IndexConversion)?;
+        let slice = arena.copy_slice_via_tail(&buffer.slice, used_len)?;
         Ok(Self { slice })
     }
 

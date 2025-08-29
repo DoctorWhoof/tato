@@ -8,19 +8,17 @@ impl Dashboard {
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut Arena<LEN, u32>,
-        args: &DashArgs,
+        backend: &impl Backend,
         tato: &Tato,
     ) {
-        // Internal temp memory
-        let mut temp = Arena::<TEMP_ARENA_LEN>::new();
-
         // Add debug info
         {
             {
+                let iter_time = backend.get_pixel_iter_elapsed_time();
                 let iter_text = Text::format_display(
                     frame_arena,
                     "Pixel iter time: {:.1} ms", //
-                    &[args.iter_time * 1000.0],
+                    &[iter_time * 1000.0],
                     "",
                 );
                 self.additional_text.push(frame_arena, iter_text.unwrap()).unwrap();
@@ -90,8 +88,10 @@ impl Dashboard {
             }
         }
 
-        // Draw panel
+        // Internal temp memory. Required to avoid borrow issues
+        let mut temp = Arena::<TEMP_ARENA_LEN>::new();
         let mut temp_buffer = Buffer::<DrawOp>::new(&mut temp, 200).unwrap();
+        // Draw panel
         layout.push_edge(Edge::Left, PANEL_WIDTH, |panel| {
             panel.set_margin(5);
             panel.set_gap(0);
