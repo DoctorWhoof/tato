@@ -1,7 +1,7 @@
 use super::*;
 
-impl<const LEN: usize> Dashboard<LEN> {
-    pub fn draw_tooltip(&mut self, args: &DashArgs) {
+impl Dashboard {
+    pub fn draw_tooltip<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>, args: &DashArgs) {
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
             let pad = self.gui_scale as i16;
@@ -16,8 +16,7 @@ impl<const LEN: usize> Dashboard<LEN> {
 
             // Background
             let black = RGBA32 { r: 0, g: 0, b: 0, a: 255 };
-            let handle = self
-                .temp_arena
+            let handle = frame_arena
                 .alloc(DrawOp::Rect {
                     rect: Rect {
                         x: text_x - pad,
@@ -28,14 +27,11 @@ impl<const LEN: usize> Dashboard<LEN> {
                     color: black,
                 })
                 .unwrap();
-            self.ops
-                .push(&mut self.temp_arena, handle)
-                .expect("Dashboard: Can't insert mouse-over rect ");
+            self.ops.push(frame_arena, handle).expect("Dashboard: Can't insert mouse-over rect ");
 
             // Text
             let white = RGBA32 { r: 255, g: 255, b: 255, a: 255 };
-            let handle = self
-                .temp_arena
+            let handle = frame_arena
                 .alloc(DrawOp::Text {
                     text: self.mouse_over_text.clone(),
                     x: text_x,
@@ -44,9 +40,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                     color: white,
                 })
                 .unwrap();
-            self.ops
-                .push(&mut self.temp_arena, handle)
-                .expect("Dashboard: Can't insert mouse-over text ");
+            self.ops.push(frame_arena, handle).expect("Dashboard: Can't insert mouse-over text ");
         }
     }
 }

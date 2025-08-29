@@ -1,6 +1,10 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
-use crate::{Tato, prelude::Dashboard};
+use crate::{
+    Tato,
+    prelude::{DashArgs, DrawOp},
+};
+use tato_arena::{Arena, ArenaId, Buffer};
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
 use tato_video::{RGBA32, TilemapRef};
@@ -45,12 +49,13 @@ pub trait Backend {
     /// Clear the screen with the given color
     fn clear(&mut self, color: RGBA32);
 
+    fn frame_start<const LEN:usize>(&mut self, frame_arena:&mut Arena<LEN, u32>);
+
     /// Present the rendered frame to the screen
-    fn present<'a, const LEN:usize, T>(
+    fn frame_present<'a, const LEN: usize, T>(
         &mut self,
+        arena: &'a mut Arena<LEN, u32>,
         tato: &'a Tato,
-        dash: Option<&'a mut Dashboard<LEN>>,
-        // arena: &'a mut Arena<LEN>,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>;
@@ -60,28 +65,16 @@ pub trait Backend {
 
     // ---------------------- Drawing ----------------------
 
+    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>);
+
     /// Measure text dimensions for the given font size
     fn measure_text(&self, text: &str, font_size: f32) -> (f32, f32);
-
-    /// Draw a filled rectangle
-    fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32);
-
-    /// Draw text at the specified position
-    fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: RGBA32);
-
-    /// Draw a line between two points
-    fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32);
-
-    // ---------------------- Texture Management ----------------------
 
     /// Create a new texture and return its ID
     fn create_texture(&mut self, width: i16, height: i16) -> TextureId;
 
     /// Update an existing texture with new pixel data
     fn update_texture(&mut self, id: TextureId, pixels: &[u8]);
-
-    /// Draw a texture at the specified position with scaling and tint
-    fn draw_texture(&mut self, id: TextureId, rect: Rect<i16>, tint: RGBA32);
 
     // ---------------------- Input ----------------------
 
@@ -105,11 +98,8 @@ pub trait Backend {
     /// Set backend color where Tato pixels are transparent
     fn set_bg_color(&mut self, color: RGBA32);
 
-    // ---------------------- State ----------------------
+    /// Optional canvas texture rect, useful to draw the main canvas inside a GUI
+    fn set_canvas_rect(&mut self, canvas_rect: Option<Rect<i16>>);
 
-    /// Toggle debug mode and return new state
-    fn toggle_debug(&mut self) -> bool;
-
-    /// Check if debug mode is enabled
-    fn debug_mode(&self) -> bool;
+    fn get_dashboard_args(&self) -> Option<DashArgs>;
 }

@@ -70,6 +70,8 @@
 
 --->[ ] Pure Rust backend to make compiling and testing in Linux less miserable. Macroquad?
 
+[ ] Eliminate DashArgs, replace with Backend functions, since now the Dashboard has direct access to Backend
+
 [x] Some way to easily send information to the backend.
     . Some static mut shenanigans? Should be OK since it won't affect gameplay. Investigate.
     [x] Debug rects with colors

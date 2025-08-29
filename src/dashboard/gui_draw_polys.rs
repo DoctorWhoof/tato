@@ -1,15 +1,14 @@
 use super::*;
 
-impl<const LEN: usize> Dashboard<LEN> {
-    pub fn draw_polys(&mut self, tato: &Tato, args: &DashArgs) {
+impl Dashboard {
+    pub fn draw_polys<const LEN: usize>(&mut self, frame_arena:&mut Arena<LEN, u32>, tato: &Tato, args: &DashArgs) {
         // Generate ops for debug polygons
         for poly in tato.iter_dash_polys(false) {
             if poly.len() >= 2 {
                 for i in 0..(poly.len() - 1) {
                     let current = poly[i];
                     let next = poly[i + 1];
-                    let handle = self
-                        .temp_arena
+                    let handle = frame_arena
                         .alloc(DrawOp::Line {
                             x1: current.x,
                             y1: current.y,
@@ -19,7 +18,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                         })
                         .unwrap();
                     self.ops
-                        .push(&mut self.temp_arena, handle)
+                        .push(frame_arena, handle)
                         .expect("Dashboard: Can't insert GUI poly");
                 }
             }
@@ -35,8 +34,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                     for i in 0..(world_poly.len() - 1) {
                         let current = world_poly[i];
                         let next = world_poly[i + 1];
-                        let handle = self
-                            .temp_arena
+                        let handle = frame_arena
                             .alloc(DrawOp::Line {
                                 x1: ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
                                 y1: ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
@@ -46,7 +44,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                             })
                             .unwrap();
                         self.ops
-                            .push(&mut self.temp_arena, handle)
+                            .push(frame_arena, handle)
                             .expect("Dashboard: Can't insert World poly");
                     }
                 }

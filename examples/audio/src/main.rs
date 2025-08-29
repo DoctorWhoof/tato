@@ -1,5 +1,5 @@
 use std::{f32::consts::PI, time::Instant};
-use tato::prelude::*;
+use tato::{arena::Arena, prelude::*};
 
 use tato_raylib::*;
 
@@ -11,9 +11,10 @@ pub enum SoundType {
 }
 
 fn main() -> TatoResult<()> {
-    let mut tato = Tato::new(240, 180, 60);
+    let mut frame_arena = Arena::<307_200, u32>::new();
     let mut bg_map = Tilemap::<1024>::new(32, 32);
-    let mut dash = Dashboard::<24_576>::new().unwrap();
+    let mut tato = Tato::new(240, 180, 60);
+    let mut dash = Dashboard::new(&mut frame_arena).unwrap();
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
@@ -64,11 +65,12 @@ fn main() -> TatoResult<()> {
     let time = Instant::now();
 
     // Main Loop
-    let mut backend = RaylibBackend::new(&tato);
+    let mut backend = RaylibBackend::new(&tato, &mut frame_arena);
     while !backend.ray.window_should_close() {
-
+        frame_arena.clear();
         tato.frame_start(backend.ray.get_frame_time());
-        dash.frame_start();
+        dash.frame_start(&mut frame_arena);
+        backend.frame_start(&mut frame_arena);
         backend.update_input(&mut tato.pad);
 
         // "Envelopes"
@@ -141,8 +143,9 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
+        dash.render(&mut frame_arena, &mut backend, &tato);
         audio_backend.process_frame(&mut audio);
-        backend.present(&tato, Some(&mut dash), &[&bg_map]);
+        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

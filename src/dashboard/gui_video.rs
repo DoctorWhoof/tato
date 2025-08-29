@@ -1,10 +1,11 @@
 use super::*;
 
 // Right panel
-impl<const LEN: usize> Dashboard<LEN> {
-    pub fn process_video_panel(
+impl Dashboard {
+    pub fn process_video_panel<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
+        frame_arena: &mut Arena<LEN, u32>,
         args: &DashArgs,
         tato: &Tato,
     ) {
@@ -15,13 +16,13 @@ impl<const LEN: usize> Dashboard<LEN> {
             panel.fitting = Fitting::Clamp;
 
             let rect_handle =
-                self.temp_arena.alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY });
-            self.ops.push(&mut self.temp_arena, rect_handle.unwrap()).unwrap();
+                frame_arena.alloc(DrawOp::Rect { rect: panel.rect(), color: DARK_GRAY });
+            self.ops.push(frame_arena, rect_handle.unwrap()).unwrap();
 
             // Process each video memory bank
             for bank_index in 0..TILE_BANK_COUNT {
                 // Draw each bank debug data
-                self.process_bank(bank_index, &args, tato, panel);
+                self.process_bank(frame_arena, bank_index, &args, tato, panel);
                 // Small separator
                 panel.push_edge(Edge::Top, 5, |_separator| {});
             }
@@ -86,8 +87,9 @@ impl<const LEN: usize> Dashboard<LEN> {
         }
     }
 
-    fn process_bank(
+    fn process_bank<const LEN: usize>(
         &mut self,
+        frame_arena: &mut Arena<LEN, u32>,
         bank_index: usize,
         args: &DashArgs,
         tato: &Tato,
@@ -106,10 +108,8 @@ impl<const LEN: usize> Dashboard<LEN> {
         let h = self.font_size as i16;
         panel.push_edge(Edge::Top, h, |frame| {
             let rect = frame.rect();
-            let text =
-                Text::format_display(&mut self.temp_arena, "bank: {}", &[bank_index], "").unwrap();
-            let handle = self
-                .temp_arena
+            let text = Text::format_display(frame_arena, "bank: {}", &[bank_index], "").unwrap();
+            let handle = frame_arena
                 .alloc(DrawOp::Text {
                     text,
                     x: rect.x + gap,
@@ -118,7 +118,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                     color: RGBA32::WHITE,
                 })
                 .unwrap();
-            self.ops.push(&mut self.temp_arena, handle).unwrap();
+            self.ops.push(frame_arena, handle).unwrap();
         });
 
         // Bank info
@@ -127,15 +127,14 @@ impl<const LEN: usize> Dashboard<LEN> {
             let values =
                 [bank.tile_count(), bank.color_count() as usize, bank.sub_palette_count() as usize];
             let text = Text::format_display(
-                &mut self.temp_arena,
+                frame_arena,
                 "{} tiles, {} custom colors, {} sub-palettes",
                 &values,
                 "",
             )
             .unwrap();
 
-            let handle = self
-                .temp_arena
+            let handle = frame_arena
                 .alloc(DrawOp::Text {
                     text,
                     x: rect.x + gap,
@@ -144,7 +143,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                     color: RGBA32::WHITE,
                 })
                 .unwrap();
-            self.ops.push(&mut self.temp_arena, handle).unwrap();
+            self.ops.push(frame_arena, handle).unwrap();
         });
 
         if bank.tile_count() == 0 {
@@ -155,8 +154,8 @@ impl<const LEN: usize> Dashboard<LEN> {
         panel.push_edge(Edge::Top, 8, |frame| {
             let rect = frame.rect();
             let rect_handle =
-                self.temp_arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
-            self.ops.push(&mut self.temp_arena, rect_handle).unwrap();
+                frame_arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
+            self.ops.push(frame_arena, rect_handle).unwrap();
 
             let swatch_w = frame.divide_width(COLORS_PER_PALETTE as u32);
             for c in 0..COLORS_PER_PALETTE as usize {
@@ -165,14 +164,13 @@ impl<const LEN: usize> Dashboard<LEN> {
                     let color = bank.palette[c];
                     let rgba32 = RGBA32::from(color);
 
-                    let handle =
-                        self.temp_arena.alloc(DrawOp::Rect { rect, color: rgba32 }).unwrap();
-                    self.ops.push(&mut self.temp_arena, handle).unwrap();
+                    let handle = frame_arena.alloc(DrawOp::Rect { rect, color: rgba32 }).unwrap();
+                    self.ops.push(frame_arena, handle).unwrap();
 
                     // Mouse hover detection
                     if rect.contains(args.mouse.x, args.mouse.y) {
                         self.mouse_over_text = Text::format_display(
-                            &mut self.temp_arena,
+                            frame_arena,
                             "Color {} = {}, {}, {}, {}",
                             &[c as u8, color.r(), color.g(), color.b(), color.a()],
                             "",
@@ -199,11 +197,9 @@ impl<const LEN: usize> Dashboard<LEN> {
                         frame_column.set_margin(1);
 
                         let rect = frame_column.rect();
-                        let rect_handle = self
-                            .temp_arena
-                            .alloc(DrawOp::Rect { rect, color: DARKEST_GRAY })
-                            .unwrap();
-                        self.ops.push(&mut self.temp_arena, rect_handle).unwrap();
+                        let rect_handle =
+                            frame_arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
+                        self.ops.push(frame_arena, rect_handle).unwrap();
 
                         let row_h = frame_column.divide_height(rows);
                         for row in 0..rows {
@@ -224,8 +220,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                                             let swatch_rect = swatch.rect();
                                             let color_index = subp[n].0 as usize;
                                             if color_index < bank.palette.len() {
-                                                let sub_rect_handle = self
-                                                    .temp_arena
+                                                let sub_rect_handle = frame_arena
                                                     .alloc(DrawOp::Rect {
                                                         rect: swatch_rect,
                                                         color: RGBA32::from(
@@ -234,7 +229,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                                                     })
                                                     .unwrap();
                                                 self.ops
-                                                    .push(&mut self.temp_arena, sub_rect_handle)
+                                                    .push(frame_arena, sub_rect_handle)
                                                     .unwrap();
                                             }
                                         });
@@ -253,7 +248,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                                             subp[3].0,
                                         ];
                                         self.mouse_over_text = Text::format_dbg(
-                                            &mut self.temp_arena,
+                                            frame_arena,
                                             "Sub Palette {} = [{},{},{},{}]",
                                             &colors,
                                             "",
@@ -279,17 +274,16 @@ impl<const LEN: usize> Dashboard<LEN> {
             // tiles.set_margin(0);
             // tiles.set_gap(0);
             let rect = tiles.rect();
-            let rect_handle = self.temp_arena.alloc(DrawOp::Rect {
+            let rect_handle = frame_arena.alloc(DrawOp::Rect {
                 rect, //
                 color: RGBA32 { r: 106, g: 96, b: 128, a: 255 },
             });
-            self.ops.push(&mut self.temp_arena, rect_handle.unwrap()).unwrap();
+            self.ops.push(frame_arena, rect_handle.unwrap()).unwrap();
 
-            let texture_handle = self
-                .temp_arena
+            let texture_handle = frame_arena
                 .alloc(DrawOp::Texture { id: bank_index, rect, tint: RGBA32::WHITE })
                 .unwrap();
-            self.ops.push(&mut self.temp_arena, texture_handle).unwrap();
+            self.ops.push(frame_arena, texture_handle).unwrap();
 
             // Mouse hover detection for tiles
             if rect.contains(args.mouse.x, args.mouse.y) {
@@ -298,8 +292,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                 let tile_index = (row * tiles_per_row as i16) + col;
                 if tile_index < bank.tile_count() as i16 {
                     self.mouse_over_text =
-                        Text::format_display(&mut self.temp_arena, "Tile {}", &[tile_index], "")
-                            .unwrap();
+                        Text::format_display(frame_arena, "Tile {}", &[tile_index], "").unwrap();
                 }
             }
         });

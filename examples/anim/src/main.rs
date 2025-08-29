@@ -1,7 +1,7 @@
 mod astro;
 
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
-use tato::prelude::*;
+use tato::{arena::Arena, prelude::*};
 use tato_raylib::RaylibBackend;
 
 // An entity that fits in 64 bits! :-)
@@ -21,10 +21,12 @@ const BANK_FG: u8 = 1;
 
 fn main() -> TatoResult<()> {
     // Init
-    let bg_map = Tilemap::<1024>::new(32, 32);
+    let mut frame_arena = Arena::<32_768, u32>::new();
     let mut tato = Tato::new(W, H, 60);
-    let mut backend = RaylibBackend::new(&tato);
-    let mut dash = Dashboard::<24_576>::new().unwrap();
+    let mut backend = RaylibBackend::new(&tato, &mut frame_arena);
+    let mut dash = Dashboard::new(&mut frame_arena).unwrap();
+    let bg_map = Tilemap::<1024>::new(32, 32);
+
 
     tato.video.bg_color = RGBA12::new(2, 3, 4);
     tato.video.bg_tile_bank = BANK_BG;
@@ -67,9 +69,10 @@ fn main() -> TatoResult<()> {
 
     // Main loop
     while !backend.ray.window_should_close() {
-
+        frame_arena.clear();
         tato.frame_start(backend.ray.get_frame_time());
-        dash.frame_start();
+        dash.frame_start(&mut frame_arena);
+        backend.frame_start(&mut frame_arena);
         backend.update_input(&mut tato.pad);
 
         for entity in &mut entities {
@@ -109,7 +112,8 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        backend.present(&tato, Some(&mut dash), &[&bg_map]);
+        dash.render(&mut frame_arena, &mut backend, &tato);
+        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
     }
     Ok(())
 }

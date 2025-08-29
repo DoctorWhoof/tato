@@ -18,24 +18,24 @@ pub struct RaylibBackend {
     pub bg_color: Color,
     pub integer_scaling: bool,
     pub print_frame_time: bool,
-    pub display_debug: bool,
     pub ray: RaylibHandle,
+    pub canvas_rect: Option<Rect<i16>>,
     thread: RaylibThread,
     textures: Vec<Texture2D>,
     font: Font,
-    draw_ops: Vec<DrawOp>,
+    draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>,
+    draw_ops_additional: Buffer<ArenaId<DrawOp, u32>, u32>,
     canvas_texture: TextureId,
     // Cached then passed to Dashboard later
     dash_args: DashArgs,
     pixels: Vec<u8>,
-    time_profile: Instant,
     buffer_iter_time: SmoothBuffer<120, f64>,
     buffer_canvas_time: SmoothBuffer<120, f64>,
 }
 
 /// Raylib specific implementation
 impl RaylibBackend {
-    pub fn new(tato: &Tato) -> Self {
+    pub fn new<const LEN: usize>(tato: &Tato, frame_arena: &mut Arena<LEN, u32>) -> Self {
         // Sizing
         let multiplier = 3;
         let w = tato.video.width() as i32;
@@ -70,17 +70,17 @@ impl RaylibBackend {
             bg_color: Color::new(16, 16, 16, 255),
             integer_scaling: true,
             print_frame_time: true,
-            display_debug: true,
+            canvas_rect: None,
             ray,
             thread,
             // debug_pixels,
             textures: vec![],
             font,
-            draw_ops: Vec::new(),
+            draw_ops: Buffer::new(frame_arena, 1000).unwrap(),
+            draw_ops_additional: Buffer::default(),
             canvas_texture: 0,
             dash_args: DashArgs::default(),
             pixels: vec![0; w as usize * h as usize * 4],
-            time_profile: std::time::Instant::now(),
             buffer_iter_time: SmoothBuffer::new(),
             buffer_canvas_time: SmoothBuffer::new(),
         };
@@ -140,18 +140,21 @@ impl Backend for RaylibBackend {
         self.bg_color = rgba32_to_rl_color(color);
     }
 
+    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>) {
+        self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
+    }
+
     /// Finish canvas and GUI drawing, present to window
-    fn present<'a, const LEN: usize, T>(
+    fn frame_present<'a, const LEN: usize, T>(
         &mut self,
+        frame_arena: &'a mut Arena<LEN, u32>,
         tato: &'a Tato,
-        dash: Option<&'a mut Dashboard<LEN>>,
-        // arena: &'a mut Arena<LEN>,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
     {
-        self.time_profile = Instant::now();
-        let mut temp_texts = Arena::<32768, u32>::new();
+        let time_profile = Instant::now();
+        // let mut temp_texts = Arena::<32768, u32>::new();
 
         assert!(
             {
@@ -169,11 +172,8 @@ impl Backend for RaylibBackend {
             self.pixels[index + 2] = color.b;
             self.pixels[index + 3] = color.a;
         }
-        self.buffer_iter_time.push(self.time_profile.elapsed().as_secs_f64());
+        self.buffer_iter_time.push(time_profile.elapsed().as_secs_f64());
 
-        // Will be used across functions, that's why it's a field
-        // TODO: Proper profiling...
-        self.time_profile = Instant::now();
 
         // Update main render texture and queue draw operation
         Self::update_texture_internal(
@@ -185,140 +185,178 @@ impl Backend for RaylibBackend {
         );
 
         // Draw canvas, if not in debug mode or dashboard not available
-        if !self.debug_mode() || dash.is_none() {
+        if self.dash_args.display_debug {
+            if let Some(canvas_rect) = self.canvas_rect {
+                // Adjust canvas to fit rect
+                let (rect, _scale) =
+                    canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
+                // Queue drawing
+                let op_id = frame_arena
+                    .alloc(DrawOp::Texture {
+                        id: self.canvas_texture,
+                        rect,
+                        tint: RGBA32::WHITE,
+                    })
+                    .unwrap();
+                self.draw_ops.push(frame_arena, op_id).unwrap();
+            }
+        } else {
             let screen_size = self.get_screen_size();
             let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
             let (canvas_rect, _scale) = canvas_rect_and_scale(screen_rect, tato.video.size(), true);
-            self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
+            let op_id = frame_arena
+                .alloc(DrawOp::Texture {
+                    id: self.canvas_texture,
+                    rect: canvas_rect,
+                    tint: RGBA32::WHITE,
+                })
+                .unwrap();
+            self.draw_ops.push(frame_arena, op_id).unwrap();
         }
+
+        self.dash_args = DashArgs {
+            iter_time: self.buffer_iter_time.average() as f32,
+            screen_size: self.get_screen_size(),
+            canvas_size: tato.video.size(),
+            mouse: self.get_mouse(),
+            ..self.dash_args
+        };
 
         // But if dashboard is available, queue GUI drawing
-        if let Some(dash) = dash {
-            if self.debug_mode() {
-                if let Some(canvas_rect) = dash.canvas_rect() {
-                    // Adjust canvas to fit rect
-                    // let (rect, _scale) =
-                    //     canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
-                    // Queue drawing
-                    self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
-                }
+        // if let Some(dash) = dash {
+        //     if self.display_debug() {
+        //         if let Some(canvas_rect) = dash.canvas_rect() {
+        //             // Adjust canvas to fit rect
+        //             // let (rect, _scale) =
+        //             //     canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
+        //             // Queue drawing
+        //             self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
+        //         }
 
-                self.dash_args = DashArgs {
-                    screen_size: self.get_screen_size(),
-                    canvas_size: tato.video.size(),
-                    mouse: self.get_mouse(),
-                    ..self.dash_args
-                };
+        //         self.dash_args = DashArgs {
+        //             screen_size: self.get_screen_size(),
+        //             canvas_size: tato.video.size(),
+        //             mouse: self.get_mouse(),
+        //             ..self.dash_args
+        //         };
 
-                // Push timing data before moving ops out of dashboard
-                dash.push_text(&format!(
-                    "Pixel iter time: {:.1} ms", //
-                    self.buffer_iter_time.average() * 1000.0
-                ));
-                dash.push_text(&format!(
-                    "Canvas queue time: {:.1} ms",
-                    self.buffer_canvas_time.average() * 1000.0
-                ));
+        //         // Push timing data before moving ops out of dashboard
+        //         dash.push_text(&format!(
+        //             "Pixel iter time: {:.1} ms", //
+        //             self.buffer_iter_time.average() * 1000.0
+        //         ));
+        //         dash.push_text(&format!(
+        //             "Canvas queue time: {:.1} ms",
+        //             self.buffer_canvas_time.average() * 1000.0
+        //         ));
 
-                // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-                dash.render(tato, self.dash_args);
+        //         // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
+        //         dash.render(tato, self.dash_args);
 
-                // Copy tile pixels from dashboard to GPU textures
-                for bank_index in 0..TILE_BANK_COUNT {
-                    // texture ID = bank_index
-                    if let Some(pixels) = dash.tile_pixels(bank_index) {
-                        if !pixels.is_empty() {
-                            Self::update_texture_internal(
-                                &mut self.textures,
-                                &mut self.ray,
-                                &self.thread,
-                                bank_index,
-                                pixels,
-                            );
-                        }
-                    }
-                }
-            }
+        //         // Copy tile pixels from dashboard to GPU textures
+        //         for bank_index in 0..TILE_BANK_COUNT {
+        //             // texture ID = bank_index
+        //             if let Some(pixels) = dash.tile_pixels(bank_index) {
+        //                 if !pixels.is_empty() {
+        //                     Self::update_texture_internal(
+        //                         &mut self.textures,
+        //                         &mut self.ray,
+        //                         &self.thread,
+        //                         bank_index,
+        //                         pixels,
+        //                     );
+        //                 }
+        //             }
+        //         }
+        //     }
 
-            for op in dash.draw_ops().unwrap() {
-                match op {
-                    DrawOp::None => {},
-                    DrawOp::Text { text, x, y, size, color } => {
-                        if let Some(text_str) = text.as_str(dash.temp_arena()) {
-                            let new_text = Text::from_str(&mut temp_texts, text_str);
-                            if let Ok(text) = new_text {
-                                self.draw_ops.push(DrawOp::Text {
-                                    text,
-                                    x: *x,
-                                    y: *y,
-                                    size: *size,
-                                    color: *color,
-                                })
-                            }
-                        }
-                    },
-                    _ => self.draw_ops.push(op.clone()),
-                }
-            }
-        }
+        //     for op in dash.draw_ops().unwrap() {
+        //         match op {
+        //             DrawOp::None => {},
+        //             DrawOp::Text { text, x, y, size, color } => {
+        //                 if let Some(text_str) = text.as_str(dash.temp_arena()) {
+        //                     let new_text = Text::from_str(&mut temp_texts, text_str);
+        //                     if let Ok(text) = new_text {
+        //                         self.draw_ops.push(DrawOp::Text {
+        //                             text,
+        //                             x: *x,
+        //                             y: *y,
+        //                             size: *size,
+        //                             color: *color,
+        //                         })
+        //                     }
+        //                 }
+        //             },
+        //             _ => self.draw_ops.push(op.clone()),
+        //         }
+        //     }
+        // }
 
         // Start canvas drawing
         let mut canvas = self.ray.begin_drawing(&self.thread);
         canvas.clear_background(self.bg_color);
 
+        let mut process_draw_ops = |cmd: &DrawOp| match cmd {
+            DrawOp::None => {},
+            DrawOp::Rect { rect, color } => {
+                canvas.draw_rectangle(
+                    rect.x as i32,
+                    rect.y as i32,
+                    rect.w as i32,
+                    rect.h as i32,
+                    rgba32_to_rl_color(*color),
+                );
+            },
+            DrawOp::Line { x1, y1, x2, y2, color } => {
+                canvas.draw_line(
+                    *x1 as i32,
+                    *y1 as i32,
+                    *x2 as i32,
+                    *y2 as i32,
+                    rgba32_to_rl_color(*color),
+                );
+            },
+            DrawOp::Texture { id, rect, tint } => {
+                if *id < self.textures.len() {
+                    let w = self.textures[*id].width() as f32;
+                    let scale = rect.w as f32 / w;
+                    canvas.draw_texture_ex(
+                        &self.textures[*id],
+                        Vector2::new(rect.x as f32, rect.y as f32),
+                        0.0,
+                        scale,
+                        rgba32_to_rl_color(*tint),
+                    );
+                }
+            },
+            DrawOp::Text { text, x, y, size, color } => {
+                if let Some(text) = text.as_str(&frame_arena) {
+                    canvas.draw_text_ex(
+                        &self.font,
+                        text,
+                        Vector2::new(*x as f32, *y as f32),
+                        *size,
+                        1.0,
+                        rgba32_to_rl_color(*color),
+                    );
+                }
+            },
+        };
+
         // Execute draw ops
-        for cmd in self.draw_ops.drain(..) {
-            match cmd {
-                DrawOp::None => {},
-                DrawOp::Rect { rect, color } => {
-                    canvas.draw_rectangle(
-                        rect.x as i32,
-                        rect.y as i32,
-                        rect.w as i32,
-                        rect.h as i32,
-                        rgba32_to_rl_color(color),
-                    );
-                },
-                DrawOp::Line { x1, y1, x2, y2, color } => {
-                    canvas.draw_line(
-                        x1 as i32,
-                        y1 as i32,
-                        x2 as i32,
-                        y2 as i32,
-                        rgba32_to_rl_color(color),
-                    );
-                },
-                DrawOp::Texture { id, rect, tint } => {
-                    if id < self.textures.len() {
-                        let w = self.textures[id].width() as f32;
-                        let scale = rect.w as f32 / w;
-                        canvas.draw_texture_ex(
-                            &self.textures[id],
-                            Vector2::new(rect.x as f32, rect.y as f32),
-                            0.0,
-                            scale,
-                            rgba32_to_rl_color(tint),
-                        );
-                    }
-                },
-                DrawOp::Text { text, x, y, size, color } => {
-                    if let Some(text) = text.as_str(&temp_texts) {
-                        canvas.draw_text_ex(
-                            &self.font,
-                            text,
-                            Vector2::new(x as f32, y as f32),
-                            size,
-                            1.0,
-                            rgba32_to_rl_color(color),
-                        );
-                    }
-                },
-            }
+        for id in self.draw_ops.drain(frame_arena) {
+            let cmd = frame_arena.get(&id).unwrap();
+            process_draw_ops(cmd);
+        }
+
+        for id in self.draw_ops_additional.drain(frame_arena) {
+            let cmd = frame_arena.get(&id).unwrap();
+            process_draw_ops(cmd);
         }
 
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
-        self.buffer_canvas_time.push(self.time_profile.elapsed().as_secs_f64());
+        self.buffer_canvas_time.push(time_profile.elapsed().as_secs_f64());
 
         // TODO: This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
@@ -340,20 +378,10 @@ impl Backend for RaylibBackend {
 
     // ---------------------- Drawing Primitives ----------------------
 
-    fn draw_rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: RGBA32) {
-        self.draw_ops.push(DrawOp::Rect { rect: Rect { x, y, w, h }, color });
-    }
-
-    fn draw_text(&mut self, _text: &str, _x: f32, _y: f32, _font_size: f32, _color: RGBA32) {
-        // self.draw_ops.push(DrawOp::Text { text: text.to_string(), x, y, size: font_size, color });
-    }
-
-    fn draw_line(&mut self, x1: i16, y1: i16, x2: i16, y2: i16, color: RGBA32) {
-        self.draw_ops.push(DrawOp::Line { x1, y1, x2, y2, color });
-    }
-
-    fn draw_texture(&mut self, id: TextureId, rect: Rect<i16>, tint: RGBA32) {
-        self.draw_ops.push(DrawOp::Texture { id, rect, tint });
+    // Any arena allocated Op (like Text) is, at this point, using the same "frame_arena",
+    // and so can simply be copied without converting anything!
+    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>) {
+        self.draw_ops_additional = draw_ops
     }
 
     fn measure_text(&self, text: &str, font_size: f32) -> (f32, f32) {
@@ -398,11 +426,11 @@ impl Backend for RaylibBackend {
 
         // Dashboard toggle
         if ray.is_key_pressed(KEY_TAB) {
-            self.display_debug = !self.display_debug;
+            self.dash_args.display_debug = !self.dash_args.display_debug;
         }
 
         if ray.is_key_pressed(KEY_GRAVE) {
-            if self.display_debug {
+            if self.dash_args.display_debug {
                 self.dash_args.display_console = !self.dash_args.display_console;
             }
         }
@@ -500,14 +528,14 @@ impl Backend for RaylibBackend {
     fn set_bg_color(&mut self, color: RGBA32) {
         self.bg_color = rgba32_to_rl_color(color)
     }
+
+    fn set_canvas_rect(&mut self, canvas_rect: Option<Rect<i16>>) {
+        self.canvas_rect = canvas_rect;
+    }
+
+    fn get_dashboard_args(&self) -> Option<DashArgs> {
+        Some(self.dash_args)
+    }
+
     // ---------------------- Debug Features ----------------------
-
-    fn toggle_debug(&mut self) -> bool {
-        self.display_debug = !self.display_debug;
-        self.display_debug
-    }
-
-    fn debug_mode(&self) -> bool {
-        self.display_debug
-    }
 }

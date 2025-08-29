@@ -1,7 +1,12 @@
 use super::*;
 
-impl<const LEN: usize> Dashboard<LEN> {
-    pub fn process_console(&mut self, layout: &mut Frame<i16>, args: &DashArgs) {
+impl Dashboard {
+    pub fn process_console<const LEN: usize>(
+        &mut self,
+        layout: &mut Frame<i16>,
+        frame_arena: &mut Arena<LEN, u32>,
+        args: &DashArgs,
+    ) {
         let font_size = self.font_size * self.gui_scale;
 
         // Receive input
@@ -60,22 +65,20 @@ impl<const LEN: usize> Dashboard<LEN> {
                 console.set_margin(5);
 
                 // draw BG rect
-                let op_handle = self
-                    .temp_arena
+                let op_handle = frame_arena
                     .alloc(DrawOp::Rect {
                         rect: console.rect(),
                         color: RGBA32 { r: 18, g: 18, b: 18, a: 230 },
                     })
                     .unwrap();
-                self.ops.push(&mut self.temp_arena, op_handle).unwrap();
+                self.ops.push(frame_arena, op_handle).unwrap();
 
                 // Draw main console line text
-                let text_result = Text::from_ascii(&mut self.temp_arena, &self.console_line_buffer);
+                let text_result = Text::from_ascii(frame_arena, &self.console_line_buffer);
                 if let Ok(text) = text_result {
                     console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
                         let rect = line.rect();
-                        let text_op_id = self
-                            .temp_arena
+                        let text_op_id = frame_arena
                             .alloc(DrawOp::Text {
                                 text: text.clone(),
                                 x: rect.x,
@@ -84,7 +87,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                                 color: RGBA32::WHITE,
                             })
                             .unwrap();
-                        self.ops.push(&mut self.temp_arena, text_op_id).unwrap();
+                        self.ops.push(frame_arena, text_op_id).unwrap();
                     });
                 }
 
@@ -94,9 +97,8 @@ impl<const LEN: usize> Dashboard<LEN> {
                     let mut line_rect = Rect::<i16>::default();
                     console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
                         line_rect = line.rect();
-                        let text = Text::from_ascii(&mut self.temp_arena, text).unwrap();
-                        let op_id = self
-                            .temp_arena
+                        let text = Text::from_ascii(frame_arena, text).unwrap();
+                        let op_id = frame_arena
                             .alloc(DrawOp::Text {
                                 text,
                                 x: line_rect.x,
@@ -105,7 +107,7 @@ impl<const LEN: usize> Dashboard<LEN> {
                                 color: RGBA32::WHITE,
                             })
                             .unwrap();
-                        self.ops.push(&mut self.temp_arena, op_id).unwrap();
+                        self.ops.push(frame_arena, op_id).unwrap();
                     });
                     if line_rect.y < remaining_rect.y + self.font_size as i16 {
                         break;
