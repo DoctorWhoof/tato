@@ -6,8 +6,8 @@ use tato_math::{Rect, Vec2};
 use crate::*;
 
 const DEBUG_MEM_SIZE: usize = 16 * 1024;
-const DEBUG_STR_COUNT: u16 = 100;
-const DEBUG_POLY_COUNT: u16 = 100;
+const DEBUG_STR_COUNT: u32 = 100;
+const DEBUG_POLY_COUNT: u32 = 100;
 
 #[derive(Debug)]
 pub struct Tato {
@@ -31,8 +31,11 @@ pub struct Tato {
     elapsed_time: f32,
     frame_started: bool,
     frame_finished: bool,
-
-    pub debug_arena: Arena<DEBUG_MEM_SIZE>, // Debug arena, cleared on every frame start
+    // Debug arena, cleared on every frame start.
+    // I tried removing this internal arena in lieu of a single, program-wide
+    // frame arena, but it turned out to be too annoying to pass the arena on
+    // so many Tato methods. May reconsider it later, for now it's fine.
+    pub debug_arena: Arena<DEBUG_MEM_SIZE>,
     debug_strings: Buffer<Text>,
     debug_polys: Buffer<Slice<Vec2<i16>>>,
     debug_polys_world: Buffer<Slice<Vec2<i16>>>,
@@ -154,7 +157,7 @@ impl Tato {
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
     pub fn dash_poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
-        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len() as u16).unwrap();
+        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len() as u32).unwrap();
         let slice = self.debug_arena.get_slice_mut(&handle).unwrap();
         slice.copy_from_slice(points);
         if world_space {

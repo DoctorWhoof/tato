@@ -5,7 +5,7 @@ use core::marker::PhantomData;
 
 /// Type-erased arena handle. Use `typed()` to convert back.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct RawId<Idx = u16> {
+pub struct RawId<Idx = u32> {
     /// Offset within the arena's storage
     pub(crate) offset: Idx,
     /// Size of the allocation in bytes
@@ -56,7 +56,7 @@ where
 
 /// Handle to a value in the arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct ArenaId<T, Idx = u16, Marker = ()> {
+pub struct ArenaId<T, Idx = u32, Marker = ()> {
     /// Offset within the arena's storage
     pub(crate) offset: Idx,
     /// Size of the allocation in bytes

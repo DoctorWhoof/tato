@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_raw_id_conversion() {
-    let mut arena: Arena<1024> = Arena::new();
+    let mut arena: Arena<1024, u16> = Arena::new();
 
     let id = arena.alloc(42u32).unwrap();
     let raw = id.raw();
@@ -26,7 +26,7 @@ fn test_raw_id_generation() {
 
 #[test]
 fn test_raw_id_type_safety() {
-    let mut arena: Arena<1024> = Arena::new();
+    let mut arena: Arena<1024, u16> = Arena::new();
 
     let id = arena.alloc(42u64).unwrap(); // 8 bytes
     let raw = id.raw();

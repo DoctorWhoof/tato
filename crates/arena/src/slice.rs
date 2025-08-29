@@ -4,7 +4,7 @@ use crate::ArenaIndex;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Slice<T, Idx = u16, Marker = ()> {
+pub struct Slice<T, Idx = u32, Marker = ()> {
     pub(crate) offset: Idx,
     pub(crate) len: Idx,
     pub(crate) generation: u32,

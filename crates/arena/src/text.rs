@@ -7,7 +7,7 @@ use core::fmt::Write;
 
 /// Text stored as bytes in the arena
 #[derive(Debug, Clone)]
-pub struct Text<Idx = u16> {
+pub struct Text<Idx = u32> {
     pub slice: Slice<u8, Idx>,
 }
 

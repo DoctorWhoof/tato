@@ -1,6 +1,6 @@
 use super::*;
 
-pub struct DrainIterator<'a, T, const LEN: usize, Idx = u16, Marker = ()> {
+pub struct DrainIterator<'a, T, const LEN: usize, Idx = u32, Marker = ()> {
     pub(super) arena: &'a Arena<LEN, Idx, Marker>,
     pub(super)slice: Slice<T, Idx, Marker>,
     pub(super)current: usize,

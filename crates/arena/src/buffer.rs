@@ -6,7 +6,7 @@ mod drain;
 pub use drain::*;
 
 #[derive(Debug, Clone)]
-pub struct Buffer<T, Idx = u16, Marker = ()> {
+pub struct Buffer<T, Idx = u32, Marker = ()> {
     pub slice: Slice<T, Idx, Marker>,
     len: Idx, // Current number of elements used
 }

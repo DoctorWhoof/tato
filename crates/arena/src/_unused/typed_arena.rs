@@ -14,7 +14,7 @@ static TYPED_ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(10000);
 
 /// Handle to a value in a typed arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct TypedId<T, Idx = u16, Marker = ()> {
+pub struct TypedId<T, Idx = u32, Marker = ()> {
     /// Array index (not byte offset)
     index: Idx,
     /// Generation when this ID was created
@@ -66,7 +66,7 @@ impl<T, Idx, Marker> Eq for TypedId<T, Idx, Marker> where Idx: Eq {}
 
 /// Fixed-capacity typed arena optimized for single type
 #[derive(Debug)]
-pub struct TypedArena<T, const CAPACITY: usize, Idx = u16, Marker = ()> {
+pub struct TypedArena<T, const CAPACITY: usize, Idx = u32, Marker = ()> {
     /// Storage for exactly CAPACITY elements of type T
     storage: [MaybeUninit<T>; CAPACITY],
     /// Number of allocated elements

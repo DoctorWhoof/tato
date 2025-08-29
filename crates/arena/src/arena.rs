@@ -13,7 +13,7 @@ static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
 /// LEN = bytes, Idx = handle size, Marker = type safety marker.
 #[repr(C, align(16))]
 #[derive(Debug)]
-pub struct Arena<const LEN: usize, Idx = u16, Marker = ()> {
+pub struct Arena<const LEN: usize, Idx = u32, Marker = ()> {
     /// Raw storage for all allocations
     storage: [MaybeUninit<u8>; LEN],
     /// Current allocation offset (bump pointer)
