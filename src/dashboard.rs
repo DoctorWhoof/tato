@@ -111,11 +111,6 @@ impl Dashboard {
         pixel_buffer.as_slice(&self.fixed_arena).ok()
     }
 
-    // /// The space allocated to draw the canvas
-    // pub fn canvas_rect(&self) -> Option<Rect<i16>> {
-    //     self.canvas_rect
-    // }
-
     /// An iterator with every DrawOp processed so far
     pub fn draw_ops<'a, const LEN: usize>(
         &self,
@@ -205,15 +200,12 @@ impl Dashboard {
         }
 
         // Draw additional items over everything
-        self.draw_polys(frame_arena, &tato, backend);
+        self.draw_polys(frame_arena, &tato);
         self.draw_tooltip(frame_arena, backend);
-
         backend.set_additional_draw_ops(self.ops.clone());
-        // if let Ok(ops) = self.ops.as_slice(frame_arena) {
-        //     backend.push_ops(frame_arena, ops);
-        // }
 
-        // Acquire at the very end so it's accurate (although with a 1 frame delay)
+        // Acquire arena usage info at the very end
+        // so it's accurate (although with a 1 frame delay)
         self.last_frame_arena_use = frame_arena.used();
     }
 }

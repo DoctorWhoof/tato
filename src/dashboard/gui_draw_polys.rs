@@ -5,7 +5,7 @@ impl Dashboard {
         &mut self,
         frame_arena: &mut Arena<LEN, u32>,
         tato: &Tato,
-        backend: &impl Backend,
+        // backend: &impl Backend,
     ) {
         // Generate ops for debug polygons
         for poly in tato.iter_dash_polys(false) {
