@@ -1,7 +1,7 @@
 use super::*;
 
 impl Dashboard {
-    pub fn draw_tooltip<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>, backend: &impl Backend) {
+    pub fn draw_tooltip<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>, backend: &impl Backend) {
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
             let mouse = backend.get_mouse();

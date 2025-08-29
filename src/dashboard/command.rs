@@ -12,10 +12,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn parse_text<const LEN: usize>(
-        text: Text<u32>,
-        arena: &Arena<LEN, u32>,
-    ) -> Option<Command> {
+    pub fn parse_text<const LEN: usize>(text: Text, arena: &Arena<LEN>) -> Option<Command> {
         let text_str = text.as_str(arena)?;
         Self::parse_str(text_str)
     }

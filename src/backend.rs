@@ -46,12 +46,12 @@ pub trait Backend {
     /// Clear the screen with the given color
     fn clear(&mut self, color: RGBA32);
 
-    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>);
+    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>);
 
     /// Present the rendered frame to the screen
     fn frame_present<'a, const LEN: usize, T>(
         &mut self,
-        arena: &'a mut Arena<LEN, u32>,
+        arena: &'a mut Arena<LEN>,
         tato: &'a Tato,
         bg_banks: &[&'a T],
     ) where

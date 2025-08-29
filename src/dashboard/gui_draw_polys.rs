@@ -3,7 +3,7 @@ use super::*;
 impl Dashboard {
     pub fn draw_polys<const LEN: usize>(
         &mut self,
-        frame_arena: &mut Arena<LEN, u32>,
+        frame_arena: &mut Arena<LEN>,
         tato: &Tato,
         // backend: &impl Backend,
     ) {

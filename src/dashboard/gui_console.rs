@@ -4,7 +4,7 @@ impl Dashboard {
     pub fn process_console<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
-        frame_arena: &mut Arena<LEN, u32>,
+        frame_arena: &mut Arena<LEN>,
     ) {
         let font_size = self.font_size * self.gui_scale;
 

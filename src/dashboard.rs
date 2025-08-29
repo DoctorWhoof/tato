@@ -40,8 +40,8 @@ pub struct Dashboard {
     pub gui_scale: f32,
     fixed_arena: Arena<FIXED_ARENA_LEN, u32>,
     ops: Buffer<ArenaId<DrawOp, u32>, u32>,
-    mouse_over_text: Text<u32>,
-    additional_text: Buffer<Text<u32>, u32>,
+    mouse_over_text: Text,
+    additional_text: Buffer<Text, u32>,
     tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
     last_frame_arena_use: usize,
     console_buffer: Buffer<Text>,
@@ -60,7 +60,7 @@ const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
 impl Dashboard {
     /// Creates a new Dashboard where LEN is the memory available to its
     /// temporary memory buffer, in bytes.
-    pub fn new<const LEN: usize>(frame_arena: &mut Arena<LEN, u32>) -> TatoResult<Self> {
+    pub fn new<const LEN: usize>(frame_arena: &mut Arena<LEN>) -> TatoResult<Self> {
         let mut fixed_arena = Arena::<FIXED_ARENA_LEN, u32>::new(); // persistent
         let tile_pixels = {
             // 4 bytes per pixel (RGBA)
@@ -114,13 +114,13 @@ impl Dashboard {
     /// An iterator with every DrawOp processed so far
     pub fn draw_ops<'a, const LEN: usize>(
         &self,
-        frame_arena: &'a Arena<LEN, u32>,
+        frame_arena: &'a Arena<LEN>,
     ) -> ArenaResult<impl Iterator<Item = &'a DrawOp>> {
         self.ops.items(frame_arena).map(|iter| iter.filter_map(|id| frame_arena.get(id).ok()))
     }
 
     /// Must be called at the beginning of each frame, clears buffers.
-    pub fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>) {
+    pub fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>) {
         self.ops = Buffer::new(frame_arena, OP_COUNT).unwrap();
         self.mouse_over_text = Text::default(); // Text unallocated, essentially same as "None"
         self.additional_text = Buffer::new(frame_arena, MAX_LINES).unwrap();
@@ -128,14 +128,14 @@ impl Dashboard {
 
     /// Creates an internal temp_arena-allocated Text object, stores its ID
     /// in a list so it can be drawn when "render" is called.
-    pub fn push_text<const LEN: usize>(&mut self, text: &str, frame_arena: &mut Arena<LEN, u32>) {
+    pub fn push_text<const LEN: usize>(&mut self, text: &str, frame_arena: &mut Arena<LEN>) {
         let text = Text::from_str(frame_arena, text).unwrap();
         self.additional_text.push(frame_arena, text).unwrap();
     }
 
     /// Generates a Text DrawOp with coordinates relative to a layout Frame
     /// (will push a new edge from the Top in the frame to reserve room for the text)
-    pub fn get_text_op(&self, text: Text<u32>, frame: &mut Frame<i16>) -> DrawOp {
+    pub fn get_text_op(&self, text: Text, frame: &mut Frame<i16>) -> DrawOp {
         let mut rect = Rect::default();
         let mut line_height = 0.0;
         frame.push_edge(Edge::Top, self.font_size as i16, |text_frame| {
@@ -156,7 +156,7 @@ impl Dashboard {
     // to the Layout frames. Try to do as much as possible outside of the closures.
     pub fn render<const LEN: usize>(
         &mut self,
-        frame_arena: &mut Arena<LEN, u32>,
+        frame_arena: &mut Arena<LEN>,
         backend: &mut impl Backend,
         tato: &Tato,
     ) {

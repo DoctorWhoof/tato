@@ -24,7 +24,7 @@ pub enum DrawOp {
         tint: RGBA32,
     },
     Text {
-        text: Text<u32>,
+        text: Text,
         x: i16,
         y: i16,
         size: f32,

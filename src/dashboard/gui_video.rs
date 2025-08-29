@@ -5,7 +5,7 @@ impl Dashboard {
     pub fn process_video_panel<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
-        frame_arena: &mut Arena<LEN, u32>,
+        frame_arena: &mut Arena<LEN>,
         backend: &impl Backend,
         tato: &Tato,
     ) {
@@ -22,7 +22,7 @@ impl Dashboard {
             // Process each video memory bank
             for bank_index in 0..TILE_BANK_COUNT {
                 // Draw each bank debug data
-                self.process_bank(frame_arena, bank_index, backend, tato, panel);
+                self.process_bank(frame_arena, backend, panel, bank_index, tato);
                 // Small separator
                 panel.push_edge(Edge::Top, 5, |_separator| {});
             }
@@ -89,11 +89,11 @@ impl Dashboard {
 
     fn process_bank<const LEN: usize>(
         &mut self,
-        frame_arena: &mut Arena<LEN, u32>,
-        bank_index: usize,
+        frame_arena: &mut Arena<LEN>,
         backend: &impl Backend,
-        tato: &Tato,
         panel: &mut Frame<i16>,
+        bank_index: usize,
+        tato: &Tato,
     ) {
         let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
@@ -238,10 +238,7 @@ impl Dashboard {
                                     }
 
                                     // Mouse hover detection
-                                    if frame_row
-                                        .rect()
-                                        .contains(mouse.x as i16, mouse.y as i16)
-                                    {
+                                    if frame_row.rect().contains(mouse.x as i16, mouse.y as i16) {
                                         let colors = [
                                             subp_index as u8,
                                             subp[0].0,

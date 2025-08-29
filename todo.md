@@ -1,20 +1,20 @@
 ### General Engine
 
---->[ ] Proper error handling/messages when arena handles are invalid.
-    - Most "Option" types need to become "Result" with proper error messages
-    - It's super hard to debug arena related errors right now due to that
-    - maybe "expect" instead of unwrap, so i get error messages?
+--->[ ] Implement command-agnostic console
+    - For common debug actions like "warp x,y", "reset", "toggle x", etc.
+    - Provides text input and parses the text line into command + args
+    - Does not actually process commands - that will be on the Game side
+    - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
 
 [ ] Engine pausing
     - toggle_pause() and is_paused() functions.
     - Internal timer will freeze, but input can still be updated in the main loop.
     - Game logic (update and draw) must be skipped in the main loop if tato.is_paused(), not in the engine.
 
---->[ ] Implement command-agnostic console
-    - For common debug actions like "warp x,y", "reset", "toggle x", etc.
-    - Provides text input and parses the text line into command + args
-    - Does not actually process commands - that will be on the Game side
-    - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
+[x] Proper error handling/messages when arena handles are invalid.
+    - Most "Option" types need to become "Result" with proper error messages
+    - It's super hard to debug arena related errors right now due to that
+    - maybe "expect" instead of unwrap, so i get error messages?
 
 [?] New PixelIter that favors iteration speed over memory compactness (i.e. frame buffer)
     - There's a bug "somewhere" (I blame the O.S...) where if I don't print anything, the game uses more CPU and takes longer to finish. Maybe it's using efficiency cores instead of performance ones?

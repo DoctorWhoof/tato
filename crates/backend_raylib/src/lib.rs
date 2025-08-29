@@ -1,9 +1,7 @@
 pub use raylib;
 use raylib::prelude::*;
 use std::{time::Instant, vec};
-use tato::{
-    Tato, arena::*, backend::Backend, dashboard::*, prelude::*, avgbuffer::AvgBuffer,
-};
+use tato::{Tato, arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*, prelude::*};
 
 pub use tato;
 
@@ -23,8 +21,8 @@ pub struct RaylibBackend {
     thread: RaylibThread,
     textures: Vec<Texture2D>,
     font: Font,
-    draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>,
-    draw_ops_additional: Buffer<ArenaId<DrawOp, u32>, u32>,
+    draw_ops: Buffer<ArenaId<DrawOp>>,
+    draw_ops_additional: Buffer<ArenaId<DrawOp>>,
     canvas_texture: TextureId,
     pixels: Vec<u8>,
     buffer_iter_time: AvgBuffer<120, f64>,
@@ -34,7 +32,7 @@ pub struct RaylibBackend {
 
 /// Raylib specific implementation
 impl RaylibBackend {
-    pub fn new<const LEN: usize>(tato: &Tato, frame_arena: &mut Arena<LEN, u32>) -> Self {
+    pub fn new<const LEN: usize>(tato: &Tato, frame_arena: &mut Arena<LEN>) -> Self {
         // Sizing
         let multiplier = 3;
         let w = tato.video.width() as i32;
@@ -139,7 +137,7 @@ impl Backend for RaylibBackend {
         self.bg_color = rgba32_to_rl_color(color);
     }
 
-    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN, u32>) {
+    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>) {
         self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
         self.pressed_key = None;
     }
@@ -147,7 +145,7 @@ impl Backend for RaylibBackend {
     /// Finish canvas and GUI drawing, present to window
     fn frame_present<'a, const LEN: usize, T>(
         &mut self,
-        frame_arena: &'a mut Arena<LEN, u32>,
+        frame_arena: &'a mut Arena<LEN>,
         tato: &'a Tato,
         bg_banks: &[&'a T],
     ) where
@@ -205,76 +203,6 @@ impl Backend for RaylibBackend {
                 .unwrap();
             self.draw_ops.push(frame_arena, op_id).unwrap();
         }
-
-        // But if dashboard is available, queue GUI drawing
-        // if let Some(dash) = dash {
-        //     if self.display_debug() {
-        //         if let Some(canvas_rect) = dash.canvas_rect() {
-        //             // Adjust canvas to fit rect
-        //             // let (rect, _scale) =
-        //             //     canvas_rect_and_scale(canvas_rect, tato.video.size(), false);
-        //             // Queue drawing
-        //             self.draw_texture(self.canvas_texture, canvas_rect, RGBA32::WHITE);
-        //         }
-
-        //         self.dash_args = DashArgs {
-        //             screen_size: self.get_screen_size(),
-        //             canvas_size: tato.video.size(),
-        //             mouse: self.get_mouse(),
-        //             ..self.dash_args
-        //         };
-
-        //         // Push timing data before moving ops out of dashboard
-        //         dash.push_text(&format!(
-        //             "Pixel iter time: {:.1} ms", //
-        //             self.buffer_iter_time.average() * 1000.0
-        //         ));
-        //         dash.push_text(&format!(
-        //             "Canvas queue time: {:.1} ms",
-        //             self.buffer_canvas_time.average() * 1000.0
-        //         ));
-
-        //         // Generate debug UI (this populates tile_pixels but doesn't update GPU textures)
-        //         dash.render(tato, self.dash_args);
-
-        //         // Copy tile pixels from dashboard to GPU textures
-        //         for bank_index in 0..TILE_BANK_COUNT {
-        //             // texture ID = bank_index
-        //             if let Some(pixels) = dash.tile_pixels(bank_index) {
-        //                 if !pixels.is_empty() {
-        //                     Self::update_texture_internal(
-        //                         &mut self.textures,
-        //                         &mut self.ray,
-        //                         &self.thread,
-        //                         bank_index,
-        //                         pixels,
-        //                     );
-        //                 }
-        //             }
-        //         }
-        //     }
-
-        //     for op in dash.draw_ops().unwrap() {
-        //         match op {
-        //             DrawOp::None => {},
-        //             DrawOp::Text { text, x, y, size, color } => {
-        //                 if let Some(text_str) = text.as_str(dash.temp_arena()) {
-        //                     let new_text = Text::from_str(&mut temp_texts, text_str);
-        //                     if let Ok(text) = new_text {
-        //                         self.draw_ops.push(DrawOp::Text {
-        //                             text,
-        //                             x: *x,
-        //                             y: *y,
-        //                             size: *size,
-        //                             color: *color,
-        //                         })
-        //                     }
-        //                 }
-        //             },
-        //             _ => self.draw_ops.push(op.clone()),
-        //         }
-        //     }
-        // }
 
         // Start canvas drawing
         let mut canvas = self.ray.begin_drawing(&self.thread);
@@ -342,7 +270,7 @@ impl Backend for RaylibBackend {
         // which will happen when this function returns
         self.buffer_canvas_time.push(time_profile.elapsed().as_secs_f64());
 
-        // TODO: This print exists for a silly reason: the game actually runs slower if I don't! :-0
+        // This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
         // I believe it's related to Efficiency cores Vs. Performance ones.
         if self.print_frame_time {
@@ -364,7 +292,7 @@ impl Backend for RaylibBackend {
 
     // Any arena allocated Op (like Text) is, at this point, using the same "frame_arena",
     // and so can simply be copied without converting anything!
-    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>) {
+    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp>>) {
         self.draw_ops_additional = draw_ops
     }
 

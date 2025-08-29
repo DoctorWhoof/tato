@@ -7,7 +7,7 @@ impl Dashboard {
     pub fn process_text_panel<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
-        frame_arena: &mut Arena<LEN, u32>,
+        frame_arena: &mut Arena<LEN>,
         backend: &impl Backend,
         tato: &Tato,
     ) {
