@@ -94,7 +94,7 @@
     [x] Shrink subpalettes size
     [.] Indicate colors added Vs. default colors
     [ ] Indicate bank usage (as FG, BG bank or unused)
-    [ ] Display FPS, average pixel iteration time (will need a simple SmoothBuffer).
+    [ ] Display FPS, average pixel iteration time (will need a simple AvgBuffer).
 
 [ ] Dual chip setup for multiple video layers
 

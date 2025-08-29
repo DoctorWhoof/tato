@@ -2,7 +2,7 @@ pub use raylib;
 use raylib::prelude::*;
 use std::{time::Instant, vec};
 use tato::{
-    Tato, arena::*, backend::Backend, dashboard::*, prelude::*, smooth_buffer::SmoothBuffer,
+    Tato, arena::*, backend::Backend, dashboard::*, prelude::*, avgbuffer::AvgBuffer,
 };
 
 pub use tato;
@@ -27,8 +27,8 @@ pub struct RaylibBackend {
     draw_ops_additional: Buffer<ArenaId<DrawOp, u32>, u32>,
     canvas_texture: TextureId,
     pixels: Vec<u8>,
-    buffer_iter_time: SmoothBuffer<120, f64>,
-    buffer_canvas_time: SmoothBuffer<120, f64>,
+    buffer_iter_time: AvgBuffer<120, f64>,
+    buffer_canvas_time: AvgBuffer<120, f64>,
     pressed_key: Option<Key>,
 }
 
@@ -79,8 +79,8 @@ impl RaylibBackend {
             draw_ops_additional: Buffer::default(),
             canvas_texture: 0,
             pixels: vec![0; w as usize * h as usize * 4],
-            buffer_iter_time: SmoothBuffer::new(),
-            buffer_canvas_time: SmoothBuffer::new(),
+            buffer_iter_time: AvgBuffer::new(),
+            buffer_canvas_time: AvgBuffer::new(),
             pressed_key: None,
         };
 

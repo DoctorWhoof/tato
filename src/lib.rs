@@ -1,6 +1,6 @@
 // #![no_std]
 
-pub use smooth_buffer;
+pub use avgbuffer;
 pub use tato_arena as arena;
 pub use tato_audio as audio;
 pub use tato_collision as collision;
