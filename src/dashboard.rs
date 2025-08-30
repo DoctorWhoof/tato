@@ -172,6 +172,7 @@ impl Dashboard {
         // We need to process
         self.process_input(backend);
         if !self.display_debug_info {
+            backend.set_canvas_rect(None);
             return;
         }
 
