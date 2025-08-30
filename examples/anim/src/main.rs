@@ -71,10 +71,10 @@ fn main() -> TatoResult<()> {
     // Main loop
     while !backend.ray.window_should_close() {
         frame_arena.clear();
-        tato.frame_start(backend.ray.get_frame_time());
-        dash.frame_start(&mut frame_arena);
         backend.frame_start(&mut frame_arena);
         backend.update_input(&mut tato.pad);
+        dash.frame_start(&mut frame_arena, &mut backend);
+        tato.frame_start(backend.ray.get_frame_time());
 
         for entity in &mut entities {
             // Velocity control

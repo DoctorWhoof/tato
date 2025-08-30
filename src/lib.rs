@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 
 pub use avgbuffer;
 pub use tato_arena as arena;

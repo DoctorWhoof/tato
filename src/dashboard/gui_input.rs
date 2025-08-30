@@ -7,9 +7,9 @@ impl Dashboard {
             match key {
                 Key::None => {},
                 Key::Text(ch) => {
-                    if self.console_line_buffer.len() < COMMAND_MAX_LEN {
+                    if self.console_command_line.len() < COMMAND_MAX_LEN {
                         if ch >= 32 && ch < 128 {
-                            self.console_line_buffer.push(&mut self.fixed_arena, ch).unwrap();
+                            self.console_command_line.push(&mut self.fixed_arena, ch).unwrap();
                         }
                     }
                 },
@@ -26,25 +26,18 @@ impl Dashboard {
                     }
                 },
                 Key::Enter => {
-                    if self.console_line_buffer.len() > 0 {
-                        // Strip extra characters
+                    if self.console_command_line.len() > 0 {
                         let text =
-                            Text::from_buffer(&mut self.fixed_arena, &self.console_line_buffer)
+                            Text::from_buffer(&mut self.fixed_arena, &self.console_command_line)
                                 .unwrap();
-                        // let line: [u8; COMMAND_MAX_LEN] = from_fn(|i| {
-                        //     if i < self.console_line_buffer.len() {
-                        //         buffer[i as usize] //
-                        //     } else {
-                        //         0
-                        //     }
-                        // });
+                        self.console_latest_command = Command::parse_text(text.clone(), &self.fixed_arena);
                         self.console_buffer.push(&mut self.fixed_arena, text).unwrap();
-                        self.console_line_buffer.clear();
+                        self.console_command_line.clear();
                     }
                 },
                 Key::Backspace => {
-                    if !self.console_line_buffer.is_empty() {
-                        self.console_line_buffer.pop(&self.fixed_arena);
+                    if !self.console_command_line.is_empty() {
+                        self.console_command_line.pop(&self.fixed_arena);
                     }
                 },
                 Key::Delete => {},

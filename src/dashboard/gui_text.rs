@@ -102,4 +102,22 @@ impl Dashboard {
         }
         temp.clear();
     }
+
+    /// Generates a Text DrawOp with coordinates relative to a layout Frame
+    /// (will push a new edge from the Top in the frame to reserve room for the text)
+    fn get_text_op(&self, text: Text, frame: &mut Frame<i16>) -> DrawOp {
+        let mut rect = Rect::default();
+        let mut line_height = 0.0;
+        frame.push_edge(Edge::Top, self.font_size as i16, |text_frame| {
+            rect = text_frame.rect();
+            line_height = self.font_size * text_frame.get_scale();
+        });
+        DrawOp::Text {
+            text,
+            x: rect.x,
+            y: rect.y,
+            size: line_height,
+            color: RGBA32::WHITE,
+        }
+    }
 }

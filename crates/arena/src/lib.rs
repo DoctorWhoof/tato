@@ -5,6 +5,7 @@
 pub mod arena;
 pub mod buffer;
 pub mod id;
+pub mod ring_buffer;
 pub mod slice;
 pub mod text;
 // pub mod typed_arena;
@@ -12,6 +13,7 @@ pub mod text;
 pub use arena::Arena;
 pub use buffer::*;
 pub use id::{ArenaId, RawId};
+pub use ring_buffer::*;
 pub use slice::Slice;
 pub use text::*;
 // pub use typed_arena::{TypedArena, TypedId};

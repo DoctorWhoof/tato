@@ -4,7 +4,7 @@ use core::str::from_utf8;
 
 pub const COMMAND_MAX_LEN: usize = 111; // neatly gives us 128-byte commands
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Command {
     data: [u8; COMMAND_MAX_LEN],
     item_count: u8,

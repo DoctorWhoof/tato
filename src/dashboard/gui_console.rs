@@ -10,7 +10,7 @@ impl Dashboard {
 
         // Console
         if self.display_console {
-            layout.push_edge(Edge::Bottom, 80, |console| {
+            layout.push_edge(Edge::Bottom, (font_size * 2.0) as i16, |console| {
                 console.set_margin(5);
 
                 // draw BG rect
@@ -23,7 +23,7 @@ impl Dashboard {
                 self.ops.push(frame_arena, op_handle).unwrap();
 
                 // Draw main console line text
-                let text_slice = self.console_line_buffer.as_slice(&self.fixed_arena);
+                let text_slice = self.console_command_line.as_slice(&self.fixed_arena);
                 let slice = text_slice.unwrap_or(&[' ' as u8]);
                 let text_result = Text::from_ascii(frame_arena, slice);
                 let text = text_result.unwrap_or(Text::default());

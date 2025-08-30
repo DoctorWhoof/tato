@@ -71,10 +71,10 @@ fn main() -> TatoResult<()> {
     while !backend.ray.window_should_close() {
         frame_arena.clear();
         backend.frame_start(&mut frame_arena);
-        dash.frame_start(&mut frame_arena);
+        backend.update_input(&mut tato.pad);
+        dash.frame_start(&mut frame_arena, &mut backend);
         tato.frame_start(backend.ray.get_frame_time());
 
-        backend.update_input(&mut tato.pad);
         state.time = backend.ray.get_time();
         state.elapsed = 1.0 / target_fps as f64;
         state.pad = tato.pad;

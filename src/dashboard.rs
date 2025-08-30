@@ -25,7 +25,7 @@ mod gui_input;
 mod gui_text;
 mod gui_video;
 
-const MAX_LINES: u32 = 200;
+const MAX_LINES: u32 = 100;
 const OP_COUNT: u32 = 200;
 
 // 256 tiles per bank
@@ -38,6 +38,8 @@ const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
 pub struct Dashboard {
     pub font_size: f32,
     pub gui_scale: f32,
+    display_debug_info: bool,
+    display_console: bool,
     fixed_arena: Arena<FIXED_ARENA_LEN, u32>,
     ops: Buffer<ArenaId<DrawOp, u32>, u32>,
     mouse_over_text: Text,
@@ -45,11 +47,9 @@ pub struct Dashboard {
     tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
     last_frame_arena_use: usize,
     console_buffer: Buffer<Text>,
-    console_line_buffer: Buffer<u8>,
+    console_command_line: Buffer<u8>,
+    console_latest_command: Option<Command>,
     canvas_rect: Option<Rect<i16>>,
-    // input related
-    display_debug_info: bool,
-    display_console: bool,
 }
 
 pub const PANEL_WIDTH: i16 = 150;
@@ -78,8 +78,8 @@ impl Dashboard {
             }
             unsafe { core::mem::transmute(result) }
         };
-        let console_buffer = Buffer::new(&mut fixed_arena, MAX_LINES)?;
-        let console_line_buffer = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN as u32).unwrap();
+        let console_buffer = Buffer::new(&mut fixed_arena, 3)?;
+        let console_command_line = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN as u32).unwrap();
 
         let ops = Buffer::new(frame_arena, OP_COUNT)?;
         let additional_text = Buffer::new(frame_arena, MAX_LINES)?;
@@ -95,8 +95,9 @@ impl Dashboard {
             additional_text,
             last_frame_arena_use: 0,
             // console_display: false,
-            console_line_buffer,
+            console_command_line,
             console_buffer,
+            console_latest_command: None,
             canvas_rect: None,
             // last_key_received: Key::None,
             display_debug_info: true,
@@ -119,11 +120,23 @@ impl Dashboard {
         self.ops.items(frame_arena).map(|iter| iter.filter_map(|id| frame_arena.get(id).ok()))
     }
 
-    /// Must be called at the beginning of each frame, clears buffers.
-    pub fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>) {
+    /// Must be called at the beginning of each frame, but after backend has been started.
+    pub fn frame_start<const LEN: usize>(
+        &mut self,
+        frame_arena: &mut Arena<LEN>,
+        backend: &mut impl Backend,
+    ) {
         self.ops = Buffer::new(frame_arena, OP_COUNT).unwrap();
         self.mouse_over_text = Text::default(); // Text unallocated, essentially same as "None"
         self.additional_text = Buffer::new(frame_arena, MAX_LINES).unwrap();
+        self.console_latest_command = None;
+
+        // Input
+        self.process_input(backend);
+        if !self.display_debug_info {
+            backend.set_canvas_rect(None);
+            return;
+        }
     }
 
     /// Creates an internal temp_arena-allocated Text object, stores its ID
@@ -133,22 +146,8 @@ impl Dashboard {
         self.additional_text.push(frame_arena, text).unwrap();
     }
 
-    /// Generates a Text DrawOp with coordinates relative to a layout Frame
-    /// (will push a new edge from the Top in the frame to reserve room for the text)
-    pub fn get_text_op(&self, text: Text, frame: &mut Frame<i16>) -> DrawOp {
-        let mut rect = Rect::default();
-        let mut line_height = 0.0;
-        frame.push_edge(Edge::Top, self.font_size as i16, |text_frame| {
-            rect = text_frame.rect();
-            line_height = self.font_size * text_frame.get_scale();
-        });
-        DrawOp::Text {
-            text,
-            x: rect.x,
-            y: rect.y,
-            size: line_height,
-            color: RGBA32::WHITE,
-        }
+    pub fn get_console_command(&self) -> Option<Command> {
+        self.console_latest_command.clone()
     }
 
     /// Generate debug UI ops
@@ -168,13 +167,6 @@ impl Dashboard {
         layout.set_margin(MARGIN);
         layout.set_margin(10);
         layout.set_gap(3);
-
-        // We need to process
-        self.process_input(backend);
-        if !self.display_debug_info {
-            backend.set_canvas_rect(None);
-            return;
-        }
 
         // Panels have their own modules, for organization
         self.process_text_panel(&mut layout, frame_arena, backend, tato);

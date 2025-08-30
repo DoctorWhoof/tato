@@ -113,10 +113,10 @@ fn main() -> TatoResult<()> {
     let mut backend = RaylibBackend::new(&tato, &mut frame_arena);
     while !backend.ray.window_should_close() {
         frame_arena.clear();
-        tato.frame_start(backend.ray.get_frame_time());
-        dash.frame_start(&mut frame_arena);
         backend.frame_start(&mut frame_arena);
         backend.update_input(&mut tato.pad);
+        dash.frame_start(&mut frame_arena, &mut backend);
+        tato.frame_start(backend.ray.get_frame_time());
 
         if tato.pad.is_down(Button::Right) {
             tato.video.scroll_x += 1;
