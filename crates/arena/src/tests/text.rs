@@ -382,12 +382,12 @@ fn test_text_from_buffer_multiple_conversions() {
 #[test]
 fn test_text_join_slices_basic() {
     let mut arena: Arena<1024> = Arena::new();
-    
+
     let slice1 = b"Hello, ";
     let slice2 = b"world!";
     let slices = [slice1.as_slice(), slice2.as_slice()];
-    
-    let text = Text::join_slices(&mut arena, &slices).unwrap();
+
+    let text = Text::join_bytes(&mut arena, &slices).unwrap();
     let result = text.as_str(&arena).unwrap();
     assert_eq!(result, "Hello, world!");
     assert_eq!(text.len(), 13);
@@ -396,11 +396,11 @@ fn test_text_join_slices_basic() {
 #[test]
 fn test_text_join_slices_empty() {
     let mut arena: Arena<1024> = Arena::new();
-    
+
     let slices: [&[u8]; 0] = [];
-    let text = Text::join_slices(&mut arena, &slices).unwrap();
+    let text = Text::join_bytes(&mut arena, &slices).unwrap();
     assert_eq!(text.len(), 0);
-    
+
     let result = text.as_str(&arena).unwrap();
     assert_eq!(result, "");
 }
@@ -408,11 +408,11 @@ fn test_text_join_slices_empty() {
 #[test]
 fn test_text_join_slices_single() {
     let mut arena: Arena<1024> = Arena::new();
-    
+
     let slice = b"Single slice";
     let slices = [slice.as_slice()];
-    
-    let text = Text::join_slices(&mut arena, &slices).unwrap();
+
+    let text = Text::join_bytes(&mut arena, &slices).unwrap();
     let result = text.as_str(&arena).unwrap();
     assert_eq!(result, "Single slice");
     assert_eq!(text.len(), 12);
@@ -421,7 +421,7 @@ fn test_text_join_slices_single() {
 #[test]
 fn test_text_join_slices_multiple() {
     let mut arena: Arena<1024> = Arena::new();
-    
+
     let slice1 = b"One";
     let slice2 = b" ";
     let slice3 = b"Two";
@@ -429,13 +429,13 @@ fn test_text_join_slices_multiple() {
     let slice5 = b"Three";
     let slices = [
         slice1.as_slice(),
-        slice2.as_slice(), 
+        slice2.as_slice(),
         slice3.as_slice(),
         slice4.as_slice(),
         slice5.as_slice(),
     ];
-    
-    let text = Text::join_slices(&mut arena, &slices).unwrap();
+
+    let text = Text::join_bytes(&mut arena, &slices).unwrap();
     let result = text.as_str(&arena).unwrap();
     assert_eq!(result, "One Two Three");
     assert_eq!(text.len(), 13);
@@ -444,7 +444,7 @@ fn test_text_join_slices_multiple() {
 #[test]
 fn test_text_join_slices_with_empty_slices() {
     let mut arena: Arena<1024> = Arena::new();
-    
+
     let slice1 = b"Start";
     let slice2 = b"";
     let slice3 = b"Middle";
@@ -453,12 +453,12 @@ fn test_text_join_slices_with_empty_slices() {
     let slices = [
         slice1.as_slice(),
         slice2.as_slice(),
-        slice3.as_slice(), 
+        slice3.as_slice(),
         slice4.as_slice(),
         slice5.as_slice(),
     ];
-    
-    let text = Text::join_slices(&mut arena, &slices).unwrap();
+
+    let text = Text::join_bytes(&mut arena, &slices).unwrap();
     let result = text.as_str(&arena).unwrap();
     assert_eq!(result, "StartMiddleEnd");
     assert_eq!(text.len(), 14);
@@ -467,14 +467,14 @@ fn test_text_join_slices_with_empty_slices() {
 #[test]
 fn test_text_join_slices_large() {
     let mut arena: Arena<1024> = Arena::new();
-    
+
     // Create several slices with different content
     let slice1 = b"The quick brown fox ";
     let slice2 = b"jumps over the lazy ";
     let slice3 = b"dog in the park.";
     let slices = [slice1.as_slice(), slice2.as_slice(), slice3.as_slice()];
-    
-    let text = Text::join_slices(&mut arena, &slices).unwrap();
+
+    let text = Text::join_bytes(&mut arena, &slices).unwrap();
     let result = text.as_str(&arena).unwrap();
     assert_eq!(result, "The quick brown fox jumps over the lazy dog in the park.");
     assert_eq!(text.len(), 56);

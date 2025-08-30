@@ -33,7 +33,7 @@ where
     Idx: ArenaIndex,
 {
     /// Create a new arena with automatic cross-arena safety.
-    /// Each arena gets a unique ID from an atomic counter, ensuring perfect
+    /// Each arena gets a unique ID from an atomic counter, ensuring
     /// collision resistance and automatic cross-arena safety without requiring
     /// explicit marker types.
     pub fn new() -> Self {
@@ -614,11 +614,11 @@ where
         let size_usize = size.to_usize();
         let current_tail = self.tail_offset.to_usize();
         let front_used = self.offset.to_usize();
-        
+
         if current_tail < size_usize || (current_tail - size_usize) < front_used {
             return Err(ArenaError::OutOfSpace { requested: size_usize, available: current_tail - front_used });
         }
-        
+
         let new_tail_offset = current_tail - size_usize;
         self.tail_offset = Idx::try_from(new_tail_offset).map_err(|_| ArenaError::IndexConversion)?;
         Ok(Idx::try_from(new_tail_offset).map_err(|_| ArenaError::IndexConversion)?)
@@ -630,18 +630,18 @@ where
         T: Copy,
     {
         let size_bytes = Idx::try_from(used_len.to_usize() * core::mem::size_of::<T>()).map_err(|_| ArenaError::IndexConversion)?;
-        
+
         // Validate slice first
         self.validate_slice(source_slice)?;
-        
+
         // Get source pointer directly to avoid borrow conflicts
         let source_start = source_slice.offset().to_usize();
         let source_ptr = unsafe { self.storage.as_ptr().add(source_start) as *const T };
-        
+
         // Allocate tail space for temporary copy
         let tail_start = self.tail_alloc_bytes(size_bytes)?;
         let tail_ptr = unsafe { self.storage.as_mut_ptr().add(tail_start.to_usize()) as *mut T };
-        
+
         // Copy to tail using raw pointers
         for i in 0..used_len.to_usize() {
             unsafe {
@@ -649,15 +649,15 @@ where
                 tail_ptr.add(i).write(item);
             }
         }
-        
+
         // Allocate final destination normally
         let dest_slice = self.alloc_slice_from_fn(used_len, |i| {
             unsafe { tail_ptr.add(i).read() }
         })?;
-        
+
         // Clear tail allocation
         self.tail_offset = Idx::try_from(LEN).map_err(|_| ArenaError::IndexConversion)?;
-        
+
         Ok(dest_slice)
     }
 }

@@ -69,12 +69,6 @@ where
         self.len
     }
 
-    fn tail_index(&self) -> Idx {
-        let capacity = self.slice.capacity().to_usize();
-        let tail = (self.head.to_usize() + self.len.to_usize()) % capacity;
-        Idx::from_usize_checked(tail).unwrap()
-    }
-
     /// Push a value to the back of the ring buffer (FIFO).
     /// Automatically overwrites the oldest element if buffer is full.
     pub fn push<const LEN: usize>(
@@ -191,5 +185,12 @@ where
         arena: &'a Arena<LEN, Idx, Marker>,
     ) -> RingBufferIterator<'a, T, LEN, Idx, Marker> {
         RingBufferIterator::new(arena, &self.slice, self.head, self.len)
+    }
+
+
+    fn tail_index(&self) -> Idx {
+        let capacity = self.slice.capacity().to_usize();
+        let tail = (self.head.to_usize() + self.len.to_usize()) % capacity;
+        Idx::from_usize_checked(tail).unwrap()
     }
 }

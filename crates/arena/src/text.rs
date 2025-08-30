@@ -137,7 +137,7 @@ where
     }
 
     /// Join multiple byte slices into a single text.
-    pub fn join_slices<const LEN: usize>(
+    pub fn join_bytes<const LEN: usize>(
         arena: &mut Arena<LEN, Idx>,
         slices: &[&[u8]],
     ) -> ArenaResult<Self> {

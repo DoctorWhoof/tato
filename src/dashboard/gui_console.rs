@@ -24,14 +24,8 @@ impl Dashboard {
                 self.ops.push(frame_arena, op_handle).unwrap();
 
                 // Draw main console line text
-                let prompt = Text::from_str(frame_arena, "command > ").unwrap();
-                let text_slice = Text::from_ascii(
-                    frame_arena,
-                    self.console_command_line.as_slice(&self.fixed_arena).unwrap(),
-                )
-                .unwrap_or_default();
-
-                let text_result = Text::join(frame_arena, &[prompt, text_slice]);
+                let command_line_bytes = self.console_command_line.as_slice(&self.fixed_arena).unwrap();
+                let text_result = Text::join_bytes(frame_arena, &["command | ".as_bytes(), command_line_bytes ]);
                 let text = text_result.unwrap_or(Text::default());
 
                 console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
