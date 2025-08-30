@@ -1,6 +1,9 @@
 use super::*;
 use crate::{ArenaError, ArenaResult};
 
+mod iter;
+pub use iter::*;
+
 #[derive(Debug, Clone)]
 pub struct RingBuffer<T, Idx = u32, Marker = ()> {
     pub slice: Slice<T, Idx, Marker>,
@@ -13,8 +16,8 @@ where
     Idx: ArenaIndex,
 {
     fn default() -> Self {
-        Self { 
-            slice: Default::default(), 
+        Self {
+            slice: Default::default(),
             head: Default::default(),
             len: Default::default(),
         }
@@ -30,8 +33,8 @@ where
         capacity: Idx,
     ) -> ArenaResult<Self> {
         let slice = arena.alloc_slice_uninit::<T>(capacity)?;
-        Ok(Self { 
-            slice, 
+        Ok(Self {
+            slice,
             head: Idx::zero(),
             len: Idx::zero(),
         })
@@ -73,25 +76,8 @@ where
     }
 
     /// Push a value to the back of the ring buffer (FIFO).
-    /// Returns error if buffer is full.
+    /// Automatically overwrites the oldest element if buffer is full.
     pub fn push<const LEN: usize>(
-        &mut self,
-        arena: &mut Arena<LEN, Idx, Marker>,
-        value: T,
-    ) -> ArenaResult<()> {
-        if self.is_full() {
-            return Err(ArenaError::CapacityExceeded);
-        }
-
-        let tail = self.tail_index();
-        let slice = arena.get_slice_mut(&self.slice)?;
-        slice[tail.to_usize()] = value;
-        self.len += Idx::one();
-        Ok(())
-    }
-
-    /// Push a value to the back, overwriting the oldest element if full.
-    pub fn push_overwrite<const LEN: usize>(
         &mut self,
         arena: &mut Arena<LEN, Idx, Marker>,
         value: T,
@@ -107,6 +93,24 @@ where
         } else {
             self.len += Idx::one();
         }
+        Ok(())
+    }
+
+    /// Push a value to the back of the ring buffer (FIFO).
+    /// Returns error if buffer is full.
+    pub fn try_push<const LEN: usize>(
+        &mut self,
+        arena: &mut Arena<LEN, Idx, Marker>,
+        value: T,
+    ) -> ArenaResult<()> {
+        if self.is_full() {
+            return Err(ArenaError::CapacityExceeded);
+        }
+
+        let tail = self.tail_index();
+        let slice = arena.get_slice_mut(&self.slice)?;
+        slice[tail.to_usize()] = value;
+        self.len += Idx::one();
         Ok(())
     }
 
@@ -179,5 +183,13 @@ where
         let capacity = self.slice.capacity().to_usize();
         let physical_index = (self.head.to_usize() + index.to_usize()) % capacity;
         Some(&slice[physical_index])
+    }
+
+    /// Iterate over elements in logical order (from front to back).
+    pub fn items<'a, const LEN: usize>(
+        &self,
+        arena: &'a Arena<LEN, Idx, Marker>,
+    ) -> RingBufferIterator<'a, T, LEN, Idx, Marker> {
+        RingBufferIterator::new(arena, &self.slice, self.head, self.len)
     }
 }

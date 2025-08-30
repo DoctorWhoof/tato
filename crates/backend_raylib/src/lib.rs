@@ -326,7 +326,7 @@ impl Backend for RaylibBackend {
         // Copy existing update_gamepad logic
         pad.copy_current_to_previous_state();
 
-        // Handle keyboard input
+        // Gamepad input
         pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
         pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
         pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
@@ -336,7 +336,7 @@ impl Backend for RaylibBackend {
         pad.set_button(Button::A, ray.is_key_down(KEY_Z));
         pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
 
-        // Dashboard keys. Always reset to none, then set most recent one, if any
+        // Dashboard keys
         if let Some(key) = ray.get_key_pressed() {
             match key {
                 KEY_ENTER => {
@@ -372,6 +372,7 @@ impl Backend for RaylibBackend {
                 KEY_GRAVE => {
                     self.pressed_key = Some(Key::Grave);
                 },
+                // Regular text
                 _ if (key as u32) >= 32 && (key as u32) < 127 => {
                     // Handle all printable ASCII characters (32-126)
                     match key as u32 {

@@ -37,7 +37,7 @@ fn test_ring_buffer_push_pop_fifo() {
 }
 
 #[test]
-fn test_ring_buffer_push_when_full() {
+fn test_ring_buffer_try_push_when_full() {
     let mut arena: Arena<1024> = Arena::new();
     let mut buffer = RingBuffer::new(&mut arena, 2).unwrap();
 
@@ -46,13 +46,13 @@ fn test_ring_buffer_push_when_full() {
 
     assert!(buffer.is_full());
 
-    // Should fail when full
-    assert!(buffer.push(&mut arena, 30).is_err());
+    // try_push should fail when full
+    assert!(buffer.try_push(&mut arena, 30).is_err());
     assert_eq!(buffer.len(), 2);
 }
 
 #[test]
-fn test_ring_buffer_push_overwrite() {
+fn test_ring_buffer_push_auto_overwrite() {
     let mut arena: Arena<1024> = Arena::new();
     let mut buffer = RingBuffer::new(&mut arena, 3).unwrap();
 
@@ -63,8 +63,8 @@ fn test_ring_buffer_push_overwrite() {
 
     assert!(buffer.is_full());
 
-    // Overwrite oldest element
-    buffer.push_overwrite(&mut arena, 40).unwrap();
+    // Push should automatically overwrite oldest element
+    buffer.push(&mut arena, 40).unwrap();
 
     assert!(buffer.is_full());
     assert_eq!(buffer.len(), 3);
@@ -76,7 +76,7 @@ fn test_ring_buffer_push_overwrite() {
 }
 
 #[test]
-fn test_ring_buffer_push_overwrite_multiple() {
+fn test_ring_buffer_push_multiple_overwrites() {
     let mut arena: Arena<1024> = Arena::new();
     let mut buffer = RingBuffer::new(&mut arena, 2).unwrap();
 
@@ -84,10 +84,10 @@ fn test_ring_buffer_push_overwrite_multiple() {
     buffer.push(&mut arena, 10).unwrap();
     buffer.push(&mut arena, 20).unwrap();
 
-    // Overwrite multiple times
-    buffer.push_overwrite(&mut arena, 30).unwrap(); // overwrites 10
-    buffer.push_overwrite(&mut arena, 40).unwrap(); // overwrites 20
-    buffer.push_overwrite(&mut arena, 50).unwrap(); // overwrites 30
+    // Push multiple times - should automatically overwrite
+    buffer.push(&mut arena, 30).unwrap(); // overwrites 10
+    buffer.push(&mut arena, 40).unwrap(); // overwrites 20
+    buffer.push(&mut arena, 50).unwrap(); // overwrites 30
 
     assert!(buffer.is_full());
     assert_eq!(buffer.pop(&arena), Some(40));
@@ -218,7 +218,7 @@ fn test_ring_buffer_mixed_operations() {
     assert_eq!(buffer.pop(&arena), Some(2));
     assert_eq!(buffer.pop(&arena), Some(3));
 
-    // Push with overwrite (buffer has space now)
+    // Push more elements (buffer has space now)
     buffer.push(&mut arena, 6).unwrap();
     buffer.push(&mut arena, 7).unwrap();
 
@@ -241,8 +241,8 @@ fn test_ring_buffer_capacity_one() {
     assert_eq!(buffer.front(&arena), Some(&42));
     assert_eq!(buffer.back(&arena), Some(&42));
 
-    // Overwrite
-    buffer.push_overwrite(&mut arena, 99).unwrap();
+    // Push should overwrite automatically
+    buffer.push(&mut arena, 99).unwrap();
     assert_eq!(buffer.front(&arena), Some(&99));
     assert_eq!(buffer.back(&arena), Some(&99));
     assert_eq!(buffer.pop(&arena), Some(99));
@@ -258,11 +258,7 @@ fn test_ring_buffer_alternating_push_pop() {
     buffer.push(&mut arena, 0).unwrap();
 
     for i in 1..10 {
-        if !buffer.is_full() {
-            buffer.push(&mut arena, i).unwrap();
-        } else {
-            buffer.push_overwrite(&mut arena, i).unwrap();
-        }
+        buffer.push(&mut arena, i).unwrap(); // Auto-overwrite when full
 
         if i % 2 == 1 {
             // Pop every other iteration
@@ -274,4 +270,188 @@ fn test_ring_buffer_alternating_push_pop() {
     assert!(!buffer.is_empty());
     // Verify we can access elements
     assert!(buffer.get(&arena, 0u32).is_some());
+}
+
+#[test]
+fn test_ring_buffer_iterator_empty() {
+    let mut arena: Arena<1024> = Arena::new();
+    let buffer = RingBuffer::<i32>::new(&mut arena, 5).unwrap();
+    
+    let mut iter = buffer.items(&arena);
+    assert_eq!(iter.next(), None);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+}
+
+#[test]
+fn test_ring_buffer_iterator_with_elements() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 5).unwrap();
+    
+    buffer.push(&mut arena, 10).unwrap();
+    buffer.push(&mut arena, 20).unwrap();
+    buffer.push(&mut arena, 30).unwrap();
+    
+    let mut iter = buffer.items(&arena);
+    assert_eq!(iter.len(), 3);
+    assert_eq!(iter.size_hint(), (3, Some(3)));
+    
+    // Should iterate in FIFO order
+    assert_eq!(iter.next(), Some(&10));
+    assert_eq!(iter.next(), Some(&20));
+    assert_eq!(iter.next(), Some(&30));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_ring_buffer_iterator_after_wrap() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 3).unwrap();
+    
+    // Fill buffer
+    buffer.push(&mut arena, 1).unwrap();
+    buffer.push(&mut arena, 2).unwrap();
+    buffer.push(&mut arena, 3).unwrap();
+    
+    // Overwrite first element
+    buffer.push(&mut arena, 4).unwrap();
+    
+    // Iterator should give logical order: [2, 3, 4]
+    let mut iter = buffer.items(&arena);
+    assert_eq!(iter.next(), Some(&2));
+    assert_eq!(iter.next(), Some(&3));
+    assert_eq!(iter.next(), Some(&4));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_ring_buffer_iterator_after_pop() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 4).unwrap();
+    
+    buffer.push(&mut arena, 10).unwrap();
+    buffer.push(&mut arena, 20).unwrap();
+    buffer.push(&mut arena, 30).unwrap();
+    buffer.push(&mut arena, 40).unwrap();
+    
+    // Pop two elements
+    buffer.pop(&arena);
+    buffer.pop(&arena);
+    
+    // Iterator should show remaining elements in order
+    let mut iter = buffer.items(&arena);
+    assert_eq!(iter.len(), 2);
+    assert_eq!(iter.next(), Some(&30));
+    assert_eq!(iter.next(), Some(&40));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_ring_buffer_iterator_collect_pattern() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 4).unwrap();
+    
+    buffer.push(&mut arena, 1).unwrap();
+    buffer.push(&mut arena, 2).unwrap();
+    buffer.push(&mut arena, 3).unwrap();
+    
+    // Pop one, push two more (causing wrap)
+    buffer.pop(&arena);
+    buffer.push(&mut arena, 4).unwrap();
+    buffer.push(&mut arena, 5).unwrap();
+    
+    // Should contain [2, 3, 4, 5] in logical order
+    let sum: i32 = buffer.items(&arena).map(|&x| x).sum();
+    assert_eq!(sum, 2 + 3 + 4 + 5);
+    
+    let count = buffer.items(&arena).count();
+    assert_eq!(count, 4);
+}
+
+#[test]
+fn test_ring_buffer_iterator_reverse() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 4).unwrap();
+    
+    buffer.push(&mut arena, 10).unwrap();
+    buffer.push(&mut arena, 20).unwrap();
+    buffer.push(&mut arena, 30).unwrap();
+    
+    // Forward iteration
+    let mut forward_iter = buffer.items(&arena);
+    assert_eq!(forward_iter.next(), Some(&10));
+    assert_eq!(forward_iter.next(), Some(&20));
+    assert_eq!(forward_iter.next(), Some(&30));
+    assert_eq!(forward_iter.next(), None);
+    
+    // Reverse iteration
+    let mut reverse_iter = buffer.items(&arena).rev();
+    assert_eq!(reverse_iter.next(), Some(&30));
+    assert_eq!(reverse_iter.next(), Some(&20));
+    assert_eq!(reverse_iter.next(), Some(&10));
+    assert_eq!(reverse_iter.next(), None);
+}
+
+#[test]
+fn test_ring_buffer_iterator_reverse_after_wrap() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 3).unwrap();
+    
+    // Fill and wrap
+    buffer.push(&mut arena, 1).unwrap();
+    buffer.push(&mut arena, 2).unwrap();
+    buffer.push(&mut arena, 3).unwrap();
+    buffer.push(&mut arena, 4).unwrap(); // wraps, buffer now has [2, 3, 4]
+    
+    // Reverse iteration should be [4, 3, 2]
+    let mut reverse_iter = buffer.items(&arena).rev();
+    assert_eq!(reverse_iter.next(), Some(&4));
+    assert_eq!(reverse_iter.next(), Some(&3));
+    assert_eq!(reverse_iter.next(), Some(&2));
+    assert_eq!(reverse_iter.next(), None);
+}
+
+#[test]
+fn test_ring_buffer_iterator_double_ended() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 5).unwrap();
+    
+    buffer.push(&mut arena, 1).unwrap();
+    buffer.push(&mut arena, 2).unwrap();
+    buffer.push(&mut arena, 3).unwrap();
+    buffer.push(&mut arena, 4).unwrap();
+    buffer.push(&mut arena, 5).unwrap();
+    
+    let mut iter = buffer.items(&arena);
+    
+    // Mix forward and backward iteration
+    assert_eq!(iter.next(), Some(&1));        // front
+    assert_eq!(iter.next_back(), Some(&5));   // back
+    assert_eq!(iter.next(), Some(&2));        // front
+    assert_eq!(iter.next_back(), Some(&4));   // back
+    assert_eq!(iter.next(), Some(&3));        // front (middle)
+    assert_eq!(iter.next(), None);            // exhausted
+    assert_eq!(iter.next_back(), None);       // exhausted
+}
+
+#[test]
+fn test_ring_buffer_iterator_rev_simple() {
+    let mut arena: Arena<1024> = Arena::new();
+    let mut buffer = RingBuffer::new(&mut arena, 3).unwrap();
+    
+    buffer.push(&mut arena, 100).unwrap();
+    buffer.push(&mut arena, 200).unwrap();
+    buffer.push(&mut arena, 300).unwrap();
+    
+    // Test that .rev() works
+    // Test that .rev() works
+    let mut iter = buffer.items(&arena).rev();
+    let first = iter.next().unwrap();
+    let second = iter.next().unwrap(); 
+    let third = iter.next().unwrap();
+    
+    assert_eq!(*first, 300);
+    assert_eq!(*second, 200);
+    assert_eq!(*third, 100);
+    assert_eq!(iter.next(), None);
 }

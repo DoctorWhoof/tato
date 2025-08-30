@@ -136,6 +136,39 @@ where
         Ok(Self { slice })
     }
 
+    /// Join multiple byte slices into a single text.
+    pub fn join_slices<const LEN: usize>(
+        arena: &mut Arena<LEN, Idx>,
+        slices: &[&[u8]],
+    ) -> ArenaResult<Self> {
+        if slices.is_empty() {
+            let empty_slice = arena.alloc_slice::<u8>(Idx::zero())?;
+            return Ok(Self { slice: empty_slice });
+        }
+
+        // Calculate total length first
+        let mut total_len = 0usize;
+        for slice in slices {
+            total_len += slice.len();
+        }
+        let final_len = Idx::from_usize_checked(total_len).ok_or(ArenaError::IndexConversion)?;
+
+        // Allocate and fill the result slice
+        let result_slice = arena.alloc_slice_from_fn(final_len, |i| {
+            // Find which source slice this byte belongs to
+            let mut offset = 0usize;
+            for slice in slices {
+                if i < offset + slice.len() {
+                    return slice[i - offset];
+                }
+                offset += slice.len();
+            }
+            0 // Should never reach here
+        })?;
+
+        Ok(Self { slice: result_slice })
+    }
+
     /// Create formatted text using Debug trait
     /// Replaces "{:?}" placeholders with values by index, with message2 appended after
     pub fn format_dbg<const LEN: usize, M1, M2, V>(

@@ -13,8 +13,12 @@ impl Dashboard {
                         }
                     }
                 },
-                Key::Tab => self.display_debug_info = !self.display_debug_info,
-                Key::Grave => self.display_console = !self.display_console,
+                Key::Tab => {
+                    self.display_debug_info = !self.display_debug_info;
+                },
+                Key::Grave => {
+                    self.display_console = !self.display_console;
+                },
                 Key::Plus => {
                     if self.gui_scale < 10.0 {
                         self.gui_scale += 1.0
@@ -30,7 +34,8 @@ impl Dashboard {
                         let text =
                             Text::from_buffer(&mut self.fixed_arena, &self.console_command_line)
                                 .unwrap();
-                        self.console_latest_command = Command::parse_text(text.clone(), &self.fixed_arena);
+                        self.console_latest_command =
+                            Command::parse_text(text.clone(), &self.fixed_arena);
                         self.console_buffer.push(&mut self.fixed_arena, text).unwrap();
                         self.console_command_line.clear();
                     }

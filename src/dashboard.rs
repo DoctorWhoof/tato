@@ -17,6 +17,7 @@ pub use key::*;
 
 mod ops;
 pub use ops::*;
+use tato_arena::RingBuffer;
 
 mod gui_console;
 mod gui_draw_polys;
@@ -46,7 +47,7 @@ pub struct Dashboard {
     additional_text: Buffer<Text, u32>,
     tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
     last_frame_arena_use: usize,
-    console_buffer: Buffer<Text>,
+    console_buffer: RingBuffer<Text>,
     console_command_line: Buffer<u8>,
     console_latest_command: Option<Command>,
     canvas_rect: Option<Rect<i16>>,
@@ -78,7 +79,7 @@ impl Dashboard {
             }
             unsafe { core::mem::transmute(result) }
         };
-        let console_buffer = Buffer::new(&mut fixed_arena, 3)?;
+        let console_buffer = RingBuffer::new(&mut fixed_arena, 3)?;
         let console_command_line = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN as u32).unwrap();
 
         let ops = Buffer::new(frame_arena, OP_COUNT)?;
@@ -133,10 +134,6 @@ impl Dashboard {
 
         // Input
         self.process_input(backend);
-        if !self.display_debug_info {
-            backend.set_canvas_rect(None);
-            return;
-        }
     }
 
     /// Creates an internal temp_arena-allocated Text object, stores its ID
@@ -159,6 +156,11 @@ impl Dashboard {
         backend: &mut impl Backend,
         tato: &Tato,
     ) {
+        if !self.display_debug_info {
+            backend.set_canvas_rect(None);
+            return;
+        }
+
         // Start Layout
         let screen_size = backend.get_screen_size();
         let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };

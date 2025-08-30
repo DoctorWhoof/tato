@@ -12,6 +12,7 @@ impl Dashboard {
         if self.display_console {
             layout.push_edge(Edge::Bottom, (font_size * 2.0) as i16, |console| {
                 console.set_margin(5);
+                console.set_gap(0);
 
                 // draw BG rect
                 let op_handle = frame_arena
@@ -23,10 +24,16 @@ impl Dashboard {
                 self.ops.push(frame_arena, op_handle).unwrap();
 
                 // Draw main console line text
-                let text_slice = self.console_command_line.as_slice(&self.fixed_arena);
-                let slice = text_slice.unwrap_or(&[' ' as u8]);
-                let text_result = Text::from_ascii(frame_arena, slice);
+                let prompt = Text::from_str(frame_arena, "command > ").unwrap();
+                let text_slice = Text::from_ascii(
+                    frame_arena,
+                    self.console_command_line.as_slice(&self.fixed_arena).unwrap(),
+                )
+                .unwrap_or_default();
+
+                let text_result = Text::join(frame_arena, &[prompt, text_slice]);
                 let text = text_result.unwrap_or(Text::default());
+
                 console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
                     let rect = line.rect();
                     let text_op_id = frame_arena
@@ -43,7 +50,7 @@ impl Dashboard {
 
                 // Draw console buffer (previous lines)
                 let remaining_rect = console.rect();
-                for text in self.console_buffer.items(&self.fixed_arena).unwrap().rev() {
+                for text in self.console_buffer.items(&self.fixed_arena).rev() {
                     let mut line_rect = Rect::<i16>::default();
                     console.push_edge(Edge::Bottom, self.font_size as i16, |line| {
                         line_rect = line.rect();
@@ -58,7 +65,7 @@ impl Dashboard {
                             x: line_rect.x,
                             y: line_rect.y,
                             size: font_size,
-                            color: RGBA32::WHITE,
+                            color: RGBA32::GRAY,
                         });
                         self.ops.push(frame_arena, op_id.unwrap()).unwrap();
                     });
