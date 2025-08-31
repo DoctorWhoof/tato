@@ -17,7 +17,10 @@ impl Dashboard {
         self.str("----------- Engine info -----------");
 
         let iter_time = backend.get_pixel_iter_elapsed_time();
-        self.display("Pixel iter time: {:.1} ms", &[iter_time * 1000.0], "");
+        self.display("Backend pixel iter time: {:.1} ms", &[iter_time * 1000.0], "");
+
+        let draw_time = backend.get_drawing_elapsed_time();
+        self.display("Backend draw time: {:.1} ms", &[draw_time * 1000.0], "");
 
         let arena_cap = frame_arena.capacity();
         self.display(
@@ -48,7 +51,7 @@ impl Dashboard {
             " Kb",
         );
 
-        self.display("fps: {:.1}", &[1.0 / tato.elapsed_time()], "");
+        self.display("fps: {:.1} / {:.0}", &[1.0 / tato.elapsed_time(), (1.0 / (iter_time + draw_time))], "");
 
         self.display("elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
 

@@ -108,7 +108,11 @@ impl RayBackend {
                 textures[id].width as usize * textures[id].height as usize * 4;
             // resize texture to match
             if pixels.len() != texture_pixel_count {
-                println!("Souce pixels: {}, dest pixels: {}", pixels.len(), texture_pixel_count);
+                println!(
+                    "Resizing texture, Souce pixels: {}, dest pixels: {}",
+                    pixels.len(),
+                    texture_pixel_count
+                );
                 // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
                 let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
                 let complete_rows = total_tiles / TILES_PER_ROW as usize;
@@ -246,7 +250,7 @@ impl Backend for RayBackend {
     ) where
         &'a T: Into<TilemapRef<'a>>,
     {
-        let time_profile = Instant::now();
+        let time_iter = Instant::now();
         // let mut temp_texts = Arena::<32768, u32>::new();
 
         assert!(
@@ -265,9 +269,10 @@ impl Backend for RayBackend {
             self.pixels[index + 2] = color.b;
             self.pixels[index + 3] = color.a;
         }
-        self.buffer_iter_time.push(time_profile.elapsed().as_secs_f64());
+        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f64());
 
         // Update main render texture and queue draw operation
+        let time_queue = Instant::now();
         Self::update_texture_internal(
             &mut self.textures,
             &mut self.ray,
@@ -363,7 +368,7 @@ impl Backend for RayBackend {
 
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
-        self.buffer_canvas_time.push(time_profile.elapsed().as_secs_f64());
+        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f64());
 
         // This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
@@ -451,7 +456,7 @@ impl Backend for RayBackend {
     }
 
     fn get_drawing_elapsed_time(&self) -> f32 {
-        todo!()
+        self.buffer_canvas_time.average() as f32
     }
 
     // ---------------------- Debug Features ----------------------

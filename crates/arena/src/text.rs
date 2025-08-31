@@ -348,6 +348,13 @@ where
                             "Invalid format specifier: cannot combine precision and debug formatting",
                         );
                     }
+                    // Check for shorthand precision format {:N}
+                    if placeholder.starts_with("{:") && placeholder.ends_with("}") && placeholder.len() > 3 {
+                        let inner = &placeholder[2..placeholder.len()-1];
+                        if inner.parse::<usize>().is_ok() {
+                            return Err("Invalid format specifier: use {:.N} instead of {:N} for precision formatting");
+                        }
+                    }
                     return Err("Invalid format specifier: supported formats are {}, {:?}, {:.N}");
                 }
 
@@ -364,4 +371,32 @@ where
 
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Arena;
+
+    #[test]
+    #[should_panic(expected = "use {:.N} instead of {:N}")]
+    fn test_shorthand_precision_rejected() {
+        let mut arena = Arena::<1024, u32>::new();
+
+        // Test that {:0} shorthand is rejected with helpful message
+        let values = [60.5, 30.0];
+        let _result = Text::format_display(&mut arena, "fps: {:.1} / {:0}", &values, "");
+    }
+
+    #[test]
+    fn test_zero_precision_works() {
+        let mut arena = Arena::<1024, u32>::new();
+
+        // Test that {:.0} works correctly
+        let values = [3.14159, 2.99999];
+        let result = Text::format_display(&mut arena, "pi: {:.0}, rounded: {:.0}", &values, "").unwrap();
+        let formatted = result.as_str(&arena).unwrap();
+        assert_eq!(formatted, "pi: 3, rounded: 3");
+    }
+
 }

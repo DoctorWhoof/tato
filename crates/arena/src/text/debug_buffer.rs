@@ -111,72 +111,6 @@ impl DebugBuffer {
         }
     }
 
-    // /// Format a message using only Debug trait - supports {:?} and fallback
-    // pub(crate) fn format_debug_message<T>(
-    //     &mut self,
-    //     message: &str,
-    //     value: &T,
-    // ) -> Result<(), core::fmt::Error>
-    // where
-    //     T: Debug,
-    // {
-    //     if let Some((start, end, spec)) = parse_format_string(message) {
-    //         match spec {
-    //             FormatSpec::Debug => {
-    //                 self.write_str(&message[..start])?;
-    //                 write!(self, "{:?}", value)?;
-    //                 self.write_str(&message[end..])?;
-    //                 Ok(())
-    //             }
-    //             _ => {
-    //                 // Unsupported format for Debug-only, fall back to debug with separator
-    //                 self.write_str(message)?;
-    //                 write!(self, "{:?}", value)
-    //             }
-    //         }
-    //     } else {
-    //         // No format specifier found
-    //         self.write_str(message)?;
-    //         write!(self, "{:?}", value)
-    //     }
-    // }
-
-    // /// Format a message using only Display trait - supports {} and {:.N} and fallback
-    // pub(crate) fn format_display_message<T>(
-    //     &mut self,
-    //     message: &str,
-    //     value: &T,
-    // ) -> Result<(), core::fmt::Error>
-    // where
-    //     T: Display,
-    // {
-    //     if let Some((start, end, spec)) = parse_format_string(message) {
-    //         match spec {
-    //             FormatSpec::Display => {
-    //                 self.write_str(&message[..start])?;
-    //                 write!(self, "{}", value)?;
-    //                 self.write_str(&message[end..])?;
-    //                 Ok(())
-    //             }
-    //             FormatSpec::DisplayWithPrecision(precision) => {
-    //                 self.write_str(&message[..start])?;
-    //                 self.format_with_precision(value, precision)?;
-    //                 self.write_str(&message[end..])?;
-    //                 Ok(())
-    //             }
-    //             FormatSpec::Debug => {
-    //                 // Debug format not supported for Display-only, fall back
-    //                 self.write_str(message)?;
-    //                 write!(self, "{}", value)
-    //             }
-    //         }
-    //     } else {
-    //         // No format specifier found
-    //         self.write_str(message)?;
-    //         write!(self, "{}", value)
-    //     }
-    // }
-
     /// Format a message using Debug trait with indexed values
     /// Replaces "{:?}" placeholders with values by index
     pub(crate) fn format_debug_message_indexed<T>(
@@ -304,6 +238,8 @@ mod tests {
         assert_eq!(parse_format_string("hello {}"), Some((6, 8, FormatSpec::Display)));
         assert_eq!(parse_format_string("debug {:?}"), Some((6, 10, FormatSpec::Debug)));
         assert_eq!(parse_format_string("precise {:.2}"), Some((8, 13, FormatSpec::DisplayWithPrecision(2))));
+        assert_eq!(parse_format_string("zero {:.0}"), Some((5, 10, FormatSpec::DisplayWithPrecision(0))));
+
         assert_eq!(parse_format_string("no format"), None);
     }
 
@@ -322,7 +258,25 @@ mod tests {
         assert_eq!(buf.as_str(), "pi: 3.14");
 
         let mut buf = DebugBuffer::new();
+        buf.format_message("rounded: {:.0}", &3.14159).unwrap();
+        assert_eq!(buf.as_str(), "rounded: 3");
+
+        let mut buf = DebugBuffer::new();
         buf.format_message("fallback: ", &42).unwrap();
         assert_eq!(buf.as_str(), "fallback: 42");
+    }
+
+    #[test]
+    fn test_zero_precision_comprehensive() {
+        // Test parsing zero precision
+        assert_eq!(parse_format_string("{:.0}"), Some((0, 5, FormatSpec::DisplayWithPrecision(0))));
+        
+        // Test formatting with zero precision
+        let mut buf = DebugBuffer::new();
+        buf.format_message("{:.0}", &3.14159).unwrap();
+        assert_eq!(buf.as_str(), "3");
+        
+        // Test that {:0} shorthand is rejected
+        assert_eq!(parse_format_string("{:0}"), None);
     }
 }
