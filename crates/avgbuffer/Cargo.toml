@@ -11,5 +11,4 @@ categories = ["no-std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libm = "0.2.8"
 tato_math = { path = "../math" }

@@ -50,11 +50,11 @@ async fn run() {
     backend.run(move |backend| {
         // Start frame
         frame_arena.clear();
-        backend.frame_start(&mut frame_arena);
+        backend.frame_start(&mut frame_arena, &mut tato.pad);
         tato.frame_start(1.0 / 60.0);
 
         // Update input
-        backend.update_input(&mut tato.pad);
+
 
         // Simple player movement
         let speed = 2.0;

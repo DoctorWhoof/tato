@@ -13,7 +13,7 @@ const MAP_LEN: usize = 1024;
 fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<32_768, u32>::new();
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
-    let mut dash = Dashboard::new(&mut frame_arena).unwrap();
+    let mut dash = Dashboard::new().unwrap();
     let mut tato = Tato::new(240, 180, 60);
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
@@ -33,13 +33,12 @@ fn main() -> TatoResult<()> {
 
     println!("Asset arena: {} Bytes", tato.assets.used_memory());
     // Backend
-    let mut backend = RaylibBackend::new(&tato, &mut frame_arena);
+    let mut backend = RayBackend::new(&tato);
     backend.set_bg_color(RGBA32::BLACK);
 
     while !backend.ray.window_should_close() {
         frame_arena.clear();
-        backend.frame_start(&mut frame_arena);
-        backend.update_input(&mut tato.pad);
+        backend.frame_start(&mut frame_arena, &mut tato.pad);
         dash.frame_start(&mut frame_arena, &mut backend);
         tato.frame_start(backend.ray.get_frame_time());
 
@@ -56,7 +55,7 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        dash.render(&mut frame_arena, &mut backend, &tato);
+        dash.frame_present(&mut frame_arena, &mut backend, &tato);
         backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
     }
     Ok(())

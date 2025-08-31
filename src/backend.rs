@@ -46,7 +46,7 @@ pub trait Backend {
     /// Clear the screen with the given color
     fn clear(&mut self, color: RGBA32);
 
-    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>);
+    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>, pad:&mut AnaloguePad);
 
     /// Present the rendered frame to the screen
     fn frame_present<'a, const LEN: usize, T>(
@@ -80,10 +80,9 @@ pub trait Backend {
 
     fn get_pressed_key(&self) -> Option<Key>;
 
-    /// Update gamepad/input state
-    fn update_input(&mut self, pad: &mut AnaloguePad);
-
     // ---------------------- Window Info ----------------------
+    //
+    fn get_elapsed_time(&self) -> f32;
 
     /// Set window title
     fn set_window_title(&mut self, title: &str);

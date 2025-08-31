@@ -2,7 +2,7 @@ mod astro;
 
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
 use tato::{arena::Arena, prelude::*};
-use tato_raylib::RaylibBackend;
+use tato_raylib::RayBackend;
 // use tato_winit::WinitBackend;
 
 // An entity that fits in 64 bits! :-)
@@ -24,8 +24,8 @@ fn main() -> TatoResult<()> {
     // Init
     let mut frame_arena = Arena::<32_768, u32>::new();
     let mut tato = Tato::new(W, H, 60);
-    let mut backend = RaylibBackend::new(&tato, &mut frame_arena);
-    let mut dash = Dashboard::new(&mut frame_arena).unwrap();
+    let mut backend = RayBackend::new(&tato);
+    let mut dash = Dashboard::new().unwrap();
     let bg_map = Tilemap::<1024>::new(32, 32);
 
 
@@ -71,8 +71,8 @@ fn main() -> TatoResult<()> {
     // Main loop
     while !backend.ray.window_should_close() {
         frame_arena.clear();
-        backend.frame_start(&mut frame_arena);
-        backend.update_input(&mut tato.pad);
+        backend.frame_start(&mut frame_arena, &mut tato.pad);
+
         dash.frame_start(&mut frame_arena, &mut backend);
         tato.frame_start(backend.ray.get_frame_time());
 
@@ -113,7 +113,7 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        dash.render(&mut frame_arena, &mut backend, &tato);
+        dash.frame_present(&mut frame_arena, &mut backend, &tato);
         backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
     }
     Ok(())

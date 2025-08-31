@@ -5,7 +5,7 @@ fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<32_768, u32>::new();
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
-    let mut dash = Dashboard::new(&mut frame_arena).unwrap();
+    let mut dash = Dashboard::new().unwrap();
 
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
@@ -110,11 +110,11 @@ fn main() -> TatoResult<()> {
     // Main Loop
     let mut cycle = 1.0;
     tato.video.wrap_bg = true;
-    let mut backend = RaylibBackend::new(&tato, &mut frame_arena);
+    let mut backend = RayBackend::new(&tato);
     while !backend.ray.window_should_close() {
         frame_arena.clear();
-        backend.frame_start(&mut frame_arena);
-        backend.update_input(&mut tato.pad);
+        backend.frame_start(&mut frame_arena, &mut tato.pad);
+
         dash.frame_start(&mut frame_arena, &mut backend);
         tato.frame_start(backend.ray.get_frame_time());
 
@@ -140,7 +140,7 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        dash.render(&mut frame_arena, &mut backend, &tato);
+        dash.frame_present(&mut frame_arena, &mut backend, &tato);
         backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
     }
     Ok(())

@@ -36,6 +36,13 @@ where
     pub fn is_empty(&self) -> bool {
         self.slice.len() == Idx::zero()
     }
+
+    /// Get the text directly as a u8 slice
+    // TODO: Return result intead of option
+    pub fn as_slice<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a [u8]> {
+        arena.get_slice(&self.slice).ok()
+    }
+
     /// Get the text as &str (requires arena for safety)
     /// Returns None if the bytes are not valid UTF-8
     // TODO: Return result intead of option
@@ -63,7 +70,7 @@ where
     }
 
     /// Create text from a valid (but non-zero) ASCII slice
-    pub fn from_ascii<const LEN: usize>(
+    pub fn from_bytes<const LEN: usize>(
         arena: &mut Arena<LEN, Idx>,
         bytes: &[u8],
     ) -> ArenaResult<Self> {

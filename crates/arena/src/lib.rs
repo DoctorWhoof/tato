@@ -34,7 +34,9 @@ pub enum ArenaError {
     /// Slice capacity exceeded
     CapacityExceeded,
     /// Text generation failed due to empty source bytes or invalid characters
-    InvalidOrEmptyUTF8
+    InvalidOrEmptyUTF8,
+    /// Attempted to use a default arena object
+    UnnallocatedObject
 }
 
 impl core::fmt::Display for ArenaError {
@@ -53,6 +55,7 @@ impl core::fmt::Display for ArenaError {
             ArenaError::IndexConversion => write!(f, "Index type conversion failed"),
             ArenaError::CapacityExceeded => write!(f, "Capacity exceeded"),
             ArenaError::InvalidOrEmptyUTF8 => write!(f, "Invalid or empty UTF8"),
+            ArenaError::UnnallocatedObject => write!(f, "Attempted to use an unnallocated Arena object"),
         }
     }
 }

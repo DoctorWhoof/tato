@@ -17,7 +17,7 @@ pub use key::*;
 
 mod ops;
 pub use ops::*;
-use tato_arena::RingBuffer;
+use tato_arena::{RingBuffer, Slice};
 
 mod gui_console;
 mod gui_draw_polys;
@@ -26,31 +26,46 @@ mod gui_input;
 mod gui_text;
 mod gui_video;
 
-const MAX_LINES: u32 = 100;
-const OP_COUNT: u32 = 200;
-
+// The Fixed arena is never cleared - this may need to changed when
+// I dynamically update the tiles! (i.e. pop() and load())
+const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
 // 256 tiles per bank
 const MAX_TILE_PIXELS: usize =
     TILE_BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;
-const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
+
+// Temp Debug Arena
+// This is necessary since DrawOps need to be processed, and can't be read
+// (Text, Vec2, etc) and written (DrawOp) to the same arena at the same time.
+const DEBUG_LEN: usize = 8 * 1024;
+const CONSOLE_HISTORY: u32 = 3;
+const OP_COUNT: u32 = 200;
+const DEBUG_STR_COUNT: u32 = 100;
+const DEBUG_POLY_COUNT: u32 = 100;
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
 pub struct Dashboard {
     pub font_size: f32,
     pub gui_scale: f32,
+    // Storage
+    fixed_arena: Arena<FIXED_ARENA_LEN, u32>, //  Never cleared
+    debug_arena: Arena<DEBUG_LEN>,            // Cleared on every frame
+    // State
     display_debug_info: bool,
     display_console: bool,
-    fixed_arena: Arena<FIXED_ARENA_LEN, u32>,
-    ops: Buffer<ArenaId<DrawOp, u32>, u32>,
-    mouse_over_text: Text,
-    additional_text: Buffer<Text, u32>,
-    tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
-    last_frame_arena_use: usize,
+    // Console
     console_buffer: RingBuffer<Text>,
     console_command_line: Buffer<u8>,
     console_latest_command: Option<Command>,
     canvas_rect: Option<Rect<i16>>,
+    // Debug data
+    last_frame_arena_use: usize,
+    mouse_over_text: Text,
+    ops: Buffer<ArenaId<DrawOp, u32>, u32>,
+    debug_text: Buffer<Text, u32>,
+    debug_polys_world: Buffer<Slice<Vec2<i16>>>,
+    debug_polys_gui: Buffer<Slice<Vec2<i16>>>,
+    tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
 }
 
 pub const PANEL_WIDTH: i16 = 150;
@@ -61,7 +76,7 @@ const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
 impl Dashboard {
     /// Creates a new Dashboard where LEN is the memory available to its
     /// temporary memory buffer, in bytes.
-    pub fn new<const LEN: usize>(frame_arena: &mut Arena<LEN>) -> TatoResult<Self> {
+    pub fn new() -> TatoResult<Self> {
         let mut fixed_arena = Arena::<FIXED_ARENA_LEN, u32>::new(); // persistent
         let tile_pixels = {
             // 4 bytes per pixel (RGBA)
@@ -79,11 +94,9 @@ impl Dashboard {
             }
             unsafe { core::mem::transmute(result) }
         };
-        let console_buffer = RingBuffer::new(&mut fixed_arena, 3)?;
+        let console_buffer = RingBuffer::new(&mut fixed_arena, CONSOLE_HISTORY)?;
+        // TODO: Get rid of COMMAND_MAX_LEN!!! Arena allocated means no need for const size.
         let console_command_line = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN as u32).unwrap();
-
-        let ops = Buffer::new(frame_arena, OP_COUNT)?;
-        let additional_text = Buffer::new(frame_arena, MAX_LINES)?;
 
         Ok(Self {
             font_size: 8.0,
@@ -91,18 +104,25 @@ impl Dashboard {
             // frame_arena,
             fixed_arena,
             tile_pixels,
-            mouse_over_text: Text::default(),
-            ops,
-            additional_text,
             last_frame_arena_use: 0,
             // console_display: false,
-            console_command_line,
-            console_buffer,
             console_latest_command: None,
             canvas_rect: None,
             // last_key_received: Key::None,
             display_debug_info: true,
             display_console: false,
+            // Fixed arena data (not cleared on every frame)
+            // Shared frame arena data
+            console_command_line,
+            console_buffer,
+            mouse_over_text: Text::default(),
+            // Debug data. Will be arena allocated per frame, but not use the frame arena
+            // to avoid reading and writing to the same arena when saving DrawOps
+            ops: Buffer::default(),
+            debug_arena: Arena::new(),
+            debug_text: Buffer::default(),
+            debug_polys_world: Buffer::default(),
+            debug_polys_gui: Buffer::default(),
         })
     }
 
@@ -113,51 +133,120 @@ impl Dashboard {
         pixel_buffer.as_slice(&self.fixed_arena).ok()
     }
 
-    /// An iterator with every DrawOp processed so far
+    /// An iterator with every DrawOp processed so far. DrawOps must be stored
+    /// in a external frame arena, since they are shared with the Backend.
     pub fn draw_ops<'a, const LEN: usize>(
         &self,
         frame_arena: &'a Arena<LEN>,
     ) -> ArenaResult<impl Iterator<Item = &'a DrawOp>> {
-        self.ops.items(frame_arena).map(|iter| iter.filter_map(|id| frame_arena.get(id).ok()))
+        self.ops
+            .items(frame_arena) //
+            .map(|iter| iter.filter_map(|id| frame_arena.get(id).ok()))
     }
 
-    /// Must be called at the beginning of each frame, but after backend has been started.
+    /// If a console command has been processed this frame it is returned here.
+    pub fn get_console_command(&self) -> Option<Command> {
+        self.console_latest_command.clone()
+    }
+
+    /// Creates an internal temp_arena-allocated Text object, stores its ID
+    /// in a list so it can be drawn when "render" is called.
+    pub fn str(&mut self, text: &str) {
+        let text = Text::from_str(&mut self.debug_arena, text).unwrap();
+        self.debug_text.push(&mut self.debug_arena, text).unwrap();
+    }
+
+    /// Allows basic text formatting when sending text to the dashboard
+    pub fn debug<T>(&mut self, message: &str, values: &[T], tail: &str)
+    where
+        T: core::fmt::Debug,
+    {
+        // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
+        let handle = Text::format_dbg(&mut self.debug_arena, message, values, tail).unwrap();
+        self.debug_text.push(&mut self.debug_arena, handle).unwrap();
+    }
+
+    /// Allows basic text formatting when sending text to the dashboard
+    pub fn display<T>(&mut self, message: &str, values: &[T], tail: &str)
+    where
+        T: core::fmt::Display,
+    {
+        // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
+        let handle = Text::format_display(&mut self.debug_arena, message, values, tail).unwrap();
+        self.debug_text.push(&mut self.debug_arena, handle).unwrap();
+    }
+
+    /// Sends an open polygon to the dashboard (to close, simply ensure the last
+    /// point matches the first). If "world_space" is true, poly will be resized
+    /// and translated to match canvas size and scroll values. If not, it will
+    /// be drawn like a gui.
+    pub fn poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
+        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len() as u32).unwrap();
+        let slice = self.debug_arena.get_slice_mut(&handle).unwrap();
+        slice.copy_from_slice(points);
+        if world_space {
+            self.debug_polys_world.push(&mut self.debug_arena, handle).unwrap();
+        } else {
+            self.debug_polys_gui.push(&mut self.debug_arena, handle).unwrap();
+        }
+    }
+
+    /// Convenient way to send a rect as a poly to the dashboard.
+    pub fn rect(&mut self, rect: Rect<i16>, world_space: bool) {
+        let points = [
+            rect.top_left(),
+            rect.top_right(),
+            rect.bottom_right(),
+            rect.bottom_left(),
+            rect.top_left(),
+        ];
+        self.poly(&points, world_space);
+    }
+
+    /// Convenient way to send a point as an "x" to the dashboard.
+    pub fn pivot(&mut self, x: i16, y: i16, size: i16, world_space: bool) {
+        let half = size / 2;
+        self.poly(
+            &[Vec2 { x: x - half, y: y - half }, Vec2 { x: x + half, y: y + half }],
+            world_space,
+        );
+        self.poly(
+            &[Vec2 { x: x - half, y: y + half }, Vec2 { x: x + half, y: y - half }],
+            world_space,
+        );
+    }
+
+    /// Must be called at the beginning of each frame, after the Backend has
+    /// started its own frame
     pub fn frame_start<const LEN: usize>(
         &mut self,
         frame_arena: &mut Arena<LEN>,
         backend: &mut impl Backend,
     ) {
+        self.console_latest_command = None;
+
+        // Shared frame arena data
         self.ops = Buffer::new(frame_arena, OP_COUNT).unwrap();
         self.mouse_over_text = Text::default(); // Text unallocated, essentially same as "None"
-        self.additional_text = Buffer::new(frame_arena, MAX_LINES).unwrap();
-        self.console_latest_command = None;
+
+        // Internal debug arena data
+        self.debug_arena.clear();
+        self.debug_text = Buffer::new(&mut self.debug_arena, DEBUG_STR_COUNT).unwrap();
+        self.debug_polys_world = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
+        self.debug_polys_gui = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
 
         // Input
         self.process_input(backend);
     }
 
-    /// Creates an internal temp_arena-allocated Text object, stores its ID
-    /// in a list so it can be drawn when "render" is called.
-    pub fn push_text<const LEN: usize>(&mut self, text: &str, frame_arena: &mut Arena<LEN>) {
-        let text = Text::from_str(frame_arena, text).unwrap();
-        self.additional_text.push(frame_arena, text).unwrap();
-    }
-
-    pub fn get_console_command(&self) -> Option<Command> {
-        self.console_latest_command.clone()
-    }
-
-    /// Generate debug UI ops
-    // HINT: The tricky part of dodging the borrow checker is all the closures necessary
-    // to the Layout frames. Try to do as much as possible outside of the closures.
-    pub fn render<const LEN: usize>(
+    /// Generate debug UI Draw Ops before presenting them via the Backend.
+    pub fn frame_present<const LEN: usize>(
         &mut self,
         frame_arena: &mut Arena<LEN>,
         backend: &mut impl Backend,
         tato: &Tato,
     ) {
         if !self.display_debug_info {
-            backend.set_canvas_rect(None);
             return;
         }
 

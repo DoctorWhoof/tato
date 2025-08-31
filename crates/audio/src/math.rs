@@ -1,6 +1,5 @@
 use core::ops::RangeInclusive;
-
-use libm::roundf;
+use tato_math::libm::{roundf, powf, log2f};
 
 // /// Linear interpolation.
 #[inline(always)]
@@ -28,13 +27,13 @@ pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
 #[inline(always)]
 /// The frequency in Hz of any MIDI note value.
 pub fn note_to_frequency(note: f32) -> f32 {
-    libm::powf(2.0, (note - 69.0) / 12.0) * 440.0
+    powf(2.0, (note - 69.0) / 12.0) * 440.0
 }
 
 #[inline(always)]
 /// The corresponding note of a frequency
 pub fn frequency_to_note(frequency: f32) -> f32 {
-    69.0 + 12.0 * libm::log2f(frequency / 440.0)
+    69.0 + 12.0 * log2f(frequency / 440.0)
 }
 
 // // Wraps a value into a range from 0 to modulus, correctly handling negative numbers.

@@ -12,5 +12,5 @@ categories = ["no-std"]
 tato_math = { path = "../math"}
 
 # For perf testing, remove when done
-[profile.release]
-debug = true
+# [profile.release]
+# debug = true

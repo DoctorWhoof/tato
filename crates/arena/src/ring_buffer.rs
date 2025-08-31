@@ -76,6 +76,9 @@ where
         arena: &mut Arena<LEN, Idx, Marker>,
         value: T,
     ) -> ArenaResult<()> {
+        if self.slice.capacity() == Idx::zero() {
+            return Err(ArenaError::UnnallocatedObject);
+        }
         let tail = self.tail_index();
         let slice = arena.get_slice_mut(&self.slice)?;
         slice[tail.to_usize()] = value;

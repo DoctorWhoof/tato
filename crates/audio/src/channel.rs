@@ -1,5 +1,5 @@
 use crate::{math::*, waveform::*, *};
-use libm::powf;
+use tato_math::libm::powf;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum WaveMode {

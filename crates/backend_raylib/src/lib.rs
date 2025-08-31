@@ -12,7 +12,7 @@ fn rgba32_to_rl_color(color: RGBA32) -> Color {
     Color::new(color.r, color.g, color.b, color.a)
 }
 
-pub struct RaylibBackend {
+pub struct RayBackend {
     pub bg_color: Color,
     pub integer_scaling: bool,
     pub print_frame_time: bool,
@@ -31,8 +31,8 @@ pub struct RaylibBackend {
 }
 
 /// Raylib specific implementation
-impl RaylibBackend {
-    pub fn new<const LEN: usize>(tato: &Tato, frame_arena: &mut Arena<LEN>) -> Self {
+impl RayBackend {
+    pub fn new(tato: &Tato) -> Self {
         // Sizing
         let multiplier = 3;
         let w = tato.video.width() as i32;
@@ -73,7 +73,7 @@ impl RaylibBackend {
             // debug_pixels,
             textures: vec![],
             font,
-            draw_ops: Buffer::new(frame_arena, 1000).unwrap(),
+            draw_ops: Buffer::default(),
             draw_ops_additional: Buffer::default(),
             canvas_texture: 0,
             pixels: vec![0; w as usize * h as usize * 4],
@@ -129,7 +129,7 @@ impl RaylibBackend {
 }
 
 /// Main API, using Backend trait
-impl Backend for RaylibBackend {
+impl Backend for RayBackend {
     // ---------------------- Core Rendering ----------------------
 
     fn clear(&mut self, color: RGBA32) {
@@ -137,9 +137,104 @@ impl Backend for RaylibBackend {
         self.bg_color = rgba32_to_rl_color(color);
     }
 
-    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>) {
+    fn frame_start<const LEN: usize>(
+        &mut self,
+        frame_arena: &mut Arena<LEN>,
+        pad: &mut AnaloguePad,
+    ) {
         self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
         self.pressed_key = None;
+        self.canvas_rect = None;
+
+        use KeyboardKey::*;
+
+        // Copy existing update_gamepad logic
+        pad.copy_current_to_previous_state();
+
+        // Gamepad input
+        let ray = &mut self.ray;
+        pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
+        pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
+        pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
+        pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
+        pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
+        pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
+        pad.set_button(Button::A, ray.is_key_down(KEY_Z));
+        pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
+
+        // Dashboard keys
+        if let Some(key) = ray.get_key_pressed() {
+            match key {
+                KEY_ENTER => {
+                    self.pressed_key = Some(Key::Enter);
+                },
+                KEY_TAB => {
+                    self.pressed_key = Some(Key::Tab);
+                },
+                KEY_MINUS | KEY_KP_SUBTRACT => {
+                    self.pressed_key = Some(Key::Minus);
+                },
+                KEY_EQUAL | KEY_KP_ADD => {
+                    self.pressed_key = Some(Key::Plus);
+                },
+                KEY_BACKSPACE => {
+                    self.pressed_key = Some(Key::Backspace);
+                },
+                KEY_DELETE => {
+                    self.pressed_key = Some(Key::Delete);
+                },
+                KEY_LEFT => {
+                    self.pressed_key = Some(Key::Left);
+                },
+                KEY_RIGHT => {
+                    self.pressed_key = Some(Key::Right);
+                },
+                KEY_UP => {
+                    self.pressed_key = Some(Key::Up);
+                },
+                KEY_DOWN => {
+                    self.pressed_key = Some(Key::Down);
+                },
+                KEY_GRAVE => {
+                    self.pressed_key = Some(Key::Grave);
+                },
+                // Regular text
+                _ if (key as u32) >= 32 && (key as u32) < 127 => {
+                    // Handle all printable ASCII characters (32-126)
+                    match key as u32 {
+                        k if k >= KEY_A as u32 && k <= KEY_Z as u32 => {
+                            // Letters: apply shift for case
+                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
+                                self.pressed_key = Some(Key::Text(key as u8)); // uppercase
+                            } else {
+                                self.pressed_key = Some(Key::Text(key as u8 + 32)); // lowercase
+                            }
+                        },
+                        k if k >= KEY_ZERO as u32 && k <= KEY_NINE as u32 => {
+                            // Number row: apply shift for symbols
+                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
+                                // Shift+number gives symbols: )!@#$%^&*(
+                                let symbols = b")!@#$%^&*(";
+                                self.pressed_key =
+                                    Some(Key::Text(symbols[(k - KEY_ZERO as u32) as usize]));
+                            } else {
+                                self.pressed_key =
+                                    Some(Key::Text(b'0' + (k - KEY_ZERO as u32) as u8));
+                            }
+                        },
+                        k if k >= KEY_KP_0 as u32 && k <= KEY_KP_9 as u32 => {
+                            // Keypad numbers (no shift variants)
+                            self.pressed_key = Some(Key::Text(b'0' + (k - KEY_KP_0 as u32) as u8));
+                        },
+                        _ => {
+                            // All other printable characters
+                            self.pressed_key = Some(Key::Text(key as u8));
+                        },
+                    }
+                },
+                _ => {},
+            }
+        };
     }
 
     /// Finish canvas and GUI drawing, present to window
@@ -319,99 +414,11 @@ impl Backend for RaylibBackend {
         Vec2::new(self.ray.get_mouse_x() as i16, self.ray.get_mouse_y() as i16)
     }
 
-    fn update_input(&mut self, pad: &mut AnaloguePad) {
-        use KeyboardKey::*;
-        let ray = &mut self.ray;
-
-        // Copy existing update_gamepad logic
-        pad.copy_current_to_previous_state();
-
-        // Gamepad input
-        pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
-        pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
-        pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
-        pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
-        pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
-        pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
-        pad.set_button(Button::A, ray.is_key_down(KEY_Z));
-        pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
-
-        // Dashboard keys
-        if let Some(key) = ray.get_key_pressed() {
-            match key {
-                KEY_ENTER => {
-                    self.pressed_key = Some(Key::Enter);
-                },
-                KEY_TAB => {
-                    self.pressed_key = Some(Key::Tab);
-                },
-                KEY_MINUS | KEY_KP_SUBTRACT => {
-                    self.pressed_key = Some(Key::Minus);
-                },
-                KEY_EQUAL | KEY_KP_ADD => {
-                    self.pressed_key = Some(Key::Plus);
-                },
-                KEY_BACKSPACE => {
-                    self.pressed_key = Some(Key::Backspace);
-                },
-                KEY_DELETE => {
-                    self.pressed_key = Some(Key::Delete);
-                },
-                KEY_LEFT => {
-                    self.pressed_key = Some(Key::Left);
-                },
-                KEY_RIGHT => {
-                    self.pressed_key = Some(Key::Right);
-                },
-                KEY_UP => {
-                    self.pressed_key = Some(Key::Up);
-                },
-                KEY_DOWN => {
-                    self.pressed_key = Some(Key::Down);
-                },
-                KEY_GRAVE => {
-                    self.pressed_key = Some(Key::Grave);
-                },
-                // Regular text
-                _ if (key as u32) >= 32 && (key as u32) < 127 => {
-                    // Handle all printable ASCII characters (32-126)
-                    match key as u32 {
-                        k if k >= KEY_A as u32 && k <= KEY_Z as u32 => {
-                            // Letters: apply shift for case
-                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
-                                self.pressed_key = Some(Key::Text(key as u8)); // uppercase
-                            } else {
-                                self.pressed_key = Some(Key::Text(key as u8 + 32)); // lowercase
-                            }
-                        },
-                        k if k >= KEY_ZERO as u32 && k <= KEY_NINE as u32 => {
-                            // Number row: apply shift for symbols
-                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
-                                // Shift+number gives symbols: )!@#$%^&*(
-                                let symbols = b")!@#$%^&*(";
-                                self.pressed_key =
-                                    Some(Key::Text(symbols[(k - KEY_ZERO as u32) as usize]));
-                            } else {
-                                self.pressed_key =
-                                    Some(Key::Text(b'0' + (k - KEY_ZERO as u32) as u8));
-                            }
-                        },
-                        k if k >= KEY_KP_0 as u32 && k <= KEY_KP_9 as u32 => {
-                            // Keypad numbers (no shift variants)
-                            self.pressed_key = Some(Key::Text(b'0' + (k - KEY_KP_0 as u32) as u8));
-                        },
-                        _ => {
-                            // All other printable characters
-                            self.pressed_key = Some(Key::Text(key as u8));
-                        },
-                    }
-                },
-                _ => {},
-            }
-        };
-    }
-
     // ---------------------- Window Info ----------------------
+
+    fn get_elapsed_time(&self) -> f32 {
+        self.ray.get_frame_time()
+    }
 
     fn get_screen_size(&self) -> Vec2<i16> {
         let width: i32 = self.ray.get_screen_width();

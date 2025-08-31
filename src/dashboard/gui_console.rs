@@ -25,7 +25,7 @@ impl Dashboard {
 
                 // Draw main console line text
                 let command_line_bytes = self.console_command_line.as_slice(&self.fixed_arena).unwrap();
-                let text_result = Text::join_bytes(frame_arena, &["command | ".as_bytes(), command_line_bytes ]);
+                let text_result = Text::join_bytes(frame_arena, &["command: ".as_bytes(), command_line_bytes ]);
                 let text = text_result.unwrap_or(Text::default());
 
                 console.push_edge(Edge::Bottom, self.font_size as i16, |line| {

@@ -73,6 +73,9 @@ where
         arena: &mut Arena<LEN, Idx, Marker>,
         value: T,
     ) -> ArenaResult<()> {
+        if self.slice.capacity() == Idx::zero() {
+            return Err(ArenaError::UnnallocatedObject);
+        }
         if self.len >= self.slice.capacity() {
             return Err(ArenaError::CapacityExceeded);
         }
@@ -198,5 +201,3 @@ where
         iter
     }
 }
-
-
