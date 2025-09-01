@@ -24,26 +24,26 @@ impl Dashboard {
 
         let arena_cap = frame_arena.capacity();
         self.display(
-            "Frame mem.: {:.1} / {:.1}",
+            "Shared Frame Mem.: {:.1} / {:.1}",
             &[self.last_frame_arena_use as f32 / 1024.0, arena_cap as f32 / 1024.0],
             " Kb",
         );
 
         let fixed_arena_cap = self.fixed_arena.capacity();
         self.display(
-            "Dash mem. (fixed): {:.1} / {:.1}",
+            "Dash Mem. (fixed): {:.1} / {:.1}",
             &[self.fixed_arena.used() as f32 / 1024.0, fixed_arena_cap as f32 / 1024.0],
             " Kb",
         );
 
         self.display(
-            "Dash mem. (debug): {:.1} / {:.1}",
+            "Dash Mem. (debug): {:.1} / {:.1}",
             &[self.debug_arena.used() as f32 / 1024.0, self.debug_arena.capacity() as f32 / 1024.0],
             " Kb",
         );
 
         self.display(
-            "Asset mem.: {:.1} / {:.1}",
+            "Asset Mem.: {:.1} / {:.1}",
             &[
                 tato.assets.arena.used() as f32 / 1024.0,
                 tato.assets.arena.capacity() as f32 / 1024.0,

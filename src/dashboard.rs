@@ -32,6 +32,8 @@ const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
 // 256 tiles per bank
 const MAX_TILE_PIXELS: usize =
     TILE_BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;
+const COMMAND_MAX_LEN:u32 = 100;
+const COMMAND_MAX_ARGS:usize = 8;
 
 // Temp Debug Arena
 // This is necessary since DrawOps need to be processed, and can't be read
@@ -95,8 +97,7 @@ impl Dashboard {
             unsafe { core::mem::transmute(result) }
         };
         let console_buffer = RingBuffer::new(&mut fixed_arena, CONSOLE_HISTORY)?;
-        // TODO: Get rid of COMMAND_MAX_LEN!!! Arena allocated means no need for const size.
-        let console_command_line = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN as u32).unwrap();
+        let console_command_line = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN).unwrap();
 
         Ok(Self {
             font_size: 8.0,
@@ -236,7 +237,7 @@ impl Dashboard {
         self.debug_polys_gui = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
 
         // Input
-        self.process_input(backend);
+        self.process_input(frame_arena, backend);
     }
 
     /// Generate debug UI Draw Ops before presenting them via the Backend.

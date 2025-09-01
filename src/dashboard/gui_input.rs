@@ -1,17 +1,17 @@
 use super::*;
 
 impl Dashboard {
-    pub fn process_input(&mut self, backend: &impl Backend) {
+    pub fn process_input<const LEN:usize>(&mut self, frame_arena:&mut Arena<LEN>, backend: &impl Backend) {
         // Receive input
         if let Some(key) = backend.get_pressed_key() {
             match key {
                 Key::None => {},
                 Key::Text(ch) => {
-                    if self.console_command_line.len() < COMMAND_MAX_LEN {
+                    // if self.console_command_line.len() < COMMAND_MAX_LEN {
                         if ch >= 32 && ch < 128 {
                             self.console_command_line.push(&mut self.fixed_arena, ch).unwrap();
                         }
-                    }
+                    // }
                 },
                 Key::Tab => {
                     self.display_debug_info = !self.display_debug_info;
@@ -35,7 +35,10 @@ impl Dashboard {
                             Text::from_buffer(&mut self.fixed_arena, &self.console_command_line)
                                 .unwrap();
                         self.console_latest_command =
-                            Command::parse_text(text.clone(), &self.fixed_arena);
+                            Command::parse_str(
+                                text.as_str(&self.fixed_arena).unwrap(), //  from fixed arena
+                                frame_arena // into shared arena!
+                            );
                         self.console_buffer.push(&mut self.fixed_arena, text).unwrap();
                         self.console_command_line.clear();
                     }
