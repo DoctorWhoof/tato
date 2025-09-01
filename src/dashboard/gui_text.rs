@@ -14,6 +14,7 @@ impl Dashboard {
         }
 
         // Add debug info
+        self.str("");
         self.str("----------- Engine info -----------");
 
         let iter_time = backend.get_pixel_iter_elapsed_time();

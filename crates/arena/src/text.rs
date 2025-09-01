@@ -77,18 +77,18 @@ where
         let mut len = Idx::zero();
         for i in 0..bytes.len() {
             let value = bytes[i];
-            if value.is_ascii() && value > 0 {
-                len = Idx::from_usize_checked(i + 1).unwrap()
+            if value > 0 {
+                if value.is_ascii(){
+                    len = Idx::from_usize_checked(i + 1).unwrap()
+                } else {
+                    return Result::Err(ArenaError::InvalidUTF8);
+                }
             } else {
                 break;
             }
         }
-        if len > Idx::zero() {
-            let slice = arena.alloc_slice_from_fn(len, |i| bytes[i])?;
-            Ok(Self { slice })
-        } else {
-            ArenaResult::Err(ArenaError::InvalidOrEmptyUTF8)
-        }
+        let slice = arena.alloc_slice_from_fn(len, |i| bytes[i])?;
+        Ok(Self { slice })
     }
 
     /// Create text from a function that generates bytes
@@ -349,10 +349,15 @@ where
                         );
                     }
                     // Check for shorthand precision format {:N}
-                    if placeholder.starts_with("{:") && placeholder.ends_with("}") && placeholder.len() > 3 {
-                        let inner = &placeholder[2..placeholder.len()-1];
+                    if placeholder.starts_with("{:")
+                        && placeholder.ends_with("}")
+                        && placeholder.len() > 3
+                    {
+                        let inner = &placeholder[2..placeholder.len() - 1];
                         if inner.parse::<usize>().is_ok() {
-                            return Err("Invalid format specifier: use {:.N} instead of {:N} for precision formatting");
+                            return Err(
+                                "Invalid format specifier: use {:.N} instead of {:N} for precision formatting",
+                            );
                         }
                     }
                     return Err("Invalid format specifier: supported formats are {}, {:?}, {:.N}");
@@ -394,9 +399,9 @@ mod tests {
 
         // Test that {:.0} works correctly
         let values = [3.14159, 2.99999];
-        let result = Text::format_display(&mut arena, "pi: {:.0}, rounded: {:.0}", &values, "").unwrap();
+        let result =
+            Text::format_display(&mut arena, "pi: {:.0}, rounded: {:.0}", &values, "").unwrap();
         let formatted = result.as_str(&arena).unwrap();
         assert_eq!(formatted, "pi: 3, rounded: 3");
     }
-
 }
