@@ -17,7 +17,7 @@ pub use key::*;
 
 mod ops;
 pub use ops::*;
-use tato_arena::{RingBuffer, Slice};
+use tato_arena::{RingBuffer, Slice, text};
 
 mod gui_console;
 mod gui_draw_polys;
@@ -32,8 +32,8 @@ const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
 // 256 tiles per bank
 const MAX_TILE_PIXELS: usize =
     TILE_BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;
-const COMMAND_MAX_LEN:u32 = 100;
-const COMMAND_MAX_ARGS:usize = 8;
+const COMMAND_MAX_LEN: u32 = 100;
+const COMMAND_MAX_ARGS: usize = 8;
 
 // Temp Debug Arena
 // This is necessary since DrawOps need to be processed, and can't be read
@@ -62,7 +62,7 @@ pub struct Dashboard {
     canvas_rect: Option<Rect<i16>>,
     // Debug data
     last_frame_arena_use: usize,
-    last_frame_draw_op_count:usize,
+    last_frame_draw_op_count: usize,
     mouse_over_text: Text,
     ops: Buffer<ArenaId<DrawOp, u32>, u32>,
     debug_text: Buffer<Text, u32>,
@@ -240,6 +240,8 @@ impl Dashboard {
         self.debug_polys_gui = Buffer::new(&mut self.debug_arena, DEBUG_POLY_COUNT).unwrap();
 
         // Input
+        let text_input = self.display_console && self.display_debug_info;
+        backend.set_game_input(!text_input); // if console is active, no gameplay input allowed
         self.process_input(frame_arena, backend);
     }
 

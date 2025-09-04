@@ -28,6 +28,7 @@ pub struct RayBackend {
     buffer_iter_time: AvgBuffer<120, f64>,
     buffer_canvas_time: AvgBuffer<120, f64>,
     pressed_key: Option<Key>,
+    allow_game_input: bool,
 }
 
 /// Raylib specific implementation
@@ -80,6 +81,7 @@ impl RayBackend {
             buffer_iter_time: AvgBuffer::new(),
             buffer_canvas_time: AvgBuffer::new(),
             pressed_key: None,
+            allow_game_input: true,
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
@@ -141,6 +143,10 @@ impl Backend for RayBackend {
         self.bg_color = rgba32_to_rl_color(color);
     }
 
+    fn set_game_input(&mut self, state:bool){
+        self.allow_game_input = state;
+    }
+
     fn frame_start<const LEN: usize>(
         &mut self,
         frame_arena: &mut Arena<LEN>,
@@ -157,16 +163,18 @@ impl Backend for RayBackend {
 
         // Gamepad input
         let ray = &mut self.ray;
-        pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
-        pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
-        pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
-        pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
-        pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
-        pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
-        pad.set_button(Button::A, ray.is_key_down(KEY_Z));
-        pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
+        if self.allow_game_input {
+            pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
+            pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
+            pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
+            pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
+            pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
+            pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
+            pad.set_button(Button::A, ray.is_key_down(KEY_Z));
+            pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
+        }
 
-        // Dashboard keys
+        // Dashboard keys ignore self.allow_game_input
         if let Some(key) = ray.get_key_pressed() {
             match key {
                 KEY_ENTER => {

@@ -80,6 +80,8 @@ pub trait Backend {
 
     fn get_pressed_key(&self) -> Option<Key>;
 
+    fn set_game_input(&mut self, state:bool);
+
     // ---------------------- Window Info ----------------------
 
     fn get_elapsed_time(&self) -> f32;
