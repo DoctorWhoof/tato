@@ -13,6 +13,10 @@ impl AnaloguePad {
         Self::default()
     }
 
+    pub fn clear(&mut self) {
+        *self = Self::default()
+    }
+
     /// Must be called once per frame, prior to setting any value for the current state.
     #[inline(always)]
     pub fn copy_current_to_previous_state(&mut self) {

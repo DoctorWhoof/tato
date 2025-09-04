@@ -21,7 +21,8 @@ impl Command {
         let mut is_space = true;
 
         for i in 0..text.len() as u8 {
-            if bytes[i as usize] == ' ' as u8 {
+            let ch = bytes[i as usize];
+            if ch == ' ' as u8 || ch == ',' as u8 || ch == '(' as u8 || ch == ')' as u8 {
                 // Validate
                 if is_space {
                     // Will ignore whitespaces

@@ -172,6 +172,9 @@ impl Backend for RayBackend {
             pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
             pad.set_button(Button::A, ray.is_key_down(KEY_Z));
             pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_ONE));
+        } else {
+            // Clears any key being pressed when game input was disabled
+            pad.clear();
         }
 
         // Dashboard keys ignore self.allow_game_input

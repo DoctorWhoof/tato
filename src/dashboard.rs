@@ -39,7 +39,7 @@ const COMMAND_MAX_ARGS: usize = 8;
 // This is necessary since DrawOps need to be processed, and can't be read
 // (Text, Vec2, etc) and written (DrawOp) to the same arena at the same time.
 const DEBUG_LEN: usize = 8 * 1024;
-const CONSOLE_HISTORY: u32 = 3;
+const CONSOLE_HISTORY: u32 = 10;
 const OP_COUNT: u32 = 500;
 const DEBUG_STR_COUNT: u32 = 100;
 const DEBUG_POLY_COUNT: u32 = 100;

@@ -5,7 +5,7 @@
     - Provides text input and parses the text line into command + args
     - Does not actually process commands - that will be on the Game side
     - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
---->[ ] Needs to ignore input when not visible, and capture input when visible
+    [x] Needs to ignore input when not visible, and capture input when visible
 --->[ ] Maybe instead of merely getting the command line, a way to actually process it, which involves getting the command line, processing it and returning a result message tht is displayed in the console? (look at herobot "Game::process_console" for a use case)
 --->[ ] Ignore punctuation (treat the same as spaces), or at least commas
 
