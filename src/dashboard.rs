@@ -17,7 +17,7 @@ pub use key::*;
 
 mod ops;
 pub use ops::*;
-use tato_arena::{RingBuffer, Slice, text};
+use tato_arena::{RingBuffer, Slice};
 
 mod gui_console;
 mod gui_draw_polys;
