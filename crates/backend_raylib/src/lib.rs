@@ -421,14 +421,12 @@ impl Backend for RayBackend {
 
     // ---------------------- Window Info ----------------------
 
-    fn get_elapsed_time(&self) -> f32 {
-        self.ray.get_frame_time()
+    fn get_pressed_key(&self) -> Option<Key> {
+        self.pressed_key
     }
 
-    fn get_screen_size(&self) -> Vec2<i16> {
-        let width: i32 = self.ray.get_screen_width();
-        let height: i32 = self.ray.get_screen_height();
-        Vec2::new(width as i16, height as i16)
+    fn get_elapsed_time(&self) -> f32 {
+        self.ray.get_frame_time()
     }
 
     fn set_window_title(&mut self, title: &str) {
@@ -447,8 +445,10 @@ impl Backend for RayBackend {
         self.canvas_rect = canvas_rect;
     }
 
-    fn get_pressed_key(&self) -> Option<Key> {
-        self.pressed_key
+    fn get_screen_size(&self) -> Vec2<i16> {
+        let width: i32 = self.ray.get_screen_width();
+        let height: i32 = self.ray.get_screen_height();
+        Vec2::new(width as i16, height as i16)
     }
 
     fn get_pixel_iter_elapsed_time(&self) -> f32 {
@@ -457,6 +457,10 @@ impl Backend for RayBackend {
 
     fn get_drawing_elapsed_time(&self) -> f32 {
         self.buffer_canvas_time.average() as f32
+    }
+
+    fn toggle_info_printing(&mut self) {
+        self.print_frame_time = !self.print_frame_time
     }
 
     // ---------------------- Debug Features ----------------------

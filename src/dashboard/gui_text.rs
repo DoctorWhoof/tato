@@ -44,6 +44,12 @@ impl Dashboard {
         );
 
         self.display(
+            "Dash DrawOps: {} / {}",
+            &[self.last_frame_draw_op_count as u32, self.ops.capacity()],
+            "",
+        );
+
+        self.display(
             "Asset Mem.: {:.1} / {:.1}",
             &[
                 tato.assets.arena.used() as f32 / 1024.0,
@@ -52,7 +58,11 @@ impl Dashboard {
             " Kb",
         );
 
-        self.display("fps: {:.1} / {:.0}", &[1.0 / tato.elapsed_time(), (1.0 / (iter_time + draw_time))], "");
+        self.display(
+            "fps: {:.1} / {:.0}",
+            &[1.0 / tato.elapsed_time(), (1.0 / (iter_time + draw_time))],
+            "",
+        );
 
         self.display("elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
 

@@ -40,7 +40,7 @@ const COMMAND_MAX_ARGS:usize = 8;
 // (Text, Vec2, etc) and written (DrawOp) to the same arena at the same time.
 const DEBUG_LEN: usize = 8 * 1024;
 const CONSOLE_HISTORY: u32 = 3;
-const OP_COUNT: u32 = 200;
+const OP_COUNT: u32 = 500;
 const DEBUG_STR_COUNT: u32 = 100;
 const DEBUG_POLY_COUNT: u32 = 100;
 
@@ -62,6 +62,7 @@ pub struct Dashboard {
     canvas_rect: Option<Rect<i16>>,
     // Debug data
     last_frame_arena_use: usize,
+    last_frame_draw_op_count:usize,
     mouse_over_text: Text,
     ops: Buffer<ArenaId<DrawOp, u32>, u32>,
     debug_text: Buffer<Text, u32>,
@@ -106,6 +107,7 @@ impl Dashboard {
             fixed_arena,
             tile_pixels,
             last_frame_arena_use: 0,
+            last_frame_draw_op_count: 0,
             // console_display: false,
             console_latest_command: None,
             canvas_rect: None,
@@ -225,6 +227,7 @@ impl Dashboard {
         backend: &mut impl Backend,
     ) {
         self.console_latest_command = None;
+        self.last_frame_draw_op_count = self.ops.len();
 
         // Shared frame arena data
         self.ops = Buffer::new(frame_arena, OP_COUNT).unwrap();

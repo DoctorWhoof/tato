@@ -7,11 +7,11 @@ impl Dashboard {
             match key {
                 Key::None => {},
                 Key::Text(ch) => {
-                    // if self.console_command_line.len() < COMMAND_MAX_LEN {
+                    if self.console_command_line.len() < COMMAND_MAX_LEN as usize {
                         if ch >= 32 && ch < 128 {
                             self.console_command_line.push(&mut self.fixed_arena, ch).unwrap();
                         }
-                    // }
+                    }
                 },
                 Key::Tab => {
                     self.display_debug_info = !self.display_debug_info;

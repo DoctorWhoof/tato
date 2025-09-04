@@ -1,12 +1,13 @@
 ### General Engine
 
-[ ] Implement command-agnostic console
+[.] Implement command-agnostic console
     - For common debug actions like "warp x,y", "reset", "toggle x", etc.
     - Provides text input and parses the text line into command + args
     - Does not actually process commands - that will be on the Game side
     - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
 --->[ ] Needs to ignore input when not visible, and capture input when visible
-    [ ] Maybe instead of merely getting the command line, a way to actually process it, which involves getting the command line, processing it and returning a result message tht is displayed in the console?
+--->[ ] Maybe instead of merely getting the command line, a way to actually process it, which involves getting the command line, processing it and returning a result message tht is displayed in the console? (look at herobot "Game::process_console" for a use case)
+--->[ ] Ignore punctuation (treat the same as spaces), or at least commas
 
 [ ] Engine pausing
     - toggle_pause() and is_paused() functions.
@@ -70,9 +71,9 @@
 
 ### Backend and examples
 
---->[ ] Pure Rust backend to make compiling and testing in Linux less miserable. Macroquad?
+[ ] Pure Rust backend to make compiling and testing in Linux less miserable. Macroquad?
 
-[ ] Eliminate DashArgs, replace with Backend functions, since now the Dashboard has direct access to Backend
+[x] Eliminate DashArgs, replace with Backend functions, since now the Dashboard has direct access to Backend
 
 [x] Some way to easily send information to the backend.
     . Some static mut shenanigans? Should be OK since it won't affect gameplay. Investigate.

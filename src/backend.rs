@@ -81,7 +81,7 @@ pub trait Backend {
     fn get_pressed_key(&self) -> Option<Key>;
 
     // ---------------------- Window Info ----------------------
-    //
+
     fn get_elapsed_time(&self) -> f32;
 
     /// Set window title
@@ -98,6 +98,10 @@ pub trait Backend {
 
     /// Get screen dimensions
     fn get_screen_size(&self) -> Vec2<i16>;
+
+    // ---------------------- Profiling ----------------------
+
+    fn toggle_info_printing(&mut self);
 
     fn get_pixel_iter_elapsed_time(&self) -> f32;
 
