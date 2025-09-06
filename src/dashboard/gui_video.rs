@@ -2,7 +2,7 @@ use super::*;
 
 // Right panel
 impl Dashboard {
-    pub fn process_video_panel<const LEN: usize>(
+    pub(super) fn process_video_panel<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut Arena<LEN>,

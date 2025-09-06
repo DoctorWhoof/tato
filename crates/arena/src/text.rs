@@ -38,17 +38,22 @@ where
     }
 
     /// Get the text directly as a u8 slice
-    // TODO: Return result intead of option
-    pub fn as_slice<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a [u8]> {
-        arena.get_slice(&self.slice).ok()
+    pub fn as_slice<'a, const LEN: usize>(
+        &self,
+        arena: &'a Arena<LEN, Idx>,
+    ) -> ArenaResult<&'a [u8]> {
+        arena.get_slice(&self.slice)
     }
 
     /// Get the text as &str (requires arena for safety)
-    /// Returns None if the bytes are not valid UTF-8
-    // TODO: Return result intead of option
-    pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> Option<&'a str> {
-        let bytes = arena.get_slice(&self.slice).ok()?;
-        core::str::from_utf8(bytes).ok()
+    /// Returns an Error if the bytes are not valid UTF-8
+    pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> ArenaResult<&'a str> {
+        let bytes = arena.get_slice(&self.slice)?;
+        if let Ok(value) = core::str::from_utf8(bytes) {
+            Ok(value)
+        } else {
+            Err(ArenaError::InvalidUTF8)
+        }
     }
 
     /// Create text from a string slice
@@ -78,7 +83,7 @@ where
         for i in 0..bytes.len() {
             let value = bytes[i];
             if value > 0 {
-                if value.is_ascii(){
+                if value.is_ascii() {
                     len = Idx::from_usize_checked(i + 1).unwrap()
                 } else {
                     return Result::Err(ArenaError::InvalidUTF8);

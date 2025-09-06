@@ -1,7 +1,7 @@
 use super::*;
 
 impl Dashboard {
-    pub fn process_input<const LEN: usize>(
+    pub(super) fn process_input<const LEN: usize>(
         &mut self,
         frame_arena: &mut Arena<LEN>,
         backend: &impl Backend,
@@ -17,11 +17,11 @@ impl Dashboard {
                 Key::None => {},
                 Key::Text(ch) => {
                     if text_input
-                        && self.console_command_line.len() < COMMAND_MAX_LEN as usize
+                        && self.console_line_buffer.len() < COMMAND_MAX_LEN as usize
                         && ch >= 32
                         && ch < 128
                     {
-                        self.console_command_line.push(&mut self.fixed_arena, ch).unwrap();
+                        self.console_line_buffer.push(&mut self.fixed_arena, ch).unwrap();
                     }
                 },
                 Key::Tab => {
@@ -33,8 +33,8 @@ impl Dashboard {
                 Key::Plus => {
                     if text_input {
                         // Treat '+' as regular text input
-                        if self.console_command_line.len() < COMMAND_MAX_LEN as usize {
-                            self.console_command_line.push(&mut self.fixed_arena, b'+').unwrap();
+                        if self.console_line_buffer.len() < COMMAND_MAX_LEN as usize {
+                            self.console_line_buffer.push(&mut self.fixed_arena, b'+').unwrap();
                         }
                     } else {
                         if self.gui_scale < 10.0 {
@@ -45,8 +45,8 @@ impl Dashboard {
                 Key::Minus => {
                     if text_input {
                         // Treat '-' as regular text input
-                        if self.console_command_line.len() < COMMAND_MAX_LEN as usize {
-                            self.console_command_line.push(&mut self.fixed_arena, b'-').unwrap();
+                        if self.console_line_buffer.len() < COMMAND_MAX_LEN as usize {
+                            self.console_line_buffer.push(&mut self.fixed_arena, b'-').unwrap();
                         }
                     } else {
                         if self.gui_scale > 0.5 {
@@ -55,21 +55,20 @@ impl Dashboard {
                     }
                 },
                 Key::Enter => {
-                    if text_input && self.console_command_line.len() > 0 {
+                    if text_input && self.console_line_buffer.len() > 0 {
                         let text =
-                            Text::from_buffer(&mut self.fixed_arena, &self.console_command_line)
+                            Text::from_buffer(&mut self.fixed_arena, &self.console_line_buffer)
                                 .unwrap();
                         self.console_latest_command = Command::parse_str(
                             text.as_str(&self.fixed_arena).unwrap(), //  from fixed arena
-                            frame_arena,                             // into shared arena!
                         );
-                        self.console_buffer.push(&mut self.fixed_arena, text).unwrap();
-                        self.console_command_line.clear();
+                        // self.console_buffer.push(&mut self.fixed_arena, text).unwrap();
+                        self.console_line_buffer.clear();
                     }
                 },
                 Key::Backspace => {
-                    if !self.console_command_line.is_empty() {
-                        self.console_command_line.pop(&self.fixed_arena);
+                    if !self.console_line_buffer.is_empty() {
+                        self.console_line_buffer.pop(&self.fixed_arena);
                     }
                 },
                 Key::Delete => {},

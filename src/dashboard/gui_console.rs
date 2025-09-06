@@ -1,7 +1,7 @@
 use super::*;
 
 impl Dashboard {
-    pub fn process_console<const LEN: usize>(
+    pub(super) fn process_console<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut Arena<LEN>,
@@ -29,7 +29,7 @@ impl Dashboard {
             self.ops.push(frame_arena, op_handle).unwrap();
 
             // Draw main console line text
-            let command_line_bytes = self.console_command_line.as_slice(&self.fixed_arena).unwrap();
+            let command_line_bytes = self.console_line_buffer.as_slice(&self.fixed_arena).unwrap();
             let text_result =
                 Text::join_bytes(frame_arena, &["command: ".as_bytes(), command_line_bytes]);
             let text = text_result.unwrap_or(Text::default());
@@ -56,10 +56,7 @@ impl Dashboard {
                     line_rect = line.rect();
                     // Copy from fixed arena to frame arena, since the
                     // latter is shared with the backend
-                    let copied_text = Text::from_str(
-                        frame_arena,
-                        text.as_str(&self.fixed_arena).unwrap(), //
-                    );
+                    let copied_text = Text::from_bytes(frame_arena, text);
                     let op_id = frame_arena.alloc(DrawOp::Text {
                         text: copied_text.unwrap(),
                         x: line_rect.x + font_size as i16,

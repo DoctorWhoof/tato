@@ -87,6 +87,11 @@ fn main() -> TatoResult<()> {
             Scene::C(scn) => scn.update(&mut tato, &mut state),
         };
 
+        // Basic console input
+        dash.process_console_line(&mut frame_arena, |_command|{
+            Some("Ok".as_bytes())
+        });
+
         // Update backend
         tato.frame_finish();
         dash.frame_present(&mut frame_arena, &mut backend, &tato);

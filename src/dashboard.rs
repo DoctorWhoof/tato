@@ -56,8 +56,8 @@ pub struct Dashboard {
     display_debug_info: bool,
     display_console: bool,
     // Console
-    console_buffer: RingBuffer<Text>,
-    console_command_line: Buffer<u8>,
+    console_buffer: RingBuffer<[u8; COMMAND_MAX_LEN as usize]>,
+    console_line_buffer: Buffer<u8>,
     console_latest_command: Option<Command>,
     canvas_rect: Option<Rect<i16>>,
     // Debug data
@@ -98,7 +98,7 @@ impl Dashboard {
             unsafe { core::mem::transmute(result) }
         };
         let console_buffer = RingBuffer::new(&mut fixed_arena, CONSOLE_HISTORY)?;
-        let console_command_line = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN).unwrap();
+        let console_line_buffer = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN).unwrap();
 
         Ok(Self {
             font_size: 8.0,
@@ -116,7 +116,7 @@ impl Dashboard {
             display_console: false,
             // Fixed arena data (not cleared on every frame)
             // Shared frame arena data
-            console_command_line,
+            console_line_buffer,
             console_buffer,
             mouse_over_text: Text::default(),
             // Debug data. Will be arena allocated per frame, but not use the frame arena
@@ -148,8 +148,32 @@ impl Dashboard {
     }
 
     /// If a console command has been processed this frame it is returned here.
-    pub fn get_console_command(&self) -> Option<Command> {
-        self.console_latest_command.clone()
+    pub fn process_console_line<'a, F, const LEN: usize>(
+        &'a mut self,
+        frame_arena: &mut Arena<LEN>,
+        func: F,
+    ) where
+        F: FnOnce(Command) -> Option<&'a [u8]>,
+    {
+        if let Some(command) = &self.console_latest_command {
+            let temp = ['?' as u8];
+            let reply = func(command.clone()).unwrap_or_else(|| &temp);
+            // Get only the valid portion of command.data (up to first null byte)
+            let command_len = command.data.iter().position(|&b| b == 0).unwrap_or(command.data.len());
+            let command_slice = &command.data[..command_len];
+            // Use frame_arena for temporary text creation, then copy to fixed array
+            let joined_text = Text::join_bytes(frame_arena, &[command_slice, b" -> ", reply]).unwrap();
+            let bytes = joined_text.as_slice(frame_arena).unwrap();
+            let line_with_reply:[u8; COMMAND_MAX_LEN as usize] = core::array::from_fn(|i|{
+                if i >= bytes.len() {
+                    0
+                } else {
+                    bytes[i]
+                }
+            });
+
+            self.console_buffer.push(&mut self.fixed_arena, line_with_reply).unwrap();
+        }
     }
 
     /// Creates an internal temp_arena-allocated Text object, stores its ID

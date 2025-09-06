@@ -350,7 +350,7 @@ fn test_text_from_buffer_invalid_utf8() {
     // The text should be created (copying is successful)
     // but as_str should return None due to invalid UTF-8
     assert_eq!(text.len(), 4);
-    assert!(text.as_str(&arena).is_none());
+    assert!(text.as_str(&arena).is_err());
 }
 
 #[test]

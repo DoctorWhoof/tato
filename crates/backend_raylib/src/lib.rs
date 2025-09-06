@@ -353,7 +353,7 @@ impl Backend for RayBackend {
                 }
             },
             DrawOp::Text { text, x, y, size, color } => {
-                if let Some(text) = text.as_str(&frame_arena) {
+                if let Ok(text) = text.as_str(&frame_arena) {
                     canvas.draw_text_ex(
                         &self.font,
                         text,

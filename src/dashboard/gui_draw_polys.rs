@@ -1,7 +1,7 @@
 use super::*;
 
 impl Dashboard {
-    pub fn draw_polys<const LEN: usize>(
+    pub(super) fn draw_polys<const LEN: usize>(
         &mut self,
         frame_arena: &mut Arena<LEN>,
         tato: &Tato,
