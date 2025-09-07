@@ -1,18 +1,11 @@
 use super::*;
 
 impl Dashboard {
-    pub(super) fn process_input<const LEN: usize>(
-        &mut self,
-        frame_arena: &mut Arena<LEN>,
-        backend: &impl Backend,
-    ) {
+    pub(super) fn process_input(&mut self, backend: &impl Backend) {
         let text_input = self.display_console && self.display_debug_info;
 
         // Receive input
         if let Some(key) = backend.get_pressed_key() {
-            if self.display_console {
-            } else {
-            }
             match key {
                 Key::None => {},
                 Key::Text(ch) => {

@@ -3,6 +3,7 @@ use super::*;
 impl Dashboard {
     pub(super) fn process_console<const LEN: usize>(
         &mut self,
+        tato: &Tato,
         layout: &mut Frame<i16>,
         frame_arena: &mut Arena<LEN>,
     ) {
@@ -30,8 +31,11 @@ impl Dashboard {
 
             // Draw main console line text
             let command_line_bytes = self.console_line_buffer.as_slice(&self.fixed_arena).unwrap();
-            let text_result =
-                Text::join_bytes(frame_arena, &["command: ".as_bytes(), command_line_bytes]);
+            let prompt = if tato.time().fract() < 0.5 { [b' '] } else { [b'_'] };
+            let text_result = Text::join_bytes(
+                frame_arena, //
+                &[b"command: ", command_line_bytes, &prompt],
+            );
             let text = text_result.unwrap_or(Text::default());
 
             console.push_edge(Edge::Bottom, self.font_size as i16, |line| {

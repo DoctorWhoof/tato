@@ -74,11 +74,6 @@ impl Command {
         let range = &self.item_ranges[index as usize + 1];
         from_utf8(&self.data[range.start as usize..range.end as usize]).ok()
     }
-
-    #[inline]
-    fn range(&self, index: u8) -> Range<u8> {
-        self.item_ranges[index as usize].clone()
-    }
 }
 
 #[test]

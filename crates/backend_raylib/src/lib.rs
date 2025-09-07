@@ -143,7 +143,7 @@ impl Backend for RayBackend {
         self.bg_color = rgba32_to_rl_color(color);
     }
 
-    fn set_game_input(&mut self, state:bool){
+    fn set_game_input(&mut self, state: bool) {
         self.allow_game_input = state;
     }
 
@@ -214,7 +214,13 @@ impl Backend for RayBackend {
                     self.pressed_key = Some(Key::Grave);
                 },
                 // Regular text
-                _ if (key as u32) >= 32 && (key as u32) < 127 => {
+                _ if (key as u32) >= 32
+                    && (key as u32) < 127
+                    && !ray.is_key_down(KEY_LEFT_SUPER)
+                    && !ray.is_key_down(KEY_RIGHT_SUPER)
+                    && !ray.is_key_down(KEY_LEFT_CONTROL)
+                    && !ray.is_key_down(KEY_RIGHT_CONTROL) =>
+                {
                     // Handle all printable ASCII characters (32-126)
                     match key as u32 {
                         k if k >= KEY_A as u32 && k <= KEY_Z as u32 => {
@@ -243,7 +249,16 @@ impl Backend for RayBackend {
                         },
                         _ => {
                             // All other printable characters
-                            self.pressed_key = Some(Key::Text(key as u8));
+                            if ray.is_key_down(KEY_LEFT_SHIFT) || ray.is_key_down(KEY_RIGHT_SHIFT) {
+                                match key {
+                                    KEY_SLASH => self.pressed_key = Some(Key::Text(b'?')),
+                                    KEY_PERIOD => self.pressed_key = Some(Key::Text(b'>')),
+                                    KEY_COMMA => self.pressed_key = Some(Key::Text(b'<')),
+                                    _ => self.pressed_key = Some(Key::Text(key as u8)),
+                                }
+                            } else {
+                                self.pressed_key = Some(Key::Text(key as u8));
+                            }
                         },
                     }
                 },

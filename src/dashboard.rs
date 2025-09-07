@@ -266,7 +266,7 @@ impl Dashboard {
         // Input
         let text_input = self.display_console && self.display_debug_info;
         backend.set_game_input(!text_input); // if console is active, no gameplay input allowed
-        self.process_input(frame_arena, backend);
+        self.process_input(backend);
     }
 
     /// Generate debug UI Draw Ops before presenting them via the Backend.
@@ -292,7 +292,7 @@ impl Dashboard {
         // Panels have their own modules, for organization
         self.process_text_panel(&mut layout, frame_arena, backend, tato);
         self.process_video_panel(&mut layout, frame_arena, backend, tato);
-        self.process_console(&mut layout, frame_arena);
+        self.process_console(tato, &mut layout, frame_arena);
 
         // Canvas
         layout.fill(|canvas| {
