@@ -7,10 +7,10 @@
     - Maybe returns an Option<CommandLine> struct with an u8 array + indices for each argument?
     [x] Needs to ignore input when not visible, and capture input when visible
     [x] Ignore punctuation (treat the same as spaces), or at least commas
---->[ ] Maybe instead of merely getting the command line, a way to actually process it, which involves getting the command line, processing it and returning a result message tht is displayed in the console? (look at herobot "Game::process_console" for a use case)
+    [x] Maybe instead of merely getting the command line, a way to actually process it, which involves getting the command line, processing it and returning a result message tht is displayed in the console? (look at herobot "Game::process_console" for a use case)
+    [ ] Move console to its own crate, store history in internal arena (since it's persistent).
 
-[ ] Engine pausing
-    - toggle_pause() and is_paused() functions.
+[x] Engine pausing
     - Internal timer will freeze, but input can still be updated in the main loop.
     - Game logic (update and draw) must be skipped in the main loop if tato.is_paused(), not in the engine.
 
@@ -26,10 +26,6 @@
 [x] Groups must be tileset-independent!
     . GroupBuilder is separate from each TilesetBuilder, saves to its own module.
     . Gets passed to tilesetbuilder::new, just like palette?
-
-[ ] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
-    . I'm considering breaking away from default colors and requiring colors to be always defined by the user
-    . There could be a "default_colors()" function that pushes the default ones, if needed
 
 [ ] Collider should be a TileFlag bit, not a group
     . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
@@ -48,6 +44,10 @@
     [ ] Animations to Tilemaps
         . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
         . Will be useful to create BG interactions (i.e. door opening)
+
+[ ] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
+    . I'm considering breaking away from default colors and requiring colors to be always defined by the user
+    . There could be a "default_colors()" function that pushes the default ones, if needed
 
 [/] Eliminate subpalettes... replace with 4 colors per tile.
     . Simplify pipeline, reduce errors due to subpalette limit reached

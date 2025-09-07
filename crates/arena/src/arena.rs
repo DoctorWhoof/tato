@@ -367,7 +367,6 @@ where
     #[inline]
     pub fn get<T>(&self, id: &ArenaId<T, Idx, Marker>) -> ArenaResult<&T> {
         self.validate_id(id)?;
-
         unsafe {
             let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
             Ok(&*ptr)
@@ -378,7 +377,6 @@ where
     #[inline]
     pub fn get_mut<T>(&mut self, id: &ArenaId<T, Idx, Marker>) -> ArenaResult<&mut T> {
         self.validate_id(id)?;
-
         unsafe {
             let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;
             Ok(&mut *ptr)

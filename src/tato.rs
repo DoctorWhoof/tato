@@ -2,6 +2,7 @@ use crate::{prelude::CharacterSet, *};
 
 #[derive(Debug)]
 pub struct Tato {
+    pub paused: bool,
     // Input
     pub pad: tato_pad::AnaloguePad,
     // Audio
@@ -25,6 +26,7 @@ pub struct Tato {
 impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         Self {
+            paused: false,
             assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
@@ -41,6 +43,7 @@ impl Tato {
     }
 
     pub fn reset(&mut self) {
+        self.paused = false;
         self.time = 0.0;
         self.video.reset_all();
         self.assets.reset();
@@ -72,12 +75,17 @@ impl Tato {
                 "Frame must be finished on each main loop iteration with 'Tato::frame_finish'."
             ))
         }
-        let reference_frame_time = 1.0 / 60.0;
-        self.delta = self.elapsed_time / reference_frame_time;
-
         self.video.frame_start();
-        self.time += elapsed as f64;
-        self.elapsed_time = elapsed;
+
+        if self.paused {
+            self.delta = 0.0;
+        } else {
+            let reference_frame_time = 1.0 / 60.0;
+            self.delta = self.elapsed_time / reference_frame_time;
+            self.elapsed_time = elapsed;
+            self.time += elapsed as f64;
+        }
+
         self.frame_finished = false;
         self.frame_started = true;
     }
