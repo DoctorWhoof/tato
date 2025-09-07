@@ -44,6 +44,7 @@ impl Tato {
 
     pub fn reset(&mut self) {
         self.paused = false;
+        self.pad.clear();
         self.time = 0.0;
         self.video.reset_all();
         self.assets.reset();
