@@ -198,7 +198,11 @@ impl Tato {
 
         // Helper to draw a single character
         let mut draw_char = |ch: char, cursor_x: i16, cursor_y: i16| {
-            let char_index = char_to_id_ex(ch) as usize;
+            let char_index = match self.character_set {
+                CharacterSet::Long => char_set_long(ch) as usize,
+                CharacterSet::Short => char_set_short(ch) as usize,
+                CharacterSet::Arcade => char_set_arcade(ch) as usize,
+            };
             let font_cols = op.font.columns() as usize;
             let col = char_index % font_cols;
             let row = char_index / font_cols;

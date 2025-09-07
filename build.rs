@@ -6,7 +6,7 @@
 // to see the output.
 //
 // It is disabled by default to speed up build times.
-const REGENERATE_DEFAULT_ASSETS: bool = false;
+const REGENERATE_DEFAULT_ASSETS: bool = true;
 
 fn main() {
     if !REGENERATE_DEFAULT_ASSETS {
@@ -18,14 +18,28 @@ fn main() {
     // Shared groups for default assets
     let mut groups = GroupBuilder::new();
 
-    // Default font
-    let mut palette_font = PaletteBuilder::new("font");
-    let mut tileset_font = TilesetBuilder::new("font", &mut palette_font, &mut groups);
+    // Default fonts
+    let mut palette_font = PaletteBuilder::new("fonts");
+    let mut tileset_font = TilesetBuilder::new("font_long", &mut palette_font, &mut groups);
     tileset_font.allow_unused = true;
     tileset_font.save_colors = false; // Sticks with default palette
     tileset_font.use_crate_assets = true; // Only true when used by this crate
-    tileset_font.new_map("import/font_bold.png", "FONT_MAP");
-    tileset_font.write("src/default_assets/font_bold.rs");
+    tileset_font.new_map("import/font_long.png", "FONT_LONG_MAP");
+    tileset_font.write("src/default_assets/font_long.rs");
+
+    let mut tileset_short = TilesetBuilder::new("font_short", &mut palette_font, &mut groups);
+    tileset_short.allow_unused = true;
+    tileset_short.save_colors = false; // Sticks with default palette
+    tileset_short.use_crate_assets = true; // Only true when used by this crate
+    tileset_short.new_map("import/font_short.png", "FONT_SHORT_MAP");
+    tileset_short.write("src/default_assets/font_short.rs");
+
+    let mut tileset_arcade = TilesetBuilder::new("font_arcade", &mut palette_font, &mut groups);
+    tileset_arcade.allow_unused = true;
+    tileset_arcade.save_colors = false; // Sticks with default palette
+    tileset_arcade.use_crate_assets = true; // Only true when used by this crate
+    tileset_arcade.new_map("import/font_arcade.png", "FONT_ARCADE_MAP");
+    tileset_arcade.write("src/default_assets/font_arcade.rs");
 
     // Default basic tiles
     let mut palette_default = PaletteBuilder::new("default");

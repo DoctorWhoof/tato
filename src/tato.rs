@@ -1,20 +1,18 @@
-use crate::*;
+use crate::{prelude::CharacterSet, *};
 
 #[derive(Debug)]
 pub struct Tato {
     // Input
     pub pad: tato_pad::AnaloguePad,
-
     // Audio
     pub audio: tato_audio::AudioChip,
-
     // Video
     pub video: tato_video::VideoChip,
     pub banks: [tato_video::VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
+    pub character_set: CharacterSet,
     // 16Kb asset memory. Currently only stores remapped tilemaps -
     // the tiles are stored directly in the memory banks
     pub assets: Assets<16384>,
-
     // Internals
     pub target_fps: u8,
     time: f64,
@@ -32,6 +30,7 @@ impl Tato {
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
             banks: core::array::from_fn(|_| VideoMemory::new()),
+            character_set: CharacterSet::Long,
             target_fps,
             time: 0.0,
             delta: 1.0,

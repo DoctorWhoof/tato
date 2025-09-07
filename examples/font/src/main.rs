@@ -7,9 +7,11 @@ fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut dash = Dashboard::new().unwrap();
 
+    // tato.character_set = CharacterSet::Short;
+
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let ts_font = tato.push_tileset(0, FONT_TILESET)?;
+    let ts_font = tato.push_tileset(0, FONT_LONG_TILESET)?;
 
     let plt_default = tato.new_subpalette(0, [0, 14, 2, 2]);
     let plt_light = tato.new_subpalette(0, [0, 3, 2, 2]);
@@ -26,7 +28,7 @@ fn main() -> TatoResult<()> {
             "\"draw_text\" simply sets BG Map tiles, so they will scroll with \
         the rest of the map! Use the arrow keys to try it out.",
             TextOp {
-                font: &FONT_MAP,
+                font: &FONT_LONG_MAP,
                 id: ts_font,
                 col,
                 row: line,
@@ -41,7 +43,7 @@ fn main() -> TatoResult<()> {
         &mut bg_map,
         "0123456789",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: ts_font,
             col,
             row: line,
@@ -55,7 +57,7 @@ fn main() -> TatoResult<()> {
         &mut bg_map,
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: ts_font,
             col,
             row: line,
@@ -69,7 +71,7 @@ fn main() -> TatoResult<()> {
         &mut bg_map,
         "abcdefghijklmnopqrstuvwxyz",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: ts_font,
             col,
             row: line,
@@ -83,7 +85,7 @@ fn main() -> TatoResult<()> {
         &mut bg_map,
         ":;<=>? !\"#$%&\'()*+,-./",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: ts_font,
             col,
             row: line,
@@ -98,7 +100,7 @@ fn main() -> TatoResult<()> {
         &mut bg_map,
         "Animated palette",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: ts_font,
             col,
             row: line,

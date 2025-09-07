@@ -2,12 +2,12 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-pub const FONT_TILESET: TilesetData =
-    TilesetData { tiles: &FONT_TILES, colors: None, sub_palettes: None };
+pub const FONT_SHORT_TILESET: TilesetData =
+    TilesetData { tiles: &FONT_SHORT_TILES, colors: None, sub_palettes: None };
 
-pub const FONT_MAP: Tilemap<90> = Tilemap {
+pub const FONT_SHORT_MAP: Tilemap<70> = Tilemap {
     columns: 10,
-    rows: 9,
+    rows: 7,
     cells: [
         Cell {
             id: TileID(0),
@@ -384,7 +384,7 @@ pub const FONT_MAP: Tilemap<90> = Tilemap {
         Cell {
             id: TileID(62),
             flags: TileFlags(0),
-            sub_palette: PaletteID(0),
+            sub_palette: PaletteID(1),
             group: 0,
         },
         Cell {
@@ -406,145 +406,25 @@ pub const FONT_MAP: Tilemap<90> = Tilemap {
             group: 0,
         },
         Cell {
-            id: TileID(64),
-            flags: TileFlags(128),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
             id: TileID(66),
             flags: TileFlags(0),
             sub_palette: PaletteID(0),
             group: 0,
         },
         Cell {
-            id: TileID(67),
+            id: TileID(62),
             flags: TileFlags(0),
             sub_palette: PaletteID(1),
             group: 0,
         },
         Cell {
-            id: TileID(68),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(69),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(70),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(71),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(72),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(73),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(74),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(75),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(75),
-            flags: TileFlags(128),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(76),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(77),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(78),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(79),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(80),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(74),
-            flags: TileFlags(128),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(81),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(67),
+            id: TileID(62),
             flags: TileFlags(0),
             sub_palette: PaletteID(1),
             group: 0,
         },
         Cell {
-            id: TileID(67),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(67),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(67),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(67),
+            id: TileID(62),
             flags: TileFlags(0),
             sub_palette: PaletteID(1),
             group: 0,
@@ -552,7 +432,7 @@ pub const FONT_MAP: Tilemap<90> = Tilemap {
     ],
 };
 
-pub const FONT_TILES: [Tile<2>; 82] = [
+pub const FONT_SHORT_TILES: [Tile<2>; 67] = [
     Tile {
         clusters: [
             Cluster { data: [21, 80] },
@@ -1301,47 +1181,23 @@ pub const FONT_TILES: [Tile<2>; 82] = [
         clusters: [
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
             Cluster { data: [0, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
+            Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
         ],
     },
     Tile {
         clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [1, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 84] },
-            Cluster { data: [1, 80] },
             Cluster { data: [5, 64] },
-            Cluster { data: [21, 0] },
             Cluster { data: [5, 64] },
-            Cluster { data: [1, 80] },
-            Cluster { data: [0, 84] },
+            Cluster { data: [5, 64] },
+            Cluster { data: [5, 64] },
+            Cluster { data: [5, 64] },
             Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [5, 80] },
-            Cluster { data: [5, 80] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [5, 80] },
-            Cluster { data: [5, 80] },
+            Cluster { data: [5, 64] },
             Cluster { data: [0, 0] },
         ],
     },
@@ -1364,138 +1220,6 @@ pub const FONT_TILES: [Tile<2>; 82] = [
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [4, 16] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [85, 84] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [85, 84] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [4, 64] },
-            Cluster { data: [21, 84] },
-            Cluster { data: [84, 64] },
-            Cluster { data: [21, 80] },
-            Cluster { data: [4, 84] },
-            Cluster { data: [85, 80] },
-            Cluster { data: [4, 64] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [20, 20] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [20, 80] },
-            Cluster { data: [80, 80] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [21, 0] },
-            Cluster { data: [80, 64] },
-            Cluster { data: [84, 64] },
-            Cluster { data: [21, 68] },
-            Cluster { data: [81, 80] },
-            Cluster { data: [80, 80] },
-            Cluster { data: [21, 20] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [80, 0] },
-            Cluster { data: [20, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [0, 80] },
-            Cluster { data: [0, 20] },
-            Cluster { data: [0, 5] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [1, 80] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [5, 0] },
-            Cluster { data: [1, 80] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [17, 68] },
-            Cluster { data: [5, 80] },
-            Cluster { data: [5, 80] },
-            Cluster { data: [17, 68] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [21, 84] },
-            Cluster { data: [21, 84] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [1, 64] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
             Cluster { data: [5, 0] },
             Cluster { data: [5, 0] },
             Cluster { data: [1, 0] },
@@ -1506,34 +1230,10 @@ pub const FONT_TILES: [Tile<2>; 82] = [
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
-            Cluster { data: [21, 84] },
-            Cluster { data: [21, 84] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
             Cluster { data: [0, 0] },
             Cluster { data: [5, 0] },
             Cluster { data: [5, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [85, 85] },
             Cluster { data: [0, 0] },
         ],
     },
