@@ -6,7 +6,7 @@
 // to see the output.
 //
 // It is disabled by default to speed up build times.
-const REGENERATE_DEFAULT_ASSETS: bool = true;
+const REGENERATE_DEFAULT_ASSETS: bool = false;
 
 fn main() {
     if !REGENERATE_DEFAULT_ASSETS {

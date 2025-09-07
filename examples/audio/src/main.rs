@@ -22,14 +22,14 @@ fn main() -> TatoResult<()> {
     let palette_light = tato.new_subpalette(0, [0, 3, 2, 2]);
 
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
-    let font = tato.push_tileset(0, FONT_TILESET)?;
+    let font = tato.push_tileset(0, FONT_LONG_TILESET)?;
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
         &mut bg_map,
         "SOUND TEST",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: font,
             col: 2,
             row: 2,
@@ -42,7 +42,7 @@ fn main() -> TatoResult<()> {
         &mut bg_map,
         "Currently playing:",
         TextOp {
-            font: &FONT_MAP,
+            font: &FONT_LONG_MAP,
             id: font,
             col: 2,
             row: 6,
@@ -106,7 +106,7 @@ fn main() -> TatoResult<()> {
                 }
             },
             TextOp {
-                font: &FONT_MAP,
+                font: &FONT_LONG_MAP,
                 id: font,
                 col: 2,
                 row: 8,
@@ -119,7 +119,7 @@ fn main() -> TatoResult<()> {
             &mut bg_map,
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextOp {
-                font: &FONT_MAP,
+                font: &FONT_LONG_MAP,
                 id: font,
                 col: 2,
                 row: 10,
@@ -132,7 +132,7 @@ fn main() -> TatoResult<()> {
             &mut bg_map,
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextOp {
-                font: &FONT_MAP,
+                font: &FONT_LONG_MAP,
                 id: font,
                 col: 2,
                 row: 12,
