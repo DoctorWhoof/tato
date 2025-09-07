@@ -3,11 +3,11 @@ use tato_video::{DynTilemap, color::PaletteID};
 
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
-    pub id: TilesetID,
+    pub tileset: TilesetID,
     pub col: i16,
     pub row: i16,
-    pub width: i16,
-    pub palette: PaletteID,
+    pub width: Option<i16>,
+    pub palette_override: Option<PaletteID>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

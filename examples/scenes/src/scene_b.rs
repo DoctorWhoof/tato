@@ -1,5 +1,6 @@
 use crate::*;
 use tato::prelude::*;
+use tato::default_assets::*;
 
 #[derive(Debug)]
 pub struct SceneB {

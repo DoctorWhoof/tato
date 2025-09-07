@@ -1,5 +1,6 @@
 use tato::{arena::Arena, prelude::*};
 use tato_raylib::*;
+use tato::default_assets::*;
 
 fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<32_768, u32>::new();
@@ -22,6 +23,7 @@ fn main() -> TatoResult<()> {
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
     let col = 1;
+    let width = Some(26);
     let height = tato
         .draw_text(
             &mut bg_map,
@@ -29,11 +31,11 @@ fn main() -> TatoResult<()> {
         the rest of the map! Use the arrow keys to try it out.",
             TextOp {
                 font: &FONT_LONG_MAP,
-                id: ts_font,
+                tileset: ts_font,
                 col,
                 row: line,
-                width: 27,
-                palette: plt_light,
+                width,
+                palette_override: Some(plt_light),
             },
         )
         .unwrap();
@@ -44,11 +46,11 @@ fn main() -> TatoResult<()> {
         "0123456789",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: ts_font,
+            tileset: ts_font,
             col,
             row: line,
-            width: 26,
-            palette: plt_light,
+            width,
+            palette_override: Some(plt_light),
         },
     );
 
@@ -58,11 +60,11 @@ fn main() -> TatoResult<()> {
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: ts_font,
+            tileset: ts_font,
             col,
             row: line,
-            width: 26,
-            palette: plt_default,
+            width,
+            palette_override: Some(plt_default),
         },
     );
 
@@ -72,11 +74,11 @@ fn main() -> TatoResult<()> {
         "abcdefghijklmnopqrstuvwxyz",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: ts_font,
+            tileset: ts_font,
             col,
             row: line,
-            width: 26,
-            palette: plt_light,
+            width,
+            palette_override: Some(plt_light),
         },
     );
 
@@ -86,11 +88,11 @@ fn main() -> TatoResult<()> {
         ":;<=>? !\"#$%&\'()*+,-./",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: ts_font,
+            tileset: ts_font,
             col,
             row: line,
-            width: 26,
-            palette: plt_default,
+            width,
+            palette_override: Some(plt_default),
         },
     );
 
@@ -101,11 +103,11 @@ fn main() -> TatoResult<()> {
         "Animated palette",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: ts_font,
+            tileset: ts_font,
             col,
             row: line,
-            width: 26,
-            palette: plt_cycle,
+            width,
+            palette_override: Some(plt_cycle),
         },
     );
 

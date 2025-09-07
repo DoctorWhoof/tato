@@ -3,7 +3,6 @@ mod astro;
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
 use tato::{arena::Arena, prelude::*};
 use tato_raylib::RayBackend;
-// use tato_winit::WinitBackend;
 
 // An entity that fits in 64 bits! :-)
 struct Entity {

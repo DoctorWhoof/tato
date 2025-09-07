@@ -191,7 +191,7 @@ impl Tato {
         op: TextOp,
     ) -> Option<i16> {
         debug_assert!(text.is_ascii());
-        let tileset = self.assets.tilesets.get(op.id.0 as usize)?;
+        let tileset = self.assets.tilesets.get(op.tileset.0 as usize)?;
         let tile_start = tileset.tile_start;
         let mut cursor_x = 0;
         let mut cursor_y = 0;
@@ -207,18 +207,24 @@ impl Tato {
             let col = char_index % font_cols;
             let row = char_index / font_cols;
             if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
+                let sub_palette = if let Some(palette) = op.palette_override {
+                    palette
+                } else {
+                    cell.sub_palette
+                };
                 target.set_cell(BgOp {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
                     tile_id: TileID(cell.id.0 + tile_start),
                     flags: cell.flags,
-                    sub_palette: op.palette,
+                    sub_palette,
                 });
             }
         };
 
+        let width = op.width.unwrap_or(255);
         for word in text.split(' ') {
-            if cursor_x + (word.len() as i16) > op.width {
+            if cursor_x + (word.len() as i16) > width {
                 cursor_x = 0;
                 cursor_y += 1;
             }
@@ -226,7 +232,7 @@ impl Tato {
                 draw_char(ch, cursor_x, cursor_y);
                 cursor_x += 1;
             }
-            if cursor_x >= op.width {
+            if cursor_x >= width {
                 cursor_x = 0;
                 cursor_y += 1;
             } else {

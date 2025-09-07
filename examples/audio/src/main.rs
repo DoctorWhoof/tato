@@ -1,6 +1,5 @@
 use std::{f32::consts::PI, time::Instant};
-use tato::{arena::Arena, prelude::*};
-
+use tato::{arena::*, default_assets::*, prelude::*};
 use tato_raylib::*;
 
 pub enum SoundType {
@@ -30,11 +29,11 @@ fn main() -> TatoResult<()> {
         "SOUND TEST",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: font,
+            tileset: font,
             col: 2,
             row: 2,
-            width: 12,
-            palette: palette_default,
+            width: None,
+            palette_override: Some(palette_default),
         },
     );
 
@@ -43,11 +42,11 @@ fn main() -> TatoResult<()> {
         "Currently playing:",
         TextOp {
             font: &FONT_LONG_MAP,
-            id: font,
+            tileset: font,
             col: 2,
             row: 6,
-            width: 20,
-            palette: palette_light,
+            width: None,
+            palette_override: Some(palette_light),
         },
     );
 
@@ -107,11 +106,11 @@ fn main() -> TatoResult<()> {
             },
             TextOp {
                 font: &FONT_LONG_MAP,
-                id: font,
+                tileset: font,
                 col: 2,
                 row: 8,
-                width: 100,
-                palette: palette_light,
+                width: None,
+                palette_override: Some(palette_light),
             },
         );
 
@@ -120,11 +119,11 @@ fn main() -> TatoResult<()> {
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextOp {
                 font: &FONT_LONG_MAP,
-                id: font,
+                tileset: font,
                 col: 2,
                 row: 10,
-                width: 100,
-                palette: palette_light,
+                width: None,
+                palette_override: Some(palette_light),
             },
         );
 
@@ -133,11 +132,11 @@ fn main() -> TatoResult<()> {
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextOp {
                 font: &FONT_LONG_MAP,
-                id: font,
+                tileset: font,
                 col: 2,
                 row: 12,
-                width: 100,
-                palette: palette_light,
+                width: None,
+                palette_override: Some(palette_light),
             },
         );
 

@@ -1,5 +1,6 @@
 use tato::{arena::Arena, prelude::*};
 use tato_raylib::*;
+use tato::default_assets::*;
 
 mod patch;
 use patch::*;

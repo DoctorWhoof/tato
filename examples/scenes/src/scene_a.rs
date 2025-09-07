@@ -1,6 +1,7 @@
 use crate::*;
 use core::array::from_fn;
 use tato::prelude::*;
+use tato::default_assets::*;
 
 const SMILEY_COUNT: usize = 32;
 
