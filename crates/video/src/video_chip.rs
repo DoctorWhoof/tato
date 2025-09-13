@@ -161,6 +161,13 @@ impl VideoChip {
         self.sprite_gen.reset();
     }
 
+    /// Flips a coordinate based on the axis length (the length in rows or columns
+    /// of the the sprite's Tilemap in that axis) and flip state.
+    #[inline(always)]
+    fn flip_tile_coords(coord: i16, axis_length: i16, state: bool) -> i16 {
+        if state { axis_length - coord - 1 } else { coord }
+    }
+
     /// A sprite is in reality a Tilemap, since it is a collection of tiles! This function
     /// will draw all the tiles in the FG layer at cordinates x and y.
     pub fn draw_sprite(&mut self, bundle: SpriteBundle, sprite: &dyn DynTilemap) {
@@ -170,8 +177,8 @@ impl VideoChip {
                     continue;
                 };
 
-                let draw_col = if bundle.flip_x { sprite.columns() as i16 - col - 1 } else { col };
-                let draw_row = if bundle.flip_y { sprite.rows() as i16 - row - 1 } else { row };
+                let draw_col = Self::flip_tile_coords(col, sprite.columns() as i16, bundle.flip_x);
+                let draw_row = Self::flip_tile_coords(row, sprite.rows() as i16, bundle.flip_y);
 
                 let mut flags = cell.flags;
                 if bundle.flip_x {

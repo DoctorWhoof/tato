@@ -3,6 +3,7 @@ use crate::{prelude::CharacterSet, *};
 #[derive(Debug)]
 pub struct Tato {
     pub paused: bool,
+    pub time_scale: f64,
     // Input
     pub pad: tato_pad::AnaloguePad,
     // Audio
@@ -27,6 +28,7 @@ impl Tato {
     pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
         Self {
             paused: false,
+            time_scale: 1.0,
             assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
@@ -46,6 +48,7 @@ impl Tato {
         // self.pad.clear(); // Handled by backend, otherwise it messes up "just_pressed" detection
         self.paused = false;
         self.time = 0.0;
+        self.time_scale = 1.0;
         self.video.reset_all();
         self.assets.reset();
         for bank in &mut self.banks {
@@ -78,13 +81,16 @@ impl Tato {
         }
         self.video.frame_start();
 
+         // Testing. TODO: Comment out to use elapsed from backend.
+        let elapsed = 1.0 / self.target_fps as f32;
+
         if self.paused {
             self.delta = 0.0;
         } else {
             let reference_frame_time = 1.0 / 60.0;
+            self.elapsed_time = elapsed * self.time_scale as f32;
             self.delta = self.elapsed_time / reference_frame_time;
-            self.elapsed_time = elapsed;
-            self.time += elapsed as f64;
+            self.time += elapsed as f64 * self.time_scale;
         }
 
         self.frame_finished = false;
