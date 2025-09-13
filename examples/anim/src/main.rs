@@ -4,7 +4,7 @@ use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
 use tato::{arena::Arena, prelude::*};
 use tato_raylib::RayBackend;
 
-// An entity that fits in 64 bits! :-)
+// A minimal entity that fits in a single 64 bit value! :-)
 struct Entity {
     x: i16,
     y: i16,
@@ -26,7 +26,6 @@ fn main() -> TatoResult<()> {
     let mut backend = RayBackend::new(&tato);
     let mut dash = Dashboard::new().unwrap();
     let bg_map = Tilemap::<1024>::new(32, 32);
-
 
     tato.video.bg_color = RGBA12::new(2, 3, 4);
     tato.video.bg_tile_bank = BANK_BG;
@@ -71,7 +70,6 @@ fn main() -> TatoResult<()> {
     while !backend.ray.window_should_close() {
         frame_arena.clear();
         backend.frame_start(&mut frame_arena, &mut tato.pad);
-
         dash.frame_start(&mut frame_arena, &mut backend);
         tato.frame_start(backend.ray.get_frame_time());
 

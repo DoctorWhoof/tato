@@ -4,7 +4,7 @@ use core::array::from_fn;
 /// A "Memory Bank" that contains the actual tile pixels, a color palette
 /// and the subpalettes associated with the main color palette.
 #[derive(Debug, Clone)]
-pub struct VideoMemory<const TILES: usize> {
+pub struct VideoBank<const TILES: usize> {
     pub tiles: [Tile<2>; TILES],
     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
     /// Local Palettes with 4 ColorIDs each. Each ID referes to a color in the main palette.
@@ -15,7 +15,7 @@ pub struct VideoMemory<const TILES: usize> {
     sub_palette_head: u8,
 }
 
-impl<const TILES: usize> VideoMemory<TILES> {
+impl<const TILES: usize> VideoBank<TILES> {
     pub fn new() -> Self {
         Self {
             tiles: from_fn(|_| Tile::default()),
@@ -48,6 +48,28 @@ impl<const TILES: usize> VideoMemory<TILES> {
         self.palette[self.palette_head as usize] = color;
         self.palette_head += 1;
         id
+    }
+
+    pub fn load_default_colors(&mut self) {
+        self.palette =  [
+            RGBA12::TRANSPARENT, // 0
+            RGBA12::BLACK,       // 1
+            RGBA12::GRAY,        // 2
+            RGBA12::WHITE,       // 3
+            RGBA12::DARK_RED,    // 4
+            RGBA12::RED,         // 5
+            RGBA12::LIGHT_RED,   // 6
+            RGBA12::ORANGE,      // 7
+            RGBA12::YELLOW,      // 8
+            RGBA12::DARK_GREEN,  // 9
+            RGBA12::GREEN,       // 10
+            RGBA12::LIGHT_GREEN, // 11
+            RGBA12::DARK_BLUE,   // 12
+            RGBA12::BLUE,        // 13
+            RGBA12::LIGHT_BLUE,  // 14
+            RGBA12::PINK,        // 15
+        ];
+        self.palette_head = 16;
     }
 
     pub fn set_color(&mut self, id: ColorID, color: RGBA12) {
@@ -93,20 +115,20 @@ impl<const TILES: usize> VideoMemory<TILES> {
     }
 
     pub fn palette_cycle(&mut self, palette: PaletteID, start_index: u8, end_index: u8, delta: i8) {
-        for index in start_index as usize..=end_index as usize {
-            let color = &mut self.sub_palettes[palette.id()][index];
-            let current = color.0 as i16;
-            let mut new_value = current + delta as i16;
+        let original_colors = self.sub_palettes[palette.id()];
+        for index in start_index as isize..=end_index as isize {
+            let mut new_index = index + delta as isize;
             if delta > 0 {
-                if new_value > end_index as i16 {
-                    new_value = start_index as i16;
+                if new_index > end_index as isize {
+                    new_index = start_index as isize;
                 }
             } else {
-                if new_value < start_index as i16 {
-                    new_value = end_index as i16;
+                if new_index < start_index as isize {
+                    new_index = end_index as isize;
                 }
             }
-            color.0 = (new_value.rem_euclid(COLORS_PER_PALETTE as i16)) as u8;
+            let color = &mut self.sub_palettes[palette.id()][index as usize];
+            color.0 = original_colors[new_index as usize].0;
         }
     }
 

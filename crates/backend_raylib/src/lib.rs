@@ -158,11 +158,10 @@ impl Backend for RayBackend {
 
         use KeyboardKey::*;
 
-        // Copy existing update_gamepad logic
-        pad.copy_current_to_previous_state();
 
         // Gamepad input
         let ray = &mut self.ray;
+        pad.copy_current_to_previous_state();
         if self.allow_game_input {
             pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
             pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));

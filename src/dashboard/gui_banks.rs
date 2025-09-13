@@ -2,7 +2,7 @@ use super::*;
 
 // Right panel
 impl Dashboard {
-    pub(super) fn process_video_panel<const LEN: usize>(
+    pub(super) fn process_video_banks_panel<const LEN: usize>(
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut Arena<LEN>,
@@ -32,7 +32,7 @@ impl Dashboard {
     fn update_tile_texture(
         &mut self,
         bank_index: usize,
-        bank: &VideoMemory<{ TILE_COUNT }>,
+        bank: &VideoBank<{ TILE_COUNT }>,
         tiles_per_row: u16,
     ) {
         // Early return for empty banks
@@ -100,9 +100,6 @@ impl Dashboard {
 
         let gap = self.gui_scale as i16;
         let bank = &tato.banks[bank_index];
-        if bank.tile_count() == 0 && bank.color_count() == 0 && bank.sub_palette_count() == 0 {
-            return;
-        }
 
         let mouse = backend.get_mouse();
 
@@ -130,7 +127,7 @@ impl Dashboard {
                 [bank.tile_count(), bank.color_count() as usize, bank.sub_palette_count() as usize];
             let text = Text::format_display(
                 frame_arena,
-                "{} tiles, {} custom colors, {} sub-palettes",
+                "{} tiles, {} colors, {} sub-palettes",
                 &values,
                 "",
             )
@@ -148,7 +145,7 @@ impl Dashboard {
             self.ops.push(frame_arena, handle).unwrap();
         });
 
-        if bank.tile_count() == 0 {
+        if bank.tile_count() == 0 && bank.color_count() == 0 && bank.sub_palette_count() == 0 {
             return;
         }
 

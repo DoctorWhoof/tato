@@ -6,7 +6,7 @@ use crate::layout::Fitting;
 use crate::prelude::*;
 use crate::video::{
     COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
-    VideoMemory,
+    VideoBank,
 };
 
 mod command;
@@ -24,7 +24,7 @@ mod gui_draw_polys;
 mod gui_draw_tooltip;
 mod gui_input;
 mod gui_text;
-mod gui_video;
+mod gui_banks;
 
 // The Fixed arena is never cleared - this may need to changed when
 // I dynamically update the tiles! (i.e. pop() and load())
@@ -291,7 +291,7 @@ impl Dashboard {
 
         // Panels have their own modules, for organization
         self.process_text_panel(&mut layout, frame_arena, backend, tato);
-        self.process_video_panel(&mut layout, frame_arena, backend, tato);
+        self.process_video_banks_panel(&mut layout, frame_arena, backend, tato);
         self.process_console(tato, &mut layout, frame_arena);
 
         // Canvas

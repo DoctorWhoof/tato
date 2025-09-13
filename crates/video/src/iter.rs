@@ -26,7 +26,7 @@ pub struct PixelIter<'a> {
     pub fg_tile_bank: u8,
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
-    pub tile_banks: [&'a VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
+    pub tile_banks: [&'a VideoBank<TILE_COUNT>; TILE_BANK_COUNT],
     pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
@@ -40,7 +40,7 @@ pub struct PixelIter<'a> {
 impl<'a> PixelIter<'a> {
     pub fn new<T>(
         vid: &'a VideoChip,
-        video_mem: &[&'a VideoMemory<TILE_COUNT>],
+        video_mem: &[&'a VideoBank<TILE_COUNT>],
         bg_maps: &[&'a T],
     ) -> Self
     where

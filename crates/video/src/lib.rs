@@ -29,8 +29,8 @@ pub use tilemap_ref::*;
 mod tile_flags;
 pub use tile_flags::*;
 
-mod video_mem;
-pub use video_mem::*;
+mod video_bank;
+pub use video_bank::*;
 
 mod video_chip;
 pub use video_chip::*;

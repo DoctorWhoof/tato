@@ -97,10 +97,8 @@ fn main() -> TatoResult<()> {
         dash.frame_present(&mut frame_arena, &mut backend, &tato);
         backend.frame_present(&mut frame_arena, &tato, &[&state.bg]);
 
-
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {
-            tato.video.reset_all();
             tato.reset();
             match choice {
                 SceneChange::A => scene = Scene::A(SceneA::new(&mut tato, &mut state)?),

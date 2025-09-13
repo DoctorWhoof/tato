@@ -9,7 +9,7 @@ pub struct Tato {
     pub audio: tato_audio::AudioChip,
     // Video
     pub video: tato_video::VideoChip,
-    pub banks: [tato_video::VideoMemory<TILE_COUNT>; TILE_BANK_COUNT],
+    pub banks: [tato_video::VideoBank<TILE_COUNT>; TILE_BANK_COUNT],
     pub character_set: CharacterSet,
     // 16Kb asset memory. Currently only stores remapped tilemaps -
     // the tiles are stored directly in the memory banks
@@ -31,7 +31,7 @@ impl Tato {
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
-            banks: core::array::from_fn(|_| VideoMemory::new()),
+            banks: core::array::from_fn(|_| VideoBank::new()),
             character_set: CharacterSet::Long,
             target_fps,
             time: 0.0,
@@ -43,8 +43,8 @@ impl Tato {
     }
 
     pub fn reset(&mut self) {
+        // self.pad.clear(); // Handled by backend, otherwise it messes up "just_pressed" detection
         self.paused = false;
-        self.pad.clear();
         self.time = 0.0;
         self.video.reset_all();
         self.assets.reset();
@@ -89,6 +89,7 @@ impl Tato {
 
         self.frame_finished = false;
         self.frame_started = true;
+        // self.pad.copy_current_to_previous_state();
     }
 
     pub fn frame_finish(&mut self) {
@@ -108,7 +109,7 @@ impl Tato {
     where
         &'a T: Into<TilemapRef<'a>>,
     {
-        let video_banks: [&'a VideoMemory<256>; TILE_BANK_COUNT] =
+        let video_banks: [&'a VideoBank<256>; TILE_BANK_COUNT] =
             core::array::from_fn(|i| &self.banks[i]);
         self.video.iter_pixels(&video_banks[..], bg_banks)
     }

@@ -20,6 +20,8 @@ impl SceneA {
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
 
+
+        t.banks[0].load_default_colors();
         // Palette test - defines BG palette with a golden tint!
         t.banks[1].palette = [
             RGBA12::TRANSPARENT,
@@ -224,6 +226,8 @@ impl SceneA {
 
         // ------------------- Return mode switch request -------------------
 
-        if state.pad.is_just_pressed(Button::Menu) { Some(SceneChange::B) } else { None }
+        if state.pad.is_just_pressed(Button::Menu) {
+            println!("Menu");
+            Some(SceneChange::B) } else { None }
     }
 }

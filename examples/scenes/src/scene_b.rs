@@ -19,6 +19,7 @@ impl SceneB {
         t.video.set_viewport(8, 8, 224, 164);
 
         // Colors
+        t.banks[0].load_default_colors();
         t.video.bg_color = RGBA12::DARK_GREEN;
         let palette_bg = t.banks[0].push_subpalette([9, 10, 9, 9]);
         let palette_smiley = t.banks[0].push_subpalette([0, 8, 1, 1]);

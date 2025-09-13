@@ -19,6 +19,7 @@ fn main() -> TatoResult<()> {
     let plt_cycle = tato.new_subpalette(0, [0, 3, 2, 0]);
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
+    tato.banks[0].load_default_colors();
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;

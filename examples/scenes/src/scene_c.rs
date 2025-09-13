@@ -15,6 +15,7 @@ impl SceneC {
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
+        t.banks[0].load_default_colors();
         t.video.bg_color = RGBA12::GRAY;
 
         for col in 0..state.bg.columns() as i16 {

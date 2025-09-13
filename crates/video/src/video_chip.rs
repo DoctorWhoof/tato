@@ -255,7 +255,7 @@ impl VideoChip {
     /// Requires a reference to the Tile array and one for the BG Tilemap array.
     pub fn iter_pixels<'a, T>(
         &'a self,
-        video_banks: &[&'a VideoMemory<TILE_COUNT>],
+        video_banks: &[&'a VideoBank<TILE_COUNT>],
         bg_banks: &[&'a T],
     ) -> PixelIter<'a>
     where

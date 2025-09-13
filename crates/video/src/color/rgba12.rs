@@ -26,6 +26,8 @@ impl RGBA12 {
     pub const BLUE: RGBA12 = RGBA12::new(1, 2, 6);
     pub const LIGHT_BLUE: RGBA12 = RGBA12::new(4, 6, 7);
     pub const PINK: RGBA12 = RGBA12::new(6, 3, 6);
+    // Used as a placeholder for colors not specified
+    pub const EMPTY_COLOR: RGBA12 = RGBA12::new(7, 0, 7);
 
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         assert!(r < 8, err!("Exceeded maximum value for Red channel"));
