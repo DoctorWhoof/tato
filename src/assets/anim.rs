@@ -16,7 +16,7 @@ pub(crate) struct StripEntry {
 ///
 /// AnimID(0) represents "no animation" and is the default value.
 /// Valid animation IDs start from 1.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Default)]
 pub struct AnimID(pub u8);
 
 /// Tiny metadata to control animation playback of frames already

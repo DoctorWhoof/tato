@@ -92,6 +92,24 @@ impl<const TILES: usize> VideoMemory<TILES> {
         }
     }
 
+    pub fn palette_cycle(&mut self, palette: PaletteID, start_index: u8, end_index: u8, delta: i8) {
+        for index in start_index as usize..=end_index as usize {
+            let color = &mut self.sub_palettes[palette.id()][index];
+            let current = color.0 as i16;
+            let mut new_value = current + delta as i16;
+            if delta > 0 {
+                if new_value > end_index as i16 {
+                    new_value = start_index as i16;
+                }
+            } else {
+                if new_value < start_index as i16 {
+                    new_value = end_index as i16;
+                }
+            }
+            color.0 = (new_value.rem_euclid(COLORS_PER_PALETTE as i16)) as u8;
+        }
+    }
+
     pub fn tile_count(&self) -> usize {
         self.tile_head as usize
     }

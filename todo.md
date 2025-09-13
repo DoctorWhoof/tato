@@ -9,6 +9,7 @@
     [x] Ignore punctuation (treat the same as spaces), or at least commas
     [x] Maybe instead of merely getting the command line, a way to actually process it, which involves getting the command line, processing it and returning a result message tht is displayed in the console? (look at herobot "Game::process_console" for a use case)
     [ ] Move console to its own crate, store history in internal arena (since it's persistent).
+    [ ] Up and down arrows should navigate command history.
 
 [x] Engine pausing
     - Internal timer will freeze, but input can still be updated in the main loop.
