@@ -81,8 +81,15 @@ impl Tato {
         }
         self.video.frame_start();
 
-         // Testing. TODO: Comment out to use elapsed from backend.
-        let elapsed = 1.0 / self.target_fps as f32;
+        // Quantized to a fixed interval to ensure it exactly matches
+        // typical display refresh rates. Works with 60, 72, 90, 120, 180 and 240 Hz.
+        // Does NOT work with PAL refresh rates. Sorry, not sorry.
+        const ELAPSED_QUANT_SIZE: f32 = 1.0 / 1440.0; // 3X 120Hz, 6X 60Hz
+        // Will not attempt to delta-correct is frame rate is ridiculously low, since
+        // that could cause weird physics (like teleporting through objects)
+        const ELAPSED_MAX: f32 = 1.0 / 15.0;
+        let elapsed = tato_math::quantize(elapsed, ELAPSED_QUANT_SIZE) //
+            .clamp(ELAPSED_QUANT_SIZE, ELAPSED_MAX);
 
         if self.paused {
             self.delta = 0.0;
