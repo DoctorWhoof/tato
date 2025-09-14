@@ -67,7 +67,7 @@ impl RayBackend {
         let mut result = Self {
             bg_color: Color::new(16, 16, 16, 255),
             integer_scaling: true,
-            print_frame_time: true,
+            print_frame_time: false,
             canvas_rect: None,
             ray,
             thread,
