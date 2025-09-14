@@ -28,12 +28,12 @@
     . GroupBuilder is separate from each TilesetBuilder, saves to its own module.
     . Gets passed to tilesetbuilder::new, just like palette?
 
-[ ] Collider should be a TileFlag bit, not a group
+--->[ ] Collider should be a TileFlag bit, not a group
     . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
     . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
     . Will be ready if i decide to implement sprite collisions
     . Doesn't feel right: flags like "trigger" don't belong in the video chip, since they're gameplay related. Maybe just a "collider" bit, plus 3 "custom" bits that the user can choose how to use.
-    [ ] Use "collider" flag on tiles, figure out a way for pipeline to mark it.
+    [ ] Once tiles use the "collider" flag, figure out a way for the pipeline to mark it.
 
 [x] Proper errors when pushing new assets, etc. ("Result" instead of "Option)
 
@@ -46,7 +46,7 @@
         . Wait until Anim pipeline is more stable (i.e. when I can generate Anim structs from the tileset itself)
         . Will be useful to create BG interactions (i.e. door opening)
 
-[ ] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
+[x] Color behavior is really confusing (there are default colors, but you can push new ones to overwrite them).
     . I'm considering breaking away from default colors and requiring colors to be always defined by the user
     . There could be a "default_colors()" function that pushes the default ones, if needed
 
@@ -64,11 +64,11 @@
 
 ### Arenas
 
-    [ ] Arena-backed strings
+    [.] Arena-backed strings
         . Implements Into<&str>
         . Some sort of string formatting would be great
 
-    [ ] Rename Buffer to something nicer!
+    [/] Rename Buffer to something nicer!
 
 ### Backend and examples
 

@@ -4,6 +4,7 @@ use crate::{ArenaError, ArenaResult};
 mod iter;
 pub use iter::*;
 
+/// Arena allocated FIFO Ring buffer
 #[derive(Debug, Clone)]
 pub struct RingBuffer<T, Idx = u32, Marker = ()> {
     pub slice: Slice<T, Idx, Marker>,
