@@ -5,14 +5,6 @@ use crate::*;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Hash)]
 pub struct TileFlags(pub u8);
 
-// /// A convenient way to pass a palette where TileFlags are required.
-// /// flip_h and flip_v are left as "false".
-// impl From<PaletteID> for TileFlags {
-//     fn from(palette_id: PaletteID) -> TileFlags {
-//         TileFlags::new(false, false, palette_id)
-//     }
-// }
-
 impl TileFlags {
     pub const fn new(flip_h: bool, flip_v: bool, custom_data: u8) -> Self {
         assert!(custom_data < 16, err!("Custom data must be in the 0 to 15 range"));
