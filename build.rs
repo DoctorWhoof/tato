@@ -13,7 +13,7 @@ fn main() {
         return;
     }
     use tato_pipe::*;
-    init_build();
+    init_build("import");
 
     // Shared groups for default assets
     let mut groups = GroupBuilder::new();

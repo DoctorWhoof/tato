@@ -16,6 +16,7 @@ pub struct PaletteBuilder {
 
 impl PaletteBuilder {
     pub fn new(name: &str) -> Self {
+        crate::ensure_init_build();
         PaletteBuilder {
             name: String::from(name),
             colors: vec![],

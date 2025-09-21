@@ -9,6 +9,7 @@ pub struct GroupBuilder {
 
 impl GroupBuilder {
     pub fn new() -> Self {
+        crate::ensure_init_build();
         Self::default()
     }
 

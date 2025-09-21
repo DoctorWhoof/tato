@@ -1,7 +1,7 @@
 use tato_pipe::*;
 
 fn main() {
-    init_build();
+    init_build("import");
 
     let mut palette = PaletteBuilder::new("main");
     let mut groups = GroupBuilder::new();

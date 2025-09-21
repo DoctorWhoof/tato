@@ -30,6 +30,7 @@ pub struct TilesetBuilder<'a> {
 
 impl<'a> TilesetBuilder<'a> {
     pub fn new(name: &str, palette: &'a mut PaletteBuilder, groups: &'a mut GroupBuilder) -> Self {
+        crate::ensure_init_build();
         Self {
             allow_tile_transforms: true,
             allow_unused: false,
