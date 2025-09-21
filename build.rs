@@ -8,7 +8,10 @@
 // It is disabled by default to speed up build times.
 fn main() {
     use tato_pipe::*;
-    init_build("import", false);
+    init_build(BuildSettings {
+        asset_import_path: "import".into(), //
+        force_reprocess: false,
+    });
 
     // Shared groups for default assets
     let mut groups = GroupBuilder::new();

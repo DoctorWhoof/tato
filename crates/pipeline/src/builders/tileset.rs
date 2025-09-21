@@ -195,6 +195,7 @@ impl<'a> TilesetBuilder<'a> {
         // Execute all deferred commands now
         self.execute_deferred_commands();
         
+        println!("cargo:warning=Creating output file: {}", file_path);
         let mut code = CodeWriter::new(file_path);
 
         // Write header
@@ -365,7 +366,9 @@ impl<'a> TilesetBuilder<'a> {
         }
 
         // Format the output
+        println!("cargo:warning=Formatting and writing file: {}", file_path);
         code.format_output(file_path);
+        println!("cargo:warning=File write completed: {}", file_path);
         
         // Mark all input files as processed
         for command in &self.deferred_commands {

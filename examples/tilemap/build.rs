@@ -1,7 +1,10 @@
 use tato_pipe::*;
 
 fn main() {
-    init_build("import", false);
+    init_build(BuildSettings {
+        asset_import_path: "import".into(), //
+        force_reprocess: false,
+    });
 
     // Shared groups across tilesets
     let mut groups = GroupBuilder::new();
