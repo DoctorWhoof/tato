@@ -57,12 +57,8 @@ pub fn should_regenerate_file(file_path: &str) -> bool {
     let metadata = load_metadata();
 
     if let Some(current_timestamp) = get_file_timestamp(file_path) {
-        println!("cargo:warning=Checking file: {} with current timestamp: {}", file_path, current_timestamp);
         if let Some(&stored_timestamp) = metadata.get(file_path) {
             let should_regen = current_timestamp > stored_timestamp;
-            println!("cargo:warning=Timestamp comparison: current={}, stored={}, diff={}, regenerate={}",
-                     current_timestamp, stored_timestamp,
-                     current_timestamp as i64 - stored_timestamp as i64, should_regen);
             if should_regen {
                 println!("cargo:warning=File changed - will regenerate: {}", file_path);
             }
@@ -159,7 +155,6 @@ fn load_metadata() -> HashMap<String, u64> {
     let mut metadata = HashMap::new();
     let mut needs_cleanup = false;
 
-    println!("cargo:warning=Loading metadata from: {}", metadata_path);
     if let Ok(content) = read_to_string(&metadata_path) {
         for line in content.lines() {
             if let Some((path, timestamp)) = line.split_once('=') {
