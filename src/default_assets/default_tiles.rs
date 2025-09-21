@@ -2,8 +2,11 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-pub const DEFAULT_TILESET: TilesetData =
-    TilesetData { tiles: &DEFAULT_TILES, colors: None, sub_palettes: None };
+pub const DEFAULT_TILESET: TilesetData = TilesetData {
+    tiles: Some(&DEFAULT_TILES),
+    colors: None,
+    sub_palettes: None,
+};
 
 pub const TILE_EMPTY: TileID = TileID(0);
 pub const TILE_CHECKERS: TileID = TileID(1);

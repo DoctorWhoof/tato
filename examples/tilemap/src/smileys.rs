@@ -2,7 +2,7 @@
 use tato::prelude::*;
 
 pub const SMILEYS_TILESET: TilesetData = TilesetData {
-    tiles: &SMILEYS_TILES,
+    tiles: Some(&SMILEYS_TILES),
     colors: Some(&SMILEYS_COLORS),
     sub_palettes: Some(&[
         &SMILEYS_SUBPALETTE_0,

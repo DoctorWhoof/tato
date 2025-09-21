@@ -3,7 +3,7 @@
 use tato::prelude::*;
 
 pub const ASTRO_TILESET: TilesetData = TilesetData {
-    tiles: &ASTRO_TILES,
+    tiles: Some(&ASTRO_TILES),
     colors: Some(&ASTRO_COLORS),
     sub_palettes: Some(&[&ASTRO_SUBPALETTE_0, &ASTRO_SUBPALETTE_1]),
 };

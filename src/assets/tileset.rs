@@ -23,7 +23,7 @@ pub struct Tileset {
 /// PNG files into tilesets.
 #[derive(Debug, Clone, Copy)]
 pub struct TilesetData<'a> {
-    pub tiles: &'a [Tile<2>],
+    pub tiles: Option<&'a [Tile<2>]>,
     pub colors: Option<&'a [RGBA12]>,
     pub sub_palettes: Option<&'a [&'a [u8; COLORS_PER_TILE as usize]]>,
 }

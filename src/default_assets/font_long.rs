@@ -2,8 +2,11 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-pub const FONT_LONG_TILESET: TilesetData =
-    TilesetData { tiles: &FONT_LONG_TILES, colors: None, sub_palettes: None };
+pub const FONT_LONG_TILESET: TilesetData = TilesetData {
+    tiles: Some(&FONT_LONG_TILES),
+    colors: None,
+    sub_palettes: None,
+};
 
 pub const FONT_LONG_MAP: Tilemap<90> = Tilemap {
     columns: 10,

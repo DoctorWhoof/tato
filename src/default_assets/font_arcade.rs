@@ -2,8 +2,11 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-pub const FONT_ARCADE_TILESET: TilesetData =
-    TilesetData { tiles: &FONT_ARCADE_TILES, colors: None, sub_palettes: None };
+pub const FONT_ARCADE_TILESET: TilesetData = TilesetData {
+    tiles: Some(&FONT_ARCADE_TILES),
+    colors: None,
+    sub_palettes: None,
+};
 
 pub const FONT_ARCADE_MAP: Tilemap<50> = Tilemap {
     columns: 10,

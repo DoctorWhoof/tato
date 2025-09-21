@@ -2,7 +2,7 @@
 use tato::prelude::*;
 
 pub const PATCH_TILESET: TilesetData = TilesetData {
-    tiles: &PATCH_TILES,
+    tiles: Some(&PATCH_TILES),
     colors: Some(&PATCH_COLORS),
     sub_palettes: Some(&[&PATCH_SUBPALETTE_0, &PATCH_SUBPALETTE_1, &PATCH_SUBPALETTE_2]),
 };

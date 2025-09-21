@@ -171,12 +171,13 @@ impl Tato {
             },
         };
         let assets = &mut self.assets;
-        if bank.tile_count() + data.tiles.len() > bank.tile_capacity() {
+        let tiles_len = data.tiles.map_or(0, |tiles| tiles.len());
+        if bank.tile_count() + tiles_len > bank.tile_capacity() {
             // Rollback checkpoint
             assets.checkpoint_head -= 1;
             return Err(TatoError::TilesetCapacityExceeded {
                 bank_id,
-                requested: data.tiles.len(),
+                requested: tiles_len,
                 available: bank.tile_capacity() - bank.tile_count(),
             });
         }
@@ -186,8 +187,10 @@ impl Tato {
         let tile_start = u8::try_from(bank.tile_count()).unwrap();
         // let tiles_count = u8::try_from(data.tiles.len()).unwrap();
 
-        for tile in data.tiles.iter() {
-            bank.add_tile(tile);
+        if let Some(tiles) = data.tiles {
+            for tile in tiles.iter() {
+                bank.add_tile(tile);
+            }
         }
 
         // Main Color processing

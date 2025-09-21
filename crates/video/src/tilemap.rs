@@ -77,6 +77,20 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
+    pub fn cell_mut(&mut self, col: i16, row: i16) -> Option<&mut Cell> {
+        if let Some(index) = self.get_index(col, row) {
+            Some(&mut self.cells[index]) //
+        } else {
+            None
+        }
+    }
+
+    pub fn copy_cell(&mut self, col: i16, row: i16, cell: Cell) {
+        if let Some(index) = self.get_index(col, row) {
+            self.cells[index] = cell;
+        }
+    }
+
     pub fn set_id(&mut self, col: i16, row: i16, tile_id: TileID) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].id = tile_id;
@@ -95,25 +109,27 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    /// Copies a rectangular region from a src tilemap to this tilemap.
+    /// Copies a rectangular region from a cells array to this tilemap.
     /// - If `src_rect` is None, attempts to copy the entire source tilemap.
     /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
     /// - Negative destination coordinates are handled by clipping the source region.
-    pub fn copy_from(
+    pub fn copy_from_cells(
         &mut self,
-        src: &dyn DynTilemap,
+        cells: &[Cell],
+        columns: u16,
+        rows: u16,
         src_rect: Option<Rect<u16>>,
         dst_rect: Option<Rect<u16>>,
     ) {
         // Determine source rectangle
         let src_x = src_rect.map_or(0, |r| r.x) as i16;
         let src_y = src_rect.map_or(0, |r| r.y) as i16;
-        let src_w = src_rect.map_or(src.columns(), |r| r.w) as i16;
-        let src_h = src_rect.map_or(src.rows(), |r| r.h) as i16;
+        let src_w = src_rect.map_or(columns, |r| r.w) as i16;
+        let src_h = src_rect.map_or(rows, |r| r.h) as i16;
 
         // Make sure source rectangle is within bounds
-        let src_w = i16::min(src_w, src.columns() as i16 - src_x);
-        let src_h = i16::min(src_h, src.rows() as i16 - src_y);
+        let src_w = i16::min(src_w, columns as i16 - src_x);
+        let src_h = i16::min(src_h, rows as i16 - src_y);
 
         // Determine destination rectangle
         let dst_x = dst_rect.map_or(0, |r| r.x) as i16;
@@ -145,13 +161,26 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         // Copy the tiles row by row
         for y in 0..effective_height {
             for x in 0..effective_width {
-                let src_index = (effective_src_y + y) as usize * src.columns() as usize
+                let src_index = (effective_src_y + y) as usize * columns as usize
                     + (effective_src_x + x) as usize;
                 let dst_index = (effective_dst_y + y) as usize * self.columns as usize
                     + (effective_dst_x + x) as usize;
-                self.cells[dst_index] = src.cells()[src_index];
+                self.cells[dst_index] = cells[src_index];
             }
         }
+    }
+
+    /// Copies a rectangular region from a src tilemap to this tilemap.
+    /// - If `src_rect` is None, attempts to copy the entire source tilemap.
+    /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
+    /// - Negative destination coordinates are handled by clipping the source region.
+    pub fn copy_from(
+        &mut self,
+        src: &dyn DynTilemap,
+        src_rect: Option<Rect<u16>>,
+        dst_rect: Option<Rect<u16>>,
+    ) {
+        self.copy_from_cells(src.cells(), src.columns(), src.rows(), src_rect, dst_rect);
     }
 }
 
