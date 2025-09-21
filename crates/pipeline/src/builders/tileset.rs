@@ -9,6 +9,14 @@ const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 type TileData = [u8; TILE_LEN];
 pub(crate) type CanonicalTile = [u8; TILE_LEN]; // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
 
+#[derive(Clone)]
+enum DeferredCommand {
+    NewGroup { path: String, name: String },
+    NewTile { path: String },
+    NewMap { path: String, name: String },
+    NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
+}
+
 pub struct TilesetBuilder<'a> {
     pub allow_tile_transforms: bool,
     pub allow_unused: bool,
@@ -26,6 +34,7 @@ pub struct TilesetBuilder<'a> {
     palette: &'a mut PaletteBuilder,
     next_tile: u8,
     sub_palette_head: usize,
+    deferred_commands: Vec<DeferredCommand>,
 }
 
 impl<'a> TilesetBuilder<'a> {
@@ -48,6 +57,7 @@ impl<'a> TilesetBuilder<'a> {
             palette,
             sub_palettes: Vec::new(),
             sub_palette_head: 0,
+            deferred_commands: Vec::new(),
         }
     }
 
@@ -60,82 +70,131 @@ impl<'a> TilesetBuilder<'a> {
         );
         img
     }
+    
+    fn should_regenerate_output(&self) -> bool {
+        // Check if any deferred command file needs regeneration
+        for command in &self.deferred_commands {
+            let file_path = match command {
+                DeferredCommand::NewGroup { path, .. } => path,
+                DeferredCommand::NewTile { path } => path,
+                DeferredCommand::NewMap { path, .. } => path,
+                DeferredCommand::NewAnimationStrip { path, .. } => path,
+            };
+            if !file_path.is_empty() && crate::should_regenerate_file(file_path) {
+                return true;
+            }
+        }
+        false
+    }
+    
+    fn execute_deferred_commands(&mut self) {
+        let commands = self.deferred_commands.clone();
+        for command in commands {
+            match command {
+                DeferredCommand::NewGroup { path, name } => {
+                    let group_index = self.groups.add_group(&name);
+                    if !path.is_empty() {
+                        let img = self.load_valid_image(&path, 1, 1);
+                        let _ = self.add_tiles(&img, Some(group_index));
+                    }
+                }
+                DeferredCommand::NewTile { path } => {
+                    let img = self.load_valid_image(&path, 1, 1);
+                    assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
+                    assert!(
+                        img.cols_per_frame == 1 && img.rows_per_frame == 1,
+                        "Single tile must be 1x1 tile (8x8 pixels)"
+                    );
+                    let cells = self.add_tiles(&img, None);
+                    assert!(cells.len() == 1 && cells[0].len() == 1);
+                    let tile_name = crate::strip_path_name(&path);
+                    let single_tile = SingleTileBuilder {
+                        name: tile_name,
+                        cell: cells[0][0].clone(),
+                    };
+                    self.single_tiles.push(single_tile);
+                }
+                DeferredCommand::NewMap { path, name } => {
+                    let img = self.load_valid_image(&path, 1, 1);
+                    let frames = self.add_tiles(&img, None);
+                    assert!(frames.len() == 1);
+                    let map = MapBuilder {
+                        name,
+                        columns: u8::try_from(img.cols_per_frame).unwrap(),
+                        rows: u8::try_from(img.rows_per_frame).unwrap(),
+                        cells: frames[0].clone(),
+                    };
+                    self.maps.push(map);
+                }
+                DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
+                    let img = self.load_valid_image(&path, frames_h, frames_v);
+                    let cells = self.add_tiles(&img, None);
+                    let frame_count = img.frames_h as usize * img.frames_v as usize;
+                    assert!(frame_count > 0);
+                    let anim = AnimBuilder {
+                        name: name.clone(),
+                        frames: (0..frame_count)
+                            .map(|i| MapBuilder {
+                                name: format!("frame_{:02}", i),
+                                columns: u8::try_from(img.cols_per_frame).unwrap(),
+                                rows: u8::try_from(img.rows_per_frame).unwrap(),
+                                cells: cells[i].clone(),
+                            })
+                            .collect(),
+                    };
+                    self.anims.push(anim);
+                }
+            }
+        }
+    }
 
     /// Defines a new tile group. Adds the tiles only, does not add Tilemaps or Animations,
-    /// those must be added afterwards and will be correctly marked as part of a group, if
     /// there's a match. To add an "empty" group, with no tiles, simply add it directly to
     /// the GroupBuilder instead of using the TilesetBuilder.
     pub fn new_group(&mut self, path: &str, name: &str) {
-        let group_index = self.groups.add_group(name);
-        if !path.is_empty(){
-            let img = self.load_valid_image(path, 1, 1);
-
-            // Process tiles and register them in the group, discard the returned cells
-            let _ = self.add_tiles(&img, Some(group_index));
-        }
+        self.deferred_commands.push(DeferredCommand::NewGroup {
+            path: path.to_string(),
+            name: name.to_string(),
+        });
     }
 
     /// Creates a new single tile from a .png file
     pub fn new_tile(&mut self, path: &str) {
-        let img = self.load_valid_image(path, 1, 1);
-        // Additional asserts for single tile
-        assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
-        assert!(
-            img.cols_per_frame == 1 && img.rows_per_frame == 1,
-            "Single tile must be 1x1 tile (8x8 pixels)"
-        );
-
-        let cells = self.add_tiles(&img, None);
-        assert!(
-            cells.len() == 1 && cells[0].len() == 1,
-            "Single tile should produce exactly one cell"
-        );
-
-        let tile_name = crate::strip_path_name(path);
-        self.single_tiles.push(SingleTileBuilder { name: tile_name, cell: cells[0][0] });
+        self.deferred_commands.push(DeferredCommand::NewTile {
+            path: path.to_string(),
+        });
     }
 
     /// Creates a new map from a .png file
     pub fn new_map(&mut self, path: &str, name: &str) {
-        let img = self.load_valid_image(path, 1, 1);
-        let frames = self.add_tiles(&img, None);
-        assert!(frames.len() == 1);
-
-        let map = MapBuilder {
-            name: String::from(name),
-            columns: u8::try_from(img.cols_per_frame).unwrap(),
-            rows: u8::try_from(img.rows_per_frame).unwrap(),
-            cells: frames[0].clone(), // just the first frame, there's only 1 anyway!
-        };
-
-        self.maps.push(map);
+        self.deferred_commands.push(DeferredCommand::NewMap {
+            path: path.to_string(),
+            name: name.to_string(),
+        });
     }
 
     /// Creates a new animation strip from a .png file
     pub fn new_animation_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
-        let img = self.load_valid_image(path, frames_h, frames_v);
-        let cells = self.add_tiles(&img, None);
-        let frame_count = img.frames_h as usize * img.frames_v as usize;
-
-        assert!(frame_count > 0);
-        let anim = AnimBuilder {
-            name: String::from(name),
-            frames: (0..frame_count)
-                .map(|i| MapBuilder {
-                    name: format!("frame_{:02}", i),
-                    columns: u8::try_from(img.cols_per_frame).unwrap(),
-                    rows: u8::try_from(img.rows_per_frame).unwrap(),
-                    cells: cells[i].clone(),
-                })
-                .collect(),
-            // tags: vec![],
-        };
-
-        self.anims.push(anim);
+        self.deferred_commands.push(DeferredCommand::NewAnimationStrip {
+            path: path.to_string(),
+            name: name.to_string(),
+            frames_h,
+            frames_v,
+        });
     }
 
     /// Writes the tileset constants to a file
-    pub fn write(&self, file_path: &str) {
+    pub fn write(&mut self, file_path: &str) {
+        // Check if any input files have changed
+        if !self.should_regenerate_output() {
+            return;
+        }
+        
+        println!("cargo:warning=Regenerating tileset: {}", file_path);
+        
+        // Execute all deferred commands now
+        self.execute_deferred_commands();
+        
         let mut code = CodeWriter::new(file_path);
 
         // Write header
@@ -307,6 +366,19 @@ impl<'a> TilesetBuilder<'a> {
 
         // Format the output
         code.format_output(file_path);
+        
+        // Mark all input files as processed
+        for command in &self.deferred_commands {
+            let file_path = match command {
+                DeferredCommand::NewGroup { path, .. } => path,
+                DeferredCommand::NewTile { path } => path,
+                DeferredCommand::NewMap { path, .. } => path,
+                DeferredCommand::NewAnimationStrip { path, .. } => path,
+            };
+            if !file_path.is_empty() {
+                crate::mark_file_processed(file_path);
+            }
+        }
     }
 
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {

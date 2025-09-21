@@ -1,7 +1,7 @@
 use tato_pipe::*;
 
 fn main() {
-    init_build("import");
+    init_build("import", false);
 
     // Shared groups across tilesets
     let mut groups = GroupBuilder::new();

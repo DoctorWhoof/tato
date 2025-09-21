@@ -6,14 +6,9 @@
 // to see the output.
 //
 // It is disabled by default to speed up build times.
-const REGENERATE_DEFAULT_ASSETS: bool = true;
-
 fn main() {
-    if !REGENERATE_DEFAULT_ASSETS {
-        return;
-    }
     use tato_pipe::*;
-    init_build("import");
+    init_build("import", false);
 
     // Shared groups for default assets
     let mut groups = GroupBuilder::new();
