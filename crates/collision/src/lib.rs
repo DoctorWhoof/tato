@@ -14,7 +14,6 @@ pub fn line_to_tile_y(
     col: i16,
     start_row: i16,
     end_row: i16,
-    collision_group: u8,
 ) -> Option<TileCollision> {
     if col < 0 || col >= map.columns() as i16 {
         return None;
@@ -22,7 +21,7 @@ pub fn line_to_tile_y(
     let check_row = |row: i16| {
         (row >= 0)
             .then(|| map.get_cell(col, row))?
-            .filter(|cell| cell.group & collision_group != 0)
+            .filter(|cell| cell.flags.is_collider())
             .map(|_| TileCollision { col, row })
     };
     if end_row < start_row {
@@ -40,7 +39,6 @@ pub fn line_to_tile_x(
     start_col: i16,
     end_col: i16,
     row: i16,
-    collision_group: u8,
 ) -> Option<TileCollision> {
     if row < 0 || row >= map.rows() as i16 {
         return None;
@@ -48,7 +46,7 @@ pub fn line_to_tile_x(
     let check_col = |col: i16| {
         (col >= 0)
             .then(|| map.get_cell(col, row))?
-            .filter(|cell| cell.group & collision_group != 0)
+            .filter(|cell| cell.flags.is_collider())
             .map(|_| TileCollision { col, row })
     };
     if end_col < start_col {
