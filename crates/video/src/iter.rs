@@ -179,6 +179,10 @@ impl<'a> PixelIter<'a> {
             let sprite_id = scanline.sprites[n] as usize;
             let sprite = &self.vid.sprite_gen.sprites[sprite_id];
 
+            if sprite.flags.is_invisible() {
+                continue;
+            }
+
             let sprite_y = line_y - sprite.y;
             if sprite_y < 0 || sprite_y >= TILE_SIZE as i16 {
                 continue;
@@ -336,6 +340,27 @@ impl<'a> PixelIter<'a> {
             let bg_flags = bg_cell.flags;
             let bg_palette = bg_cell.sub_palette.0 as usize;
             let bg_tile_id = bg_cell.id.0 as usize;
+
+            // Skip invisible tiles - fill with bg_color instead
+            if bg_flags.is_invisible() {
+                let tile_pixels_remaining = (TILE_SIZE as usize) - tile_x_start as usize;
+                let viewport_pixels_remaining = view_end - x;
+                let pixels_to_process = tile_pixels_remaining.min(viewport_pixels_remaining);
+
+                let pixels_to_process = if !self.wrap_bg && bg_x_base >= 0 {
+                    let max_x = (bg_width - bg_x_base) as usize;
+                    pixels_to_process.min(max_x)
+                } else {
+                    pixels_to_process
+                };
+
+                let bg_color = self.bg_color;
+                for i in 0..pixels_to_process {
+                    self.bg_buffer[x + i] = bg_color.with_z(Z_BG);
+                }
+                x += pixels_to_process;
+                continue;
+            }
 
             // Get the tile cluster for this row
             let tile = &bank.tiles[bg_tile_id];
