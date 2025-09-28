@@ -1,12 +1,6 @@
 use core::ops::RangeInclusive;
 use tato_math::libm::{roundf, powf, log2f};
 
-// /// Linear interpolation.
-#[inline(always)]
-pub(crate) fn lerp(start: f32, end: f32, t: f32) -> f32 {
-    start + (t * (end - start))
-}
-
 // // use core::f32::consts::FRAC_2_PI;
 // use libm::sinf;
 
@@ -35,12 +29,6 @@ pub fn note_to_frequency(note: f32) -> f32 {
 pub fn frequency_to_note(frequency: f32) -> f32 {
     69.0 + 12.0 * log2f(frequency / 440.0)
 }
-
-// // Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
-// #[inline(always)]
-// pub(crate) fn wrap(value: i32, modulus: i32) -> i32 {
-//     ((value % modulus) + modulus) % modulus
-// }
 
 /// Maps a continuous value to a step size, from 0.0  to 1.0
 #[inline]

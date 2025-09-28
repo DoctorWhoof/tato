@@ -84,11 +84,9 @@ impl<'a> PixelIter<'a> {
             sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES],
             bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES],
         };
-        // Run Y IRQ on first line before anything else
-        result.call_line_irq();
 
-        // Pre-render first line
-        // result.pre_render_line();
+        // Pre-render first line (IRQ will be called inside pre_render_line)
+        result.pre_render_line();
         result
     }
 
@@ -110,6 +108,9 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_line(&mut self) {
+        // Run Y IRQ before rendering the line
+        self.call_line_irq();
+
         // Pre-calculate viewport bounds
         let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
         let view_start = self.vid.view_left.max(0) as usize;
@@ -486,9 +487,7 @@ impl<'a> Iterator for PixelIter<'a> {
         if self.x == self.vid.width() {
             self.x = 0;
             self.y += 1;
-            // Run Y IRQ for the new line
-            self.call_line_irq();
-            // Pre-render the new line
+            // Pre-render the new line (IRQ will be called inside pre_render_line)
             self.pre_render_line();
         }
 

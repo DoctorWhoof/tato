@@ -17,12 +17,32 @@ pub use rect::Rect;
 pub mod vec2;
 pub use vec2::Vec2;
 
-// Skips quantization if value is too tiny, useful when getting elapsed time in
-// immediate timing mode and very fast frame rates.
+/// Linear interpolation.
+#[inline(always)]
+pub fn lerp(start: f32, end: f32, t: f32) -> f32 {
+    start + (t * (end - start))
+}
+
+/// Smooth interpolation using smoothstep function.
+#[inline(always)]
+pub fn smerp(start: f32, end: f32, t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    let smooth_t = t * t * (3.0 - 2.0 * t);
+    start + smooth_t * (end - start)
+}
+
+/// Maps a continuous value to a step size.
 #[inline]
 pub fn quantize(value: f32, size: f32) -> f32 {
-    let result = (value / size).floor() * size;
-    if result < f32::EPSILON { value } else { result }
+    (value / size).floor() * size
+    // Skip quantization if value is too tiny.
+    // if result < f32::EPSILON { value } else { result }
+}
+
+/// Wraps a value into a range from 0 to modulus, correctly handling negative numbers.
+#[inline]
+pub fn wrap(value: i32, modulus: i32) -> i32 {
+    ((value % modulus) + modulus) % modulus
 }
 
 pub fn next_power_of_two(mut n: u32) -> u32 {
