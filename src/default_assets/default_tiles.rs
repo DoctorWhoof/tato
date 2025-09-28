@@ -15,65 +15,11 @@ pub const TILE_CROSSHAIRS: TileID = TileID(2);
 pub const TILE_ARROW: TileID = TileID(3);
 pub const TILE_SMILEY: TileID = TileID(4);
 
-pub const DEFAULT_TILES: [Tile<2>; 5] = [
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 85] },
-            Cluster { data: [0, 85] },
-            Cluster { data: [0, 85] },
-            Cluster { data: [0, 85] },
-            Cluster { data: [170, 255] },
-            Cluster { data: [170, 255] },
-            Cluster { data: [170, 255] },
-            Cluster { data: [170, 253] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 1] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 1] },
-            Cluster { data: [64, 5] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [1, 0] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [21, 80] },
-            Cluster { data: [85, 84] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-            Cluster { data: [5, 64] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [5, 80] },
-            Cluster { data: [21, 84] },
-            Cluster { data: [93, 117] },
-            Cluster { data: [93, 117] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [90, 165] },
-            Cluster { data: [22, 148] },
-            Cluster { data: [5, 80] },
-        ],
-    },
+#[unsafe(link_section = "__DATA,__const")]
+pub static DEFAULT_TILES: [Tile<2>; 5] = [
+    Tile::new(0x0000000000000000, 0x0000000000000000),
+    Tile::new(0x0055005500550055, 0xAAFFAAFFAAFFAAFD),
+    Tile::new(0x0001000000000000, 0x0000000000014005),
+    Tile::new(0x0100054015505554, 0x0540054005400540),
+    Tile::new(0x055015545D755D75, 0x55555AA516940550),
 ];

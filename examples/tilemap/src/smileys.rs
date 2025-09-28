@@ -19,7 +19,8 @@ pub const SMILEYS_TILESET: TilesetData = TilesetData {
     ]),
 };
 
-pub const SMILEYS_COLORS: [RGBA12; 12] = [
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_COLORS: [RGBA12; 12] = [
     RGBA12::with_transparency(7, 7, 7, 7),
     RGBA12::with_transparency(4, 4, 4, 7),
     RGBA12::with_transparency(7, 6, 3, 7),
@@ -34,29 +35,41 @@ pub const SMILEYS_COLORS: [RGBA12; 12] = [
     RGBA12::with_transparency(4, 6, 7, 7),
 ];
 
-pub const SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 0, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 0, 0];
 
-pub const SMILEYS_SUBPALETTE_1: [u8; 4] = [1, 2, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [1, 2, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_2: [u8; 4] = [1, 0, 0, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [1, 0, 0, 0];
 
-pub const SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 3, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 3, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 4, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 4, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_5: [u8; 4] = [1, 6, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_5: [u8; 4] = [1, 6, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_6: [u8; 4] = [1, 7, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_6: [u8; 4] = [1, 7, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_7: [u8; 4] = [1, 8, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_7: [u8; 4] = [1, 8, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 9, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 9, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 10, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 10, 5, 0];
 
-pub const SMILEYS_SUBPALETTE_10: [u8; 4] = [1, 11, 5, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_SUBPALETTE_10: [u8; 4] = [1, 11, 5, 0];
 
-pub const SMILEYS_MAP: Tilemap<160> = Tilemap {
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_MAP: Tilemap<160> = Tilemap {
     columns: 16,
     rows: 10,
     cells: [
@@ -1023,7 +1036,8 @@ pub const SMILEYS_MAP: Tilemap<160> = Tilemap {
     ],
 };
 
-pub const SMILEYS_TILES: [Tile<2>; 7] = [
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_TILES: [Tile<2>; 7] = [
     Tile {
         clusters: [
             Cluster { data: [0, 0] },

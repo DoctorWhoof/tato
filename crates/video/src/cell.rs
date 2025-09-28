@@ -13,3 +13,14 @@ pub struct Cell {
     // the group to 4 bits and fit it in flags.
     // 4 groups sounds like... not enough! SO I probably won't do this.
 }
+
+impl Cell {
+    pub const fn new(id:u8, flags:u8, sub_palette:u8, group:u8) -> Self {
+        Self {
+            id: TileID(id),
+            flags: TileFlags(flags),
+            sub_palette: PaletteID(sub_palette),
+            group,
+        }
+    }
+}

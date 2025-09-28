@@ -239,8 +239,9 @@ impl<'a> TilesetBuilder<'a> {
         // Write sub-palettes
         if self.save_colors {
             for (i, sub_palette) in self.sub_palettes.iter().enumerate() {
+                code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
                 code.write_line(&format!(
-                    "pub const {}_SUBPALETTE_{}: [u8; {}] = [",
+                    "pub static {}_SUBPALETTE_{}: [u8; {}] = [",
                     self.name.to_uppercase(),
                     i,
                     sub_palette.len()
@@ -258,8 +259,9 @@ impl<'a> TilesetBuilder<'a> {
         // Write animation strips if any
         if !self.anims.is_empty() {
             for anim in &self.anims {
+                code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
                 code.write_line(&format!(
-                    "pub const {}: [Tilemap<{}>; {}] = [",
+                    "pub static {}: [Tilemap<{}>; {}] = [",
                     anim.name.to_uppercase(),
                     anim.frames[0].cells.len(),
                     anim.frames.len()
@@ -270,7 +272,7 @@ impl<'a> TilesetBuilder<'a> {
                     code.write_line("        cells: [");
 
                     for cell in &frame.cells {
-                        code.write_line(&format!("            {:?},", cell));
+                        code.write_cell(cell);
                     }
 
                     code.write_line("        ],");
@@ -286,8 +288,9 @@ impl<'a> TilesetBuilder<'a> {
 
         // Write maps if any
         for map in &self.maps {
+            code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
             code.write_line(&format!(
-                "pub const {}: Tilemap<{}> = Tilemap {{",
+                "pub static {}: Tilemap<{}> = Tilemap {{",
                 map.name.to_uppercase(),
                 map.cells.len()
             ));
@@ -296,7 +299,7 @@ impl<'a> TilesetBuilder<'a> {
             code.write_line("    cells: [");
 
             for cell in &map.cells {
-                code.write_line(&format!("        {:?},", cell));
+                code.write_cell(cell);
             }
 
             code.write_line("    ],");
@@ -310,7 +313,7 @@ impl<'a> TilesetBuilder<'a> {
                 // For default tileset, generate TileID constants for type safety
                 code.write_line(&format!("pub const {}: TileID = TileID({});", tile.name.to_uppercase(), tile.cell.id.0));
             } else {
-                code.write_line(&format!("pub const {}: Cell = {:?};", tile.name.to_uppercase(), tile.cell));
+                code.write_line(&format!("pub const {}: Cell = {};", tile.name.to_uppercase(), crate::format_cell_compact(&tile.cell)));
             }
         }
         if !self.single_tiles.is_empty() {
@@ -320,8 +323,9 @@ impl<'a> TilesetBuilder<'a> {
         // Write tile pixel data
         if !self.pixels.is_empty() {
             let tiles_count = self.pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize);
+            code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
             code.write_line(&format!(
-                "pub const {}_TILES: [Tile<2>; {}] = [",
+                "pub static {}_TILES: [Tile<2>; {}] = [",
                 self.name.to_uppercase(),
                 tiles_count
             ));
@@ -331,36 +335,7 @@ impl<'a> TilesetBuilder<'a> {
                 let end = start + (TILE_SIZE as usize * TILE_SIZE as usize);
                 let tile_pixels = &self.pixels[start..end];
 
-                code.write_line("    Tile {");
-                code.write_line("        clusters: [");
-
-                // Generate 8 clusters (one per row), each with 8 pixels packed into 2 bytes
-                for row in 0..8 {
-                    let row_start = row * 8;
-                    let row_end = row_start + 8;
-                    let row_pixels = &tile_pixels[row_start..row_end];
-
-                    // Pack 8 pixels (2 bits each) into 2 bytes
-                    // 4 pixels per byte: pixels 0-3 in byte0, pixels 4-7 in byte1
-                    let mut byte0 = 0u8;
-                    let mut byte1 = 0u8;
-
-                    for (i, &pixel) in row_pixels.iter().enumerate() {
-                        let pixel = pixel & 0x3; // Ensure pixel fits in 2 bits
-                        if i < 4 {
-                            // Pack into first byte (pixels 0-3)
-                            byte0 |= pixel << (6 - (i * 2));
-                        } else {
-                            // Pack into second byte (pixels 4-7)
-                            byte1 |= pixel << (6 - ((i - 4) * 2));
-                        }
-                    }
-
-                    code.write_line(&format!("            Cluster {{ data: [{}, {}] }},", byte0, byte1));
-                }
-
-                code.write_line("        ],");
-                code.write_line("    },");
+                code.write_line(&format!("    {},", crate::format_tile_compact(tile_pixels)));
             }
             code.write_line("];");
         }

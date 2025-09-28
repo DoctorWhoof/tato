@@ -6,7 +6,80 @@ pub struct CodeWriter {
     indentation: usize,
 }
 
+// Code generation now creates `static` items with automatic platform-specific `link_section` attributes
+// for optimal bare-metal/embedded usage:
+//
+// - `static` provides stable memory addresses and single instance in memory
+// - `link_section` allows placement in read-only sections that stay in flash/ROM
+// - Automatically uses ".rodata" for ELF targets (Linux, embedded)
+// - Automatically uses "__DATA,__const" for macOS (Mach-O format)
+// - Automatically uses ".rdata" for Windows (PE/COFF format)
+// - Data is loaded on-demand rather than eagerly into RAM
+//
 // Note: indentation is now handled by simply calling rustfmt after generating code!
+
+/// Returns the appropriate link section for the current platform
+pub fn get_platform_link_section() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "__DATA,__const"  // Mach-O format
+    } else if cfg!(target_os = "windows") {
+        ".rdata"          // PE/COFF read-only data section
+    } else {
+        ".rodata"         // ELF format (Linux, embedded)
+    }
+}
+
+/// Formats a Cell using the compact Cell::new() constructor syntax
+pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
+    format!(
+        "Cell::new({}, {}, {}, {})",
+        cell.id.0,
+        cell.flags.0,
+        cell.sub_palette.0,
+        cell.group
+    )
+}
+
+/// Formats a Tile using the compact Tile::new(u64, u64) constructor syntax
+pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
+    assert_eq!(tile_pixels.len(), 64, "Tile must have exactly 64 pixels");
+    
+    let mut data0 = 0u64;
+    let mut data1 = 0u64;
+    
+    // Process first 4 clusters (rows 0-3) into data0
+    for cluster_idx in 0..4 {
+        for byte_idx in 0..2 {
+            let mut byte_val = 0u8;
+            // Pack 4 pixels (2 bits each) into one byte
+            for pixel_in_byte in 0..4 {
+                let pixel_idx = cluster_idx * 8 + byte_idx * 4 + pixel_in_byte;
+                let pixel_val = tile_pixels[pixel_idx] & 0x3; // Ensure 2-bit pixel
+                byte_val |= pixel_val << (6 - pixel_in_byte * 2);
+            }
+            let shift = (7 - (cluster_idx * 2 + byte_idx)) * 8;
+            data0 |= (byte_val as u64) << shift;
+        }
+    }
+    
+    // Process second 4 clusters (rows 4-7) into data1
+    for cluster_idx in 0..4 {
+        for byte_idx in 0..2 {
+            let mut byte_val = 0u8;
+            // Pack 4 pixels (2 bits each) into one byte
+            for pixel_in_byte in 0..4 {
+                let pixel_idx = (cluster_idx + 4) * 8 + byte_idx * 4 + pixel_in_byte;
+                let pixel_val = tile_pixels[pixel_idx] & 0x3; // Ensure 2-bit pixel
+                byte_val |= pixel_val << (6 - pixel_in_byte * 2);
+            }
+            let shift = (7 - (cluster_idx * 2 + byte_idx)) * 8;
+            data1 |= (byte_val as u64) << shift;
+        }
+    }
+    
+    format!("Tile::new(0x{:016X}, 0x{:016X})", data0, data1)
+}
+
 impl CodeWriter {
     pub fn new(path: &str) -> Self {
         let file = File::create(path).expect("Could not create output file");
@@ -46,8 +119,10 @@ impl CodeWriter {
             return;
         }
 
+        // Use platform-specific link section for optimal bare-metal usage
+        self.write_line(&format!("#[unsafe(link_section = \"{}\")]", get_platform_link_section()));
         self.write_line(&format!(
-            "pub const {}_COLORS: [RGBA12; {}] = [",
+            "pub static {}_COLORS: [RGBA12; {}] = [",
             name.to_uppercase(),
             colors.len()
         ));
@@ -69,6 +144,10 @@ impl CodeWriter {
     pub fn write_group_constant(&mut self, name: &str, group_index: u8) {
         let group_value = 1u16 << (group_index - 1); // Convert 1-based index to bit value
         self.write_line(&format!("pub const {}: u8 = {};", name.to_uppercase(), group_value));
+    }
+
+    pub fn write_cell(&mut self, cell: &tato_video::Cell) {
+        self.write_line(&format!("        {},", format_cell_compact(cell)));
     }
 
     pub fn format_output(&self, file_path: &str) {

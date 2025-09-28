@@ -7,20 +7,25 @@ pub const PATCH_TILESET: TilesetData = TilesetData {
     sub_palettes: Some(&[&PATCH_SUBPALETTE_0, &PATCH_SUBPALETTE_1, &PATCH_SUBPALETTE_2]),
 };
 
-pub const PATCH_COLORS: [RGBA12; 4] = [
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_COLORS: [RGBA12; 4] = [
     RGBA12::with_transparency(0, 0, 0, 0),
     RGBA12::with_transparency(4, 4, 5, 7),
     RGBA12::with_transparency(2, 2, 2, 7),
     RGBA12::with_transparency(0, 0, 1, 7),
 ];
 
-pub const PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
 
-pub const PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
 
-pub const PATCH_SUBPALETTE_2: [u8; 4] = [2, 0, 0, 0];
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_SUBPALETTE_2: [u8; 4] = [2, 0, 0, 0];
 
-pub const PATCH_MAP: Tilemap<9> = Tilemap {
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_MAP: Tilemap<9> = Tilemap {
     columns: 3,
     rows: 3,
     cells: [
@@ -81,7 +86,8 @@ pub const PATCH_MAP: Tilemap<9> = Tilemap {
     ],
 };
 
-pub const PATCH_TILES: [Tile<2>; 6] = [
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_TILES: [Tile<2>; 6] = [
     Tile {
         clusters: [
             Cluster { data: [0, 0] },
