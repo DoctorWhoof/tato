@@ -624,10 +624,10 @@ impl Backend for WinitBackend {
         self.pressed_key
     }
 
-    fn update_input(&mut self, pad: &mut tato::pad::AnaloguePad) {
-        // Update pad state - for now just copy, but could implement gamepad support
-        *pad = self.pad_state;
-    }
+    // fn update_input(&mut self, pad: &mut tato::pad::AnaloguePad) {
+    //     // Update pad state - for now just copy, but could implement gamepad support
+    //     *pad = self.pad_state;
+    // }
 
     fn set_window_title(&mut self, title: &str) {
         if let Some(window) = &self.window {

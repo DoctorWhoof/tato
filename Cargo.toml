@@ -29,10 +29,9 @@ members = [
     "examples/tilemap",
     "examples/palette_save",
     "examples/anim",
-    # "crates/rng",
-    # "crates/collision",
-    # "examples/pipe",
+    # "crates/backend_macroquad",
 ]
+
 exclude = [
     "crates/layout/example_basic",
     "crates/layout/example_mquad",
