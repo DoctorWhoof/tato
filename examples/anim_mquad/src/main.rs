@@ -2,7 +2,7 @@ mod astro;
 
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
 use tato::{arena::Arena, prelude::*};
-use tato_macroquad::{macroquad::{self, input::is_quit_requested, window::{next_frame, Conf}}, tato_window_conf, MquadBackend};
+use tato_macroquad::{macroquad::{self, input::is_quit_requested, time::{get_fps, get_frame_time}, window::{next_frame, Conf}}, tato_window_conf, MquadBackend};
 
 // A minimal entity that fits in a single 64 bit value! :-)
 struct Entity {
@@ -76,7 +76,7 @@ async fn main() -> TatoResult<()> {
         frame_arena.clear();
         backend.frame_start(&mut frame_arena, &mut tato.pad);
         dash.frame_start(&mut frame_arena, &mut backend);
-        tato.frame_start(1.0/60.0);
+        tato.frame_start(get_frame_time());
 
         for entity in &mut entities {
             // Velocity control

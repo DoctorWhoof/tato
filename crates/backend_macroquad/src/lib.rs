@@ -13,29 +13,29 @@ pub use tato;
 const TILES_PER_ROW: i16 = 16;
 
 /// Create a window configuration with VSync enabled and proper settings for Tato games
-/// 
+///
 /// This function provides a pre-configured `Conf` struct optimized for pixel art games,
 /// with VSync enabled to prevent screen tearing and proper scaling settings.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `title` - Window title
 /// * `width` - Window width in pixels
 /// * `height` - Window height in pixels
-/// 
+///
 /// # Returns
-/// 
+///
 /// A `Conf` struct ready to use with `#[macroquad::main(window_conf)]`
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust,no_run
 /// use tato_macroquad::*;
-/// 
+///
 /// fn window_conf() -> Conf {
 ///     tato_window_conf("My Game", 900, 540)
 /// }
-/// 
+///
 /// #[macroquad::main(window_conf)]
 /// async fn main() {
 ///     // Your game code here
@@ -132,7 +132,7 @@ impl MquadBackend {
 
         // Configure window with VSync enabled
         request_new_screen_size(adjusted_w as f32, (h * multiplier) as f32);
-        
+
         // Load embedded font
         let font_data = include_bytes!("font.ttf");
         let font = load_ttf_font_from_bytes(font_data).unwrap();
