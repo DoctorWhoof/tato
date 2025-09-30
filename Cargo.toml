@@ -29,6 +29,7 @@ members = [
     "examples/tilemap",
     "examples/palette_save",
     "examples/anim",
+    "examples/anim_mquad",
     # "crates/backend_macroquad",
 ]
 
