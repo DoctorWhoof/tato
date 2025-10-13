@@ -1,6 +1,7 @@
 #![no_std]
 //! Fixed-size, no_std arena allocator with generational safety
-//! and type markers for static safety.
+//! and type markers for static safety. Since it's stack allocated, it
+//! can't be used with large arenas (max 1Mb on Windows, 8Mb on Linux/Mac)
 
 pub mod arena;
 pub mod buffer;
