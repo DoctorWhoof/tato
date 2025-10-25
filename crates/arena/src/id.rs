@@ -24,7 +24,7 @@ where
 {
     /// Convert to typed ID. Panics in debug if size mismatch.
     /// Will NOT catch all problems, i.e. if types are different but have same size.
-    pub fn typed<T, M>(self) -> TempID<T, I, M> {
+    pub fn typed<T, M>(self) -> ArenaId<T, I, M> {
         let expected_size = core::mem::size_of::<T>();
         let stored_size: usize = self.type_size.to_usize();
         debug_assert_eq!(
@@ -34,7 +34,7 @@ where
             stored_size, expected_size
         );
 
-        TempID {
+        ArenaId {
             offset: self.offset,
             size: self.size,
             generation: self.generation,
@@ -56,7 +56,7 @@ where
 
 /// Handle to a value in the arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct TempID<T, I = u32, M = ()> {
+pub struct ArenaId<T, I = u32, M = ()> {
     /// Offset within the arena's storage
     pub(crate) offset: I,
     /// Size of the allocation in bytes
@@ -69,8 +69,8 @@ pub struct TempID<T, I = u32, M = ()> {
     pub(crate) _phantom: PhantomData<(T, M)>,
 }
 
-impl<T, I, M> TempID<T, I, M> {
-    /// Create a new TempID (internal use)
+impl<T, I, M> ArenaId<T, I, M> {
+    /// Create a new ArenaId (internal use)
     pub(crate) fn new(offset: I, size: I, generation: u32, arena_id: u16) -> Self {
         Self { offset, size, generation, arena_id, _phantom: PhantomData }
     }
@@ -134,7 +134,7 @@ impl<T, I, M> TempID<T, I, M> {
 }
 
 /// ArenaIds are equal if they have the same offset, size, and generation
-impl<T, I, M> PartialEq for TempID<T, I, M>
+impl<T, I, M> PartialEq for ArenaId<T, I, M>
 where
     I: PartialEq,
 {
@@ -146,4 +146,4 @@ where
     }
 }
 
-impl<T, I, M> Eq for TempID<T, I, M> where I: Eq {}
+impl<T, I, M> Eq for ArenaId<T, I, M> where I: Eq {}

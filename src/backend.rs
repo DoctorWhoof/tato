@@ -1,7 +1,7 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
 use crate::{prelude::{DrawOp, Key}, Tato};
-use tato_arena::{Arena, TempID, Buffer};
+use tato_arena::{Arena, ArenaId, Buffer};
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
 use tato_video::{RGBA32, TilemapRef};
@@ -62,7 +62,7 @@ pub trait Backend {
 
     // ---------------------- Drawing ----------------------
 
-    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<TempID<DrawOp, u32>, u32>);
+    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>);
 
     /// Measure text dimensions for the given font size
     fn measure_text(&self, text: &str, font_size: f32) -> (f32, f32);

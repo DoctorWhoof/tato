@@ -104,8 +104,8 @@ pub struct WinitBackend {
     pub pad_state: tato::pad::AnaloguePad,
 
     // Draw operations
-    pub draw_ops: Buffer<TempID<DrawOp, u32>, u32>,
-    pub draw_ops_additional: Buffer<TempID<DrawOp, u32>, u32>,
+    pub draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>,
+    pub draw_ops_additional: Buffer<ArenaId<DrawOp, u32>, u32>,
 
     // Performance tracking
     pub pixel_iter_elapsed_time: f32,
@@ -540,7 +540,7 @@ impl Backend for WinitBackend {
         self.should_close
     }
 
-    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<TempID<DrawOp, u32>, u32>) {
+    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp, u32>, u32>) {
         self.draw_ops_additional = draw_ops;
     }
 

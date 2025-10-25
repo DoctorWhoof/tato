@@ -1,7 +1,7 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
-use crate::arena::{Arena, TempID, ArenaRes, Buffer, Text};
+use crate::arena::{Arena, ArenaId, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
 use crate::video::{
@@ -64,7 +64,7 @@ pub struct Dashboard {
     last_frame_arena_use: usize,
     last_frame_draw_op_count: usize,
     mouse_over_text: Text,
-    ops: Buffer<TempID<DrawOp, u32>, u32>,
+    ops: Buffer<ArenaId<DrawOp, u32>, u32>,
     debug_text: Buffer<Text, u32>,
     debug_polys_world: Buffer<Slice<Vec2<i16>>>,
     debug_polys_gui: Buffer<Slice<Vec2<i16>>>,

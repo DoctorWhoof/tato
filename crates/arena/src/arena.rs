@@ -4,7 +4,7 @@ use core::ptr;
 use core::slice::Iter;
 use core::sync::atomic::{AtomicU16, Ordering};
 
-use crate::{ArenaErr, ArenaIndex, ArenaRes, Slice, TempID};
+use crate::{ArenaErr, ArenaIndex, ArenaRes, Slice, ArenaId};
 
 // Global counter for unique arena IDs (no-std compatible)
 static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
@@ -50,7 +50,7 @@ where
     }
 
     /// Allocate and store a value
-    pub fn alloc<T>(&mut self, value: T) -> ArenaRes<TempID<T, I, M>>
+    pub fn alloc<T>(&mut self, value: T) -> ArenaRes<ArenaId<T, I, M>>
     where
         T: 'static,
     {
@@ -76,7 +76,7 @@ where
             ptr::write(dst, value);
         }
 
-        let id = TempID::new(
+        let id = ArenaId::new(
             self.offset,
             I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?,
             self.generation,
@@ -207,9 +207,9 @@ where
         Ok(slice)
     }
 
-    /// Validate an TempID for safe access
+    /// Validate an ArenaId for safe access
     #[inline]
-    fn validate_id<T>(&self, id: &TempID<T, I, M>) -> ArenaRes<()> {
+    fn validate_id<T>(&self, id: &ArenaId<T, I, M>) -> ArenaRes<()> {
         // Check arena ID first (cross-arena safety)
         if id.arena_id != self.arena_id {
             return Err(ArenaErr::CrossArenaAccess {
@@ -244,7 +244,7 @@ where
 
     /// Get reference to value (safe - checks generation and arena)
     #[inline]
-    pub fn get<T>(&self, id: &TempID<T, I, M>) -> ArenaRes<&T> {
+    pub fn get<T>(&self, id: &ArenaId<T, I, M>) -> ArenaRes<&T> {
         self.validate_id(id)?;
         unsafe {
             let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
@@ -254,7 +254,7 @@ where
 
     /// Get mutable reference to value (safe - checks generation and arena)
     #[inline]
-    pub fn get_mut<T>(&mut self, id: &TempID<T, I, M>) -> ArenaRes<&mut T> {
+    pub fn get_mut<T>(&mut self, id: &ArenaId<T, I, M>) -> ArenaRes<&mut T> {
         self.validate_id(id)?;
         unsafe {
             let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;

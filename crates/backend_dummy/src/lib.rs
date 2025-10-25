@@ -85,7 +85,7 @@ impl Backend for DummyBackend {
 
     // ---------------------- Drawing Primitives ----------------------
 
-    fn set_additional_draw_ops(&mut self, _draw_ops: Buffer<TempID<DrawOp>>) {
+    fn set_additional_draw_ops(&mut self, _draw_ops: Buffer<ArenaId<DrawOp>>) {
         // Do nothing - dummy backend doesn't draw
     }
 
