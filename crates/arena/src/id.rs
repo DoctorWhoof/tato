@@ -24,7 +24,7 @@ where
 {
     /// Convert to typed ID. Panics in debug if size mismatch.
     /// Will NOT catch all problems, i.e. if types are different but have same size.
-    pub fn typed<T, Marker>(self) -> ArenaId<T, Idx, Marker> {
+    pub fn typed<T, Marker>(self) -> TempID<T, Idx, Marker> {
         let expected_size = core::mem::size_of::<T>();
         let stored_size: usize = self.type_size.to_usize();
         debug_assert_eq!(
@@ -34,7 +34,7 @@ where
             stored_size, expected_size
         );
 
-        ArenaId {
+        TempID {
             offset: self.offset,
             size: self.size,
             generation: self.generation,
@@ -56,7 +56,7 @@ where
 
 /// Handle to a value in the arena
 #[derive(Debug, Clone, Copy, Hash)]
-pub struct ArenaId<T, Idx = u32, Marker = ()> {
+pub struct TempID<T, Idx = u32, Marker = ()> {
     /// Offset within the arena's storage
     pub(crate) offset: Idx,
     /// Size of the allocation in bytes
@@ -69,8 +69,8 @@ pub struct ArenaId<T, Idx = u32, Marker = ()> {
     pub(crate) _phantom: PhantomData<(T, Marker)>,
 }
 
-impl<T, Idx, Marker> ArenaId<T, Idx, Marker> {
-    /// Create a new ArenaId (internal use)
+impl<T, Idx, Marker> TempID<T, Idx, Marker> {
+    /// Create a new TempID (internal use)
     pub(crate) fn new(offset: Idx, size: Idx, generation: u32, arena_id: u16) -> Self {
         Self { offset, size, generation, arena_id, _phantom: PhantomData }
     }
@@ -134,7 +134,7 @@ impl<T, Idx, Marker> ArenaId<T, Idx, Marker> {
 }
 
 /// ArenaIds are equal if they have the same offset, size, and generation
-impl<T, Idx, Marker> PartialEq for ArenaId<T, Idx, Marker>
+impl<T, Idx, Marker> PartialEq for TempID<T, Idx, Marker>
 where
     Idx: PartialEq,
 {
@@ -146,4 +146,4 @@ where
     }
 }
 
-impl<T, Idx, Marker> Eq for ArenaId<T, Idx, Marker> where Idx: Eq {}
+impl<T, Idx, Marker> Eq for TempID<T, Idx, Marker> where Idx: Eq {}

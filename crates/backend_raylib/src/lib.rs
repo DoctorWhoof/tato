@@ -21,8 +21,8 @@ pub struct RayBackend {
     thread: RaylibThread,
     textures: Vec<Texture2D>,
     font: Font,
-    draw_ops: Buffer<ArenaId<DrawOp>>,
-    draw_ops_additional: Buffer<ArenaId<DrawOp>>,
+    draw_ops: Buffer<TempID<DrawOp>>,
+    draw_ops_additional: Buffer<TempID<DrawOp>>,
     canvas_texture: TextureId,
     pixels: Vec<u8>,
     buffer_iter_time: AvgBuffer<120, f64>,
@@ -421,7 +421,7 @@ impl Backend for RayBackend {
 
     // Any arena allocated Op (like Text) is, at this point, using the same "frame_arena",
     // and so can simply be copied without converting anything!
-    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<ArenaId<DrawOp>>) {
+    fn set_additional_draw_ops(&mut self, draw_ops: Buffer<TempID<DrawOp>>) {
         self.draw_ops_additional = draw_ops
     }
 

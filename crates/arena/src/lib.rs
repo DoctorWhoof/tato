@@ -13,7 +13,7 @@ pub mod text;
 
 pub use arena::Arena;
 pub use buffer::*;
-pub use id::{ArenaId, RawId};
+pub use id::{TempID, RawId};
 pub use ring_buffer::*;
 pub use slice::Slice;
 pub use text::*;

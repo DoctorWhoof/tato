@@ -15,6 +15,7 @@ tato_video = { path = "crates/video" }
 tato_math = { path = "crates/math" }
 tato_rng = { path = "crates/rng" }
 tato_arena = { path = "crates/arena" }
+temp_arena = { path = "crates/temp_arena" }
 tato_collision = { path = "crates/collision" }
 avgbuffer = { path = "crates/avgbuffer" }
 

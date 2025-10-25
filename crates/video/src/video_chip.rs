@@ -62,8 +62,8 @@ impl VideoChip {
 
         let mut result = Self {
             bg_color: RGBA12::BLACK,
-            wrap_sprites: true,
-            wrap_bg: true,
+            wrap_sprites: false,
+            wrap_bg: false,
             sprite_gen: SpriteGenerator::new(),
             view_left: 0,
             view_top: 0,
@@ -136,7 +136,8 @@ impl VideoChip {
     /// Resets the chip to its initial state.
     pub fn reset_all(&mut self) {
         self.bg_color = RGBA12::BLACK;
-        self.wrap_sprites = true;
+        self.wrap_sprites = false;
+        self.wrap_bg = false;
         self.frame_number = 0;
         self.fg_tile_bank = 0;
         self.bg_tile_bank = 0;

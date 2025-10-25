@@ -4,7 +4,7 @@ use core::ptr;
 use core::slice::Iter;
 use core::sync::atomic::{AtomicU16, Ordering};
 
-use crate::{ArenaId, ArenaIndex, ArenaError, ArenaResult, Slice};
+use crate::{TempID, ArenaIndex, ArenaError, ArenaResult, Slice};
 
 // Global counter for unique arena IDs (no-std compatible)
 static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
@@ -50,7 +50,7 @@ where
     }
 
     /// Allocate and store a value
-    pub fn alloc<T>(&mut self, value: T) -> ArenaResult<ArenaId<T, Idx, Marker>>
+    pub fn alloc<T>(&mut self, value: T) -> ArenaResult<TempID<T, Idx, Marker>>
     where
         T: 'static,
     {
@@ -79,7 +79,7 @@ where
             ptr::write(dst, value);
         }
 
-        let id = ArenaId::new(
+        let id = TempID::new(
             self.offset,
             Idx::try_from(size).map_err(|_| ArenaError::IndexConversion)?,
             self.generation,
@@ -92,7 +92,7 @@ where
     }
 
     /// Allocate and store a value (unchecked - returns Option for performance)
-    pub fn alloc_unchecked<T>(&mut self, value: T) -> Option<ArenaId<T, Idx, Marker>>
+    pub fn alloc_unchecked<T>(&mut self, value: T) -> Option<TempID<T, Idx, Marker>>
     where
         T: 'static,
     {
@@ -118,7 +118,7 @@ where
             ptr::write(dst, value);
         }
 
-        let id = ArenaId::new(self.offset, Idx::try_from(size).ok()?, self.generation, self.arena_id);
+        let id = TempID::new(self.offset, Idx::try_from(size).ok()?, self.generation, self.arena_id);
 
         self.offset = self.offset + Idx::try_from(size).ok()?;
 
@@ -328,9 +328,9 @@ where
         self.alloc_slice_from_fn(count, |_| T::default())
     }
 
-    /// Validate an ArenaId for safe access
+    /// Validate an TempID for safe access
     #[inline]
-    fn validate_id<T>(&self, id: &ArenaId<T, Idx, Marker>) -> ArenaResult<()> {
+    fn validate_id<T>(&self, id: &TempID<T, Idx, Marker>) -> ArenaResult<()> {
         // Check arena ID first (cross-arena safety)
         if id.arena_id != self.arena_id {
             return Err(ArenaError::CrossArenaAccess {
@@ -365,7 +365,7 @@ where
 
     /// Get reference to value (safe - checks generation and arena)
     #[inline]
-    pub fn get<T>(&self, id: &ArenaId<T, Idx, Marker>) -> ArenaResult<&T> {
+    pub fn get<T>(&self, id: &TempID<T, Idx, Marker>) -> ArenaResult<&T> {
         self.validate_id(id)?;
         unsafe {
             let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
@@ -375,7 +375,7 @@ where
 
     /// Get mutable reference to value (safe - checks generation and arena)
     #[inline]
-    pub fn get_mut<T>(&mut self, id: &ArenaId<T, Idx, Marker>) -> ArenaResult<&mut T> {
+    pub fn get_mut<T>(&mut self, id: &TempID<T, Idx, Marker>) -> ArenaResult<&mut T> {
         self.validate_id(id)?;
         unsafe {
             let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;
@@ -386,7 +386,7 @@ where
     /// Get reference to value (unsafe - no generation check)
     /// Only use this if you're certain the handle is valid
     #[inline]
-    pub unsafe fn get_unchecked<T>(&self, id: &ArenaId<T, Idx, Marker>) -> &T {
+    pub unsafe fn get_unchecked<T>(&self, id: &TempID<T, Idx, Marker>) -> &T {
         debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch in get_unchecked");
         debug_assert_eq!(id.generation, self.generation, "Generation mismatch in get_unchecked");
         unsafe {
@@ -398,7 +398,7 @@ where
     /// Get mutable reference to value (unsafe - no generation check)
     /// Only use this if you're certain the handle is valid
     #[inline]
-    pub unsafe fn get_unchecked_mut<T>(&mut self, id: &ArenaId<T, Idx, Marker>) -> &mut T {
+    pub unsafe fn get_unchecked_mut<T>(&mut self, id: &TempID<T, Idx, Marker>) -> &mut T {
         debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch in get_unchecked_mut");
         debug_assert_eq!(
             id.generation, self.generation,
@@ -551,7 +551,7 @@ where
     }
 
     /// Check if a handle is valid for this arena
-    pub fn is_valid<T>(&self, id: &ArenaId<T, Idx, Marker>) -> bool {
+    pub fn is_valid<T>(&self, id: &TempID<T, Idx, Marker>) -> bool {
         self.validate_id(id).is_ok()
     }
 

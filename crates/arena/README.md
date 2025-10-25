@@ -3,7 +3,7 @@
 A no-allocation, fixed-size arena allocator optimized for severely constrained environments.
 Each module has a single responsibility:
 - **`Arena`**: Core bump allocator with alignment handling
-- **`ArenaId<T>`**: Type-safe handles with compile-time guarantees
+- **`TempID<T>`**: Type-safe handles with compile-time guarantees
 - **`Slice<T>`**: Fixed-size collections allocated at runtime
 
 ## Usage

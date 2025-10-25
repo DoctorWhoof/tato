@@ -6,7 +6,7 @@ fn test_raw_id_conversion() {
 
     let id = arena.alloc(42u32).unwrap();
     let raw = id.raw();
-    let typed_back: ArenaId<u32, u16, ()> = raw.typed();
+    let typed_back: TempID<u32, u16, ()> = raw.typed();
 
     assert_eq!(id.offset(), typed_back.offset());
     assert_eq!(id.size(), typed_back.size());
@@ -32,8 +32,8 @@ fn test_raw_id_type_safety() {
     let raw = id.raw();
 
     // This should work (correct size)
-    let _typed_u64: ArenaId<u64, u16, ()> = raw.typed();
+    let _typed_u64: TempID<u64, u16, ()> = raw.typed();
 
     // This should panic in debug mode (wrong size)
-    // let _typed_u32: ArenaId<u32, usize, ()> = raw.typed(); // Would panic
+    // let _typed_u32: TempID<u32, usize, ()> = raw.typed(); // Would panic
 }
