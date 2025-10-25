@@ -4,33 +4,33 @@ use core::ptr;
 use core::slice::Iter;
 use core::sync::atomic::{AtomicU16, Ordering};
 
-use crate::{TempID, ArenaIndex, ArenaError, ArenaResult, Slice};
+use crate::{ArenaErr, ArenaIndex, ArenaRes, Slice, TempID};
 
 // Global counter for unique arena IDs (no-std compatible)
 static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
 
 /// Fixed-size arena with generational safety.
-/// LEN = bytes, Idx = handle size, Marker = type safety marker.
+/// LEN = bytes, I = handle size, M = type safety marker.
 #[repr(C, align(16))]
 #[derive(Debug)]
-pub struct Arena<const LEN: usize, Idx = u32, Marker = ()> {
+pub struct Arena<const LEN: usize, I = u32, M = ()> {
     /// Raw storage for all allocations
     storage: [MaybeUninit<u8>; LEN],
     /// Current allocation offset (bump pointer)
-    offset: Idx,
+    offset: I,
     /// Current tail allocation offset (allocates backwards from end)
-    tail_offset: Idx,
+    tail_offset: I,
     /// Current generation - incremented on restore_to()
     generation: u32,
     /// Unique arena ID for cross-arena safety
     arena_id: u16,
     /// Zero-sized type marker for compile-time arena safety
-    _marker: PhantomData<Marker>,
+    _marker: PhantomData<M>,
 }
 
-impl<const LEN: usize, Idx, Marker> Arena<LEN, Idx, Marker>
+impl<const LEN: usize, I, M> Arena<LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     /// Create a new arena with automatic cross-arena safety.
     /// Each arena gets a unique ID from an atomic counter, ensuring
@@ -41,8 +41,8 @@ where
         let storage = unsafe { MaybeUninit::uninit().assume_init() };
         Self {
             storage,
-            offset: Idx::try_from(0).unwrap_or_else(|_| panic!("Idx too small")),
-            tail_offset: Idx::try_from(LEN).unwrap_or_else(|_| panic!("Idx too small for LEN")),
+            offset: I::try_from(0).unwrap_or_else(|_| panic!("I too small")),
+            tail_offset: I::try_from(LEN).unwrap_or_else(|_| panic!("I too small for LEN")),
             generation: 0,
             arena_id: ARENA_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
             _marker: PhantomData,
@@ -50,7 +50,7 @@ where
     }
 
     /// Allocate and store a value
-    pub fn alloc<T>(&mut self, value: T) -> ArenaResult<TempID<T, Idx, Marker>>
+    pub fn alloc<T>(&mut self, value: T) -> ArenaRes<TempID<T, I, M>>
     where
         T: 'static,
     {
@@ -65,13 +65,10 @@ where
 
         // Check space
         if aligned_offset + size > LEN {
-            return Err(ArenaError::OutOfSpace {
-                requested: size,
-                available: LEN - aligned_offset
-            });
+            return Err(ArenaErr::OutOfSpace { requested: size, available: LEN - aligned_offset });
         }
 
-        self.offset = Idx::try_from(aligned_offset).map_err(|_| ArenaError::IndexConversion)?;
+        self.offset = I::try_from(aligned_offset).map_err(|_| ArenaErr::IndexConversion)?;
 
         // Store value
         unsafe {
@@ -81,63 +78,25 @@ where
 
         let id = TempID::new(
             self.offset,
-            Idx::try_from(size).map_err(|_| ArenaError::IndexConversion)?,
+            I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?,
             self.generation,
-            self.arena_id
+            self.arena_id,
         );
 
-        self.offset = self.offset + Idx::try_from(size).map_err(|_| ArenaError::IndexConversion)?;
+        self.offset = self.offset + I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?;
 
         Ok(id)
     }
 
-    /// Allocate and store a value (unchecked - returns Option for performance)
-    pub fn alloc_unchecked<T>(&mut self, value: T) -> Option<TempID<T, Idx, Marker>>
-    where
-        T: 'static,
-    {
-        let size = size_of::<T>();
-        let align = align_of::<T>();
-        let offset_usize: usize = self.offset.to_usize();
-
-        // Align offset
-        let misalignment = offset_usize % align;
-        let aligned_offset =
-            if misalignment != 0 { offset_usize + align - misalignment } else { offset_usize };
-
-        // Check space
-        if aligned_offset + size > LEN {
-            return None;
-        }
-
-        self.offset = Idx::try_from(aligned_offset).ok()?;
-
-        // Store value
-        unsafe {
-            let dst = self.storage.as_mut_ptr().add(aligned_offset) as *mut T;
-            ptr::write(dst, value);
-        }
-
-        let id = TempID::new(self.offset, Idx::try_from(size).ok()?, self.generation, self.arena_id);
-
-        self.offset = self.offset + Idx::try_from(size).ok()?;
-
-        Some(id)
-    }
-
     /// Allocate slice with initialization function
-    pub fn alloc_slice_from_fn<T, F>(
-        &mut self,
-        count: Idx,
-        mut f: F,
-    ) -> ArenaResult<Slice<T, Idx, Marker>>
+    pub fn alloc_slice_from_fn<T, F>(&mut self, len: usize, mut f: F) -> ArenaRes<Slice<T, I, M>>
     where
         F: FnMut(usize) -> T,
     {
-        if count == Idx::zero() {
+        if len == 0 {
             return Ok(Slice::new(
                 self.offset,
-                Idx::try_from(0).map_err(|_| ArenaError::IndexConversion)?,
+                I::try_from(0).map_err(|_| ArenaErr::IndexConversion)?,
                 self.generation,
                 self.arena_id,
             ));
@@ -145,7 +104,7 @@ where
 
         let size = size_of::<T>();
         let align = align_of::<T>();
-        let total_size = size * count.to_usize();
+        let total_size = size * len;
         let offset_usize: usize = self.offset.to_usize();
 
         // Align offset
@@ -155,103 +114,61 @@ where
 
         // Check space
         if aligned_offset + total_size > LEN {
-            return Err(ArenaError::OutOfSpace {
+            return Err(ArenaErr::OutOfSpace {
                 requested: total_size,
-                available: LEN - aligned_offset
+                available: LEN - aligned_offset,
             });
         }
 
-        self.offset = Idx::try_from(aligned_offset).map_err(|_| ArenaError::IndexConversion)?;
+        self.offset = I::try_from(aligned_offset).map_err(|_| ArenaErr::IndexConversion)?;
 
         // Initialize elements
         unsafe {
             let dst = self.storage.as_mut_ptr().add(aligned_offset) as *mut T;
-            let count: usize = count.to_usize();
-            for i in 0..count {
+            for i in 0..len {
                 ptr::write(dst.add(i), f(i));
             }
         }
 
-        let slice = Slice::new(self.offset, count, self.generation, self.arena_id);
+        let slice = Slice::new(
+            self.offset,
+            I::try_from(len).map_err(|_| ArenaErr::IndexConversion)?,
+            self.generation,
+            self.arena_id,
+        );
 
-        self.offset = self.offset + Idx::try_from(total_size).map_err(|_| ArenaError::IndexConversion)?;
+        self.offset =
+            self.offset + I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?;
 
         Ok(slice)
-    }
-
-    /// Allocate slice with initialization function (unchecked - returns Option for performance)
-    pub fn alloc_slice_from_fn_unchecked<T, F>(
-        &mut self,
-        count: Idx,
-        mut f: F,
-    ) -> Option<Slice<T, Idx, Marker>>
-    where
-        F: FnMut(usize) -> T,
-    {
-        if count == Idx::zero() {
-            return Some(Slice::new(
-                self.offset,
-                Idx::try_from(0).ok()?,
-                self.generation,
-                self.arena_id,
-            ));
-        }
-
-        let size = size_of::<T>();
-        let align = align_of::<T>();
-        let total_size = size * count.to_usize();
-        let offset_usize: usize = self.offset.to_usize();
-
-        // Align offset
-        let misalignment = offset_usize % align;
-        let aligned_offset =
-            if misalignment != 0 { offset_usize + align - misalignment } else { offset_usize };
-
-        // Check space
-        if aligned_offset + total_size > LEN {
-            return None;
-        }
-
-        self.offset = Idx::try_from(aligned_offset).ok()?;
-
-        // Initialize elements
-        unsafe {
-            let dst = self.storage.as_mut_ptr().add(aligned_offset) as *mut T;
-            let count: usize = count.to_usize();
-            for i in 0..count {
-                ptr::write(dst.add(i), f(i));
-            }
-        }
-
-        let slice = Slice::new(self.offset, count, self.generation, self.arena_id);
-
-        self.offset = self.offset + Idx::try_from(total_size).ok()?;
-
-        Some(slice)
     }
 
     /// Allocate slice with default values
-    pub fn alloc_slice<T>(&mut self, count: Idx) -> ArenaResult<Slice<T, Idx, Marker>>
+    pub fn alloc_slice<T>(&mut self, len: usize) -> ArenaRes<Slice<T, I, M>>
     where
         T: Default,
     {
-        self.alloc_slice_from_fn(count, |_| T::default())
+        self.alloc_slice_from_fn(len, |_| T::default())
     }
 
-    /// Allocate slice with default values (unchecked - returns Option for performance)
-    pub fn alloc_slice_unchecked<T>(&mut self, count: Idx) -> Option<Slice<T, Idx, Marker>>
+    /// Allocate slice from iterator
+    pub fn alloc_slice_from_iter<T>(&mut self, iter: I) -> ArenaRes<Slice<T, I, M>>
     where
-        T: Default,
+        I: IntoIterator<Item = T>,
+        I::IntoIter: ExactSizeIterator,
     {
-        self.alloc_slice_from_fn_unchecked(count, |_| T::default())
+        let mut iter = iter.into_iter();
+        let len = iter.len();
+
+        self.alloc_slice_from_fn(len, |_| iter.next().expect("ExactSizeIterator length mismatch"))
     }
 
     /// Allocate uninitialized slice
-    pub fn alloc_slice_uninit<T>(&mut self, count: Idx) -> ArenaResult<Slice<T, Idx, Marker>> {
-        if count == Idx::zero() {
+    pub fn alloc_slice_uninit<T>(&mut self, len: usize) -> ArenaRes<Slice<T, I, M>> {
+        if len == 0 {
             return Ok(Slice::new(
                 self.offset,
-                Idx::try_from(0).map_err(|_| ArenaError::IndexConversion)?,
+                I::try_from(0).map_err(|_| ArenaErr::IndexConversion)?,
                 self.generation,
                 self.arena_id,
             ));
@@ -259,7 +176,7 @@ where
 
         let size = size_of::<T>();
         let align = align_of::<T>();
-        let total_size = size * count.to_usize();
+        let total_size = size * len;
         let offset_usize: usize = self.offset.to_usize();
 
         // Align offset
@@ -269,81 +186,43 @@ where
 
         // Check space
         if aligned_offset + total_size > LEN {
-            return Err(ArenaError::OutOfSpace {
+            return Err(ArenaErr::OutOfSpace {
                 requested: total_size,
-                available: LEN - aligned_offset
+                available: LEN - aligned_offset,
             });
         }
 
-        self.offset = Idx::try_from(aligned_offset).map_err(|_| ArenaError::IndexConversion)?;
+        self.offset = I::try_from(aligned_offset).map_err(|_| ArenaErr::IndexConversion)?;
 
-        let slice = Slice::new(self.offset, count, self.generation, self.arena_id);
+        let slice = Slice::new(
+            self.offset,
+            I::try_from(len).map_err(|_| ArenaErr::IndexConversion)?,
+            self.generation,
+            self.arena_id,
+        );
 
-        self.offset = self.offset + Idx::try_from(total_size).map_err(|_| ArenaError::IndexConversion)?;
+        self.offset =
+            self.offset + I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?;
 
         Ok(slice)
-    }
-
-    /// Allocate uninitialized slice (unchecked - returns Option for performance)
-    pub fn alloc_slice_uninit_unchecked<T>(&mut self, count: Idx) -> Option<Slice<T, Idx, Marker>> {
-        if count == Idx::zero() {
-            return Some(Slice::new(
-                self.offset,
-                Idx::try_from(0).ok()?,
-                self.generation,
-                self.arena_id,
-            ));
-        }
-
-        let size = size_of::<T>();
-        let align = align_of::<T>();
-        let total_size = size * count.to_usize();
-        let offset_usize: usize = self.offset.to_usize();
-
-        // Align offset
-        let misalignment = offset_usize % align;
-        let aligned_offset =
-            if misalignment != 0 { offset_usize + align - misalignment } else { offset_usize };
-
-        // Check space
-        if aligned_offset + total_size > LEN {
-            return None;
-        }
-
-        self.offset = Idx::try_from(aligned_offset).ok()?;
-
-        let slice = Slice::new(self.offset, count, self.generation, self.arena_id);
-
-        self.offset = self.offset + Idx::try_from(total_size).ok()?;
-
-        Some(slice)
-    }
-
-    /// Allocate all of remaining space with a single slice
-    pub fn fill_with_slice<T>(&mut self) -> ArenaResult<Slice<T, Idx, Marker>>
-    where
-        T: Default,
-    {
-        let count = Idx::from_usize_checked(self.remaining() / size_of::<T>()).ok_or(ArenaError::IndexConversion)?;
-        self.alloc_slice_from_fn(count, |_| T::default())
     }
 
     /// Validate an TempID for safe access
     #[inline]
-    fn validate_id<T>(&self, id: &TempID<T, Idx, Marker>) -> ArenaResult<()> {
+    fn validate_id<T>(&self, id: &TempID<T, I, M>) -> ArenaRes<()> {
         // Check arena ID first (cross-arena safety)
         if id.arena_id != self.arena_id {
-            return Err(ArenaError::CrossArenaAccess {
+            return Err(ArenaErr::CrossArenaAccess {
                 expected_id: self.arena_id,
-                found_id: id.arena_id
+                found_id: id.arena_id,
             });
         }
 
         // Check generation (temporal safety)
         if id.generation != self.generation {
-            return Err(ArenaError::InvalidGeneration {
+            return Err(ArenaErr::InvalidGeneration {
                 expected: self.generation,
-                found: id.generation
+                found: id.generation,
             });
         }
 
@@ -352,12 +231,12 @@ where
 
         // Bounds check
         if id_end > offset_usize {
-            return Err(ArenaError::InvalidBounds);
+            return Err(ArenaErr::InvalidBounds);
         }
 
         // Size check
         if id.size.to_usize() != size_of::<T>() {
-            return Err(ArenaError::InvalidBounds);
+            return Err(ArenaErr::InvalidBounds);
         }
 
         Ok(())
@@ -365,7 +244,7 @@ where
 
     /// Get reference to value (safe - checks generation and arena)
     #[inline]
-    pub fn get<T>(&self, id: &TempID<T, Idx, Marker>) -> ArenaResult<&T> {
+    pub fn get<T>(&self, id: &TempID<T, I, M>) -> ArenaRes<&T> {
         self.validate_id(id)?;
         unsafe {
             let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
@@ -375,7 +254,7 @@ where
 
     /// Get mutable reference to value (safe - checks generation and arena)
     #[inline]
-    pub fn get_mut<T>(&mut self, id: &TempID<T, Idx, Marker>) -> ArenaResult<&mut T> {
+    pub fn get_mut<T>(&mut self, id: &TempID<T, I, M>) -> ArenaRes<&mut T> {
         self.validate_id(id)?;
         unsafe {
             let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;
@@ -384,48 +263,23 @@ where
     }
 
     /// Get reference to value (unsafe - no generation check)
-    /// Only use this if you're certain the handle is valid
-    #[inline]
-    pub unsafe fn get_unchecked<T>(&self, id: &TempID<T, Idx, Marker>) -> &T {
-        debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch in get_unchecked");
-        debug_assert_eq!(id.generation, self.generation, "Generation mismatch in get_unchecked");
-        unsafe {
-            let ptr = self.storage.as_ptr().add(id.offset.to_usize()) as *const T;
-            &*ptr
-        }
-    }
-
-    /// Get mutable reference to value (unsafe - no generation check)
-    /// Only use this if you're certain the handle is valid
-    #[inline]
-    pub unsafe fn get_unchecked_mut<T>(&mut self, id: &TempID<T, Idx, Marker>) -> &mut T {
-        debug_assert_eq!(id.arena_id, self.arena_id, "Arena ID mismatch in get_unchecked_mut");
-        debug_assert_eq!(
-            id.generation, self.generation,
-            "Generation mismatch in get_unchecked_mut"
-        );
-        unsafe {
-            let ptr = self.storage.as_mut_ptr().add(id.offset.to_usize()) as *mut T;
-            &mut *ptr
-        }
-    }
 
     /// Validate a Slice for safe access
     #[inline]
-    fn validate_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> ArenaResult<()> {
+    fn validate_slice<T>(&self, slice: &Slice<T, I, M>) -> ArenaRes<()> {
         // Check arena ID first (cross-arena safety)
         if slice.arena_id != self.arena_id {
-            return Err(ArenaError::CrossArenaAccess {
+            return Err(ArenaErr::CrossArenaAccess {
                 expected_id: self.arena_id,
-                found_id: slice.arena_id
+                found_id: slice.arena_id,
             });
         }
 
         // Check generation (temporal safety)
         if slice.generation != self.generation {
-            return Err(ArenaError::InvalidGeneration {
+            return Err(ArenaErr::InvalidGeneration {
                 expected: self.generation,
-                found: slice.generation
+                found: slice.generation,
             });
         }
 
@@ -434,7 +288,7 @@ where
 
         // Bounds check
         if slice_end > offset_usize {
-            return Err(ArenaError::InvalidBounds);
+            return Err(ArenaErr::InvalidBounds);
         }
 
         Ok(())
@@ -442,7 +296,7 @@ where
 
     /// Get slice as slice (safe - checks generation and arena)
     #[inline]
-    pub fn get_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> ArenaResult<&[T]> {
+    pub fn get_slice<T>(&self, slice: &Slice<T, I, M>) -> ArenaRes<&[T]> {
         self.validate_slice(slice)?;
 
         if slice.len.to_usize() == 0 {
@@ -457,7 +311,7 @@ where
 
     /// Get slice as mutable slice (safe - checks generation and arena)
     #[inline]
-    pub fn get_slice_mut<T>(&mut self, slice: &Slice<T, Idx, Marker>) -> ArenaResult<&mut [T]> {
+    pub fn get_slice_mut<T>(&mut self, slice: &Slice<T, I, M>) -> ArenaRes<&mut [T]> {
         self.validate_slice(slice)?;
 
         if slice.len.to_usize() == 0 {
@@ -470,53 +324,10 @@ where
         }
     }
 
-    /// Get slice as slice (unsafe - no generation check)
-    /// Only use this if you're certain the handle is valid
-    #[inline]
-    pub unsafe fn get_slice_unchecked<T>(&self, slice: &Slice<T, Idx, Marker>) -> &[T] {
-        debug_assert_eq!(slice.arena_id, self.arena_id, "Arena ID mismatch in get_slice_unchecked");
-        debug_assert_eq!(
-            slice.generation, self.generation,
-            "Generation mismatch in get_slice_unchecked"
-        );
-
-        if slice.len.to_usize() == 0 {
-            return &[];
-        }
-
-        unsafe {
-            let ptr = self.storage.as_ptr().add(slice.offset.to_usize()) as *const T;
-            core::slice::from_raw_parts(ptr, slice.len.to_usize())
-        }
-    }
-
-    /// Get slice as mutable slice (unsafe - no generation check)
-    /// Only use this if you're certain the handle is valid
-    #[inline]
-    pub unsafe fn get_slice_unchecked_mut<T>(&mut self, slice: &Slice<T, Idx, Marker>) -> &mut [T] {
-        debug_assert_eq!(
-            slice.arena_id, self.arena_id,
-            "Arena ID mismatch in get_slice_unchecked_mut"
-        );
-        debug_assert_eq!(
-            slice.generation, self.generation,
-            "Generation mismatch in get_slice_unchecked_mut"
-        );
-
-        if slice.len.to_usize() == 0 {
-            return &mut [];
-        }
-
-        unsafe {
-            let ptr = self.storage.as_mut_ptr().add(slice.offset.to_usize()) as *mut T;
-            core::slice::from_raw_parts_mut(ptr, slice.len.to_usize())
-        }
-    }
-
     /// Clear arena (doesn't drop values!)
     pub fn clear(&mut self) {
-        self.offset = Idx::try_from(0).unwrap_or_else(|_| panic!("Idx too small"));
-        self.tail_offset = Idx::try_from(LEN).unwrap_or_else(|_| panic!("Idx too small for LEN"));
+        self.offset = I::try_from(0).unwrap_or_else(|_| panic!("I too small"));
+        self.tail_offset = I::try_from(LEN).unwrap_or_else(|_| panic!("I too small for LEN"));
         self.generation = self.generation.wrapping_add(1);
     }
 
@@ -544,20 +355,9 @@ where
     /// All handles created after this point become invalid
     pub fn restore_to(&mut self, offset: usize) {
         if offset <= LEN {
-            self.offset =
-                Idx::try_from(offset).unwrap_or_else(|_| panic!("Invalid restore offset"));
+            self.offset = I::try_from(offset).unwrap_or_else(|_| panic!("Invalid restore offset"));
             self.generation = self.generation.wrapping_add(1);
         }
-    }
-
-    /// Check if a handle is valid for this arena
-    pub fn is_valid<T>(&self, id: &TempID<T, Idx, Marker>) -> bool {
-        self.validate_id(id).is_ok()
-    }
-
-    /// Check if a slice handle is valid for this arena
-    pub fn is_slice_valid<T>(&self, slice: &Slice<T, Idx, Marker>) -> bool {
-        self.validate_slice(slice).is_ok()
     }
 
     /// Get this arena's unique ID
@@ -566,7 +366,7 @@ where
     }
 
     // Iterators
-    pub fn iter_slice<T>(&self, slice: &Slice<T, Idx, Marker>) -> ArenaResult<Iter<'_, T>> {
+    pub fn iter_slice<T>(&self, slice: &Slice<T, I, M>) -> ArenaRes<Iter<'_, T>> {
         self.validate_slice(slice)?;
 
         if slice.len.to_usize() == 0 {
@@ -582,10 +382,10 @@ where
 
     pub fn iter_slice_range<T>(
         &self,
-        slice: &Slice<T, Idx, Marker>,
-        start: Idx,
-        end: Idx,
-    ) -> ArenaResult<Iter<'_, T>> {
+        slice: &Slice<T, I, M>,
+        start: I,
+        end: I,
+    ) -> ArenaRes<Iter<'_, T>> {
         self.validate_slice(slice)?;
 
         let start_usize: usize = start.to_usize();
@@ -593,7 +393,7 @@ where
         let len_usize: usize = slice.len.to_usize();
 
         if start_usize > end_usize || end_usize > len_usize {
-            return Err(ArenaError::InvalidBounds);
+            return Err(ArenaErr::InvalidBounds);
         }
 
         if start_usize == end_usize {
@@ -608,26 +408,34 @@ where
     }
 
     /// Internal method to allocate from tail (backwards from end)
-    fn tail_alloc_bytes(&mut self, size: Idx) -> ArenaResult<Idx> {
+    fn tail_alloc_bytes(&mut self, size: I) -> ArenaRes<I> {
         let size_usize = size.to_usize();
         let current_tail = self.tail_offset.to_usize();
         let front_used = self.offset.to_usize();
 
         if current_tail < size_usize || (current_tail - size_usize) < front_used {
-            return Err(ArenaError::OutOfSpace { requested: size_usize, available: current_tail - front_used });
+            return Err(ArenaErr::OutOfSpace {
+                requested: size_usize,
+                available: current_tail - front_used,
+            });
         }
 
         let new_tail_offset = current_tail - size_usize;
-        self.tail_offset = Idx::try_from(new_tail_offset).map_err(|_| ArenaError::IndexConversion)?;
-        Ok(Idx::try_from(new_tail_offset).map_err(|_| ArenaError::IndexConversion)?)
+        self.tail_offset = I::try_from(new_tail_offset).map_err(|_| ArenaErr::IndexConversion)?;
+        Ok(I::try_from(new_tail_offset).map_err(|_| ArenaErr::IndexConversion)?)
     }
 
     /// Internal method to copy slice data via tail allocation
-    pub(crate) fn copy_slice_via_tail<T>(&mut self, source_slice: &Slice<T, Idx, Marker>, used_len: Idx) -> ArenaResult<Slice<T, Idx, Marker>>
+    pub(crate) fn copy_slice_via_tail<T>(
+        &mut self,
+        source_slice: &Slice<T, I, M>,
+        used_len: I,
+    ) -> ArenaRes<Slice<T, I, M>>
     where
         T: Copy,
     {
-        let size_bytes = Idx::try_from(used_len.to_usize() * core::mem::size_of::<T>()).map_err(|_| ArenaError::IndexConversion)?;
+        let size_bytes = I::try_from(used_len.to_usize() * core::mem::size_of::<T>())
+            .map_err(|_| ArenaErr::IndexConversion)?;
 
         // Validate slice first
         self.validate_slice(source_slice)?;
@@ -649,21 +457,20 @@ where
         }
 
         // Allocate final destination normally
-        let dest_slice = self.alloc_slice_from_fn(used_len, |i| {
-            unsafe { tail_ptr.add(i).read() }
-        })?;
+        let dest_slice =
+            self.alloc_slice_from_fn(used_len.to_usize(), |i| unsafe { tail_ptr.add(i).read() })?;
 
         // Clear tail allocation
-        self.tail_offset = Idx::try_from(LEN).map_err(|_| ArenaError::IndexConversion)?;
+        self.tail_offset = I::try_from(LEN).map_err(|_| ArenaErr::IndexConversion)?;
 
         Ok(dest_slice)
     }
 }
 
 // Default implementation
-impl<const LEN: usize, Idx, Marker> Default for Arena<LEN, Idx, Marker>
+impl<const LEN: usize, I, M> Default for Arena<LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn default() -> Self {
         Self::new()

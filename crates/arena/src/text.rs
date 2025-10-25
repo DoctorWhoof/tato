@@ -2,19 +2,19 @@
 mod debug_buffer;
 use debug_buffer::*;
 
-use crate::{Arena, ArenaError, ArenaIndex, ArenaResult, Buffer, Slice};
+use crate::{Arena, ArenaErr, ArenaIndex, ArenaRes, Buffer, Slice};
 use core::fmt::Write;
 
 /// Text stored as bytes in the arena
 #[derive(Debug, Clone)]
-pub struct Text<Idx = u32> {
-    pub slice: Slice<u8, Idx>,
+pub struct Text<I = u32> {
+    pub slice: Slice<u8, I>,
 }
 
 /// Unnalocated Text (will fail any attempt to obtain its data from an arena)
-impl<Idx> Default for Text<Idx>
+impl<I> Default for Text<I>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn default() -> Self {
         Self { slice: Default::default() }
@@ -23,9 +23,9 @@ where
 
 /// Implementation for "Slice<u8>"" specifically to add text functionality. You can convert to and from
 /// &str, and use [Text::format] for very basic message+value formatting in no_std environments.
-impl<Idx> Text<Idx>
+impl<I> Text<I>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     /// Get the length of the text in bytes
     pub fn len(&self) -> usize {
@@ -34,59 +34,59 @@ where
 
     /// Check if the text is empty
     pub fn is_empty(&self) -> bool {
-        self.slice.len() == Idx::zero()
+        self.slice.len() == I::zero()
     }
 
     /// Get the text directly as a u8 slice
     pub fn as_slice<'a, const LEN: usize>(
         &self,
-        arena: &'a Arena<LEN, Idx>,
-    ) -> ArenaResult<&'a [u8]> {
+        arena: &'a Arena<LEN, I>,
+    ) -> ArenaRes<&'a [u8]> {
         arena.get_slice(&self.slice)
     }
 
     /// Get the text as &str (requires arena for safety)
     /// Returns an Error if the bytes are not valid UTF-8
-    pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, Idx>) -> ArenaResult<&'a str> {
+    pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, I>) -> ArenaRes<&'a str> {
         let bytes = arena.get_slice(&self.slice)?;
         if let Ok(value) = core::str::from_utf8(bytes) {
             Ok(value)
         } else {
-            Err(ArenaError::InvalidUTF8)
+            Err(ArenaErr::InvalidUTF8)
         }
     }
 
     /// Create text from a string slice
-    pub fn from_str<const LEN: usize>(arena: &mut Arena<LEN, Idx>, s: &str) -> ArenaResult<Self> {
+    pub fn from_str<const LEN: usize>(arena: &mut Arena<LEN, I>, s: &str) -> ArenaRes<Self> {
         let bytes = s.as_bytes();
-        let len = Idx::from_usize_checked(s.len()).ok_or(ArenaError::IndexConversion)?;
+        let len = s.len();
         let slice = arena.alloc_slice_from_fn(len, |i| bytes[i])?;
         Ok(Self { slice })
     }
 
     /// Create text from a Buffer<u8>
     pub fn from_buffer<const LEN: usize>(
-        arena: &mut Arena<LEN, Idx>,
-        buffer: &Buffer<u8, Idx>,
-    ) -> ArenaResult<Self> {
-        let used_len = Idx::from_usize_checked(buffer.len()).ok_or(ArenaError::IndexConversion)?;
+        arena: &mut Arena<LEN, I>,
+        buffer: &Buffer<u8, I>,
+    ) -> ArenaRes<Self> {
+        let used_len = I::from_usize_checked(buffer.len()).ok_or(ArenaErr::IndexConversion)?;
         let slice = arena.copy_slice_via_tail(&buffer.slice, used_len)?;
         Ok(Self { slice })
     }
 
     /// Create text from a valid (but non-zero) ASCII slice
     pub fn from_bytes<const LEN: usize>(
-        arena: &mut Arena<LEN, Idx>,
+        arena: &mut Arena<LEN, I>,
         bytes: &[u8],
-    ) -> ArenaResult<Self> {
-        let mut len = Idx::zero();
+    ) -> ArenaRes<Self> {
+        let mut len = 0;
         for i in 0..bytes.len() {
             let value = bytes[i];
             if value > 0 {
                 if value.is_ascii() {
-                    len = Idx::from_usize_checked(i + 1).unwrap()
+                    len = i + 1;
                 } else {
-                    return Result::Err(ArenaError::InvalidUTF8);
+                    return Result::Err(ArenaErr::InvalidUTF8);
                 }
             } else {
                 break;
@@ -98,12 +98,12 @@ where
 
     /// Create text from a function that generates bytes
     pub fn from_fn<const LEN: usize, F>(
-        arena: &mut Arena<LEN, Idx>,
-        length: Idx,
+        arena: &mut Arena<LEN, I>,
+        length: usize,
         func: F,
-    ) -> ArenaResult<Self>
+    ) -> ArenaRes<Self>
     where
-        F: FnMut(usize) -> u8,
+        F: Fn(usize) -> u8,
     {
         let slice = arena.alloc_slice_from_fn(length, func)?;
         Ok(Self { slice })
@@ -111,9 +111,9 @@ where
 
     /// Join multiple text instances into a single text. Will fail for lengths over 1Kb.
     pub fn join<const LEN: usize>(
-        arena: &mut Arena<LEN, Idx>,
-        sources: &[Text<Idx>],
-    ) -> ArenaResult<Self> {
+        arena: &mut Arena<LEN, I>,
+        sources: &[Text<I>],
+    ) -> ArenaRes<Self> {
         if sources.is_empty() {
             return Ok(Self::default());
         }
@@ -123,10 +123,10 @@ where
         for text in sources {
             total_len += text.slice.len().to_usize();
         }
-        let final_len = Idx::from_usize_checked(total_len).ok_or(ArenaError::IndexConversion)?;
+        let final_len = total_len;
 
         // Use a temp arena to collect all the bytes, then copy to dest arena
-        let mut temp_arena = Arena::<1024, Idx>::new();
+        let mut temp_arena = Arena::<1024, I>::new();
         let temp_slice = temp_arena.alloc_slice_from_fn(final_len, |i| {
             // Find which source this byte belongs to
             let mut offset = 0usize;
@@ -150,11 +150,11 @@ where
 
     /// Join multiple byte slices into a single text.
     pub fn join_bytes<const LEN: usize>(
-        arena: &mut Arena<LEN, Idx>,
+        arena: &mut Arena<LEN, I>,
         slices: &[&[u8]],
-    ) -> ArenaResult<Self> {
+    ) -> ArenaRes<Self> {
         if slices.is_empty() {
-            let empty_slice = arena.alloc_slice::<u8>(Idx::zero())?;
+            let empty_slice = arena.alloc_slice::<u8>(0)?;
             return Ok(Self { slice: empty_slice });
         }
 
@@ -163,10 +163,10 @@ where
         for slice in slices {
             total_len += slice.len();
         }
-        let final_len = Idx::from_usize_checked(total_len).ok_or(ArenaError::IndexConversion)?;
+        let final_len = total_len;
 
         // Allocate and fill the result slice
-        let result_slice = arena.alloc_slice_from_fn(final_len, |i| {
+        let slice = arena.alloc_slice_from_fn(final_len, |i| {
             // Find which source slice this byte belongs to
             let mut offset = 0usize;
             for slice in slices {
@@ -178,17 +178,17 @@ where
             0 // Should never reach here
         })?;
 
-        Ok(Self { slice: result_slice })
+        Ok(Self { slice })
     }
 
     /// Create formatted text using Debug trait
     /// Replaces "{:?}" placeholders with values by index, with message2 appended after
     pub fn format_dbg<const LEN: usize, M1, M2, V>(
-        arena: &mut Arena<LEN, Idx>,
+        arena: &mut Arena<LEN, I>,
         message1: M1,
         values: &[V],
         message2: M2,
-    ) -> ArenaResult<Self>
+    ) -> ArenaRes<Self>
     where
         M1: AsRef<str>,
         M2: AsRef<str>,
@@ -225,8 +225,7 @@ where
         debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
-        let total_len =
-            Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
+        let total_len = formatted_str.len();
 
         let slice = arena.alloc_slice_from_fn(total_len, |i| formatted_str.as_bytes()[i])?;
         Ok(Self { slice })
@@ -235,11 +234,11 @@ where
     /// Create formatted text using Display trait
     /// Replaces "{}" and "{:.N}" placeholders with values by index, with message2 appended after
     pub fn format_display<const LEN: usize, M1, M2, V>(
-        arena: &mut Arena<LEN, Idx>,
+        arena: &mut Arena<LEN, I>,
         message1: M1,
         values: &[V],
         message2: M2,
-    ) -> ArenaResult<Self>
+    ) -> ArenaRes<Self>
     where
         M1: AsRef<str>,
         M2: AsRef<str>,
@@ -276,8 +275,7 @@ where
         debug_buf.write_str(message2_str).expect("Failed to append second message");
 
         let formatted_str = debug_buf.as_str();
-        let total_len =
-            Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
+        let total_len = formatted_str.len();
 
         let slice = arena.alloc_slice_from_fn(total_len, |i| formatted_str.as_bytes()[i])?;
         Ok(Self { slice })
@@ -287,11 +285,11 @@ where
     /// Supports format specifiers: "{}", "{:?}", "{:.N}"
     /// Requires both Debug and Display traits
     pub fn format<const LEN: usize, M1, M2, V>(
-        arena: &mut Arena<LEN, Idx>,
+        arena: &mut Arena<LEN, I>,
         message1: M1,
         value: V,
         message2: M2,
-    ) -> ArenaResult<Self>
+    ) -> ArenaRes<Self>
     where
         M1: AsRef<str>,
         M2: AsRef<str>,
@@ -305,17 +303,16 @@ where
         // Format the complete message with value into a buffer
         let mut debug_buf = DebugBuffer::new();
         if debug_buf.format_message(message1_str, &value).is_err() {
-            return Err(ArenaError::InvalidBounds);
+            return Err(ArenaErr::InvalidBounds);
         }
 
         // Append second message
         if debug_buf.write_str(message2_str).is_err() {
-            return Err(ArenaError::InvalidBounds);
+            return Err(ArenaErr::InvalidBounds);
         }
 
         let formatted_str = debug_buf.as_str();
-        let total_len =
-            Idx::from_usize_checked(formatted_str.len()).ok_or(ArenaError::IndexConversion)?;
+        let total_len = formatted_str.len();
 
         let slice = arena.alloc_slice_from_fn(total_len, |i| formatted_str.as_bytes()[i])?;
         Ok(Self { slice })

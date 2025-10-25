@@ -345,7 +345,7 @@ impl Tato {
         let cells_slice = self
             .assets
             .arena
-            .alloc_slice_from_fn(map.len() as u16, |i| {
+            .alloc_slice_from_fn(map.len(), |i| {
                 let cell = &map.cells()[i];
                 // let mut flags = cell.flags;
                 // flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
@@ -434,7 +434,7 @@ impl Tato {
         let frames = self
             .assets
             .arena
-            .alloc_slice_from_fn(anim.frames.len() as u16, |i| anim.frames[i])
+            .alloc_slice_from_fn(anim.frames.len(), |i| anim.frames[i])
             .map_err(TatoError::Arena)?;
         self.assets.anim_entries[next_index as usize] =
             AnimEntry { frames, fps: anim.fps, rep: anim.rep, strip: anim.strip };

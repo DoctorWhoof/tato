@@ -1,7 +1,7 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
-use crate::arena::{Arena, TempID, ArenaResult, Buffer, Text};
+use crate::arena::{Arena, TempID, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
 use crate::video::{
@@ -141,7 +141,7 @@ impl Dashboard {
     pub fn draw_ops<'a, const LEN: usize>(
         &self,
         frame_arena: &'a Arena<LEN>,
-    ) -> ArenaResult<impl Iterator<Item = &'a DrawOp>> {
+    ) -> ArenaRes<impl Iterator<Item = &'a DrawOp>> {
         self.ops
             .items(frame_arena) //
             .map(|iter| iter.filter_map(|id| frame_arena.get(id).ok()))
@@ -208,7 +208,7 @@ impl Dashboard {
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
     pub fn poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
-        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len() as u32).unwrap();
+        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len()).unwrap();
         let slice = self.debug_arena.get_slice_mut(&handle).unwrap();
         slice.copy_from_slice(points);
         if world_space {

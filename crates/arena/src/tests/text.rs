@@ -176,7 +176,7 @@ fn test_text_from_buffer_basic() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Create a buffer with some text data
-    let mut buffer = Buffer::new(&mut arena, 20u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 20).unwrap();
     let test_str = "Hello, world!";
 
     // Fill buffer with test data
@@ -198,7 +198,7 @@ fn test_text_from_buffer_empty() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Create an empty buffer
-    let buffer = Buffer::new(&mut arena, 10u32).unwrap();
+    let buffer = Buffer::new(&mut arena, 10).unwrap();
 
     // Convert empty buffer to text
     let text = Text::from_buffer(&mut arena, &buffer).unwrap();
@@ -215,7 +215,7 @@ fn test_text_from_buffer_partial_usage() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Create a buffer with large capacity but only use part of it
-    let mut buffer = Buffer::new(&mut arena, 100u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 100).unwrap();
     let test_str = "Hi!";
 
     // Only fill first few bytes
@@ -236,10 +236,10 @@ fn test_text_from_buffer_sequential_operations() {
     let mut arena: Arena<512> = Arena::new();
 
     // First, create some regular allocations to use up front space
-    let _some_data = arena.alloc_slice_from_fn(100u32, |i| i as u8).unwrap();
+    let _some_data = arena.alloc_slice_from_fn(100, |i| i as u8).unwrap();
 
     // Create a buffer
-    let mut buffer = Buffer::new(&mut arena, 50u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 50).unwrap();
     let test_str = "Test string";
 
     for &byte in test_str.as_bytes() {
@@ -253,7 +253,7 @@ fn test_text_from_buffer_sequential_operations() {
     assert_eq!(text_str, test_str);
 
     // Should be able to do more allocations afterward
-    let _more_data = arena.alloc_slice_from_fn(20u32, |i| (i + 42) as u8).unwrap();
+    let _more_data = arena.alloc_slice_from_fn(20, |i| (i + 42) as u8).unwrap();
 }
 
 #[test]
@@ -261,10 +261,10 @@ fn test_text_from_buffer_near_capacity() {
     let mut arena: Arena<256> = Arena::new();
 
     // Fill up most of the arena first
-    let _filler = arena.alloc_slice_from_fn(200u32, |i| i as u8).unwrap();
+    let _filler = arena.alloc_slice_from_fn(200, |i| i as u8).unwrap();
 
     // Create a small buffer
-    let mut buffer = Buffer::new(&mut arena, 10u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 10).unwrap();
     let test_str = "Small";
 
     for &byte in test_str.as_bytes() {
@@ -283,10 +283,10 @@ fn test_text_from_buffer_out_of_space() {
     let mut arena: Arena<32> = Arena::new(); // Very small arena
 
     // Fill up most of the arena
-    let _filler = arena.alloc_slice_from_fn(20u32, |i| i as u8).unwrap();
+    let _filler = arena.alloc_slice_from_fn(20, |i| i as u8).unwrap();
 
     // Create a buffer with the remaining space
-    let mut buffer = Buffer::new(&mut arena, 8u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 8).unwrap();
     let test_str = "Hello"; // 5 bytes
 
     for &byte in test_str.as_bytes() {
@@ -298,7 +298,7 @@ fn test_text_from_buffer_out_of_space() {
     // But leave only ~4 bytes available
     let remaining = arena.remaining();
     if remaining > 2 {
-        let fill_size = u32::try_from(remaining - 2).unwrap();
+        let fill_size = remaining - 2;
         let _more_filler = arena.alloc_slice_from_fn(fill_size, |i| (i + 200) as u8).unwrap();
     }
 
@@ -307,7 +307,7 @@ fn test_text_from_buffer_out_of_space() {
     assert!(result.is_err());
 
     match result {
-        Err(ArenaError::OutOfSpace { requested: _, available: _ }) => {
+        Err(ArenaErr::OutOfSpace { requested: _, available: _ }) => {
             // This is expected
         }
         _ => panic!("Expected OutOfSpace error"),
@@ -319,7 +319,7 @@ fn test_text_from_buffer_utf8_validation() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Create buffer with valid UTF-8 bytes
-    let mut buffer = Buffer::new(&mut arena, 20u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 20).unwrap();
     let utf8_str = "Hello 世界! 🚀";
 
     for &byte in utf8_str.as_bytes() {
@@ -337,7 +337,7 @@ fn test_text_from_buffer_invalid_utf8() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Create buffer with invalid UTF-8 sequence
-    let mut buffer = Buffer::new(&mut arena, 10u32).unwrap();
+    let mut buffer = Buffer::new(&mut arena, 10).unwrap();
 
     // Add some valid bytes, then invalid UTF-8
     buffer.push(&mut arena, b'H').unwrap();
@@ -362,7 +362,7 @@ fn test_text_from_buffer_multiple_conversions() {
     let mut texts = [Text::default(), Text::default(), Text::default()];
 
     for (i, test_str) in test_strings.iter().enumerate() {
-        let mut buffer = Buffer::new(&mut arena, 20u32).unwrap();
+        let mut buffer = Buffer::new(&mut arena, 20).unwrap();
 
         for &byte in test_str.as_bytes() {
             buffer.push(&mut arena, byte).unwrap();

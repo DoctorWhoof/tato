@@ -1,15 +1,15 @@
 use super::*;
 
-pub struct DrainIterator<'a, T, const LEN: usize, Idx = u32, Marker = ()> {
-    pub(super) arena: &'a Arena<LEN, Idx, Marker>,
-    pub(super)slice: Slice<T, Idx, Marker>,
+pub struct DrainIterator<'a, T, const LEN: usize, I = u32, M = ()> {
+    pub(super) arena: &'a Arena<LEN, I, M>,
+    pub(super)slice: Slice<T, I, M>,
     pub(super)current: usize,
     pub(super)end: usize,
 }
 
-impl<'a, T, const LEN: usize, Idx, Marker> Iterator for DrainIterator<'a, T, LEN, Idx, Marker>
+impl<'a, T, const LEN: usize, I, M> Iterator for DrainIterator<'a, T, LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     type Item = T;
 
@@ -30,9 +30,9 @@ where
     }
 }
 
-impl<'a, T, const LEN: usize, Idx, Marker> ExactSizeIterator for DrainIterator<'a, T, LEN, Idx, Marker>
+impl<'a, T, const LEN: usize, I, M> ExactSizeIterator for DrainIterator<'a, T, LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn len(&self) -> usize {
         self.end - self.current

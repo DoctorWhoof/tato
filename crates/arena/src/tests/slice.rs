@@ -64,7 +64,7 @@ fn test_slice_generational_safety() {
 
     // Should work
     assert!(arena.get_slice(&slice).is_ok());
-    assert!(arena.is_slice_valid(&slice));
+    // assert!(arena.is_slice_valid(&slice)); // is_slice_valid method removed
 
     // Clear arena
     arena.clear();
@@ -73,7 +73,7 @@ fn test_slice_generational_safety() {
 
     // Pool should be invalid
     assert!(arena.get_slice(&slice).is_err());
-    assert!(!arena.is_slice_valid(&slice));
+    // assert!(!arena.is_slice_valid(&slice)); // is_slice_valid method removed
 }
 
 #[test]

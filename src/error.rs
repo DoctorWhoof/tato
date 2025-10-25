@@ -1,5 +1,5 @@
 use core::fmt;
-use tato_arena::ArenaError;
+use tato_arena::ArenaErr;
 
 /// Convenience type alias (lets you omit "TatoError", so you can return
 /// "TatoResult<T>" instead of "Result<T, TatoError>")
@@ -27,7 +27,7 @@ pub enum TatoError {
     /// Invalid tilemap dimensions
     InvalidTilemapDimensions { len: usize, columns: u16 },
     /// Arena operation failed
-    Arena(ArenaError),
+    Arena(ArenaErr),
     /// Animation frames capacity exceeded
     AnimationFramesCapacityExceeded,
     /// Not enough space for animation frames
@@ -109,8 +109,8 @@ impl fmt::Display for TatoError {
     }
 }
 
-impl From<ArenaError> for TatoError {
-    fn from(value: ArenaError) -> Self {
+impl From<ArenaErr> for TatoError {
+    fn from(value: ArenaErr) -> Self {
         TatoError::Arena(value)
     }
 }
@@ -122,13 +122,13 @@ mod tests {
 
     #[test]
     fn test_arena_error_payload() {
-        // Test that TatoError::Arena can wrap ArenaError
-        let arena_error = ArenaError::OutOfSpace { requested: 256, available: 128 };
+        // Test that TatoError::Arena can wrap ArenaErr
+        let arena_error = ArenaErr::OutOfSpace { requested: 256, available: 128 };
         let tato_error = TatoError::Arena(arena_error);
 
         // Verify we can match on the wrapped error
         match tato_error {
-            TatoError::Arena(ArenaError::OutOfSpace { requested, available }) => {
+            TatoError::Arena(ArenaErr::OutOfSpace { requested, available }) => {
                 assert_eq!(requested, 256);
                 assert_eq!(available, 128);
             }
@@ -136,11 +136,11 @@ mod tests {
         }
 
         // Test generation mismatch error
-        let gen_error = ArenaError::InvalidGeneration { expected: 5, found: 3 };
+        let gen_error = ArenaErr::InvalidGeneration { expected: 5, found: 3 };
         let tato_gen_error = TatoError::Arena(gen_error);
 
         match tato_gen_error {
-            TatoError::Arena(ArenaError::InvalidGeneration { expected, found }) => {
+            TatoError::Arena(ArenaErr::InvalidGeneration { expected, found }) => {
                 assert_eq!(expected, 5);
                 assert_eq!(found, 3);
             }
@@ -148,11 +148,11 @@ mod tests {
         }
 
         // Test cross-arena access error
-        let cross_error = ArenaError::CrossArenaAccess { expected_id: 10, found_id: 20 };
+        let cross_error = ArenaErr::CrossArenaAccess { expected_id: 10, found_id: 20 };
         let tato_cross_error = TatoError::Arena(cross_error);
 
         match tato_cross_error {
-            TatoError::Arena(ArenaError::CrossArenaAccess { expected_id, found_id }) => {
+            TatoError::Arena(ArenaErr::CrossArenaAccess { expected_id, found_id }) => {
                 assert_eq!(expected_id, 10);
                 assert_eq!(found_id, 20);
             }

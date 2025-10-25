@@ -1,27 +1,27 @@
 use super::*;
 use core::marker::PhantomData;
 
-pub struct RingBufferIterator<'a, T, const LEN: usize, Idx, Marker> {
-    arena: &'a Arena<LEN, Idx, Marker>,
-    slice_offset: Idx,
-    slice_len: Idx,
+pub struct RingBufferIterator<'a, T, const LEN: usize, I, M> {
+    arena: &'a Arena<LEN, I, M>,
+    slice_offset: I,
+    slice_len: I,
     slice_generation: u32,
     slice_arena_id: u16,
-    head: Idx,
+    head: I,
     current: usize,
     back: usize,
     _phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T, const LEN: usize, Idx, Marker> RingBufferIterator<'a, T, LEN, Idx, Marker>
+impl<'a, T, const LEN: usize, I, M> RingBufferIterator<'a, T, LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     pub(super) fn new(
-        arena: &'a Arena<LEN, Idx, Marker>,
-        slice: &Slice<T, Idx, Marker>,
-        head: Idx,
-        len: Idx,
+        arena: &'a Arena<LEN, I, M>,
+        slice: &Slice<T, I, M>,
+        head: I,
+        len: I,
     ) -> Self {
         Self {
             arena,
@@ -37,9 +37,9 @@ where
     }
 }
 
-impl<'a, T: 'a, const LEN: usize, Idx, Marker> Iterator for RingBufferIterator<'a, T, LEN, Idx, Marker>
+impl<'a, T: 'a, const LEN: usize, I, M> Iterator for RingBufferIterator<'a, T, LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     type Item = &'a T;
 
@@ -63,18 +63,18 @@ where
     }
 }
 
-impl<'a, T: 'a, const LEN: usize, Idx, Marker> ExactSizeIterator for RingBufferIterator<'a, T, LEN, Idx, Marker>
+impl<'a, T: 'a, const LEN: usize, I, M> ExactSizeIterator for RingBufferIterator<'a, T, LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn len(&self) -> usize {
         self.back - self.current
     }
 }
 
-impl<'a, T: 'a, const LEN: usize, Idx, Marker> DoubleEndedIterator for RingBufferIterator<'a, T, LEN, Idx, Marker>
+impl<'a, T: 'a, const LEN: usize, I, M> DoubleEndedIterator for RingBufferIterator<'a, T, LEN, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.current >= self.back {

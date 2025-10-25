@@ -2,7 +2,6 @@
 
 pub use avgbuffer;
 pub use tato_arena as arena;
-pub use temp_arena;
 pub use tato_audio as audio;
 pub use tato_collision as collision;
 pub use tato_layout as layout;
@@ -43,5 +42,4 @@ pub mod prelude {
     pub use tato_pad::*;
     pub use tato_rng::*;
     pub use tato_video::*;
-    pub use temp_arena::*;
 }

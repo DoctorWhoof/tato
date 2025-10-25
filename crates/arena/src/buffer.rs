@@ -1,107 +1,107 @@
 use super::*;
-use crate::{ArenaError, ArenaResult};
+use crate::{ArenaErr, ArenaRes};
 use core::slice::Iter;
 
 mod drain;
 pub use drain::*;
 
 #[derive(Debug, Clone)]
-pub struct Buffer<T, Idx = u32, Marker = ()> {
-    pub slice: Slice<T, Idx, Marker>,
-    len: Idx, // Current number of elements used
+pub struct Buffer<T, I = u32, M = ()> {
+    pub slice: Slice<T, I, M>,
+    len: I, // Current number of elements used
 }
 
-impl<T, Idx, Marker> Default for Buffer<T, Idx, Marker>
+impl<T, I, M> Default for Buffer<T, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn default() -> Self {
         Self { slice: Default::default(), len: Default::default() }
     }
 }
 
-impl<T, Idx, Marker> Buffer<T, Idx, Marker>
+impl<T, I, M> Buffer<T, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     pub fn new<const LEN: usize>(
-        arena: &mut Arena<LEN, Idx, Marker>,
-        capacity: Idx,
-    ) -> ArenaResult<Self> {
-        let slice = arena.alloc_slice_uninit::<T>(capacity)?;
-        Ok(Self { slice, len: Idx::zero() })
+        arena: &mut Arena<LEN, I, M>,
+        capacity: I,
+    ) -> ArenaRes<Self> {
+        let slice = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
+        Ok(Self { slice, len: I::zero() })
     }
 
     pub fn from_fn<const LEN: usize, F>(
-        arena: &mut Arena<LEN, Idx, Marker>,
-        capacity: Idx,
+        arena: &mut Arena<LEN, I, M>,
+        capacity: I,
         func: F,
-    ) -> ArenaResult<Self>
+    ) -> ArenaRes<Self>
     where
-        F: FnMut(usize) -> T,
+        F: Fn(usize) -> T,
     {
-        let slice = arena.alloc_slice_from_fn(capacity, func)?;
+        let slice = arena.alloc_slice_from_fn(capacity.to_usize(), func)?;
         Ok(Self { slice, len: capacity })
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len == Idx::zero()
+        self.len == I::zero()
     }
 
     pub fn clear(&mut self) {
-        self.len = Idx::zero()
+        self.len = I::zero()
     }
 
     pub fn len(&self) -> usize {
         self.len.to_usize()
     }
 
-    pub fn capacity(&self) -> Idx {
+    pub fn capacity(&self) -> I {
         self.slice.capacity()
     }
 
-    pub fn remaining(&self) -> Idx {
+    pub fn remaining(&self) -> I {
         self.slice.capacity() - self.len
     }
 
-    pub fn used(&self) -> Idx {
+    pub fn used(&self) -> I {
         self.len
     }
 
     pub fn push<const LEN: usize>(
         &mut self,
-        arena: &mut Arena<LEN, Idx, Marker>,
+        arena: &mut Arena<LEN, I, M>,
         value: T,
-    ) -> ArenaResult<()> {
-        if self.slice.capacity() == Idx::zero() {
-            return Err(ArenaError::UnnallocatedObject);
+    ) -> ArenaRes<()> {
+        if self.slice.capacity() == I::zero() {
+            return Err(ArenaErr::UnnallocatedObject);
         }
         if self.len >= self.slice.capacity() {
-            return Err(ArenaError::CapacityExceeded);
+            return Err(ArenaErr::CapacityExceeded);
         }
         let slice = arena.get_slice_mut(&self.slice)?;
         slice[self.len.to_usize()] = value;
-        self.len += Idx::one();
+        self.len += I::one();
         Ok(())
     }
 
     pub fn pop<const LEN: usize>(
         &mut self,
-        arena: &Arena<LEN, Idx, Marker>,
+        arena: &Arena<LEN, I, M>,
     ) -> Option<T>
     where
         T: Copy,
     {
-        if self.len == Idx::zero() {
+        if self.len == I::zero() {
             return None;
         }
 
-        self.len -= Idx::one();
+        self.len -= I::one();
         let slice = arena.get_slice(&self.slice).expect("Buffer slice should always be valid");
         Some(slice[self.len.to_usize()])
     }
 
-    pub fn truncate(&mut self, new_len: Idx) {
+    pub fn truncate(&mut self, new_len: I) {
         if new_len >= self.len {
             return;
         }
@@ -110,7 +110,7 @@ where
 
     /// Resizes the buffer within the capacity boundaries. If new length is longer
     /// than the current, the new items are filled with the default value.
-    pub fn resize<const LEN: usize>(&mut self, arena: &mut Arena<LEN, Idx, Marker>, new_len: Idx)
+    pub fn resize<const LEN: usize>(&mut self, arena: &mut Arena<LEN, I, M>, new_len: I)
     where
         T: Default,
     {
@@ -129,16 +129,16 @@ where
 
     pub fn as_slice<'a, const LEN: usize>(
         &self,
-        arena: &'a Arena<LEN, Idx, Marker>,
-    ) -> ArenaResult<&'a [T]> {
+        arena: &'a Arena<LEN, I, M>,
+    ) -> ArenaRes<&'a [T]> {
         let full_slice = arena.get_slice(&self.slice)?;
         Ok(&full_slice[..self.len.to_usize()])
     }
 
     pub fn as_slice_mut<'a, const LEN: usize>(
         &self,
-        arena: &'a mut Arena<LEN, Idx, Marker>,
-    ) -> ArenaResult<&'a mut [T]> {
+        arena: &'a mut Arena<LEN, I, M>,
+    ) -> ArenaRes<&'a mut [T]> {
         let full_slice = arena.get_slice_mut(&self.slice)?;
         Ok(&mut full_slice[..self.len.to_usize()])
     }
@@ -147,19 +147,19 @@ where
     /// Helps to get around borrowing issues since the buffer and the text lines
     /// are in the same arena. "func" must return each individual sub-buffer.
     pub fn multi_buffer<const ARENA_LEN: usize>(
-        arena: &mut Arena<ARENA_LEN, Idx, Marker>,
-        sub_buffer_count: Idx,
-        sub_buffer_len: Idx,
-    ) -> ArenaResult<Buffer<Buffer<T, Idx, Marker>, Idx, Marker>>
+        arena: &mut Arena<ARENA_LEN, I, M>,
+        sub_buffer_count: I,
+        sub_buffer_len: I,
+    ) -> ArenaRes<Buffer<Buffer<T, I, M>, I, M>>
     where
         T: Default,
     {
         // Allocate temporary space in the arena for the buffers using MaybeUninit
-        let temp_slice = arena.alloc_slice_from_fn(sub_buffer_count, |_| {
-            core::mem::MaybeUninit::<Buffer<T, Idx, Marker>>::uninit()
+        let temp_slice = arena.alloc_slice_from_fn(sub_buffer_count.to_usize(), |_| {
+            core::mem::MaybeUninit::<Buffer<T, I, M>>::uninit()
         })?;
         let temp_ptr =
-            arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, Idx, Marker>;
+            arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, I, M>;
 
         // Initialize each buffer in the temporary space
         for i in 0..sub_buffer_count.to_usize() {
@@ -176,15 +176,15 @@ where
     // Iterators
     pub fn items<'a, const LEN: usize>(
         &self,
-        arena: &'a Arena<LEN, Idx, Marker>,
-    ) -> ArenaResult<Iter<'a, T>> {
-        arena.iter_slice_range(&self.slice, Idx::zero(), self.len)
+        arena: &'a Arena<LEN, I, M>,
+    ) -> ArenaRes<Iter<'a, T>> {
+        arena.iter_slice_range(&self.slice, I::zero(), self.len)
     }
 
     pub fn drain<'a, const LEN: usize>(
         &'a mut self,
-        arena: &'a Arena<LEN, Idx, Marker>,
-    ) -> DrainIterator<'a, T, LEN, Idx, Marker> {
+        arena: &'a Arena<LEN, I, M>,
+    ) -> DrainIterator<'a, T, LEN, I, M> {
         let end = self.len.to_usize();
         let iter = DrainIterator {
             arena,
@@ -197,7 +197,7 @@ where
             current: 0,
             end,
         };
-        self.len = Idx::zero();
+        self.len = I::zero();
         iter
     }
 }

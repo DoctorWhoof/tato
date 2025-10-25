@@ -4,25 +4,25 @@ use crate::ArenaIndex;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Slice<T, Idx = u32, Marker = ()> {
-    pub(crate) offset: Idx,
-    pub(crate) len: Idx,
+pub struct Slice<T, I = u32, M = ()> {
+    pub(crate) offset: I,
+    pub(crate) len: I,
     pub(crate) generation: u32,
     pub(crate) arena_id: u16,
-    pub(crate) _phantom: PhantomData<(T, Marker)>,
+    pub(crate) _phantom: PhantomData<(T, M)>,
 }
 
-impl<T, Idx, Marker> Slice<T, Idx, Marker>
+impl<T, I, M> Slice<T, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     /// Create a new Slice (internal use)
-    pub(crate) fn new(offset: Idx, len: Idx, generation: u32, arena_id: u16) -> Self {
+    pub(crate) fn new(offset: I, len: I, generation: u32, arena_id: u16) -> Self {
         Self { offset, len, generation, arena_id, _phantom: PhantomData }
     }
 
     /// Get element count
-    pub fn len(&self) -> Idx {
+    pub fn len(&self) -> I {
         self.len
     }
 
@@ -32,7 +32,7 @@ where
     }
 
     /// Get arena offset
-    pub fn offset(&self) -> Idx {
+    pub fn offset(&self) -> I {
         self.offset
     }
 
@@ -52,7 +52,7 @@ where
     }
 
     /// Get capacity as (used, total)
-    pub fn capacity(&self) -> Idx {
+    pub fn capacity(&self) -> I {
         self.len
     }
 
@@ -60,14 +60,14 @@ where
 
 }
 
-impl<T, Idx, Marker> Default for Slice<T, Idx, Marker>
+impl<T, I, M> Default for Slice<T, I, M>
 where
-    Idx: ArenaIndex,
+    I: ArenaIndex,
 {
     fn default() -> Self {
         Self {
-            offset: Idx::zero(),
-            len: Idx::zero(),
+            offset: I::zero(),
+            len: I::zero(),
             generation: 0,
             arena_id: 0,
             _phantom: PhantomData,

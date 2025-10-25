@@ -153,13 +153,13 @@ fn test_generational_safety() {
 
     // Old ID should be invalid
     assert!(arena.get(&id1).is_err());
-    assert!(!arena.is_valid(&id1));
+    // assert!(!arena.is_valid(&id1)); // is_valid method removed
 
     // New allocation should work
     let id2 = arena.alloc(100u32).unwrap();
     assert_eq!(id2.generation(), gen2);
     assert_eq!(*arena.get(&id2).unwrap(), 100);
-    assert!(arena.is_valid(&id2));
+    // assert!(arena.is_valid(&id2)); // is_valid method removed
 }
 
 #[test]
