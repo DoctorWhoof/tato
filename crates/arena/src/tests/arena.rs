@@ -181,3 +181,68 @@ fn test_type_markers() {
     // arena_a.get(&id_b); // Compile error!
     // arena_b.get(&id_a); // Compile error!
 }
+
+#[test]
+fn test_pop_functionality() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    // Test pop on empty arena
+    assert!(!arena.pop());
+
+    // Allocate some values
+    let id1 = arena.alloc(42u32).unwrap();
+    let id2 = arena.alloc(100u64).unwrap();
+    let id3 = arena.alloc(200u16).unwrap();
+
+    // All should be valid
+    assert_eq!(*arena.get(&id1).unwrap(), 42);
+    assert_eq!(*arena.get(&id2).unwrap(), 100);
+    assert_eq!(*arena.get(&id3).unwrap(), 200);
+
+    let used_before_pop = arena.used();
+
+    // Pop the last allocation
+    assert!(arena.pop());
+
+    // All IDs should now be invalid (generation was incremented)
+    assert!(arena.get(&id1).is_err());
+    assert!(arena.get(&id2).is_err());
+    assert!(arena.get(&id3).is_err());
+
+    // Used space should have decreased
+    assert!(arena.used() < used_before_pop);
+
+    // Allocate new values after pop
+    let new_id1 = arena.alloc(999u32).unwrap();
+    assert_eq!(*arena.get(&new_id1).unwrap(), 999);
+
+    // Pop again
+    assert!(arena.pop());
+    assert!(arena.get(&new_id1).is_err()); // new_id1 now invalid
+
+    // No more to pop
+    assert!(!arena.pop());
+}
+
+#[test]
+fn test_pop_with_slice() {
+    let mut arena: Arena<1024> = Arena::new();
+
+    let slice1 = arena.alloc_slice_from_fn(4, |i| i + 1).unwrap();
+    let slice2 = arena.alloc_slice_from_fn(2, |i| (i + 1) * 10).unwrap();
+
+    // Both should be valid
+    assert_eq!(arena.get_slice(&slice1).unwrap(), &[1, 2, 3, 4]);
+    assert_eq!(arena.get_slice(&slice2).unwrap(), &[10, 20]);
+
+    // Pop the last slice
+    assert!(arena.pop());
+
+    // Both slices should now be invalid (generation was incremented)
+    assert!(arena.get_slice(&slice1).is_err());
+    assert!(arena.get_slice(&slice2).is_err());
+
+    // Allocate new slice after pop
+    let new_slice = arena.alloc_slice_from_fn(3, |i| i * 2).unwrap();
+    assert_eq!(arena.get_slice(&new_slice).unwrap(), &[0, 2, 4]);
+}

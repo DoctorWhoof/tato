@@ -4,10 +4,18 @@ use core::ptr;
 use core::slice::Iter;
 use core::sync::atomic::{AtomicU16, Ordering};
 
-use crate::{ArenaErr, ArenaIndex, ArenaRes, Slice, ArenaId};
+use crate::{ArenaErr, ArenaId, ArenaIndex, ArenaRes, Slice};
 
 // Global counter for unique arena IDs (no-std compatible)
 static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
+
+#[derive(Debug, Clone, Copy)]
+struct RawAllocId<I> {
+    offset: I,
+    size: I,
+    generation: u32,
+    arena_id: u16,
+}
 
 /// Fixed-size arena with generational safety.
 /// LEN = bytes, I = handle size, M = type safety marker.
@@ -24,6 +32,8 @@ pub struct Arena<const LEN: usize, I = u32, M = ()> {
     generation: u32,
     /// Unique arena ID for cross-arena safety
     arena_id: u16,
+    /// Last allocation for pop() support
+    last_alloc: Option<RawAllocId<I>>,
     /// Zero-sized type marker for compile-time arena safety
     _marker: PhantomData<M>,
 }
@@ -45,6 +55,7 @@ where
             tail_offset: I::try_from(LEN).unwrap_or_else(|_| panic!("I too small for LEN")),
             generation: 0,
             arena_id: ARENA_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            last_alloc: None,
             _marker: PhantomData,
         }
     }
@@ -82,6 +93,14 @@ where
             self.generation,
             self.arena_id,
         );
+
+        // Track this allocation for pop()
+        self.last_alloc = Some(RawAllocId {
+            offset: self.offset,
+            size: I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?,
+            generation: self.generation,
+            arena_id: self.arena_id,
+        });
 
         self.offset = self.offset + I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?;
 
@@ -136,6 +155,14 @@ where
             self.generation,
             self.arena_id,
         );
+
+        // Track this allocation for pop()
+        self.last_alloc = Some(RawAllocId {
+            offset: self.offset,
+            size: I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?,
+            generation: self.generation,
+            arena_id: self.arena_id,
+        });
 
         self.offset =
             self.offset + I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?;
@@ -200,6 +227,14 @@ where
             self.generation,
             self.arena_id,
         );
+
+        // Track this allocation for pop()
+        self.last_alloc = Some(RawAllocId {
+            offset: self.offset,
+            size: I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?,
+            generation: self.generation,
+            arena_id: self.arena_id,
+        });
 
         self.offset =
             self.offset + I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?;
@@ -329,6 +364,7 @@ where
         self.offset = I::try_from(0).unwrap_or_else(|_| panic!("I too small"));
         self.tail_offset = I::try_from(LEN).unwrap_or_else(|_| panic!("I too small for LEN"));
         self.generation = self.generation.wrapping_add(1);
+        self.last_alloc = None;
     }
 
     /// Bytes used
@@ -357,12 +393,32 @@ where
         if offset <= LEN {
             self.offset = I::try_from(offset).unwrap_or_else(|_| panic!("Invalid restore offset"));
             self.generation = self.generation.wrapping_add(1);
+            self.last_alloc = None;
         }
     }
 
     /// Get this arena's unique ID
     pub fn arena_id(&self) -> u16 {
         self.arena_id
+    }
+
+    /// Pop the last allocation, invalidating its ID
+    pub fn pop(&mut self) -> bool {
+        if let Some(last) = self.last_alloc.take() {
+            // Validate it's actually the last allocation
+            if last.offset.to_usize() + last.size.to_usize() == self.offset.to_usize() {
+                // Roll back
+                self.offset = last.offset;
+                self.generation = self.generation.wrapping_add(1);
+                true
+            } else {
+                // Something's wrong - restore the tracking
+                self.last_alloc = Some(last);
+                false
+            }
+        } else {
+            false
+        }
     }
 
     // Iterators
@@ -477,23 +533,28 @@ where
     }
 }
 
-#[test]
-fn test_generation_wraparound() {
-    let mut arena: Arena<1024> = Arena::new();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Set generation near max
-    arena.generation = u32::MAX - 1;
+    #[test]
+    fn test_generation_wraparound() {
+        let mut arena: Arena<1024> = Arena::new();
 
-    let id1 = arena.alloc(42u32).unwrap();
-    assert_eq!(id1.generation(), u32::MAX - 1);
+        // Set generation near max
+        arena.generation = u32::MAX - 1;
 
-    // This should wrap around
-    arena.clear();
-    assert_eq!(arena.generation(), u32::MAX);
+        let id1 = arena.alloc(42u32).unwrap();
+        assert_eq!(id1.generation(), u32::MAX - 1);
 
-    arena.clear();
-    assert_eq!(arena.generation(), 0); // Wrapped around
+        // This should wrap around
+        arena.clear();
+        assert_eq!(arena.generation(), u32::MAX);
 
-    // Old ID should be invalid
-    assert!(arena.get(&id1).is_err());
+        arena.clear();
+        assert_eq!(arena.generation(), 0); // Wrapped around
+
+        // Old ID should be invalid
+        assert!(arena.get(&id1).is_err());
+    }
 }

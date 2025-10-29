@@ -5,8 +5,7 @@ use crate::arena::{Arena, ArenaId, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
 use crate::video::{
-    COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE,
-    VideoBank,
+    COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank,
 };
 
 mod command;
@@ -19,12 +18,12 @@ mod ops;
 pub use ops::*;
 use tato_arena::{RingBuffer, Slice};
 
+mod gui_banks;
 mod gui_console;
 mod gui_draw_polys;
 mod gui_draw_tooltip;
 mod gui_input;
 mod gui_text;
-mod gui_banks;
 
 // The Fixed arena is never cleared - this may need to changed when
 // I dynamically update the tiles! (i.e. pop() and load())
@@ -159,18 +158,15 @@ impl Dashboard {
             let temp = ['?' as u8];
             let reply = func(command.clone()).unwrap_or_else(|| &temp);
             // Get only the valid portion of command.data (up to first null byte)
-            let command_len = command.data.iter().position(|&b| b == 0).unwrap_or(command.data.len());
+            let command_len =
+                command.data.iter().position(|&b| b == 0).unwrap_or(command.data.len());
             let command_slice = &command.data[..command_len];
             // Use frame_arena for temporary text creation, then copy to fixed array
-            let joined_text = Text::join_bytes(frame_arena, &[command_slice, b" -> ", reply]).unwrap();
+            let joined_text =
+                Text::join_bytes(frame_arena, &[command_slice, b" -> ", reply]).unwrap();
             let bytes = joined_text.as_slice(frame_arena).unwrap();
-            let line_with_reply:[u8; COMMAND_MAX_LEN as usize] = core::array::from_fn(|i|{
-                if i >= bytes.len() {
-                    0
-                } else {
-                    bytes[i]
-                }
-            });
+            let line_with_reply: [u8; COMMAND_MAX_LEN as usize] =
+                core::array::from_fn(|i| if i >= bytes.len() { 0 } else { bytes[i] });
 
             self.console_buffer.push(&mut self.fixed_arena, line_with_reply).unwrap();
         }
@@ -301,6 +297,12 @@ impl Dashboard {
             let (rect, _scale) = canvas_rect_and_scale(canvas.rect(), tato.video.size(), false);
             self.canvas_rect = Some(rect);
             backend.set_canvas_rect(Some(rect));
+            {
+                let mid_x = screen_size.x / 2;
+                let mid_y = screen_size.y / 2;
+                self.poly(&[Vec2::new(rect.left(), mid_y), Vec2::new(rect.right(), mid_y)], false);
+                self.poly(&[Vec2::new(mid_x, rect.top()), Vec2::new(mid_x, rect.bottom())], false);
+            }
         });
 
         // Copy tile pixels from dashboard to GPU textures
@@ -314,6 +316,7 @@ impl Dashboard {
         }
 
         // Draw additional items over everything
+
         self.draw_polys(frame_arena, &tato);
         self.draw_tooltip(frame_arena, backend);
         backend.set_additional_draw_ops(self.ops.clone());
