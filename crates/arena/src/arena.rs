@@ -13,8 +13,6 @@ static ARENA_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
 struct RawAllocId<I> {
     offset: I,
     size: I,
-    generation: u32,
-    arena_id: u16,
 }
 
 /// Fixed-size arena with generational safety.
@@ -98,8 +96,6 @@ where
         self.last_alloc = Some(RawAllocId {
             offset: self.offset,
             size: I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?,
-            generation: self.generation,
-            arena_id: self.arena_id,
         });
 
         self.offset = self.offset + I::try_from(size).map_err(|_| ArenaErr::IndexConversion)?;
@@ -160,8 +156,6 @@ where
         self.last_alloc = Some(RawAllocId {
             offset: self.offset,
             size: I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?,
-            generation: self.generation,
-            arena_id: self.arena_id,
         });
 
         self.offset =
@@ -232,8 +226,6 @@ where
         self.last_alloc = Some(RawAllocId {
             offset: self.offset,
             size: I::try_from(total_size).map_err(|_| ArenaErr::IndexConversion)?,
-            generation: self.generation,
-            arena_id: self.arena_id,
         });
 
         self.offset =
