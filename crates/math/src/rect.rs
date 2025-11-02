@@ -65,6 +65,14 @@ where
         Vec2 { x: self.x + self.w, y: self.y + self.h }
     }
 
+    pub fn bottom_center(&self) -> Vec2<T> {
+        Vec2 { x: self.x + self.w / T::two(), y: self.y + self.h }
+    }
+
+    pub fn right_center(&self) -> Vec2<T> {
+        Vec2 { x: self.x + self.w, y: self.y + self.h / T::two() }
+    }
+
     pub fn center(&self) -> Vec2<T> {
         let two: T = T::one() + T::one();
         Vec2 { x: self.x + (self.w / two), y: self.y + (self.h / two) }

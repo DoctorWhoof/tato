@@ -74,6 +74,10 @@ where
         Self { x: self.x.floor(), y: self.y.floor() }
     }
 
+    pub fn round(&self) -> Self {
+        Self { x: self.x.round(), y: self.y.round() }
+    }
+
     pub fn angle_to(&self, other: &Self) -> T {
         let dx = other.x - self.x;
         let dy = other.y - self.y;
