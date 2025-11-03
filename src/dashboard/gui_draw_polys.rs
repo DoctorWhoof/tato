@@ -9,7 +9,11 @@ impl Dashboard {
     ) {
         // Generate ops for debug polygons
         for all_polys in self.debug_polys_gui.items(&self.debug_arena).unwrap() {
-            let poly = self.debug_arena.get_slice(all_polys).unwrap();
+            let poly = self.debug_arena.get_slice(&all_polys.points).unwrap();
+            let color:RGBA32 = self.debug_arena.get(&all_polys.color)
+                .copied()
+                .unwrap()
+                .into();
             if poly.len() >= 2 {
                 for i in 0..(poly.len() - 1) {
                     let current = poly[i];
@@ -20,7 +24,7 @@ impl Dashboard {
                             y1: current.y,
                             x2: next.x,
                             y2: next.y,
-                            color: RGBA32::WHITE,
+                            color,
                         })
                         .unwrap();
                     self.ops.push(frame_arena, handle).expect("Dashboard: Can't insert GUI poly");
@@ -32,7 +36,11 @@ impl Dashboard {
         if let Some(canvas_rect) = self.canvas_rect {
             let video_size = tato.video.size();
             for all_polys in self.debug_polys_world.items(&self.debug_arena).unwrap() {
-                let world_poly = self.debug_arena.get_slice(all_polys).unwrap();
+                let world_poly = self.debug_arena.get_slice(&all_polys.points).unwrap();
+                let color:RGBA32 = self.debug_arena.get(&all_polys.color)
+                    .copied()
+                    .unwrap()
+                    .into();
                 let scale = canvas_rect.h as f32 / video_size.y as f32;
                 let scroll_x = tato.video.scroll_x as f32;
                 let scroll_y = tato.video.scroll_y as f32;
@@ -46,7 +54,7 @@ impl Dashboard {
                                 y1: ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
                                 x2: ((next.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
                                 y2: ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
-                                color: RGBA32::WHITE,
+                                color,
                             })
                             .unwrap();
                         self.ops

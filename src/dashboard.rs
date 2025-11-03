@@ -37,11 +37,17 @@ const COMMAND_MAX_ARGS: usize = 8;
 // Temp Debug Arena
 // This is necessary since DrawOps need to be processed, and can't be read
 // (Text, Vec2, etc) and written (DrawOp) to the same arena at the same time.
-const DEBUG_LEN: usize = 8 * 1024;
+const DEBUG_LEN: usize = 16 * 1024;
 const CONSOLE_HISTORY: u32 = 10;
 const OP_COUNT: u32 = 500;
 const DEBUG_STR_COUNT: u32 = 100;
 const DEBUG_POLY_COUNT: u32 = 100;
+
+#[derive(Debug)]
+struct Polygon {
+    points: Slice<Vec2<i16>>,
+    color: ArenaId<RGBA12>,
+}
 
 /// Backend-agnostic debug UI system that generates drawing ops
 #[derive(Debug)]
@@ -65,8 +71,8 @@ pub struct Dashboard {
     mouse_over_text: Text,
     ops: Buffer<ArenaId<DrawOp, u32>, u32>,
     debug_text: Buffer<Text, u32>,
-    debug_polys_world: Buffer<Slice<Vec2<i16>>>,
-    debug_polys_gui: Buffer<Slice<Vec2<i16>>>,
+    debug_polys_world: Buffer<Polygon>,
+    debug_polys_gui: Buffer<Polygon>,
     tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
 }
 
@@ -203,19 +209,21 @@ impl Dashboard {
     /// point matches the first). If "world_space" is true, poly will be resized
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
-    pub fn poly(&mut self, points: &[Vec2<i16>], world_space: bool) {
+    pub fn poly(&mut self, points: &[Vec2<i16>], color: RGBA12, world_space: bool) {
         let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len()).unwrap();
+        let color = self.debug_arena.alloc(color).unwrap();
         let slice = self.debug_arena.get_slice_mut(&handle).unwrap();
         slice.copy_from_slice(points);
+        let poly = Polygon { points: handle, color };
         if world_space {
-            self.debug_polys_world.push(&mut self.debug_arena, handle).unwrap();
+            self.debug_polys_world.push(&mut self.debug_arena, poly).unwrap();
         } else {
-            self.debug_polys_gui.push(&mut self.debug_arena, handle).unwrap();
+            self.debug_polys_gui.push(&mut self.debug_arena, poly).unwrap();
         }
     }
 
     /// Convenient way to send a rect as a poly to the dashboard.
-    pub fn rect(&mut self, rect: Rect<i16>, world_space: bool) {
+    pub fn rect(&mut self, rect: Rect<i16>, color: RGBA12, world_space: bool) {
         let points = [
             rect.top_left(),
             rect.top_right(),
@@ -223,18 +231,20 @@ impl Dashboard {
             rect.bottom_left(),
             rect.top_left(),
         ];
-        self.poly(&points, world_space);
+        self.poly(&points, color, world_space);
     }
 
     /// Convenient way to send a point as an "x" to the dashboard.
-    pub fn pivot(&mut self, x: i16, y: i16, size: i16, world_space: bool) {
+    pub fn pivot(&mut self, x: i16, y: i16, size: i16, color: RGBA12, world_space: bool) {
         let half = size / 2;
         self.poly(
             &[Vec2 { x: x - half, y: y - half }, Vec2 { x: x + half, y: y + half }],
+            color,
             world_space,
         );
         self.poly(
             &[Vec2 { x: x - half, y: y + half }, Vec2 { x: x + half, y: y - half }],
+            color,
             world_space,
         );
     }
@@ -296,12 +306,21 @@ impl Dashboard {
             // The canvas texture can then be drawn by the backend using this rectangle.
             let (rect, _scale) = canvas_rect_and_scale(canvas.rect(), tato.video.size(), false);
             self.canvas_rect = Some(rect);
+            let color = RGBA12::with_transparency(7, 7, 7, 2);
             backend.set_canvas_rect(Some(rect));
             {
                 let mid_x = screen_size.x / 2;
                 let mid_y = screen_size.y / 2;
-                self.poly(&[Vec2::new(rect.left(), mid_y), Vec2::new(rect.right(), mid_y)], false);
-                self.poly(&[Vec2::new(mid_x, rect.top()), Vec2::new(mid_x, rect.bottom())], false);
+                self.poly(
+                    &[Vec2::new(rect.left(), mid_y), Vec2::new(rect.right(), mid_y)],
+                    color,
+                    false,
+                );
+                self.poly(
+                    &[Vec2::new(mid_x, rect.top()), Vec2::new(mid_x, rect.bottom())],
+                    color,
+                    false,
+                );
             }
         });
 

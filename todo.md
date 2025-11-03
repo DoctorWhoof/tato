@@ -109,9 +109,6 @@
 
 [.] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
 
-[ ] "Build Kit", temporary tiles to generate procedural tilemaps
-    . This is essential to iterate fast on map designs.
-
 ### Assets
 
 [x] Text and Fonts
