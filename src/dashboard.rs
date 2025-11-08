@@ -306,7 +306,7 @@ impl Dashboard {
             // The canvas texture can then be drawn by the backend using this rectangle.
             let (rect, _scale) = canvas_rect_and_scale(canvas.rect(), tato.video.size(), false);
             self.canvas_rect = Some(rect);
-            let color = RGBA12::with_transparency(7, 7, 7, 2);
+            let color = RGBA12::with_transparency(7, 7, 7, 1);
             backend.set_canvas_rect(Some(rect));
             {
                 let mid_x = screen_size.x / 2;
