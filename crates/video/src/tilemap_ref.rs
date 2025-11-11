@@ -22,6 +22,18 @@ impl<'a, const CELL_COUNT: usize> From<&'a Tilemap<CELL_COUNT>> for TilemapRef<'
     }
 }
 
+impl<'a> TilemapRef<'a> {
+
+    pub const fn from_const_tilemap<const CELL_COUNT: usize>(tilemap: &'static Tilemap<CELL_COUNT>) -> Self {
+        Self {
+            cells: &tilemap.cells,
+            columns: tilemap.columns,
+            rows: tilemap.rows,
+        }
+    }
+
+}
+
 impl<'a> DynTilemap for TilemapRef<'a> {
     fn cells(&self) -> &[Cell] {
         self.cells

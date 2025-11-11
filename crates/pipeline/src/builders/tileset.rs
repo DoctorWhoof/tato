@@ -70,7 +70,7 @@ impl<'a> TilesetBuilder<'a> {
         );
         img
     }
-    
+
     fn should_regenerate_output(&self) -> bool {
         // Check if any deferred command file needs regeneration
         for command in &self.deferred_commands {
@@ -86,7 +86,7 @@ impl<'a> TilesetBuilder<'a> {
         }
         false
     }
-    
+
     fn execute_deferred_commands(&mut self) {
         let commands = self.deferred_commands.clone();
         for command in commands {
@@ -189,12 +189,12 @@ impl<'a> TilesetBuilder<'a> {
         if !self.should_regenerate_output() {
             return;
         }
-        
+
         println!("cargo:warning=Regenerating tileset: {}", file_path);
-        
+
         // Execute all deferred commands now
         self.execute_deferred_commands();
-        
+
         println!("cargo:warning=Creating output file: {}", file_path);
         let mut code = CodeWriter::new(file_path);
 
@@ -344,7 +344,7 @@ impl<'a> TilesetBuilder<'a> {
         println!("cargo:warning=Formatting and writing file: {}", file_path);
         code.format_output(file_path);
         println!("cargo:warning=File write completed: {}", file_path);
-        
+
         // Mark all input files as processed
         for command in &self.deferred_commands {
             let file_path = match command {
@@ -716,16 +716,29 @@ fn create_canonical_tile(tile_data: &TileData) -> (CanonicalTile, Vec<u8>) {
     let mut color_mapping = Vec::new();
     let mut color_to_index = HashMap::new();
 
+    // First, collect all unique colors
+    let mut unique_colors = Vec::new();
+    for &color in tile_data.iter() {
+        if !color_to_index.contains_key(&color) {
+            unique_colors.push(color);
+            color_to_index.insert(color, 0); // Temporary placeholder
+        }
+    }
+
+    // Sort colors by their palette index to maintain consistent ordering
+    // This ensures 0=darkest, 1=darker, 2=lighter, 3=lightest
+    unique_colors.sort_unstable();
+
+    // Assign canonical indices based on sorted order
+    color_to_index.clear();
+    for (canonical_index, &color) in unique_colors.iter().enumerate() {
+        color_mapping.push(color);
+        color_to_index.insert(color, canonical_index as u8);
+    }
+
+    // Map each pixel to its canonical index
     for (i, &color) in tile_data.iter().enumerate() {
-        let canonical_index = if let Some(&index) = color_to_index.get(&color) {
-            index
-        } else {
-            let new_index = color_mapping.len() as u8;
-            color_mapping.push(color);
-            color_to_index.insert(color, new_index);
-            new_index
-        };
-        canonical[i] = canonical_index;
+        canonical[i] = color_to_index[&color];
     }
 
     (canonical, color_mapping)
