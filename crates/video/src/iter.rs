@@ -31,6 +31,7 @@ pub struct PixelIter<'a> {
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub bg_color: RGBA12, // Background color
+    pub crop_color: RGBA12, // Crop color (outside viewport)
 
     // Dual buffers for parallel processing
     sprite_buffer: [RGBA12; MAX_VERTICAL_LINES], // Sprite layer
@@ -80,6 +81,7 @@ impl<'a> PixelIter<'a> {
             scroll_x: vid.scroll_x,
             scroll_y: vid.scroll_y,
             bg_color: vid.bg_color,
+            crop_color: vid.crop_color,
             // scanline: vid.sprite_gen.scanlines[0].clone(),
             sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES],
             bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES],
@@ -140,21 +142,21 @@ impl<'a> PixelIter<'a> {
         }
         self.pre_render_sprites(width, view_start, view_end);
 
-        // Fast fill non-viewport areas with bg_color
+        // Fast fill non-viewport areas with crop_color
         unsafe {
-            let bg_color = self.bg_color;
+            let crop_color = self.crop_color;
             // Fill start
             if view_start > 0 {
                 let ptr = self.bg_buffer.as_mut_ptr();
                 for i in 0..view_start {
-                    *ptr.add(i) = bg_color.with_z(Z_BG);
+                    *ptr.add(i) = crop_color.with_z(Z_BG);
                 }
             }
             // Fill end
             if view_end < width as usize {
                 let ptr = self.bg_buffer.as_mut_ptr();
                 for i in view_end..width as usize {
-                    *ptr.add(i) = bg_color.with_z(Z_BG);
+                    *ptr.add(i) = crop_color.with_z(Z_BG);
                 }
             }
         }

@@ -26,6 +26,8 @@ pub struct SpriteBundle {
 pub struct VideoChip {
     /// The color rendered if resulting pixel is transparent
     pub bg_color: RGBA12,
+    /// The color outside the viewport
+    pub crop_color: RGBA12,
     /// Brings sprites "outside the screen" into view.
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
@@ -62,6 +64,7 @@ impl VideoChip {
 
         let mut result = Self {
             bg_color: RGBA12::BLACK,
+            crop_color: RGBA12::BLACK,
             wrap_sprites: false,
             wrap_bg: false,
             sprite_gen: SpriteGenerator::new(),
