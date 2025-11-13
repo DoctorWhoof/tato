@@ -201,6 +201,25 @@ impl<'a> TilesetBuilder<'a> {
         // Write header
         code.write_header(self.allow_unused, self.use_crate_assets);
 
+        // Write private mod statements for tilemaps at the top
+        for map in &self.maps {
+            code.write_line(&format!("mod {};", map.name.to_lowercase()));
+        }
+        if !self.maps.is_empty() {
+            code.write_line("");
+        }
+
+        // Write re-exports for tilemap constants
+        for map in &self.maps {
+            code.write_line(&format!("pub use {}::*;", map.name.to_lowercase()));
+        }
+        if !self.maps.is_empty() {
+            code.write_line("");
+        }
+
+        // Generate separate files for each tilemap
+        self.write_tilemap_files(file_path);
+
         // Write tileset data structure
         code.write_line(&format!(
             "pub const {}_TILESET: TilesetData = TilesetData{{",
@@ -286,26 +305,7 @@ impl<'a> TilesetBuilder<'a> {
             }
         }
 
-        // Write maps if any
-        for map in &self.maps {
-            code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
-            code.write_line(&format!(
-                "pub static {}: Tilemap<{}> = Tilemap {{",
-                map.name.to_uppercase(),
-                map.cells.len()
-            ));
-            code.write_line(&format!("    columns: {},", map.columns));
-            code.write_line(&format!("    rows: {},", map.rows));
-            code.write_line("    cells: [");
 
-            for cell in &map.cells {
-                code.write_cell(cell);
-            }
-
-            code.write_line("    ],");
-            code.write_line("};");
-            code.write_line("");
-        }
 
         // Write single tiles
         for tile in &self.single_tiles {
@@ -356,6 +356,59 @@ impl<'a> TilesetBuilder<'a> {
             if !file_path.is_empty() {
                 crate::mark_file_processed(file_path);
             }
+        }
+    }
+
+    fn write_tilemap_files(&self, main_file_path: &str) {
+        use std::path::Path;
+        use std::fs;
+        
+        // Get the directory of the main file and the module name
+        let main_path = Path::new(main_file_path);
+        let output_dir = main_path.parent().expect("Could not get parent directory of output file");
+        let module_name = main_path.file_stem().expect("Could not get module name from file path")
+            .to_str().expect("Could not convert module name to string");
+        
+        for map in &self.maps {
+            // Create subdirectory for this module
+            let module_subdir = output_dir.join(module_name);
+            if let Err(e) = fs::create_dir_all(&module_subdir) {
+                println!("cargo:warning=Failed to create directory {:?}: {}", module_subdir, e);
+                continue;
+            }
+            
+            let map_filename = format!("{}.rs", map.name.to_lowercase());
+            let map_file_path = module_subdir.join(&map_filename);
+            let map_file_path_str = map_file_path.to_str().expect("Could not convert path to string");
+            
+            println!("cargo:warning=Creating tilemap file: {}", map_file_path_str);
+            let mut code = CodeWriter::new(map_file_path_str);
+            
+            // Write header
+            code.write_header(self.allow_unused, self.use_crate_assets);
+            
+            // Write the tilemap
+            code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
+            code.write_line(&format!(
+                "pub static {}: Tilemap<{}> = Tilemap {{",
+                map.name.to_uppercase(),
+                map.cells.len()
+            ));
+            code.write_line(&format!("    columns: {},", map.columns));
+            code.write_line(&format!("    rows: {},", map.rows));
+            code.write_line("    cells: [");
+
+            for cell in &map.cells {
+                code.write_cell(cell);
+            }
+
+            code.write_line("    ],");
+            code.write_line("};");
+            
+            // Format the output
+            println!("cargo:warning=Formatting and writing tilemap file: {}", map_file_path_str);
+            code.format_output(map_file_path_str);
+            println!("cargo:warning=Tilemap file write completed: {}", map_file_path_str);
         }
     }
 

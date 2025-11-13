@@ -84,7 +84,7 @@ impl<'a> PixelIter<'a> {
             crop_color: vid.crop_color,
             // scanline: vid.sprite_gen.scanlines[0].clone(),
             sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES],
-            bg_buffer: [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES],
+            bg_buffer: Self::generate_bg_color(0, vid),
         };
 
         // Pre-render first line (IRQ will be called inside pre_render_line)
@@ -109,6 +109,15 @@ impl<'a> PixelIter<'a> {
     }
 
     #[inline(always)]
+    fn generate_bg_color(y:u16, vid:&VideoChip) -> [RGBA12;MAX_VERTICAL_LINES]  {
+        if y < vid.view_top || y > vid.view_bottom {
+            [vid.crop_color.with_z(Z_BG); MAX_VERTICAL_LINES]
+        } else {
+            [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES]
+        }
+    }
+
+    #[inline(always)]
     fn pre_render_line(&mut self) {
         // Run Y IRQ before rendering the line
         self.call_line_irq();
@@ -127,7 +136,7 @@ impl<'a> PixelIter<'a> {
 
         if self.y > self.vid.view_bottom {
             // Clear bg bottom. This can probably be eliminated if I change how BG renders
-            self.bg_buffer = [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES];
+            self.bg_buffer = Self::generate_bg_color(self.y, self.vid);
             self.sprite_buffer = [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES];
             return;
         }
@@ -144,19 +153,18 @@ impl<'a> PixelIter<'a> {
 
         // Fast fill non-viewport areas with crop_color
         unsafe {
-            let crop_color = self.crop_color;
             // Fill start
             if view_start > 0 {
                 let ptr = self.bg_buffer.as_mut_ptr();
                 for i in 0..view_start {
-                    *ptr.add(i) = crop_color.with_z(Z_BG);
+                    *ptr.add(i) = self.crop_color.with_z(Z_BG);
                 }
             }
             // Fill end
             if view_end < width as usize {
                 let ptr = self.bg_buffer.as_mut_ptr();
                 for i in view_end..width as usize {
-                    *ptr.add(i) = crop_color.with_z(Z_BG);
+                    *ptr.add(i) = self.crop_color.with_z(Z_BG);
                 }
             }
         }
@@ -445,21 +453,6 @@ impl<'a> Iterator for PixelIter<'a> {
 
     // Performance goal: iterator with no actual rendering.
     // Currently getting 0.2ms to 0.3ms in release
-    // fn next(&mut self) -> Option<Self::Item> {
-    //     // End line reached
-    //     if self.y > self.vid.max_y() as u16 {
-    //         return None;
-    //     }
-    //     // Increment screen position
-    //     self.x += 1;
-    //     // Check if we need to go to the next line
-    //     if self.x == self.vid.width() {
-    //         self.x = 0;
-    //         self.y += 1;
-    //     }
-    //     Some(RGBA32 { r: 255, g: 100, b: 255, a: 255 })
-    // }
-
     fn next(&mut self) -> Option<Self::Item> {
         // End line reached
         if self.y > self.vid.max_y() as u16 {

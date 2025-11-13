@@ -1,6 +1,10 @@
 // Auto-generated code. Do not edit manually!
 use tato::prelude::*;
 
+mod patch_map;
+
+pub use patch_map::*;
+
 pub const PATCH_TILESET: TilesetData = TilesetData {
     tiles: Some(&PATCH_TILES),
     colors: Some(&PATCH_COLORS),
@@ -25,139 +29,11 @@ pub static PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
 pub static PATCH_SUBPALETTE_2: [u8; 4] = [2, 0, 0, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static PATCH_MAP: Tilemap<9> = Tilemap {
-    columns: 3,
-    rows: 3,
-    cells: [
-        Cell {
-            id: TileID(0),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(1),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(2),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(1),
-            flags: TileFlags(32),
-            sub_palette: PaletteID(0),
-            group: 0,
-        },
-        Cell {
-            id: TileID(3),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(2),
-            group: 0,
-        },
-        Cell {
-            id: TileID(4),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(2),
-            flags: TileFlags(96),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(4),
-            flags: TileFlags(96),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-        Cell {
-            id: TileID(5),
-            flags: TileFlags(0),
-            sub_palette: PaletteID(1),
-            group: 0,
-        },
-    ],
-};
-
-#[unsafe(link_section = "__DATA,__const")]
 pub static PATCH_TILES: [Tile<2>; 6] = [
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 85] },
-            Cluster { data: [1, 170] },
-            Cluster { data: [6, 170] },
-            Cluster { data: [6, 170] },
-            Cluster { data: [6, 170] },
-            Cluster { data: [6, 170] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [85, 85] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-            Cluster { data: [170, 170] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [85, 0] },
-            Cluster { data: [170, 64] },
-            Cluster { data: [170, 144] },
-            Cluster { data: [170, 156] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-            Cluster { data: [0, 0] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-        ],
-    },
-    Tile {
-        clusters: [
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 159] },
-            Cluster { data: [170, 127] },
-            Cluster { data: [85, 255] },
-            Cluster { data: [255, 252] },
-            Cluster { data: [255, 240] },
-        ],
-    },
+    Tile::new(0x00000000005501AA, 0x06AA06AA06AA06AA),
+    Tile::new(0x000000005555AAAA, 0xAAAAAAAAAAAAAAAA),
+    Tile::new(0x000000005500AA40, 0xAA90AA9CAA9FAA9F),
+    Tile::new(0x0000000000000000, 0x0000000000000000),
+    Tile::new(0xAA9FAA9FAA9FAA9F, 0xAA9FAA9FAA9FAA9F),
+    Tile::new(0xAA9FAA9FAA9FAA9F, 0xAA7F55FFFFFCFFF0),
 ];
