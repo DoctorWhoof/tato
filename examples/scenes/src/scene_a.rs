@@ -64,7 +64,7 @@ impl SceneA {
                     // Adds 2 to avoid colors 0 and 1 in the BG
                     let adjusted_palette = PaletteID(2 + index as u8);
 
-                    state.bg.set_cell(BgOp {
+                    state.bg.set_op(BgOp {
                         col,
                         row,
                         tile_id: arrow,

@@ -20,7 +20,7 @@ impl SceneC {
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
-                state.bg.set_cell(BgOp {
+                state.bg.set_op(BgOp {
                     col,
                     row,
                     tile_id: cross,

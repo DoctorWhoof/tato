@@ -69,7 +69,13 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         self.rows = rows;
     }
 
-    pub fn set_cell(&mut self, op: BgOp) {
+    pub fn set_cell(&mut self, col:i16, row:i16, cell:Cell) {
+        if let Some(index) = self.get_index(col, row) {
+            self.cells[index] = cell
+        }
+    }
+
+    pub fn set_op(&mut self, op: BgOp) {
         if let Some(index) = self.get_index(op.col, op.row) {
             self.cells[index].id = op.tile_id;
             self.cells[index].flags = op.flags;
@@ -82,12 +88,6 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
             Some(&mut self.cells[index]) //
         } else {
             None
-        }
-    }
-
-    pub fn copy_cell(&mut self, col: i16, row: i16, cell: Cell) {
-        if let Some(index) = self.get_index(col, row) {
-            self.cells[index] = cell;
         }
     }
 

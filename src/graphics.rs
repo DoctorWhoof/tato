@@ -82,7 +82,7 @@ impl Tato {
         }
 
         let top_left = map.cells[0];
-        bg.set_cell(BgOp {
+        bg.set_op(BgOp {
             col: bg_rect.x,
             row: bg_rect.y,
             tile_id: top_left.id,
@@ -95,7 +95,7 @@ impl Tato {
         }
         let top = map.cells[1];
         for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
-            bg.set_cell(BgOp {
+            bg.set_op(BgOp {
                 col,
                 row: bg_rect.y,
                 tile_id: top.id,
@@ -105,7 +105,7 @@ impl Tato {
         }
 
         let top_right = map.cells[2];
-        bg.set_cell(BgOp {
+        bg.set_op(BgOp {
             col: bg_rect.x + bg_rect.w,
             row: bg_rect.y,
             tile_id: top_right.id,
@@ -116,7 +116,7 @@ impl Tato {
         let left = map.cells[3];
 
         for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
-            bg.set_cell(BgOp {
+            bg.set_op(BgOp {
                 col: bg_rect.x,
                 row,
                 tile_id: left.id,
@@ -131,7 +131,7 @@ impl Tato {
         let center = map.cells[4];
         for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
             for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
-                bg.set_cell(BgOp {
+                bg.set_op(BgOp {
                     col,
                     row,
                     tile_id: center.id,
@@ -143,7 +143,7 @@ impl Tato {
 
         let right = map.cells[5];
         for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
-            bg.set_cell(BgOp {
+            bg.set_op(BgOp {
                 col: bg_rect.x + bg_rect.w,
                 row,
                 tile_id: right.id,
@@ -153,7 +153,7 @@ impl Tato {
         }
 
         let bottom_left = map.cells[6];
-        bg.set_cell(BgOp {
+        bg.set_op(BgOp {
             col: bg_rect.x,
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_left.id,
@@ -163,7 +163,7 @@ impl Tato {
 
         let bottom = map.cells[7];
         for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
-            bg.set_cell(BgOp {
+            bg.set_op(BgOp {
                 col,
                 row: bg_rect.y + bg_rect.h,
                 tile_id: bottom.id,
@@ -173,7 +173,7 @@ impl Tato {
         }
 
         let bottom_right = map.cells[8];
-        bg.set_cell(BgOp {
+        bg.set_op(BgOp {
             col: bg_rect.x + bg_rect.w,
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_right.id,
@@ -212,7 +212,7 @@ impl Tato {
                 } else {
                     cell.sub_palette
                 };
-                target.set_cell(BgOp {
+                target.set_op(BgOp {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
                     tile_id: TileID(cell.id.0 + tile_start),
