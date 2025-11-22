@@ -23,4 +23,11 @@ impl Cell {
             group,
         }
     }
+
+    pub const fn with_id(self, id:u8) -> Self {
+        Self {
+            id: TileID(id),
+            .. self
+        }
+    }
 }
