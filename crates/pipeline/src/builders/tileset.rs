@@ -7,7 +7,9 @@ use std::collections::{HashMap, HashSet};
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 type TileData = [u8; TILE_LEN];
-pub(crate) type CanonicalTile = [u8; TILE_LEN]; // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
+
+// Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
+pub(crate) type CanonicalTile = [u8; TILE_LEN];
 
 #[derive(Clone)]
 enum DeferredCommand {
@@ -97,10 +99,14 @@ impl<'a> TilesetBuilder<'a> {
                         let img = self.load_valid_image(&path, 1, 1);
                         let _ = self.add_tiles(&img, Some(group_index));
                     }
-                }
+                },
                 DeferredCommand::NewTile { path } => {
                     let img = self.load_valid_image(&path, 1, 1);
-                    assert!(img.width == TILE_SIZE as usize, "Single tile width must be {}", TILE_SIZE);
+                    assert!(
+                        img.width == TILE_SIZE as usize,
+                        "Single tile width must be {}",
+                        TILE_SIZE
+                    );
                     assert!(
                         img.cols_per_frame == 1 && img.rows_per_frame == 1,
                         "Single tile must be 1x1 tile (8x8 pixels)"
@@ -108,12 +114,10 @@ impl<'a> TilesetBuilder<'a> {
                     let cells = self.add_tiles(&img, None);
                     assert!(cells.len() == 1 && cells[0].len() == 1);
                     let tile_name = crate::strip_path_name(&path);
-                    let single_tile = SingleTileBuilder {
-                        name: tile_name,
-                        cell: cells[0][0].clone(),
-                    };
+                    let single_tile =
+                        SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
                     self.single_tiles.push(single_tile);
-                }
+                },
                 DeferredCommand::NewMap { path, name } => {
                     let img = self.load_valid_image(&path, 1, 1);
                     let frames = self.add_tiles(&img, None);
@@ -125,7 +129,7 @@ impl<'a> TilesetBuilder<'a> {
                         cells: frames[0].clone(),
                     };
                     self.maps.push(map);
-                }
+                },
                 DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
                     let img = self.load_valid_image(&path, frames_h, frames_v);
                     let cells = self.add_tiles(&img, None);
@@ -143,7 +147,7 @@ impl<'a> TilesetBuilder<'a> {
                             .collect(),
                     };
                     self.anims.push(anim);
-                }
+                },
             }
         }
     }
@@ -152,25 +156,19 @@ impl<'a> TilesetBuilder<'a> {
     /// there's a match. To add an "empty" group, with no tiles, simply add it directly to
     /// the GroupBuilder instead of using the TilesetBuilder.
     pub fn new_group(&mut self, path: &str, name: &str) {
-        self.deferred_commands.push(DeferredCommand::NewGroup {
-            path: path.to_string(),
-            name: name.to_string(),
-        });
+        self.deferred_commands
+            .push(DeferredCommand::NewGroup { path: path.to_string(), name: name.to_string() });
     }
 
     /// Creates a new single tile from a .png file
     pub fn new_tile(&mut self, path: &str) {
-        self.deferred_commands.push(DeferredCommand::NewTile {
-            path: path.to_string(),
-        });
+        self.deferred_commands.push(DeferredCommand::NewTile { path: path.to_string() });
     }
 
     /// Creates a new map from a .png file
     pub fn new_map(&mut self, path: &str, name: &str) {
-        self.deferred_commands.push(DeferredCommand::NewMap {
-            path: path.to_string(),
-            name: name.to_string(),
-        });
+        self.deferred_commands
+            .push(DeferredCommand::NewMap { path: path.to_string(), name: name.to_string() });
     }
 
     /// Creates a new animation strip from a .png file
@@ -240,7 +238,11 @@ impl<'a> TilesetBuilder<'a> {
         if self.save_colors && !self.sub_palettes.is_empty() {
             code.write_line(&format!("    sub_palettes: Some(&["));
             for i in 0..self.sub_palettes.len() {
-                code.write_line(&format!("        &{}_SUBPALETTE_{},", self.name.to_uppercase(), i));
+                code.write_line(&format!(
+                    "        &{}_SUBPALETTE_{},",
+                    self.name.to_uppercase(),
+                    i
+                ));
             }
             code.write_line("    ]),");
         } else {
@@ -258,7 +260,10 @@ impl<'a> TilesetBuilder<'a> {
         // Write sub-palettes
         if self.save_colors {
             for (i, sub_palette) in self.sub_palettes.iter().enumerate() {
-                code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
+                code.write_line(&format!(
+                    "#[unsafe(link_section = \"{}\")]",
+                    crate::get_platform_link_section()
+                ));
                 code.write_line(&format!(
                     "pub static {}_SUBPALETTE_{}: [u8; {}] = [",
                     self.name.to_uppercase(),
@@ -278,7 +283,10 @@ impl<'a> TilesetBuilder<'a> {
         // Write animation strips if any
         if !self.anims.is_empty() {
             for anim in &self.anims {
-                code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
+                code.write_line(&format!(
+                    "#[unsafe(link_section = \"{}\")]",
+                    crate::get_platform_link_section()
+                ));
                 code.write_line(&format!(
                     "pub static {}: [Tilemap<{}>; {}] = [",
                     anim.name.to_uppercase(),
@@ -305,15 +313,21 @@ impl<'a> TilesetBuilder<'a> {
             }
         }
 
-
-
         // Write single tiles
         for tile in &self.single_tiles {
             if self.name == "default" {
                 // For default tileset, generate TileID constants for type safety
-                code.write_line(&format!("pub const {}: TileID = TileID({});", tile.name.to_uppercase(), tile.cell.id.0));
+                code.write_line(&format!(
+                    "pub const {}: TileID = TileID({});",
+                    tile.name.to_uppercase(),
+                    tile.cell.id.0
+                ));
             } else {
-                code.write_line(&format!("pub const {}: Cell = {};", tile.name.to_uppercase(), crate::format_cell_compact(&tile.cell)));
+                code.write_line(&format!(
+                    "pub const {}: Cell = {};",
+                    tile.name.to_uppercase(),
+                    crate::format_cell_compact(&tile.cell)
+                ));
             }
         }
         if !self.single_tiles.is_empty() {
@@ -323,7 +337,10 @@ impl<'a> TilesetBuilder<'a> {
         // Write tile pixel data
         if !self.pixels.is_empty() {
             let tiles_count = self.pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize);
-            code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
+            code.write_line(&format!(
+                "#[unsafe(link_section = \"{}\")]",
+                crate::get_platform_link_section()
+            ));
             code.write_line(&format!(
                 "pub static {}_TILES: [Tile<2>; {}] = [",
                 self.name.to_uppercase(),
@@ -360,15 +377,18 @@ impl<'a> TilesetBuilder<'a> {
     }
 
     fn write_tilemap_files(&self, main_file_path: &str) {
-        use std::path::Path;
         use std::fs;
-        
+        use std::path::Path;
+
         // Get the directory of the main file and the module name
         let main_path = Path::new(main_file_path);
         let output_dir = main_path.parent().expect("Could not get parent directory of output file");
-        let module_name = main_path.file_stem().expect("Could not get module name from file path")
-            .to_str().expect("Could not convert module name to string");
-        
+        let module_name = main_path
+            .file_stem()
+            .expect("Could not get module name from file path")
+            .to_str()
+            .expect("Could not convert module name to string");
+
         for map in &self.maps {
             // Create subdirectory for this module
             let module_subdir = output_dir.join(module_name);
@@ -376,19 +396,23 @@ impl<'a> TilesetBuilder<'a> {
                 println!("cargo:warning=Failed to create directory {:?}: {}", module_subdir, e);
                 continue;
             }
-            
+
             let map_filename = format!("{}.rs", map.name.to_lowercase());
             let map_file_path = module_subdir.join(&map_filename);
-            let map_file_path_str = map_file_path.to_str().expect("Could not convert path to string");
-            
+            let map_file_path_str =
+                map_file_path.to_str().expect("Could not convert path to string");
+
             println!("cargo:warning=Creating tilemap file: {}", map_file_path_str);
             let mut code = CodeWriter::new(map_file_path_str);
-            
+
             // Write header
             code.write_header(self.allow_unused, self.use_crate_assets);
-            
+
             // Write the tilemap
-            code.write_line(&format!("#[unsafe(link_section = \"{}\")]", crate::get_platform_link_section()));
+            code.write_line(&format!(
+                "#[unsafe(link_section = \"{}\")]",
+                crate::get_platform_link_section()
+            ));
             code.write_line(&format!(
                 "pub static {}: Tilemap<{}> = Tilemap {{",
                 map.name.to_uppercase(),
@@ -404,7 +428,7 @@ impl<'a> TilesetBuilder<'a> {
 
             code.write_line("    ],");
             code.write_line("};");
-            
+
             // Format the output
             println!("cargo:warning=Formatting and writing tilemap file: {}", map_file_path_str);
             code.format_output(map_file_path_str);
@@ -441,7 +465,7 @@ impl<'a> TilesetBuilder<'a> {
 
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
                         if let Some(group_idx) = group {
-                            // Only register multi-color tiles in groups (skip empty/single-color tiles)
+                            // Only register multi-color tiles in groups (skip empty/solid-color tiles)
                             if color_mapping.len() > 1 {
                                 self.groups.register_tile(canonical_tile, group_idx);
 
@@ -474,6 +498,7 @@ impl<'a> TilesetBuilder<'a> {
                             }
                         }
 
+                        // Safety check
                         if color_mapping.len() > SUBPALETTE_COUNT as usize {
                             panic!(
                                 "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
@@ -492,18 +517,23 @@ impl<'a> TilesetBuilder<'a> {
                             );
                         }
 
-                        // Handle single-color tiles efficiently
+                        // Handle solid-color tiles efficiently
                         let (sub_palette_id, remapping) = if color_mapping.len() <= 1 {
-                            // Single color tile - find or create a simple sub-palette
+                            // Solid color tile - find or create a simple sub-palette
                             let color = color_mapping.get(0).copied().unwrap_or(0);
 
                             // Create a simple sub-palette with just this color in position 0
-                            let target_palette_array: [u8; COLORS_PER_TILE as usize] = [color, 0, 0, 0];
+                            let target_palette_array: [u8; COLORS_PER_TILE as usize] =
+                                [color, 0, 0, 0];
 
-                            // Check if we already have this single-color sub-palette
+                            // Check if we already have this solid-color sub-palette
                             let mut found_palette_id = None;
                             for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-                                if sub_pal[0] == color && sub_pal[1] == 0 && sub_pal[2] == 0 && sub_pal[3] == 0 {
+                                if sub_pal[0] == color
+                                    && sub_pal[1] == 0
+                                    && sub_pal[2] == 0
+                                    && sub_pal[3] == 0
+                                {
                                     found_palette_id = Some(i as u8);
                                     break;
                                 }
@@ -512,7 +542,7 @@ impl<'a> TilesetBuilder<'a> {
                             if let Some(palette_id) = found_palette_id {
                                 (palette_id, vec![0]) // All pixels map to index 0
                             } else {
-                                // Create new single-color sub-palette
+                                // Create new solid-color sub-palette
                                 if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
                                     panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
                                 }
@@ -529,16 +559,21 @@ impl<'a> TilesetBuilder<'a> {
                             }
                         } else {
                             // Multi-color tile - use normal processing
-
                             // Work with unique colors only to avoid issues with repeated colors
-                            let unique_colors: Vec<u8> = {
+                            let mut unique_colors: Vec<u8> = {
                                 let mut seen = HashSet::new();
-                                color_mapping.iter().filter(|&&color| seen.insert(color)).cloned().collect()
+                                color_mapping
+                                    .iter()
+                                    .filter(|&&color| seen.insert(color))
+                                    .cloned()
+                                    .collect()
                             };
+                            unique_colors.sort_unstable();
 
                             // Check for exact match first (cheapest check)
-                            let target_palette_array: [u8; COLORS_PER_TILE as usize] =
-                                from_fn(|i| if i < unique_colors.len() { unique_colors[i] } else { 0 });
+                            let target_palette_array: [u8; COLORS_PER_TILE as usize] = from_fn(
+                                |i| if i < unique_colors.len() { unique_colors[i] } else { 0 },
+                            );
 
                             let mut found_palette_result = None;
                             for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
@@ -546,7 +581,10 @@ impl<'a> TilesetBuilder<'a> {
                                     // Create identity remapping for our original colors (including duplicates)
                                     let mut remapping = Vec::new();
                                     for &color in &color_mapping {
-                                        let unique_index = unique_colors.iter().position(|&c| c == color).unwrap_or(0);
+                                        let unique_index = unique_colors
+                                            .iter()
+                                            .position(|&c| c == color)
+                                            .unwrap_or(0);
                                         remapping.push(unique_index as u8);
                                     }
                                     found_palette_result = Some((i as u8, remapping));
@@ -558,17 +596,23 @@ impl<'a> TilesetBuilder<'a> {
                                 result
                             } else {
                                 // Try to find an existing sub-palette that contains all our unique colors
-                                let color_set: HashSet<u8> = unique_colors.iter().cloned().collect();
+                                let color_set: HashSet<u8> =
+                                    unique_colors.iter().cloned().collect();
                                 let mut found_compatible_result = None;
                                 for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-                                    let pal_colors: HashSet<u8> =
-                                        sub_pal.iter().filter(|&&c| c != 0 || sub_pal[0] == 0).cloned().collect();
+                                    let pal_colors: HashSet<u8> = sub_pal
+                                        .iter()
+                                        .filter(|&&c| c != 0 || sub_pal[0] == 0)
+                                        .cloned()
+                                        .collect();
                                     if color_set.is_subset(&pal_colors) {
                                         // Create remapping from our canonical indices to sub-palette indices
                                         let mut remapping = Vec::new();
                                         for &color in &color_mapping {
-                                            let sub_pal_index =
-                                                sub_pal.iter().position(|&pal_color| pal_color == color).unwrap_or(0);
+                                            let sub_pal_index = sub_pal
+                                                .iter()
+                                                .position(|&pal_color| pal_color == color)
+                                                .unwrap_or(0);
                                             remapping.push(sub_pal_index as u8);
                                         }
                                         found_compatible_result = Some((i as u8, remapping));
@@ -581,7 +625,10 @@ impl<'a> TilesetBuilder<'a> {
                                 } else {
                                     // Create new sub-palette with unique colors only
                                     if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
-                                        panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
+                                        panic!(
+                                            "Sub-palette capacity {} exceeded",
+                                            SUBPALETTE_COUNT
+                                        );
                                     }
 
                                     self.sub_palettes.push(target_palette_array);
@@ -595,7 +642,10 @@ impl<'a> TilesetBuilder<'a> {
                                     // Create identity remapping for our original colors (including duplicates)
                                     let mut remapping = Vec::new();
                                     for &color in &color_mapping {
-                                        let unique_index = unique_colors.iter().position(|&c| c == color).unwrap_or(0);
+                                        let unique_index = unique_colors
+                                            .iter()
+                                            .position(|&c| c == color)
+                                            .unwrap_or(0);
                                         remapping.push(unique_index as u8);
                                     }
 
@@ -760,8 +810,6 @@ impl<'a> TilesetBuilder<'a> {
 
         frames
     }
-
-
 }
 
 fn create_canonical_tile(tile_data: &TileData) -> (CanonicalTile, Vec<u8>) {
