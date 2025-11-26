@@ -1,7 +1,7 @@
-use core::array::from_fn;
 use tato_video::*;
 
 use super::*;
+use super::subpalette::SubPaletteBuilder;
 use crate::*;
 use std::collections::{HashMap, HashSet};
 
@@ -29,6 +29,7 @@ pub struct TilesetBuilder<'a> {
     pub tile_hash: HashMap<CanonicalTile, Cell>,
     pub sub_palette_name_hash: HashMap<[u8; COLORS_PER_TILE as usize], String>,
     pub sub_palettes: Vec<[u8; COLORS_PER_TILE as usize]>,
+    sub_palette_builders: Vec<SubPaletteBuilder>,
     groups: &'a mut GroupBuilder,
     anims: Vec<AnimBuilder>,
     maps: Vec<MapBuilder>,
@@ -58,6 +59,7 @@ impl<'a> TilesetBuilder<'a> {
             single_tiles: vec![],
             palette,
             sub_palettes: Vec::new(),
+            sub_palette_builders: Vec::new(),
             sub_palette_head: 0,
             deferred_commands: Vec::new(),
         }
@@ -519,119 +521,54 @@ impl<'a> TilesetBuilder<'a> {
 
                         // Handle solid-color tiles efficiently
                         let (sub_palette_id, remapping) = if color_mapping.len() <= 1 {
-                            // Solid color tile - find or create a simple sub-palette
+                            // Solid-color tile - find or create a simple sub-palette
                             let color = color_mapping.get(0).copied().unwrap_or(0);
+                            let needed_builder = SubPaletteBuilder::from_colors(&[color]);
 
-                            // Create a simple sub-palette with just this color in position 0
-                            let target_palette_array: [u8; COLORS_PER_TILE as usize] =
-                                [color, 0, 0, 0];
-
-                            // Check if we already have this solid-color sub-palette
+                            // Try to find an existing sub-palette that can accommodate this color
                             let mut found_palette_id = None;
-                            for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-                                if sub_pal[0] == color
-                                    && sub_pal[1] == 0
-                                    && sub_pal[2] == 0
-                                    && sub_pal[3] == 0
-                                {
+                            for (i, builder) in self.sub_palette_builders.iter().enumerate() {
+                                if builder.contains_all(&[color]) {
                                     found_palette_id = Some(i as u8);
                                     break;
                                 }
                             }
 
                             if let Some(palette_id) = found_palette_id {
-                                (palette_id, vec![0]) // All pixels map to index 0
+                                let remapping = self.sub_palette_builders[palette_id as usize]
+                                    .create_remapping(&[color])
+                                    .unwrap_or(vec![0]);
+                                (palette_id, remapping)
                             } else {
-                                // Create new solid-color sub-palette
-                                if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
-                                    panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
-                                }
-
-                                self.sub_palettes.push(target_palette_array);
-                                let palette_id = self.sub_palette_head as u8;
-                                self.sub_palette_head += 1;
-
-                                // Set name
-                                let name = format!("{}_{}", self.palette.name, palette_id);
-                                self.sub_palette_name_hash.insert(target_palette_array, name);
-
-                                (palette_id, vec![0]) // All pixels map to index 0
-                            }
-                        } else {
-                            // Multi-color tile - use normal processing
-                            // Work with unique colors only to avoid issues with repeated colors
-                            let mut unique_colors: Vec<u8> = {
-                                let mut seen = HashSet::new();
-                                color_mapping
-                                    .iter()
-                                    .filter(|&&color| seen.insert(color))
-                                    .cloned()
-                                    .collect()
-                            };
-                            unique_colors.sort_unstable();
-
-                            // Check for exact match first (cheapest check)
-                            let target_palette_array: [u8; COLORS_PER_TILE as usize] = from_fn(
-                                |i| if i < unique_colors.len() { unique_colors[i] } else { 0 },
-                            );
-
-                            let mut found_palette_result = None;
-                            for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-                                if *sub_pal == target_palette_array {
-                                    // Create identity remapping for our original colors (including duplicates)
-                                    let mut remapping = Vec::new();
-                                    for &color in &color_mapping {
-                                        let unique_index = unique_colors
-                                            .iter()
-                                            .position(|&c| c == color)
-                                            .unwrap_or(0);
-                                        remapping.push(unique_index as u8);
-                                    }
-                                    found_palette_result = Some((i as u8, remapping));
-                                    break;
-                                }
-                            }
-
-                            if let Some(result) = found_palette_result {
-                                result
-                            } else {
-                                // Try to find an existing sub-palette that contains all our unique colors
-                                let color_set: HashSet<u8> =
-                                    unique_colors.iter().cloned().collect();
-                                let mut found_compatible_result = None;
-                                for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-                                    let pal_colors: HashSet<u8> = sub_pal
-                                        .iter()
-                                        .filter(|&&c| c != 0 || sub_pal[0] == 0)
-                                        .cloned()
-                                        .collect();
-                                    if color_set.is_subset(&pal_colors) {
-                                        // Create remapping from our canonical indices to sub-palette indices
-                                        let mut remapping = Vec::new();
-                                        for &color in &color_mapping {
-                                            let sub_pal_index = sub_pal
-                                                .iter()
-                                                .position(|&pal_color| pal_color == color)
-                                                .unwrap_or(0);
-                                            remapping.push(sub_pal_index as u8);
-                                        }
-                                        found_compatible_result = Some((i as u8, remapping));
+                                // Try to merge with an existing sub-palette that has space
+                                let mut merge_candidate = None;
+                                for (i, builder) in self.sub_palette_builders.iter().enumerate() {
+                                    if builder.can_merge(&needed_builder) {
+                                        merge_candidate = Some(i);
                                         break;
                                     }
                                 }
 
-                                if let Some(result) = found_compatible_result {
-                                    result
+                                if let Some(merge_idx) = merge_candidate {
+                                    // Merge with existing builder
+                                    let old_builder = self.sub_palette_builders[merge_idx].clone();
+                                    let merged = old_builder.merge(needed_builder).unwrap();
+                                    self.sub_palette_builders[merge_idx] = merged.clone();
+                                    
+                                    // Update the corresponding array
+                                    self.sub_palettes[merge_idx] = merged.to_array();
+                                    
+                                    let remapping = merged.create_remapping(&[color]).unwrap_or(vec![0]);
+                                    (merge_idx as u8, remapping)
                                 } else {
-                                    // Create new sub-palette with unique colors only
+                                    // Create new solid-color sub-palette
                                     if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
-                                        panic!(
-                                            "Sub-palette capacity {} exceeded",
-                                            SUBPALETTE_COUNT
-                                        );
+                                        panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
                                     }
 
+                                    let target_palette_array = needed_builder.to_array();
                                     self.sub_palettes.push(target_palette_array);
+                                    self.sub_palette_builders.push(needed_builder.clone());
                                     let palette_id = self.sub_palette_head as u8;
                                     self.sub_palette_head += 1;
 
@@ -639,16 +576,80 @@ impl<'a> TilesetBuilder<'a> {
                                     let name = format!("{}_{}", self.palette.name, palette_id);
                                     self.sub_palette_name_hash.insert(target_palette_array, name);
 
-                                    // Create identity remapping for our original colors (including duplicates)
-                                    let mut remapping = Vec::new();
-                                    for &color in &color_mapping {
-                                        let unique_index = unique_colors
-                                            .iter()
-                                            .position(|&c| c == color)
-                                            .unwrap_or(0);
-                                        remapping.push(unique_index as u8);
+                                    let remapping = needed_builder.create_remapping(&[color]).unwrap_or(vec![0]);
+                                    (palette_id, remapping)
+                                }
+                            }
+                        } else {
+                            // Multi-color tile - use SubPaletteBuilder system for optimal reuse
+
+                            // Work with unique colors only to avoid issues with repeated colors
+                            let unique_colors: Vec<u8> = {
+                                let mut seen = HashSet::new();
+                                color_mapping
+                                    .iter()
+                                    .filter(|&&color| seen.insert(color))
+                                    .cloned()
+                                    .collect()
+                            };
+
+                            let needed_builder = SubPaletteBuilder::from_colors(&unique_colors);
+
+                            // First try to find an existing sub-palette that contains all our colors
+                            let mut found_compatible = None;
+                            for (i, builder) in self.sub_palette_builders.iter().enumerate() {
+                                if builder.contains_all(&unique_colors) {
+                                    found_compatible = Some(i);
+                                    break;
+                                }
+                            }
+
+                            if let Some(compatible_idx) = found_compatible {
+                                // Use existing compatible sub-palette
+                                let builder = &self.sub_palette_builders[compatible_idx];
+                                let remapping = builder.create_remapping(&color_mapping).unwrap();
+                                (compatible_idx as u8, remapping)
+                            } else {
+                                // Try to merge with an existing sub-palette
+                                let mut merge_candidate = None;
+                                for (i, builder) in self.sub_palette_builders.iter().enumerate() {
+                                    if builder.can_merge(&needed_builder) {
+                                        merge_candidate = Some(i);
+                                        break;
+                                    }
+                                }
+
+                                if let Some(merge_idx) = merge_candidate {
+                                    // Merge with existing builder
+                                    let old_builder = self.sub_palette_builders[merge_idx].clone();
+                                    let merged = old_builder.merge(needed_builder).unwrap();
+                                    self.sub_palette_builders[merge_idx] = merged.clone();
+                                    
+                                    // Update the corresponding array
+                                    self.sub_palettes[merge_idx] = merged.to_array();
+                                    
+                                    let remapping = merged.create_remapping(&color_mapping).unwrap();
+                                    (merge_idx as u8, remapping)
+                                } else {
+                                    // Create new sub-palette
+                                    if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
+                                        panic!(
+                                            "Sub-palette capacity {} exceeded",
+                                            SUBPALETTE_COUNT
+                                        );
                                     }
 
+                                    let target_palette_array = needed_builder.to_array();
+                                    self.sub_palettes.push(target_palette_array);
+                                    self.sub_palette_builders.push(needed_builder.clone());
+                                    let palette_id = self.sub_palette_head as u8;
+                                    self.sub_palette_head += 1;
+
+                                    // Set name
+                                    let name = format!("{}_{}", self.palette.name, palette_id);
+                                    self.sub_palette_name_hash.insert(target_palette_array, name);
+
+                                    let remapping = needed_builder.create_remapping(&color_mapping).unwrap();
                                     (palette_id, remapping)
                                 }
                             }

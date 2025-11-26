@@ -13,7 +13,7 @@ pub const FONT_ARCADE_TILESET: TilesetData = TilesetData {
 };
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static FONT_ARCADE_TILES: [Tile<2>; 41] = [
+pub static FONT_ARCADE_TILES: [Tile<2>; 42] = [
     Tile::new(0x1550541454145454, 0x5514541415500000),
     Tile::new(0x0540154005400540, 0x0540054055540000),
     Tile::new(0x1550505400540150, 0x0540150055540000),
@@ -55,4 +55,5 @@ pub static FONT_ARCADE_TILES: [Tile<2>; 41] = [
     Tile::new(0x1550505400540150, 0x0540000005400000),
     Tile::new(0x0000000000000000, 0x0000050005000100),
     Tile::new(0x0000000000000000, 0x0000050005000000),
+    Tile::new(0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA),
 ];
