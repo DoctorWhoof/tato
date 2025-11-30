@@ -63,95 +63,6 @@ impl<'a> TilesetBuilder<'a> {
         }
     }
 
-    fn load_valid_image(&mut self, path: &str, frames_h: u8, frames_v: u8) -> PalettizedImg {
-        let img = PalettizedImg::from_image(path, frames_h, frames_v, self.palette);
-        assert!(
-            img.width % TILE_SIZE as usize == 0,
-            "Single tile width must be multiple of {}",
-            TILE_SIZE
-        );
-        img
-    }
-
-    fn should_regenerate_output(&self) -> bool {
-        // Check if any deferred command file needs regeneration
-        for command in &self.deferred_commands {
-            let file_path = match command {
-                DeferredCommand::NewGroup { path, .. } => path,
-                DeferredCommand::NewTile { path } => path,
-                DeferredCommand::NewMap { path, .. } => path,
-                DeferredCommand::NewAnimationStrip { path, .. } => path,
-            };
-            if !file_path.is_empty() && crate::should_regenerate_file(file_path) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn execute_deferred_commands(&mut self) {
-        let commands = self.deferred_commands.clone();
-        for command in commands {
-            match command {
-                DeferredCommand::NewGroup { path, name } => {
-                    let group_index = self.groups.add_group(&name);
-                    if !path.is_empty() {
-                        let img = self.load_valid_image(&path, 1, 1);
-                        let _ = self.add_tiles(&img, Some(group_index));
-                    }
-                },
-                DeferredCommand::NewTile { path } => {
-                    let img = self.load_valid_image(&path, 1, 1);
-                    assert!(
-                        img.width == TILE_SIZE as usize,
-                        "Single tile width must be {}",
-                        TILE_SIZE
-                    );
-                    assert!(
-                        img.cols_per_frame == 1 && img.rows_per_frame == 1,
-                        "Single tile must be 1x1 tile (8x8 pixels)"
-                    );
-                    let cells = self.add_tiles(&img, None);
-                    assert!(cells.len() == 1 && cells[0].len() == 1);
-                    let tile_name = crate::strip_path_name(&path);
-                    let single_tile =
-                        SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
-                    self.single_tiles.push(single_tile);
-                },
-                DeferredCommand::NewMap { path, name } => {
-                    let img = self.load_valid_image(&path, 1, 1);
-                    let frames = self.add_tiles(&img, None);
-                    assert!(frames.len() == 1);
-                    let map = MapBuilder {
-                        name,
-                        columns: u8::try_from(img.cols_per_frame).unwrap(),
-                        rows: u8::try_from(img.rows_per_frame).unwrap(),
-                        cells: frames[0].clone(),
-                    };
-                    self.maps.push(map);
-                },
-                DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
-                    let img = self.load_valid_image(&path, frames_h, frames_v);
-                    let cells = self.add_tiles(&img, None);
-                    let frame_count = img.frames_h as usize * img.frames_v as usize;
-                    assert!(frame_count > 0);
-                    let anim = AnimBuilder {
-                        name: name.clone(),
-                        frames: (0..frame_count)
-                            .map(|i| MapBuilder {
-                                name: format!("frame_{:02}", i),
-                                columns: u8::try_from(img.cols_per_frame).unwrap(),
-                                rows: u8::try_from(img.rows_per_frame).unwrap(),
-                                cells: cells[i].clone(),
-                            })
-                            .collect(),
-                    };
-                    self.anims.push(anim);
-                },
-            }
-        }
-    }
-
     /// Defines a new tile group. Adds the tiles only, does not add Tilemaps or Animations,
     /// there's a match. To add an "empty" group, with no tiles, simply add it directly to
     /// the GroupBuilder instead of using the TilesetBuilder.
@@ -184,14 +95,88 @@ impl<'a> TilesetBuilder<'a> {
     /// Writes the tileset constants to a file
     pub fn write(&mut self, file_path: &str) {
         // Check if any input files have changed
-        if !self.should_regenerate_output() {
+        let mut should_regenerate = false;
+        for command in &self.deferred_commands {
+            // Check if any deferred command file needs regeneration
+            let file_path = match command {
+                DeferredCommand::NewGroup { path, .. } => path,
+                DeferredCommand::NewTile { path } => path,
+                DeferredCommand::NewMap { path, .. } => path,
+                DeferredCommand::NewAnimationStrip { path, .. } => path,
+            };
+            if !file_path.is_empty() && crate::should_regenerate_file(file_path) {
+                should_regenerate = true;
+                break;
+            }
+        }
+        if !should_regenerate {
             return;
         }
 
         println!("cargo:warning=Regenerating tileset: {}", file_path);
-
         // Execute all deferred commands now
-        self.execute_deferred_commands();
+        {
+            let commands = self.deferred_commands.clone();
+            for command in commands {
+                match command {
+                    DeferredCommand::NewGroup { path, name } => {
+                        let group_index = self.groups.add_group(&name);
+                        if !path.is_empty() {
+                            let img = self.load_valid_image(&path, 1, 1);
+                            let _ = self.add_tiles(&img, Some(group_index));
+                        }
+                    },
+                    DeferredCommand::NewTile { path } => {
+                        let img = self.load_valid_image(&path, 1, 1);
+                        assert!(
+                            img.width == TILE_SIZE as usize,
+                            "Single tile width must be {}",
+                            TILE_SIZE
+                        );
+                        assert!(
+                            img.cols_per_frame == 1 && img.rows_per_frame == 1,
+                            "Single tile must be 1x1 tile (8x8 pixels)"
+                        );
+                        let cells = self.add_tiles(&img, None);
+                        assert!(cells.len() == 1 && cells[0].len() == 1);
+                        let tile_name = crate::strip_path_name(&path);
+                        let single_tile =
+                            SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
+                        self.single_tiles.push(single_tile);
+                    },
+                    DeferredCommand::NewMap { path, name } => {
+                        let img = self.load_valid_image(&path, 1, 1);
+                        let frames = self.add_tiles(&img, None);
+                        assert!(frames.len() == 1);
+                        let map = MapBuilder {
+                            name,
+                            columns: u8::try_from(img.cols_per_frame).unwrap(),
+                            rows: u8::try_from(img.rows_per_frame).unwrap(),
+                            cells: frames[0].clone(),
+                        };
+                        self.maps.push(map);
+                    },
+                    DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
+                        let img = self.load_valid_image(&path, frames_h, frames_v);
+                        let cells = self.add_tiles(&img, None);
+                        let frame_count = img.frames_h as usize * img.frames_v as usize;
+                        assert!(frame_count > 0);
+                        let anim = AnimBuilder {
+                            name: name.clone(),
+                            frames: (0..frame_count)
+                                .map(|i| MapBuilder {
+                                    name: format!("frame_{:02}", i),
+                                    columns: u8::try_from(img.cols_per_frame).unwrap(),
+                                    rows: u8::try_from(img.rows_per_frame).unwrap(),
+                                    cells: cells[i].clone(),
+                                })
+                                .collect(),
+                        };
+                        self.anims.push(anim);
+                    },
+                }
+            }
+        }
 
         println!("cargo:warning=Creating output file: {}", file_path);
         let mut code = CodeWriter::new(file_path);
@@ -216,7 +201,69 @@ impl<'a> TilesetBuilder<'a> {
         }
 
         // Generate separate files for each tilemap
-        self.write_tilemap_files(file_path);
+        {
+            use std::fs;
+            use std::path::Path;
+
+            // Get the directory of the main file and the module name
+            let main_path = Path::new(file_path);
+            let output_dir =
+                main_path.parent().expect("Could not get parent directory of output file");
+            let module_name = main_path
+                .file_stem()
+                .expect("Could not get module name from file path")
+                .to_str()
+                .expect("Could not convert module name to string");
+
+            for map in &self.maps {
+                // Create subdirectory for this module
+                let module_subdir = output_dir.join(module_name);
+                if let Err(e) = fs::create_dir_all(&module_subdir) {
+                    println!("cargo:warning=Failed to create directory {:?}: {}", module_subdir, e);
+                    continue;
+                }
+
+                let map_filename = format!("{}.rs", map.name.to_lowercase());
+                let map_file_path = module_subdir.join(&map_filename);
+                let map_file_path_str =
+                    map_file_path.to_str().expect("Could not convert path to string");
+
+                println!("cargo:warning=Creating tilemap file: {}", map_file_path_str);
+                let mut code = CodeWriter::new(map_file_path_str);
+
+                // Write header
+                code.write_header(self.allow_unused, self.use_crate_assets);
+
+                // Write the tilemap
+                code.write_line(&format!(
+                    "#[unsafe(link_section = \"{}\")]",
+                    crate::get_platform_link_section()
+                ));
+                code.write_line(&format!(
+                    "pub static {}: Tilemap<{}> = Tilemap {{",
+                    map.name.to_uppercase(),
+                    map.cells.len()
+                ));
+                code.write_line(&format!("    columns: {},", map.columns));
+                code.write_line(&format!("    rows: {},", map.rows));
+                code.write_line("    cells: [");
+
+                for cell in &map.cells {
+                    code.write_cell(cell);
+                }
+
+                code.write_line("    ],");
+                code.write_line("};");
+
+                // Format the output
+                println!(
+                    "cargo:warning=Formatting and writing tilemap file: {}",
+                    map_file_path_str
+                );
+                code.format_output(map_file_path_str);
+                println!("cargo:warning=Tilemap file write completed: {}", map_file_path_str);
+            }
+        }
 
         // Write tileset data structure
         code.write_line(&format!(
@@ -376,70 +423,12 @@ impl<'a> TilesetBuilder<'a> {
         }
     }
 
-    fn write_tilemap_files(&self, main_file_path: &str) {
-        use std::fs;
-        use std::path::Path;
 
-        // Get the directory of the main file and the module name
-        let main_path = Path::new(main_file_path);
-        let output_dir = main_path.parent().expect("Could not get parent directory of output file");
-        let module_name = main_path
-            .file_stem()
-            .expect("Could not get module name from file path")
-            .to_str()
-            .expect("Could not convert module name to string");
-
-        for map in &self.maps {
-            // Create subdirectory for this module
-            let module_subdir = output_dir.join(module_name);
-            if let Err(e) = fs::create_dir_all(&module_subdir) {
-                println!("cargo:warning=Failed to create directory {:?}: {}", module_subdir, e);
-                continue;
-            }
-
-            let map_filename = format!("{}.rs", map.name.to_lowercase());
-            let map_file_path = module_subdir.join(&map_filename);
-            let map_file_path_str =
-                map_file_path.to_str().expect("Could not convert path to string");
-
-            println!("cargo:warning=Creating tilemap file: {}", map_file_path_str);
-            let mut code = CodeWriter::new(map_file_path_str);
-
-            // Write header
-            code.write_header(self.allow_unused, self.use_crate_assets);
-
-            // Write the tilemap
-            code.write_line(&format!(
-                "#[unsafe(link_section = \"{}\")]",
-                crate::get_platform_link_section()
-            ));
-            code.write_line(&format!(
-                "pub static {}: Tilemap<{}> = Tilemap {{",
-                map.name.to_uppercase(),
-                map.cells.len()
-            ));
-            code.write_line(&format!("    columns: {},", map.columns));
-            code.write_line(&format!("    rows: {},", map.rows));
-            code.write_line("    cells: [");
-
-            for cell in &map.cells {
-                code.write_cell(cell);
-            }
-
-            code.write_line("    ],");
-            code.write_line("};");
-
-            // Format the output
-            println!("cargo:warning=Formatting and writing tilemap file: {}", map_file_path_str);
-            code.format_output(map_file_path_str);
-            println!("cargo:warning=Tilemap file write completed: {}", map_file_path_str);
-        }
-    }
-
+    /// Main workhorse. Creates a tile map while storing tile pixels and subpalettes
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
-        // Main detection routine.
+        // Main detection routine. b
         // Iterate animation frames, then tiles within frames.
         for frame_v in 0..img.frames_v as usize {
             for frame_h in 0..img.frames_h as usize {
@@ -461,7 +450,8 @@ impl<'a> TilesetBuilder<'a> {
                         }
 
                         // Create canonical representation
-                        let (canonical_tile, color_mapping) = create_canonical_tile(&tile_data);
+                        let (canonical_tile, color_mapping) =
+                            Self::create_canonical_tile(&tile_data);
 
                         // Safety check
                         if color_mapping.len() > SUBPALETTE_COUNT as usize {
@@ -497,11 +487,11 @@ impl<'a> TilesetBuilder<'a> {
                                                     continue; // Skip identity transform
                                                 }
 
-                                                let transformed_tile = transform_tile(
+                                                let transformed_tile = Self::transform_tile(
                                                     &tile_data, flip_x, flip_y, rotation,
                                                 );
                                                 let (transformed_canonical, transformed_colors) =
-                                                    create_canonical_tile(&transformed_tile);
+                                                    Self::create_canonical_tile(&transformed_tile);
 
                                                 // Only register if the transformed tile is also multi-color
                                                 if transformed_colors.len() > 1 {
@@ -673,10 +663,11 @@ impl<'a> TilesetBuilder<'a> {
                                             continue;
                                         }
 
-                                        let transformed_original =
-                                            transform_tile(&tile_data, flip_x, flip_y, rotation);
+                                        let transformed_original = Self::transform_tile(
+                                            &tile_data, flip_x, flip_y, rotation,
+                                        );
                                         let (transformed_canonical, transformed_colors) =
-                                            create_canonical_tile(&transformed_original);
+                                            Self::create_canonical_tile(&transformed_original);
 
                                         // Apply remapping to transformed data
                                         let mut transformed_normalized = [0u8; TILE_LEN];
@@ -748,11 +739,13 @@ impl<'a> TilesetBuilder<'a> {
                                                     continue;
                                                 }
 
-                                                let transformed_original = transform_tile(
+                                                let transformed_original = Self::transform_tile(
                                                     &tile_data, flip_x, flip_y, rotation,
                                                 );
                                                 let (transformed_canonical, transformed_colors) =
-                                                    create_canonical_tile(&transformed_original);
+                                                    Self::create_canonical_tile(
+                                                        &transformed_original,
+                                                    );
 
                                                 // Apply same remapping to transformed data
                                                 let mut transformed_normalized = [0u8; TILE_LEN];
@@ -810,68 +803,79 @@ impl<'a> TilesetBuilder<'a> {
 
         frames
     }
-}
 
-// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
-// the same structure but different colors can still be detected as the same, but with different
-// palettes.
-fn create_canonical_tile(tile_data: &TileData) -> (CanonicalTile, Vec<u8>) {
-    let mut canonical = [0u8; TILE_LEN];
-    let mut color_mapping = Vec::new();
-    let mut color_to_index = HashMap::new();
+    fn load_valid_image(&mut self, path: &str, frames_h: u8, frames_v: u8) -> PalettizedImg {
+        let img = PalettizedImg::from_image(path, frames_h, frames_v, self.palette);
+        assert!(
+            img.width % TILE_SIZE as usize == 0,
+            "Single tile width must be multiple of {}",
+            TILE_SIZE
+        );
+        img
+    }
 
-    // First, collect all unique colors
-    let mut unique_colors = Vec::new();
-    for &color in tile_data.iter() {
-        if !color_to_index.contains_key(&color) {
-            unique_colors.push(color);
-            color_to_index.insert(color, 0); // Temporary placeholder
+    /// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
+    /// the same structure but different colors can still be detected as the same, but with different
+    /// palettes.
+    fn create_canonical_tile(tile_data: &TileData) -> (CanonicalTile, Vec<u8>) {
+        let mut canonical = [0u8; TILE_LEN];
+        let mut color_mapping = Vec::new();
+        let mut color_to_index = HashMap::new();
+
+        // First, collect all unique colors
+        let mut unique_colors = Vec::new();
+        for &color in tile_data.iter() {
+            if !color_to_index.contains_key(&color) {
+                unique_colors.push(color);
+                color_to_index.insert(color, 0); // Temporary placeholder
+            }
         }
-    }
 
-    // Sort colors by their palette index to maintain consistent ordering
-    // This ensures 0=darkest, 1=darker, 2=lighter, 3=lightest
-    unique_colors.sort_unstable();
+        // Sort colors by their palette index to maintain consistent ordering
+        // This ensures 0=darkest, 1=darker, 2=lighter, 3=lightest
+        unique_colors.sort_unstable();
 
-    // Assign canonical indices based on sorted order
-    color_to_index.clear();
-    for (canonical_index, &color) in unique_colors.iter().enumerate() {
-        color_mapping.push(color);
-        color_to_index.insert(color, canonical_index as u8);
-    }
-
-    // Map each pixel to its canonical index
-    for (i, &color) in tile_data.iter().enumerate() {
-        canonical[i] = color_to_index[&color];
-    }
-
-    (canonical, color_mapping)
-}
-
-fn transform_tile(tile: &TileData, flip_x: bool, flip_y: bool, rotation: bool) -> TileData {
-    let mut result = [0u8; TILE_LEN];
-    let size = TILE_SIZE as usize;
-
-    for y in 0..size {
-        for x in 0..size {
-            let src_idx = y * size + x;
-            let mut dst_x = x;
-            let mut dst_y = y;
-
-            if rotation {
-                let temp = dst_x;
-                dst_x = dst_y;
-                dst_y = size - 1 - temp;
-            }
-            if flip_x {
-                dst_x = size - 1 - dst_x;
-            }
-            if flip_y {
-                dst_y = size - 1 - dst_y;
-            }
-
-            result[dst_y * size + dst_x] = tile[src_idx];
+        // Assign canonical indices based on sorted order
+        color_to_index.clear();
+        for (canonical_index, &color) in unique_colors.iter().enumerate() {
+            color_mapping.push(color);
+            color_to_index.insert(color, canonical_index as u8);
         }
+
+        // Map each pixel to its canonical index
+        for (i, &color) in tile_data.iter().enumerate() {
+            canonical[i] = color_to_index[&color];
+        }
+
+        (canonical, color_mapping)
     }
-    result
+
+    /// Generates a copy of the tile pixels with some transformation
+    fn transform_tile(tile: &TileData, flip_x: bool, flip_y: bool, rotation: bool) -> TileData {
+        let mut result = [0u8; TILE_LEN];
+        let size = TILE_SIZE as usize;
+
+        for y in 0..size {
+            for x in 0..size {
+                let src_idx = y * size + x;
+                let mut dst_x = x;
+                let mut dst_y = y;
+
+                if rotation {
+                    let temp = dst_x;
+                    dst_x = dst_y;
+                    dst_y = size - 1 - temp;
+                }
+                if flip_x {
+                    dst_x = size - 1 - dst_x;
+                }
+                if flip_y {
+                    dst_y = size - 1 - dst_y;
+                }
+
+                result[dst_y * size + dst_x] = tile[src_idx];
+            }
+        }
+        result
+    }
 }
