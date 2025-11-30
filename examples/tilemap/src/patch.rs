@@ -8,7 +8,7 @@ pub use patch_map::*;
 pub const PATCH_TILESET: TilesetData = TilesetData {
     tiles: Some(&PATCH_TILES),
     colors: Some(&PATCH_COLORS),
-    sub_palettes: Some(&[&PATCH_SUBPALETTE_0]),
+    sub_palettes: Some(&[&PATCH_SUBPALETTE_0, &PATCH_SUBPALETTE_1]),
 };
 
 #[unsafe(link_section = "__DATA,__const")]
@@ -20,7 +20,10 @@ pub static PATCH_COLORS: [RGBA12; 4] = [
 ];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 3];
+pub static PATCH_SUBPALETTE_0: [u8; 4] = [0, 1, 2, 0];
+
+#[unsafe(link_section = "__DATA,__const")]
+pub static PATCH_SUBPALETTE_1: [u8; 4] = [0, 1, 2, 3];
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static PATCH_TILES: [Tile<2>; 6] = [

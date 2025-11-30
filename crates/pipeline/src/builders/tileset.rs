@@ -30,6 +30,7 @@ pub struct TilesetBuilder<'a> {
     pub sub_palette_name_hash: HashMap<[u8; COLORS_PER_TILE as usize], String>,
     pub sub_palettes: Vec<[u8; COLORS_PER_TILE as usize]>,
     sub_palette_builders: Vec<SubPaletteBuilder>,
+    sub_palettes_with_tiles: Vec<bool>, // Track which sub-palettes have tiles stored
     groups: &'a mut GroupBuilder,
     anims: Vec<AnimBuilder>,
     maps: Vec<MapBuilder>,
@@ -60,6 +61,7 @@ impl<'a> TilesetBuilder<'a> {
             palette,
             sub_palettes: Vec::new(),
             sub_palette_builders: Vec::new(),
+            sub_palettes_with_tiles: Vec::new(),
             sub_palette_head: 0,
             deferred_commands: Vec::new(),
         }
@@ -98,11 +100,15 @@ impl<'a> TilesetBuilder<'a> {
                 DeferredCommand::NewGroup { path, name } => {
                     let group_index = self.groups.add_group(&name);
                     if !path.is_empty() {
+                        let tiles_before = self.next_tile;
                         let img = self.load_valid_image(&path, 1, 1);
                         let _ = self.add_tiles(&img, Some(group_index));
+                        let tiles_added = self.next_tile - tiles_before;
+                        println!("cargo:warning=NEW_GROUP '{}': Added {} tiles (total: {})", name, tiles_added, self.next_tile);
                     }
                 },
                 DeferredCommand::NewTile { path } => {
+                    let tiles_before = self.next_tile;
                     let img = self.load_valid_image(&path, 1, 1);
                     assert!(
                         img.width == TILE_SIZE as usize,
@@ -117,22 +123,29 @@ impl<'a> TilesetBuilder<'a> {
                     assert!(cells.len() == 1 && cells[0].len() == 1);
                     let tile_name = crate::strip_path_name(&path);
                     let single_tile =
-                        SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
+                        SingleTileBuilder { name: tile_name.clone(), cell: cells[0][0].clone() };
                     self.single_tiles.push(single_tile);
+                    let tiles_added = self.next_tile - tiles_before;
+                    println!("cargo:warning=NEW_TILE '{}': Added {} tiles (total: {})", tile_name, tiles_added, self.next_tile);
                 },
                 DeferredCommand::NewMap { path, name } => {
+                    let tiles_before = self.next_tile;
                     let img = self.load_valid_image(&path, 1, 1);
                     let frames = self.add_tiles(&img, None);
                     assert!(frames.len() == 1);
                     let map = MapBuilder {
-                        name,
+                        name: name.clone(),
                         columns: u8::try_from(img.cols_per_frame).unwrap(),
                         rows: u8::try_from(img.rows_per_frame).unwrap(),
                         cells: frames[0].clone(),
                     };
                     self.maps.push(map);
+                    let tiles_added = self.next_tile - tiles_before;
+                    println!("cargo:warning=NEW_MAP '{}': Added {} tiles (total: {}), image size: {}x{} tiles", 
+                             name, tiles_added, self.next_tile, img.cols_per_frame, img.rows_per_frame);
                 },
                 DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
+                    let tiles_before = self.next_tile;
                     let img = self.load_valid_image(&path, frames_h, frames_v);
                     let cells = self.add_tiles(&img, None);
                     let frame_count = img.frames_h as usize * img.frames_v as usize;
@@ -149,6 +162,9 @@ impl<'a> TilesetBuilder<'a> {
                             .collect(),
                     };
                     self.anims.push(anim);
+                    let tiles_added = self.next_tile - tiles_before;
+                    println!("cargo:warning=NEW_ANIMATION_STRIP '{}': Added {} tiles (total: {}), frames: {}x{}, tiles per frame: {}x{}", 
+                             name, tiles_added, self.next_tile, frames_h, frames_v, img.cols_per_frame, img.rows_per_frame);
                 },
             }
         }
@@ -194,6 +210,10 @@ impl<'a> TilesetBuilder<'a> {
 
         // Execute all deferred commands now
         self.execute_deferred_commands();
+
+        // Optimize sub-palettes after all tiles are processed
+        // DISABLED: Causes color mapping issues, needs debugging
+        // self.consolidate_sub_palettes();
 
         println!("cargo:warning=Creating output file: {}", file_path);
         let mut code = CodeWriter::new(file_path);
@@ -364,6 +384,18 @@ impl<'a> TilesetBuilder<'a> {
         code.format_output(file_path);
         println!("cargo:warning=File write completed: {}", file_path);
 
+        // Print final tile summary
+        let total_pixels = self.pixels.len();
+        let tiles_per_tile = TILE_SIZE as usize * TILE_SIZE as usize;
+        let total_tiles = total_pixels / tiles_per_tile;
+        println!("cargo:warning=FINAL SUMMARY: {} unique tiles created, {} pixels stored, {} sub-palettes used", 
+                 total_tiles, total_pixels, self.sub_palettes.len());
+        
+        if total_tiles != self.next_tile as usize {
+            println!("cargo:warning=WARNING: Tile count inconsistency - next_tile: {}, actual tiles: {}", 
+                     self.next_tile, total_tiles);
+        }
+
         // Mark all input files as processed
         for command in &self.deferred_commands {
             let file_path = match command {
@@ -439,7 +471,10 @@ impl<'a> TilesetBuilder<'a> {
     }
 
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
+        let tiles_before = self.next_tile;
         let mut frames = vec![];
+        let mut tiles_created = 0;
+        let mut tiles_reused = 0;
 
         // Main detection routine.
         // Iterate animation frames, then tiles within frames.
@@ -535,30 +570,51 @@ impl<'a> TilesetBuilder<'a> {
                             }
 
                             if let Some(palette_id) = found_palette_id {
+                                if palette_id as usize >= self.sub_palette_builders.len() {
+                                    panic!("Invalid palette_id {} for {} builders", palette_id, self.sub_palette_builders.len());
+                                }
                                 let remapping = self.sub_palette_builders[palette_id as usize]
                                     .create_remapping(&[color])
-                                    .unwrap_or(vec![0]);
+                                    .unwrap_or_else(|| {
+                                        eprintln!("WARNING: Failed to create remapping for existing solid-color palette {}", palette_id);
+                                        vec![0]
+                                    });
                                 (palette_id, remapping)
                             } else {
-                                // Try to merge with an existing sub-palette that has space
+                                // Try to merge with an existing sub-palette that has space AND no tiles stored yet
                                 let mut merge_candidate = None;
                                 for (i, builder) in self.sub_palette_builders.iter().enumerate() {
-                                    if builder.can_merge(&needed_builder) {
+                                    if builder.can_merge(&needed_builder) && !self.sub_palettes_with_tiles[i] {
                                         merge_candidate = Some(i);
                                         break;
                                     }
                                 }
 
                                 if let Some(merge_idx) = merge_candidate {
-                                    // Merge with existing builder
-                                    let old_builder = self.sub_palette_builders[merge_idx].clone();
-                                    let merged = old_builder.merge(needed_builder).unwrap();
-                                    self.sub_palette_builders[merge_idx] = merged.clone();
+                                    if merge_idx >= self.sub_palette_builders.len() || merge_idx >= self.sub_palettes.len() {
+                                        panic!("Invalid merge_idx {} for solid-color merge (builders: {}, palettes: {})", 
+                                               merge_idx, self.sub_palette_builders.len(), self.sub_palettes.len());
+                                    }
                                     
-                                    // Update the corresponding array
+                                    // SAFE: Merge with existing sub-palette that has no tiles stored yet
+                                    let old_builder = self.sub_palette_builders[merge_idx].clone();
+                                    println!("cargo:warning=  SAFE MERGE: solid-color sub-palette {} {:?} + {:?}", 
+                                             merge_idx, old_builder.colors(), needed_builder.colors());
+                                    let merged = old_builder.merge(needed_builder).unwrap();
+                                    println!("cargo:warning=    Result: {:?}", merged.colors());
+                                    
+                                    // Update the existing sub-palette since no tiles reference it yet
+                                    self.sub_palette_builders[merge_idx] = merged.clone();
                                     self.sub_palettes[merge_idx] = merged.to_array();
                                     
-                                    let remapping = merged.create_remapping(&[color]).unwrap_or(vec![0]);
+                                    // Update name
+                                    let name = format!("{}_{}", self.palette.name, merge_idx);
+                                    self.sub_palette_name_hash.insert(merged.to_array(), name);
+                                    
+                                    let remapping = merged.create_remapping(&[color]).unwrap_or_else(|| {
+                                        eprintln!("WARNING: Failed to create remapping for merged solid-color palette {}", merge_idx);
+                                        vec![0]
+                                    });
                                     (merge_idx as u8, remapping)
                                 } else {
                                     // Create new solid-color sub-palette
@@ -567,30 +623,42 @@ impl<'a> TilesetBuilder<'a> {
                                     }
 
                                     let target_palette_array = needed_builder.to_array();
+                                    let palette_id = self.sub_palettes.len();
+
+                                    if palette_id >= SUBPALETTE_COUNT as usize {
+                                        panic!("Sub-palette index {} exceeds maximum {}", palette_id, SUBPALETTE_COUNT);
+                                    }
+
                                     self.sub_palettes.push(target_palette_array);
                                     self.sub_palette_builders.push(needed_builder.clone());
-                                    let palette_id = self.sub_palette_head as u8;
+                                    self.sub_palettes_with_tiles.push(false);
                                     self.sub_palette_head += 1;
 
                                     // Set name
                                     let name = format!("{}_{}", self.palette.name, palette_id);
                                     self.sub_palette_name_hash.insert(target_palette_array, name);
 
-                                    let remapping = needed_builder.create_remapping(&[color]).unwrap_or(vec![0]);
-                                    (palette_id, remapping)
+                                    let remapping = needed_builder.create_remapping(&[color]).unwrap_or_else(|| {
+                                        eprintln!("WARNING: Failed to create remapping for color {} in solid-color tile", color);
+                                        vec![0]
+                                    });
+                                    (palette_id as u8, remapping)
                                 }
                             }
                         } else {
                             // Multi-color tile - use SubPaletteBuilder system for optimal reuse
 
                             // Work with unique colors only to avoid issues with repeated colors
+                            // IMPORTANT: Preserve the original sorted order from color_mapping
                             let unique_colors: Vec<u8> = {
+                                let mut unique = Vec::new();
                                 let mut seen = HashSet::new();
-                                color_mapping
-                                    .iter()
-                                    .filter(|&&color| seen.insert(color))
-                                    .cloned()
-                                    .collect()
+                                for &color in &color_mapping {
+                                    if seen.insert(color) {
+                                        unique.push(color);
+                                    }
+                                }
+                                unique
                             };
 
                             let needed_builder = SubPaletteBuilder::from_colors(&unique_colors);
@@ -605,30 +673,57 @@ impl<'a> TilesetBuilder<'a> {
                             }
 
                             if let Some(compatible_idx) = found_compatible {
+                                if compatible_idx >= self.sub_palette_builders.len() {
+                                    panic!("Invalid compatible_idx {} for {} builders", compatible_idx, self.sub_palette_builders.len());
+                                }
                                 // Use existing compatible sub-palette
                                 let builder = &self.sub_palette_builders[compatible_idx];
-                                let remapping = builder.create_remapping(&color_mapping).unwrap();
+                                let remapping = builder.create_remapping(&color_mapping).unwrap_or_else(|| {
+                                    eprintln!("WARNING: Failed to create remapping for compatible palette {}, using fallback", compatible_idx);
+                                    // Fallback: create remapping based on unique colors
+                                    color_mapping.iter().map(|&color| {
+                                        builder.colors().iter().position(|&c| c == color).unwrap_or(0) as u8
+                                    }).collect()
+                                });
                                 (compatible_idx as u8, remapping)
                             } else {
-                                // Try to merge with an existing sub-palette
+                                // Try to merge with an existing sub-palette that has no tiles stored yet
                                 let mut merge_candidate = None;
                                 for (i, builder) in self.sub_palette_builders.iter().enumerate() {
-                                    if builder.can_merge(&needed_builder) {
+                                    if builder.can_merge(&needed_builder) && !self.sub_palettes_with_tiles[i] {
                                         merge_candidate = Some(i);
                                         break;
                                     }
                                 }
 
                                 if let Some(merge_idx) = merge_candidate {
-                                    // Merge with existing builder
-                                    let old_builder = self.sub_palette_builders[merge_idx].clone();
-                                    let merged = old_builder.merge(needed_builder).unwrap();
-                                    self.sub_palette_builders[merge_idx] = merged.clone();
+                                    if merge_idx >= self.sub_palette_builders.len() || merge_idx >= self.sub_palettes.len() {
+                                        panic!("Invalid merge_idx {} for {} builders/{} palettes", 
+                                               merge_idx, self.sub_palette_builders.len(), self.sub_palettes.len());
+                                    }
                                     
-                                    // Update the corresponding array
+                                    // SAFE: Merge with existing sub-palette that has no tiles stored yet
+                                    let old_builder = self.sub_palette_builders[merge_idx].clone();
+                                    println!("cargo:warning=  SAFE MERGE: multi-color sub-palette {} {:?} + {:?}", 
+                                             merge_idx, old_builder.colors(), needed_builder.colors());
+                                    let merged = old_builder.merge(needed_builder).unwrap();
+                                    println!("cargo:warning=    Result: {:?}", merged.colors());
+                                    
+                                    // Update the existing sub-palette since no tiles reference it yet
+                                    self.sub_palette_builders[merge_idx] = merged.clone();
                                     self.sub_palettes[merge_idx] = merged.to_array();
                                     
-                                    let remapping = merged.create_remapping(&color_mapping).unwrap();
+                                    // Update name
+                                    let name = format!("{}_{}", self.palette.name, merge_idx);
+                                    self.sub_palette_name_hash.insert(merged.to_array(), name);
+                                    
+                                    let remapping = merged.create_remapping(&color_mapping).unwrap_or_else(|| {
+                                        eprintln!("WARNING: Failed to create remapping for merged multi-color palette {}, using fallback", merge_idx);
+                                        // Fallback: create remapping based on color positions
+                                        color_mapping.iter().map(|&color| {
+                                            merged.colors().iter().position(|&c| c == color).unwrap_or(0) as u8
+                                        }).collect()
+                                    });
                                     (merge_idx as u8, remapping)
                                 } else {
                                     // Create new sub-palette
@@ -640,33 +735,53 @@ impl<'a> TilesetBuilder<'a> {
                                     }
 
                                     let target_palette_array = needed_builder.to_array();
+                                    let palette_id = self.sub_palettes.len();
+
+                                    if palette_id >= SUBPALETTE_COUNT as usize {
+                                        panic!("Sub-palette index {} exceeds maximum {}", palette_id, SUBPALETTE_COUNT);
+                                    }
+
                                     self.sub_palettes.push(target_palette_array);
                                     self.sub_palette_builders.push(needed_builder.clone());
-                                    let palette_id = self.sub_palette_head as u8;
+                                    self.sub_palettes_with_tiles.push(false);
                                     self.sub_palette_head += 1;
 
                                     // Set name
                                     let name = format!("{}_{}", self.palette.name, palette_id);
                                     self.sub_palette_name_hash.insert(target_palette_array, name);
 
-                                    let remapping = needed_builder.create_remapping(&color_mapping).unwrap();
-                                    (palette_id, remapping)
+                                    let remapping = needed_builder.create_remapping(&color_mapping).unwrap_or_else(|| {
+                                        eprintln!("WARNING: Failed to create remapping for new multi-color palette, using fallback");
+                                        // Fallback: create remapping for duplicated colors
+                                        color_mapping.iter().map(|&color| {
+                                            needed_builder.colors().iter().position(|&c| c == color).unwrap_or(0) as u8
+                                        }).collect()
+                                    });
+                                    (palette_id as u8, remapping)
                                 }
                             }
                         };
+
+
 
                         // Check if this canonical tile (or any transformation) exists
                         let mut found_cell = None;
                         let mut normalized_tile = [0u8; TILE_LEN];
                         for (i, &canonical_index) in canonical_tile.iter().enumerate() {
-                            normalized_tile[i] = remapping[canonical_index as usize];
-                        }
+                            if (canonical_index as usize) < remapping.len() {
+                                normalized_tile[i] = remapping[canonical_index as usize];
+                            } else {
+                                // This should never happen if remapping is created correctly
+                                eprintln!("WARNING: canonical_index {} >= remapping.len() {}", canonical_index, remapping.len());
+                                normalized_tile[i] = 0;
+            }
+        }
 
                         // Check original first using remapped data
                         if let Some(existing) = self.tile_hash.get(&normalized_tile) {
                             found_cell = Some(*existing);
                         } else if self.allow_tile_transforms {
-                            // Try all 7 other transformations using remapped data
+                            // Try all 7 other transformations - check against ALL existing sub-palettes
                             'outer: for flip_x in [false, true] {
                                 for flip_y in [false, true] {
                                     for rotation in [false, true] {
@@ -679,31 +794,42 @@ impl<'a> TilesetBuilder<'a> {
                                         let (transformed_canonical, transformed_colors) =
                                             create_canonical_tile(&transformed_original);
 
-                                        // Apply remapping to transformed data
-                                        let mut transformed_normalized = [0u8; TILE_LEN];
-                                        for (i, &canonical_index) in
-                                            transformed_canonical.iter().enumerate()
-                                        {
-                                            if (canonical_index as usize) < transformed_colors.len()
-                                            {
-                                                let color =
-                                                    transformed_colors[canonical_index as usize];
-                                                let original_index = color_mapping
-                                                    .iter()
-                                                    .position(|&c| c == color)
-                                                    .unwrap_or(0);
-                                                transformed_normalized[i] =
-                                                    remapping[original_index];
-                                            } else {
-                                                transformed_normalized[i] = 0;
+                                        // Try remapping with each existing sub-palette
+                                        for (_existing_sub_palette_id, existing_builder) in self.sub_palette_builders.iter().enumerate() {
+                                            // Check if this sub-palette contains all the transformed colors
+                                            if !existing_builder.contains_all(&transformed_colors) {
+                                                continue;
                                             }
-                                        }
 
-                                        if let Some(existing) =
-                                            self.tile_hash.get(&transformed_normalized)
-                                        {
-                                            found_cell = Some(*existing);
-                                            break 'outer;
+                                            // Apply remapping using this existing sub-palette
+                                            let mut transformed_normalized = [0u8; TILE_LEN];
+                                            let mut mapping_failed = false;
+                                            
+                                            for (i, &canonical_index) in transformed_canonical.iter().enumerate() {
+                                                if (canonical_index as usize) < transformed_colors.len() {
+                                                    let color = transformed_colors[canonical_index as usize];
+                                                    match existing_builder.colors().iter().position(|&c| c == color) {
+                                                        Some(sub_palette_index) => {
+                                                            transformed_normalized[i] = sub_palette_index as u8;
+                                                        }
+                                                        None => {
+                                                            mapping_failed = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                } else {
+                                                    transformed_normalized[i] = 0;
+                                                }
+                                            }
+
+                                            if !mapping_failed {
+                                                if let Some(existing) = self.tile_hash.get(&transformed_normalized) {
+                                                    println!("cargo:warning=  Found transform match: TileID({}) with flip_x={}, flip_y={}, rotation={}", 
+                                                             existing.id.0, flip_x, flip_y, rotation);
+                                                    found_cell = Some(*existing);
+                                                    break 'outer;
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -718,6 +844,9 @@ impl<'a> TilesetBuilder<'a> {
                             Some(existing_cell) => {
                                 // Found existing tile with same pattern
                                 // Use the same sub-palette mapping we used for lookup
+                                tiles_reused += 1;
+                                println!("cargo:warning=  Reusing TileID({}) at position ({}, {}) in frame ({}, {})", 
+                                         existing_cell.id.0, col, row, frame_h, frame_v);
                                 Cell {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
@@ -727,6 +856,9 @@ impl<'a> TilesetBuilder<'a> {
                             },
                             None => {
                                 // Create new tile using the sub-palette we already found/created
+                                tiles_created += 1;
+                                println!("cargo:warning=  Creating NEW TileID({}) at position ({}, {}) in frame ({}, {}) - colors: {:?}", 
+                                         self.next_tile, col, row, frame_h, frame_v, color_mapping);
                                 let new_tile = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
@@ -736,6 +868,11 @@ impl<'a> TilesetBuilder<'a> {
 
                                 // Store the already computed normalized_tile tile data
                                 self.pixels.extend_from_slice(&normalized_tile);
+                                
+                                // Mark this sub-palette as having tiles stored
+                                if (sub_palette_id as usize) < self.sub_palettes_with_tiles.len() {
+                                    self.sub_palettes_with_tiles[sub_palette_id as usize] = true;
+                                }
 
                                 // Store remapped tile in hash (after remapping is complete)
                                 self.tile_hash.insert(normalized_tile, new_tile);
@@ -760,18 +897,15 @@ impl<'a> TilesetBuilder<'a> {
                                                 for (i, &canonical_index) in
                                                     transformed_canonical.iter().enumerate()
                                                 {
-                                                    if (canonical_index as usize)
-                                                        < transformed_colors.len()
-                                                    {
-                                                        // Find this color in our original color mapping
-                                                        let color = transformed_colors
-                                                            [canonical_index as usize];
-                                                        let original_index = color_mapping
+                                                    if (canonical_index as usize) < transformed_colors.len() {
+                                                        let color = transformed_colors[canonical_index as usize];
+                                                        // Find this color in our sub-palette builder
+                                                        let sub_palette_index = self.sub_palette_builders[sub_palette_id as usize]
+                                                            .colors()
                                                             .iter()
                                                             .position(|&c| c == color)
-                                                            .unwrap_or(0);
-                                                        transformed_normalized[i] =
-                                                            remapping[original_index];
+                                                            .unwrap_or(0) as u8;
+                                                        transformed_normalized[i] = sub_palette_index;
                                                     } else {
                                                         transformed_normalized[i] = 0;
                                                     }
@@ -809,7 +943,33 @@ impl<'a> TilesetBuilder<'a> {
             }
         }
 
+        let tiles_after = self.next_tile;
+        let total_tiles_added = tiles_after - tiles_before;
+        
+        if total_tiles_added > 0 || tiles_reused > 0 {
+            println!("cargo:warning=  Tile processing: {} tiles created, {} tiles reused, {} total unique tiles now", 
+                     total_tiles_added, tiles_reused, tiles_after);
+            
+            if tiles_created != total_tiles_added {
+                println!("cargo:warning=  WARNING: tile count mismatch - created: {}, actual added: {}", 
+                         tiles_created, total_tiles_added);
+            }
+        }
+        
         frames
+    }
+
+    /// Consolidate sub-palettes after all tiles are processed
+    /// DISABLED: Currently causes incorrect color mapping
+    #[allow(dead_code)]
+    fn consolidate_sub_palettes(&mut self) {
+        // This function needs to be redesigned to properly handle pixel remapping
+        // Current issues:
+        // 1. Pixel remapping logic is flawed
+        // 2. tile_hash lookup by pixel comparison is unreliable  
+        // 3. Need to preserve exact color-to-index mapping
+        
+        println!("cargo:warning=Sub-palette consolidation DISABLED - would cause color mapping errors");
     }
 }
 

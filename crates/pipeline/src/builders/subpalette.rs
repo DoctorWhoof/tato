@@ -21,14 +21,22 @@ impl SubPaletteBuilder {
 
     /// Creates a SubPaletteBuilder from colors. Removes duplicates and sorts.
     pub fn from_colors(colors: &[u8]) -> Self {
+        if colors.is_empty() {
+            return Self {
+                colors: vec![],
+            };
+        }
+        
         let mut unique_colors: Vec<u8> = colors.iter().cloned().collect::<HashSet<_>>().into_iter().collect();
         unique_colors.sort_unstable();
         
-        assert!(unique_colors.len() <= COLORS_PER_TILE, 
-            "Cannot create SubPaletteBuilder with {} colors (max {})", 
-            unique_colors.len(), 
-            COLORS_PER_TILE
-        );
+        if unique_colors.len() > COLORS_PER_TILE {
+            panic!("Cannot create SubPaletteBuilder with {} colors (max {}). Colors: {:?}", 
+                unique_colors.len(), 
+                COLORS_PER_TILE,
+                unique_colors
+            );
+        }
         
         Self {
             colors: unique_colors,
@@ -37,16 +45,28 @@ impl SubPaletteBuilder {
 
     /// Creates a SubPaletteBuilder from a 4-element array. Filters padding zeros.
     pub fn from_array(array: [u8; COLORS_PER_TILE]) -> Self {
-        // Filter out zeros except when it's the only color or the first color
-        let mut colors = Vec::new();
-        for (i, &color) in array.iter().enumerate() {
-            if color != 0 || (i == 0 && array.iter().all(|&c| c == 0 || c == color)) {
-                colors.push(color);
+        // In sub-palette arrays, trailing zeros are always padding
+        // Find the actual color count by looking for the last non-zero
+        let mut actual_colors = Vec::new();
+        
+        for &color in &array {
+            if color == 0 && actual_colors.is_empty() {
+                // Leading zero - this is a real color
+                actual_colors.push(color);
+            } else if color != 0 {
+                // Non-zero color
+                actual_colors.push(color);
             }
+            // Trailing zeros are ignored as padding
+        }
+        
+        // If no colors found, default to single zero
+        if actual_colors.is_empty() {
+            actual_colors.push(0);
         }
         
         // Remove duplicates and sort
-        let unique_colors: Vec<u8> = colors.into_iter().collect::<HashSet<_>>().into_iter().collect();
+        let unique_colors: Vec<u8> = actual_colors.into_iter().collect::<HashSet<_>>().into_iter().collect();
         let mut sorted_colors = unique_colors;
         sorted_colors.sort_unstable();
         
@@ -83,12 +103,16 @@ impl SubPaletteBuilder {
 
     /// Checks if this sub-palette can merge with another.
     pub fn can_merge(&self, other: &SubPaletteBuilder) -> bool {
+        if self.colors.len() > COLORS_PER_TILE || other.colors.len() > COLORS_PER_TILE {
+            eprintln!("WARNING: Invalid palette sizes - self: {}, other: {}", self.colors.len(), other.colors.len());
+            return false;
+        }
+        
         // Collect all unique colors from both palettes
         let mut all_colors: HashSet<u8> = HashSet::new();
         all_colors.extend(&self.colors);
         all_colors.extend(&other.colors);
 
-        // Can merge if the total unique colors don't exceed the limit
         all_colors.len() <= COLORS_PER_TILE
     }
 
@@ -128,10 +152,16 @@ impl SubPaletteBuilder {
 
     /// Converts to a 4-element array. Unused slots are filled with zeros.
     pub fn to_array(&self) -> [u8; COLORS_PER_TILE] {
+        if self.colors.len() > COLORS_PER_TILE {
+            panic!("SubPaletteBuilder has {} colors but max is {}", self.colors.len(), COLORS_PER_TILE);
+        }
+        
         let mut array = [0u8; COLORS_PER_TILE];
         for (i, &color) in self.colors.iter().enumerate() {
             if i < COLORS_PER_TILE {
                 array[i] = color;
+            } else {
+                eprintln!("WARNING: Skipping color at index {} (exceeds COLORS_PER_TILE)", i);
             }
         }
         array
@@ -143,9 +173,23 @@ impl SubPaletteBuilder {
         
         for &color in colors {
             match self.colors.iter().position(|&c| c == color) {
-                Some(index) => remapping.push(index as u8),
-                None => return None, // Color not found in this sub-palette
+                Some(index) => {
+                    if index >= COLORS_PER_TILE {
+                        eprintln!("WARNING: Color index {} exceeds COLORS_PER_TILE ({})", index, COLORS_PER_TILE);
+                        return None;
+                    }
+                    remapping.push(index as u8);
+                },
+                None => {
+                    eprintln!("WARNING: Color {} not found in sub-palette {:?}", color, self.colors);
+                    return None; // Color not found in this sub-palette
+                }
             }
+        }
+        
+        if remapping.len() != colors.len() {
+            eprintln!("WARNING: Remapping length mismatch: expected {}, got {}", colors.len(), remapping.len());
+            return None;
         }
         
         Some(remapping)
@@ -227,5 +271,77 @@ mod tests {
     fn test_to_array() {
         let builder = SubPaletteBuilder::from_colors(&[5, 2, 8]);
         assert_eq!(builder.to_array(), [2, 5, 8, 0]); // Sorted with padding zeros
+    }
+
+    #[test]
+    fn test_zero_color_handling() {
+        // Test with actual zero color
+        let builder = SubPaletteBuilder::from_colors(&[0]);
+        assert_eq!(builder.colors(), &[0]);
+        assert_eq!(builder.to_array(), [0, 0, 0, 0]);
+        
+        // Test zero color mixed with others
+        let builder = SubPaletteBuilder::from_colors(&[0, 1, 2]);
+        assert_eq!(builder.colors(), &[0, 1, 2]);
+        assert_eq!(builder.to_array(), [0, 1, 2, 0]);
+    }
+
+    #[test]
+    fn test_from_array_zero_handling() {
+        // All zeros should result in single zero color
+        let builder = SubPaletteBuilder::from_array([0, 0, 0, 0]);
+        assert_eq!(builder.colors(), &[0]);
+        
+        // Mixed zeros and colors
+        let builder = SubPaletteBuilder::from_array([1, 0, 2, 0]);
+        assert_eq!(builder.colors(), &[1, 2]); // Padding zeros filtered out
+        
+        // Zero as first color with others - first zero is real color
+        let builder = SubPaletteBuilder::from_array([0, 1, 2, 3]);
+        assert_eq!(builder.colors(), &[0, 1, 2, 3]); // Zero kept as actual color
+    }
+
+    #[test]
+    fn test_remapping_with_duplicates() {
+        let builder = SubPaletteBuilder::from_colors(&[1, 3, 5]);
+        
+        // Test remapping with duplicate colors in input
+        let remapping = builder.create_remapping(&[3, 1, 3, 5]).unwrap();
+        assert_eq!(remapping, vec![1, 0, 1, 2]); // 3->1, 1->0, 3->1, 5->2
+        
+        // Test remapping with missing color
+        assert!(builder.create_remapping(&[1, 2, 3]).is_none()); // 2 is missing
+    }
+
+    #[test]
+    fn test_edge_case_merges() {
+        // Empty with full palette
+        let empty = SubPaletteBuilder::new();
+        let full = SubPaletteBuilder::from_colors(&[0, 1, 2, 3]);
+        assert!(empty.can_merge(&full));
+        
+        let merged = empty.merge(full).unwrap();
+        assert_eq!(merged.colors(), &[0, 1, 2, 3]);
+        
+        // Two full palettes with overlap
+        let full1 = SubPaletteBuilder::from_colors(&[0, 1, 2, 3]);
+        let full2 = SubPaletteBuilder::from_colors(&[2, 3, 4, 5]);
+        assert!(!full1.can_merge(&full2)); // Would need 6 colors
+    }
+
+    #[test]
+    fn test_array_roundtrip() {
+        let original = [1, 3, 0, 2];
+        let builder = SubPaletteBuilder::from_array(original);
+        let result = builder.to_array();
+        
+        // Should be sorted with zeros as padding
+        assert_eq!(result, [1, 2, 3, 0]);
+        
+        // Test with all unique colors
+        let original = [3, 1, 4, 2];
+        let builder = SubPaletteBuilder::from_array(original);
+        let result = builder.to_array();
+        assert_eq!(result, [1, 2, 3, 4]);
     }
 }

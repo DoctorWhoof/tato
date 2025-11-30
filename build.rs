@@ -10,7 +10,7 @@ fn main() {
     use tato_pipe::*;
     init_build(BuildSettings {
         asset_import_path: "import".into(), //
-        force_reprocess: true,
+        force_reprocess: false,
     });
 
     // Shared groups for default assets
