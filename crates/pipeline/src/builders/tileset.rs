@@ -6,10 +6,12 @@ use crate::*;
 use std::collections::{HashMap, HashSet};
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
-type TileData = [u8; TILE_LEN];
 
 // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
 pub(crate) type CanonicalTile = [u8; TILE_LEN];
+
+// Color mapped pixels in a tile
+type TilePixels = [u8; TILE_LEN];
 
 #[derive(Clone)]
 enum DeferredCommand {
@@ -428,6 +430,8 @@ impl<'a> TilesetBuilder<'a> {
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
+
+
         // Main detection routine. b
         // Iterate animation frames, then tiles within frames.
         for frame_v in 0..img.frames_v as usize {
@@ -817,7 +821,7 @@ impl<'a> TilesetBuilder<'a> {
     /// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
     /// the same structure but different colors can still be detected as the same, but with different
     /// palettes.
-    fn create_canonical_tile(tile_data: &TileData) -> (CanonicalTile, Vec<u8>) {
+    fn create_canonical_tile(tile_data: &TilePixels) -> (CanonicalTile, Vec<u8>) {
         let mut canonical = [0u8; TILE_LEN];
         let mut color_mapping = Vec::new();
         let mut color_to_index = HashMap::new();
@@ -851,7 +855,7 @@ impl<'a> TilesetBuilder<'a> {
     }
 
     /// Generates a copy of the tile pixels with some transformation
-    fn transform_tile(tile: &TileData, flip_x: bool, flip_y: bool, rotation: bool) -> TileData {
+    fn transform_tile(tile: &TilePixels, flip_x: bool, flip_y: bool, rotation: bool) -> TilePixels {
         let mut result = [0u8; TILE_LEN];
         let size = TILE_SIZE as usize;
 
