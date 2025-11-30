@@ -463,6 +463,25 @@ impl<'a> TilesetBuilder<'a> {
                         // Create canonical representation
                         let (canonical_tile, color_mapping) = create_canonical_tile(&tile_data);
 
+                        // Safety check
+                        if color_mapping.len() > SUBPALETTE_COUNT as usize {
+                            panic!(
+                                "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
+                                \tFrame: ({}, {})\n\
+                                \tTile within frame: row {}, col {}\n\
+                                \tAbsolute tile position: row {}, col {}\n\
+                                \tFound {} unique colors\x1b[0m",
+                                SUBPALETTE_COUNT,
+                                frame_h,
+                                frame_v,
+                                row,
+                                col,
+                                abs_row,
+                                abs_col,
+                                color_mapping.len()
+                            );
+                        }
+
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
                         if let Some(group_idx) = group {
                             // Only register multi-color tiles in groups (skip empty/solid-color tiles)
@@ -496,25 +515,6 @@ impl<'a> TilesetBuilder<'a> {
                                     }
                                 }
                             }
-                        }
-
-                        // Safety check
-                        if color_mapping.len() > SUBPALETTE_COUNT as usize {
-                            panic!(
-                                "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
-                                \tFrame: ({}, {})\n\
-                                \tTile within frame: row {}, col {}\n\
-                                \tAbsolute tile position: row {}, col {}\n\
-                                \tFound {} unique colors\x1b[0m",
-                                SUBPALETTE_COUNT,
-                                frame_h,
-                                frame_v,
-                                row,
-                                col,
-                                abs_row,
-                                abs_col,
-                                color_mapping.len()
-                            );
                         }
 
                         // Handle solid-color tiles efficiently
@@ -812,6 +812,9 @@ impl<'a> TilesetBuilder<'a> {
     }
 }
 
+// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
+// the same structure but different colors can still be detected as the same, but with different
+// palettes.
 fn create_canonical_tile(tile_data: &TileData) -> (CanonicalTile, Vec<u8>) {
     let mut canonical = [0u8; TILE_LEN];
     let mut color_mapping = Vec::new();
