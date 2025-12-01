@@ -19,7 +19,6 @@ pub const SMILEYS_TILESET: TilesetData = TilesetData {
         &SMILEYS_SUBPALETTE_7,
         &SMILEYS_SUBPALETTE_8,
         &SMILEYS_SUBPALETTE_9,
-        &SMILEYS_SUBPALETTE_10,
     ]),
 };
 
@@ -46,38 +45,35 @@ pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 0, 0];
 pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [1, 2, 5, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [1, 0, 0, 0];
+pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [1, 3, 5, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 3, 5, 0];
+pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 4, 5, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 4, 5, 0];
+pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 5, 6, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_5: [u8; 4] = [1, 5, 6, 0];
+pub static SMILEYS_SUBPALETTE_5: [u8; 4] = [1, 5, 7, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_6: [u8; 4] = [1, 5, 7, 0];
+pub static SMILEYS_SUBPALETTE_6: [u8; 4] = [1, 5, 8, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_7: [u8; 4] = [1, 5, 8, 0];
+pub static SMILEYS_SUBPALETTE_7: [u8; 4] = [1, 5, 9, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 5, 9, 0];
+pub static SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 5, 10, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 5, 10, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_10: [u8; 4] = [1, 5, 11, 0];
+pub static SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 5, 11, 0];
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_TILES: [Tile<2>; 7] = [
     Tile::new(0x0000000000000001, 0x0015005500550155),
     Tile::new(0x0000000000005555, 0x5555555555555555),
     Tile::new(0x0000000500550155, 0x0555056515651565),
-    Tile::new(0x0000000000000000, 0x0000000000000000),
+    Tile::new(0x5555555555555555, 0x5555555555555555),
     Tile::new(0x155515AA05AA056A, 0x015A005500050000),
     Tile::new(0x0000000A00AA02AA, 0x0AAA0A9A2A9A2A9A),
     Tile::new(0x2AAA2A550A550A95, 0x02A500AA000A0000),

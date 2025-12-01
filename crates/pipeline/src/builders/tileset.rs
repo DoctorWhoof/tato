@@ -425,33 +425,71 @@ impl<'a> TilesetBuilder<'a> {
         }
     }
 
+    fn extract_tile_pixels(img: &PalettizedImg, abs_col: usize, abs_row: usize) -> TilePixels {
+        let mut tile_data = [0u8; TILE_LEN];
+        for y in 0..TILE_SIZE as usize {
+            for x in 0..TILE_SIZE as usize {
+                let abs_x = (TILE_SIZE as usize * abs_col) + x;
+                let abs_y = (TILE_SIZE as usize * abs_row) + y;
+                let index = (img.width * abs_y) + abs_x;
+                tile_data[(TILE_SIZE as usize * y) + x] = img.pixels[index];
+            }
+        }
+        tile_data
+    }
+
+    fn handle_groups(
+        &mut self,
+        color_mapping: &Vec<u8>,
+        canonical_tile: CanonicalTile,
+        group: Option<u8>,
+    ) {
+        if let Some(group_idx) = group {
+            // Only register multi-color tiles in groups (skip empty/solid-color tiles)
+            if color_mapping.len() > 1 {
+                self.groups.register_tile(canonical_tile, group_idx);
+
+                // Also register all transformations if enabled
+                if self.allow_tile_transforms {
+                    for flip_x in [false, true] {
+                        for flip_y in [false, true] {
+                            for rotation in [false, true] {
+                                if !flip_x && !flip_y && !rotation {
+                                    continue; // Skip identity transform
+                                }
+
+                                let transformed_tile =
+                                    Self::transform_tile(&canonical_tile, flip_x, flip_y, rotation);
+
+                                self.groups.register_tile(transformed_tile, group_idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     /// Main workhorse. Creates a tile map while storing tile pixels and subpalettes
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
-
-
         // Main detection routine. b
         // Iterate animation frames, then tiles within frames.
-        for frame_v in 0..img.frames_v as usize {
-            for frame_h in 0..img.frames_h as usize {
+        for frame_v in 0..img.frames_v {
+            for frame_h in 0..img.frames_h {
                 let mut frame_tiles = vec![];
-                for row in 0..img.rows_per_frame as usize {
-                    for col in 0..img.cols_per_frame as usize {
-                        // Extract tile pixels
-                        let mut tile_data = [0u8; TILE_LEN];
-                        let abs_col = (frame_h * img.cols_per_frame as usize) + col;
-                        let abs_row = (frame_v * img.rows_per_frame as usize) + row;
 
-                        for y in 0..TILE_SIZE as usize {
-                            for x in 0..TILE_SIZE as usize {
-                                let abs_x = (TILE_SIZE as usize * abs_col) + x;
-                                let abs_y = (TILE_SIZE as usize * abs_row) + y;
-                                let index = (img.width * abs_y) + abs_x;
-                                tile_data[(TILE_SIZE as usize * y) + x] = img.pixels[index];
-                            }
-                        }
+                for row in 0..img.rows_per_frame {
+                    for col in 0..img.cols_per_frame {
+                        // Absolute coordinates
+                        let abs_col =
+                            (frame_h as usize * img.cols_per_frame as usize) + col as usize;
+                        let abs_row =
+                            (frame_v as usize * img.rows_per_frame as usize) + row as usize;
+
+                        // Extract pixels
+                        let tile_data = Self::extract_tile_pixels(img, abs_col, abs_row);
 
                         // Create canonical representation
                         let (canonical_tile, color_mapping) =
@@ -477,81 +515,9 @@ impl<'a> TilesetBuilder<'a> {
                         }
 
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
-                        if let Some(group_idx) = group {
-                            // Only register multi-color tiles in groups (skip empty/solid-color tiles)
-                            if color_mapping.len() > 1 {
-                                self.groups.register_tile(canonical_tile, group_idx);
+                        self.handle_groups(&color_mapping, canonical_tile, group);
 
-                                // Also register all transformations if enabled
-                                if self.allow_tile_transforms {
-                                    for flip_x in [false, true] {
-                                        for flip_y in [false, true] {
-                                            for rotation in [false, true] {
-                                                if !flip_x && !flip_y && !rotation {
-                                                    continue; // Skip identity transform
-                                                }
-
-                                                let transformed_tile = Self::transform_tile(
-                                                    &tile_data, flip_x, flip_y, rotation,
-                                                );
-                                                let (transformed_canonical, transformed_colors) =
-                                                    Self::create_canonical_tile(&transformed_tile);
-
-                                                // Only register if the transformed tile is also multi-color
-                                                if transformed_colors.len() > 1 {
-                                                    self.groups.register_tile(
-                                                        transformed_canonical,
-                                                        group_idx,
-                                                    );
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Handle solid-color tiles efficiently
-                        let (sub_palette_id, remapping) = if color_mapping.len() <= 1 {
-                            // Solid color tile - find or create a simple sub-palette
-                            let color = color_mapping.get(0).copied().unwrap_or(0);
-
-                            // Create a simple sub-palette with just this color in position 0
-                            let target_palette_array: [u8; COLORS_PER_TILE as usize] =
-                                [color, 0, 0, 0];
-
-                            // Check if we already have this solid-color sub-palette
-                            let mut found_palette_id = None;
-                            for (i, sub_pal) in self.sub_palettes.iter().enumerate() {
-                                if sub_pal[0] == color
-                                    && sub_pal[1] == 0
-                                    && sub_pal[2] == 0
-                                    && sub_pal[3] == 0
-                                {
-                                    found_palette_id = Some(i as u8);
-                                    break;
-                                }
-                            }
-
-                            if let Some(palette_id) = found_palette_id {
-                                (palette_id, vec![0]) // All pixels map to index 0
-                            } else {
-                                // Create new solid-color sub-palette
-                                if self.sub_palette_head >= SUBPALETTE_COUNT as usize {
-                                    panic!("Sub-palette capacity {} exceeded", SUBPALETTE_COUNT);
-                                }
-
-                                self.sub_palettes.push(target_palette_array);
-                                let palette_id = self.sub_palette_head as u8;
-                                self.sub_palette_head += 1;
-
-                                // Set name
-                                let name = format!("{}_{}", self.palette.name, palette_id);
-                                self.sub_palette_name_hash.insert(target_palette_array, name);
-
-                                (palette_id, vec![0]) // All pixels map to index 0
-                            }
-                        } else {
+                        let (sub_palette_id, remapping) = {
                             // Multi-color tile - use normal processing
                             // Work with unique colors only to avoid issues with repeated colors
                             let mut unique_colors: Vec<u8> = {
@@ -801,6 +767,7 @@ impl<'a> TilesetBuilder<'a> {
                         frame_tiles.push(cell);
                     }
                 }
+
                 frames.push(frame_tiles);
             }
         }

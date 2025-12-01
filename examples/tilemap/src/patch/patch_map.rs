@@ -10,7 +10,7 @@ pub static PATCH_MAP: Tilemap<9> = Tilemap {
         Cell::new(1, 0, 0, 0),
         Cell::new(2, 0, 1, 0),
         Cell::new(1, 32, 0, 0),
-        Cell::new(3, 0, 2, 0),
+        Cell::new(3, 0, 0, 0),
         Cell::new(4, 0, 1, 0),
         Cell::new(2, 96, 1, 0),
         Cell::new(4, 96, 1, 0),
