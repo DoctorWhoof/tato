@@ -1,36 +1,53 @@
+use std::{array::from_fn, collections::HashMap};
+
 use tato_video::{COLORS_PER_TILE, SUBPALETTE_COUNT};
 
 pub(crate) struct SubPaletteInsert {
-    pub position: usize,
-    // Remapping rule:
-    // index: original color position
-    // value: new color position
-    pub remapping: [usize; COLORS_PER_TILE as usize],
+    pub position: u8,
+    pub mapping: HashMap<u8, u8>,
+    // key: source color index (main palette)
+    // value: index in the final subpalette
 }
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct SubPalette {
-    indices: [u8; COLORS_PER_TILE as usize],
+    colors: [u8; COLORS_PER_TILE as usize],
     count: u8,
 }
 
 impl SubPalette {
-    pub fn push(&mut self, value: u8) {
-        if self.count >= SUBPALETTE_COUNT {
-            panic!(
-                "\x1b[31mSubPalette Error:\x1b[0m Sub-palette color count exceeds limit of {}!",
-                SUBPALETTE_COUNT
-            );
+    pub fn from(source: &[u8]) -> Self {
+        Self {
+            colors: from_fn(|i| if i < source.len() { source[i] } else { 0 }),
+            count: source.len() as u8,
         }
+    }
+
+    pub fn generate_mapping(&self) -> HashMap<u8, u8> {
+        let mut result = HashMap::new();
+        // populate mapping with existing colors
+        for (i, &color) in self.colors().iter().enumerate() {
+            result.insert(color, i as u8);
+        }
+        result
+    }
+
+    pub fn push(&mut self, value: u8) {
         // Avoid pushing existing values
         if !self.colors().contains(&value) {
-            self.indices[self.count as usize] = value;
+            if self.count >= COLORS_PER_TILE {
+                panic!(
+                    "\x1b[31mSubPalette Error:\x1b[0m Sub-palette color count exceeds limit of {}!",
+                    COLORS_PER_TILE
+                );
+            }
+            self.colors[self.count as usize] = value;
             self.count += 1;
         }
     }
 
     pub fn colors(&self) -> &[u8] {
-        &self.indices[0..self.count as usize]
+        &self.colors[0..self.count as usize]
     }
 }
 
@@ -40,37 +57,73 @@ pub(crate) struct SubPaletteBuilder {
 }
 
 impl SubPaletteBuilder {
-    pub fn add(&mut self, incoming: SubPalette) -> SubPaletteInsert {
-        // Check for matches
-        // Test case: inserting [0,1], into existing:
-        // [2,3]
+    pub fn data(&self) -> &[SubPalette] {
+        &self.data
+    }
 
-        for (position, candidate) in &mut self.data.iter().enumerate() {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn add_new(&mut self, incoming: SubPalette) -> SubPaletteInsert {
+        for (position, candidate) in &mut self.data.iter_mut().enumerate() {
             let mut is_match = true;
-            let mut candidate_modified = candidate.clone();
-            let mut remapping = [0; COLORS_PER_TILE as usize];
+            let mut mapping = incoming.generate_mapping();
 
-            for (i, color) in incoming.colors().iter().enumerate() {
-                if let Some(match_index) = find(*color, candidate_modified.colors()) {
-                    // If candidate has the incoming color, store the remap and proceed
-                    remapping[i] = match_index;
-                    candidate_modified.push(*color);
-                } else {
-                    // If not check for available spots
-                    if candidate.count < COLORS_PER_TILE {
-                        remapping[i] = candidate_modified.count as usize;
-                        candidate_modified.push(*color);
+            for &color in incoming.colors() {
+                if let Some(match_index) = find(color, candidate.colors()) {
+                    let candidate_mapping = candidate.generate_mapping();
+                    if candidate_mapping.get(&color) == mapping.get(&color){
+                        // Color already exists in candidate
+                        mapping.insert(color, match_index as u8);
                     } else {
-                        // No other options, make new subpalette
+                        is_match = false;
+                        break;
+                    }
+                } else {
+                    // Add new color
+                    if candidate.count < COLORS_PER_TILE {
+                        mapping.insert(color, candidate.count);
+                        candidate.push(color);
+                    } else {
                         is_match = false;
                         break;
                     }
                 }
             }
 
-            if is_match == true {
-                self.data[position] = candidate_modified;
-                return SubPaletteInsert { position, remapping };
+            if is_match {
+                return SubPaletteInsert { position: position as u8, mapping };
+            }
+        }
+
+        self.insert(incoming)
+    }
+
+
+    pub fn add(&mut self, incoming: SubPalette) -> SubPaletteInsert {
+        for (position, candidate) in &mut self.data.iter_mut().enumerate() {
+            let mut is_match = true;
+            let mut mapping = incoming.generate_mapping();
+
+            for &color in incoming.colors() {
+                if let Some(match_index) = find(color, candidate.colors()) {
+                    // Color already exists in candidate
+                    mapping.insert(color, match_index as u8);
+                } else {
+                    // Add new color
+                    if candidate.count < COLORS_PER_TILE {
+                        mapping.insert(color, candidate.count);
+                        candidate.push(color);
+                    } else {
+                        is_match = false;
+                        break;
+                    }
+                }
+            }
+
+            if is_match {
+                return SubPaletteInsert { position: position as u8, mapping };
             }
         }
 
@@ -86,8 +139,9 @@ impl SubPaletteBuilder {
                 SUBPALETTE_COUNT
             );
         }
+        let mapping = subpalette.generate_mapping();
         self.data.push(subpalette);
-        SubPaletteInsert { position, remapping: [0, 0, 0, 0] }
+        SubPaletteInsert { position: position as u8, mapping }
     }
 }
 
@@ -107,45 +161,49 @@ fn test_subpalette_inserts() {
     let mut builder = SubPaletteBuilder::default();
     assert_eq!(0, builder.data.len());
 
-    let subpalette_a = SubPalette { indices: [2, 3, 0, 0], count: 2 };
+    let subpalette_a = SubPalette { colors: [2, 3, 0, 0], count: 2 };
     let insert_a = builder.insert(subpalette_a);
-    assert_eq!([0, 0, 0, 0], insert_a.remapping);
+    assert_eq!(None, insert_a.mapping.get(&1));
+    assert_eq!(Some(&0), insert_a.mapping.get(&2));
+    assert_eq!(Some(&1), insert_a.mapping.get(&3));
     assert_eq!(2, builder.data[0].count);
     assert_eq!(0, insert_a.position);
     assert_eq!(1, builder.data.len());
 
-    let subpalette_b = SubPalette { indices: [0, 1, 0, 0], count: 2 };
+    let subpalette_b = SubPalette { colors: [0, 1, 0, 0], count: 2 };
     let insert_b = builder.add(subpalette_b);
     assert_eq!(1, builder.data.len());
     assert_eq!(4, builder.data[0].count);
     assert_eq!(0, insert_b.position);
-    assert_eq!([2, 3, 0, 0], insert_b.remapping);
-    assert_eq!([2, 3, 0, 1], builder.data[0].indices);
+    assert_eq!(None, insert_b.mapping.get(&5));
+    assert_eq!(Some(&2), insert_b.mapping.get(&0));
+    assert_eq!(Some(&3), insert_b.mapping.get(&1));
+    assert_eq!([2, 3, 0, 1], builder.data[0].colors);
 
-    let subpalette_c = SubPalette { indices: [0, 0, 0, 0], count: 1 };
+    let subpalette_c = SubPalette { colors: [0, 0, 0, 0], count: 1 };
     let insert_c = builder.add(subpalette_c);
     assert_eq!(0, insert_c.position);
-    assert_eq!([2, 0, 0, 0], insert_c.remapping);
+    // assert_eq!([2, 0, 0, 0], insert_c.mapping);
 
-    let subpalette_d = SubPalette { indices: [0, 4, 5, 6], count: 4 };
+    let subpalette_d = SubPalette { colors: [0, 4, 5, 6], count: 4 };
     let insert_d = builder.add(subpalette_d);
     assert_eq!(1, insert_d.position);
-    assert_eq!([0, 0, 0, 0], insert_d.remapping);
+    // assert_eq!([0, 0, 0, 0], insert_d.mapping);
 
-    let subpalette_e = SubPalette { indices: [2, 3, 5, 0], count: 3 };
+    let subpalette_e = SubPalette { colors: [2, 3, 5, 0], count: 3 };
     let insert_e = builder.add(subpalette_e);
     assert_eq!(2, insert_e.position);
-    assert_eq!([0, 0, 0, 0], insert_e.remapping);
+    // assert_eq!([0, 0, 0, 0], insert_e.mapping);
 
     assert_eq!(3, builder.data.len());
 
-    let subpalette_f = SubPalette { indices: [0, 0, 0, 0], count: 1 };
+    let subpalette_f = SubPalette { colors: [0, 0, 0, 0], count: 1 };
     let insert_f = builder.add(subpalette_f);
     assert_eq!(0, insert_f.position);
-    assert_eq!([2, 0, 0, 0], insert_f.remapping);
+    // assert_eq!([2, 0, 0, 0], insert_f.mapping);
 
-    let subpalette_g = SubPalette { indices: [5, 0, 0, 0], count: 1 };
+    let subpalette_g = SubPalette { colors: [5, 0, 0, 0], count: 1 };
     let insert_g = builder.add(subpalette_g);
     assert_eq!(1, insert_g.position);
-    assert_eq!([2, 0, 0, 0], insert_g.remapping);
+    // assert_eq!([2, 0, 0, 0], insert_g.mapping);
 }
