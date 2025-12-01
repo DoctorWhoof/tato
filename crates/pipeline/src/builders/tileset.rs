@@ -317,7 +317,7 @@ impl<'a> TilesetBuilder<'a> {
                     COLORS_PER_TILE
                 ));
 
-                for n in 0 ..COLORS_PER_TILE as usize {
+                for n in 0..COLORS_PER_TILE as usize {
                     let color_index = sub_palette.colors().get(n).unwrap_or(&0);
                     code.write_line(&format!("    {},", color_index));
                 }
@@ -517,23 +517,12 @@ impl<'a> TilesetBuilder<'a> {
                             );
                         }
 
-                        // Remap colors
-                        let subp = SubPalette::from(&colors);
-                        let subp_insert = self.sub_palettes.add(subp);
-
-                        let tile_pixels: TilePixels = std::array::from_fn(|i| {
-                            let source_color = source_pixels[i];
-                            subp_insert.mapping[&source_color]
-                        });
-
                         // Redefine pixels as canonical pixels from this point on
-                        let canonical_tile = self.create_canonical_tile(&tile_pixels);
-
-                        // If we're registering a group, store this canonical pattern (but skip empty tiles)
-                        // self.handle_groups(tile_pixels, group);
+                        let canonical_tile = self.create_canonical_tile(&source_pixels);
 
                         // Check if this tile (or any transformation) exists
                         let mut found_cell = None;
+
                         if let Some(existing) = self.tile_hash.get(&canonical_tile) {
                             found_cell = Some(*existing);
                         } else if self.allow_tile_transforms {
@@ -552,11 +541,23 @@ impl<'a> TilesetBuilder<'a> {
                                             rotation,
                                         );
 
-                                        // let transformed =
-                                        //     self.create_canonical_tile(&transformed_pixels);
+                                        let transformed =
+                                            self.create_canonical_tile(&transformed_pixels);
 
-                                        if let Some(existing) = self.tile_hash.get(&transformed_pixels) {
+                                        if let Some(existing) =
+                                            self.tile_hash.get(&transformed)
+                                        {
                                             found_cell = Some(*existing);
+                                            // found_cell = Some(Cell {
+                                            //     id: existing.id,
+                                            //     flags: existing
+                                            //         .flags
+                                            //         .with_horizontal_state(flip_x)
+                                            //         .with_vertical_state(flip_y)
+                                            //         .with_rotation_state(rotation),
+                                            //     sub_palette: existing.sub_palette,
+                                            //     group: existing.group,
+                                            // });
                                             break 'outer;
                                         }
                                     }
@@ -564,6 +565,17 @@ impl<'a> TilesetBuilder<'a> {
                             }
                         }
 
+                        // Remap colors
+                        let subp = SubPalette::from(&colors);
+                        let subp_insert = self.sub_palettes.add(subp);
+
+                        let mapped_pixels: TilePixels = std::array::from_fn(|i| {
+                            let source_color = source_pixels[i];
+                            subp_insert.mapping[&source_color]
+                        });
+
+                        // If we're registering a group, store this canonical pattern (but skip empty tiles)
+                        // self.handle_groups(tile_pixels, group);
                         // Look up group membership for this tile pattern
                         // TODO: POSSIBLE BUG:
                         // May not be detecting transformed tiles. Will deal later.
@@ -585,7 +597,7 @@ impl<'a> TilesetBuilder<'a> {
                             },
                             None => {
                                 // Create new tile using the sub-palette we already found/created
-                                let new_tile = Cell {
+                                let new_cell = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
                                     group: group_bits,
@@ -593,10 +605,10 @@ impl<'a> TilesetBuilder<'a> {
                                 };
 
                                 // Store the already computed normalized_tile tile data
-                                self.pixels.extend_from_slice(&tile_pixels);
+                                self.pixels.extend_from_slice(&mapped_pixels);
 
                                 // Store remapped tile in hash (after remapping is complete)
-                                self.tile_hash.insert(canonical_tile, new_tile);
+                                self.tile_hash.insert(canonical_tile, new_cell);
 
                                 // Store all transformations using remapped data
                                 if self.allow_tile_transforms {
@@ -608,24 +620,24 @@ impl<'a> TilesetBuilder<'a> {
                                                 }
 
                                                 let transformed_pixels = Self::transform_tile(
-                                                    &tile_pixels,
+                                                    &mapped_pixels,
                                                     flip_x,
                                                     flip_y,
                                                     rotation,
                                                 );
 
-                                                // let transformed =
-                                                //     self.create_canonical_tile(&transformed_pixels);
+                                                let transformed =
+                                                    self.create_canonical_tile(&transformed_pixels);
 
                                                 // Only store if this transformation produces different data
-                                                if !self.tile_hash.contains_key(&transformed_pixels) {
-                                                    let mut cell_with_flags = new_tile;
+                                                if !self.tile_hash.contains_key(&transformed) {
+                                                    let mut cell_with_flags = new_cell;
                                                     cell_with_flags.flags.set_flip_x(flip_x);
                                                     cell_with_flags.flags.set_flip_y(flip_y);
                                                     cell_with_flags.flags.set_rotation(rotation);
 
                                                     self.tile_hash
-                                                        .insert(transformed_pixels, cell_with_flags);
+                                                        .insert(transformed, cell_with_flags);
                                                 }
                                             }
                                         }
@@ -633,7 +645,7 @@ impl<'a> TilesetBuilder<'a> {
                                 }
                                 self.next_tile += 1;
 
-                                new_tile
+                                new_cell
                             },
                         };
 

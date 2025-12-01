@@ -1,17 +1,16 @@
 // Flag bits
-pub const FLAG_FLIP_H: u8 =     0b_1000_0000;
-pub const FLAG_FLIP_V: u8 =     0b_0100_0000;
-pub const FLAG_ROTATED: u8 =    0b_0010_0000;
-pub const FLAG_FG: u8 =         0b_0001_0000;
-pub const FLAG_COLLIDER: u8 =   0b_0000_1000;
-pub const FLAG_TRIGGER: u8 =    0b_0000_0100;
-pub const FLAG_INVISIBLE: u8 =  0b_0000_0010;
+pub const FLAG_FLIP_H: u8 = 0b_1000_0000;
+pub const FLAG_FLIP_V: u8 = 0b_0100_0000;
+pub const FLAG_ROTATED: u8 = 0b_0010_0000;
+pub const FLAG_FG: u8 = 0b_0001_0000;
+pub const FLAG_COLLIDER: u8 = 0b_0000_1000;
+pub const FLAG_TRIGGER: u8 = 0b_0000_0100;
+pub const FLAG_INVISIBLE: u8 = 0b_0000_0010;
 
 /// A single byte struct that stores a tile's render state such as
 /// horizontal flip, vertical flip, rotation and custom data.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Hash)]
 pub struct TileFlags(pub u8);
-
 
 impl TileFlags {
     pub const fn new(flip_h: bool, flip_v: bool, collider: bool, trigger: bool) -> Self {
@@ -32,6 +31,22 @@ impl TileFlags {
 
         Self(data)
     }
+
+    /// Consumes the original flag and ensures flip_x matches state
+    pub const fn with_horizontal_state(self, state: bool) -> Self {
+        if state { Self(self.0 | FLAG_FLIP_H) } else { Self(self.0 & !FLAG_FLIP_H) }
+    }
+
+    /// Consumes the original flag and ensures flip_y matches state
+    pub const fn with_vertical_state(self, state: bool) -> Self {
+        if state { Self(self.0 | FLAG_FLIP_V) } else { Self(self.0 & !FLAG_FLIP_V) }
+    }
+
+    /// Consumes the original flag and ensures rotation matches state
+    pub const fn with_rotation_state(self, state: bool) -> Self {
+        if state { Self(self.0 | FLAG_ROTATED) } else { Self(self.0 & !FLAG_ROTATED) }
+    }
+
 
     /// Consumes the original flag and ensures x is flipped
     pub const fn with_flip_x(self) -> Self {
