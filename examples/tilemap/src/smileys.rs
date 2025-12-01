@@ -37,16 +37,16 @@ pub static SMILEYS_COLORS: [RGBA12; 12] = [
 pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [1, 0, 5, 2];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [5, 3, 1, 4];
+pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [3, 5, 1, 4];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [5, 1, 6, 7];
+pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [5, 6, 1, 7];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [8, 5, 1, 9];
+pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 5, 8, 9];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 10, 5, 11];
+pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [5, 1, 10, 11];
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_TILES: [Tile<2>; 5] = [

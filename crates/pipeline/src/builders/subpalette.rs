@@ -9,7 +9,7 @@ pub(crate) struct SubPaletteInsert {
     // value: index in the final subpalette
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct SubPalette {
     colors: [u8; COLORS_PER_TILE as usize],
     count: u8,
@@ -53,6 +53,7 @@ impl SubPalette {
 
 #[derive(Debug, Default)]
 pub(crate) struct SubPaletteBuilder {
+    map: HashMap<SubPalette, u8>,
     data: Vec<SubPalette>,
 }
 
@@ -71,10 +72,10 @@ impl SubPaletteBuilder {
             let mut mapping = incoming.generate_mapping();
 
             for &color in incoming.colors() {
+                let candidate_mapping = candidate.generate_mapping();
                 if let Some(match_index) = find(color, candidate.colors()) {
-                    let candidate_mapping = candidate.generate_mapping();
-                    if candidate_mapping.get(&color) == mapping.get(&color){
-                        // Color already exists in candidate
+                    // Color already exists in candidate
+                    if candidate_mapping.get(&color) == mapping.get(&color) {
                         mapping.insert(color, match_index as u8);
                     } else {
                         is_match = false;
@@ -83,8 +84,13 @@ impl SubPaletteBuilder {
                 } else {
                     // Add new color
                     if candidate.count < COLORS_PER_TILE {
-                        mapping.insert(color, candidate.count);
-                        candidate.push(color);
+                        if candidate_mapping.get(&color) == mapping.get(&color) {
+                            mapping.insert(color, candidate.count);
+                            candidate.push(color);
+                        } else {
+                            is_match = false;
+                            break;
+                        }
                     } else {
                         is_match = false;
                         break;
@@ -93,6 +99,7 @@ impl SubPaletteBuilder {
             }
 
             if is_match {
+                self.map.insert(incoming, position as u8);
                 return SubPaletteInsert { position: position as u8, mapping };
             }
         }
@@ -100,8 +107,13 @@ impl SubPaletteBuilder {
         self.insert(incoming)
     }
 
-
     pub fn add(&mut self, incoming: SubPalette) -> SubPaletteInsert {
+        // Early return
+        if let Some(i) = self.map.get(&incoming) {
+            let entry = &self.data[*i as usize];
+            return SubPaletteInsert { position: *i, mapping: entry.generate_mapping() };
+        }
+        // Search for matches
         for (position, candidate) in &mut self.data.iter_mut().enumerate() {
             let mut is_match = true;
             let mut mapping = incoming.generate_mapping();
@@ -123,6 +135,7 @@ impl SubPaletteBuilder {
             }
 
             if is_match {
+                self.map.insert(incoming, position as u8);
                 return SubPaletteInsert { position: position as u8, mapping };
             }
         }
@@ -140,6 +153,7 @@ impl SubPaletteBuilder {
             );
         }
         let mapping = subpalette.generate_mapping();
+        self.map.insert(subpalette.clone(), position as u8);
         self.data.push(subpalette);
         SubPaletteInsert { position: position as u8, mapping }
     }
