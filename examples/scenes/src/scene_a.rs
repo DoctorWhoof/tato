@@ -43,10 +43,10 @@ impl SceneA {
         ];
 
         // Procedural BG Palettes. Each PaletteID matches a ColorID
-        for i in 0..t.banks[1].palette.len() {
-            let _ = t.banks[0].push_subpalette([0, i as u8, 1, 1]);
-            let _ = t.banks[1].push_subpalette([0, i as u8, 1, 1]);
-        }
+        // for i in 0..t.banks[1].palette.len() {
+        //     let _ = t.banks[0].push_subpalette([0, i as u8, 1, 1]);
+        //     let _ = t.banks[1].push_subpalette([0, i as u8, 1, 1]);
+        // }
 
         // Define new tiles
         let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
@@ -62,14 +62,15 @@ impl SceneA {
                     // Calculate palette ID based on coordinates, limits to 14 indices
                     let index = (col + row) % 14;
                     // Adds 2 to avoid colors 0 and 1 in the BG
-                    let adjusted_palette = PaletteID(2 + index as u8);
+                    // let adjusted_palette = PaletteID(2 + index as u8);
 
                     state.bg.set_op(BgOp {
                         col,
                         row,
                         tile_id: arrow,
                         flags: TileFlags::default().with_rotation(),
-                        sub_palette: adjusted_palette,
+                        // sub_palette: adjusted_palette,
+                        color_mapping: 0
                     });
                 }
             }
@@ -83,7 +84,8 @@ impl SceneA {
                 y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
                 tile: smiley,
                 flags: TileFlags::default(),
-                sub_palette: PaletteID(4 + (i % 12) as u8), // Avoids grayscale in default palette
+                // sub_palette: PaletteID(4 + (i % 12) as u8), // Avoids grayscale in default palette
+                color_mapping: 0
             }
         });
         // Sort smileys by y position only
@@ -96,7 +98,8 @@ impl SceneA {
                 y: (t.video.height() / 2) as f32,
                 tile: arrow,
                 flags: TileFlags::default(),
-                sub_palette: PaletteID(0),
+                // sub_palette: PaletteID(0),
+                color_mapping: 0
             },
             smileys,
             movement_start: 0.0,
@@ -160,7 +163,7 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        t.banks[0].color_cycle(PaletteID(0), 1, 1, 15);
+        // t.banks[0].color_cycle(PaletteID(0), 1, 1, 15);
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
@@ -182,7 +185,8 @@ impl SceneA {
                 id: entity.tile,
                 flags: entity.flags,
                 // Remember, we generated palettes that match the color indices
-                sub_palette: PaletteID(1),
+                // sub_palette: PaletteID(1),
+                color_mapping: 0
             });
         };
 
@@ -199,7 +203,8 @@ impl SceneA {
                 y: (entity.y - 1.0 - hover) as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                sub_palette: entity.sub_palette,
+                // sub_palette: entity.sub_palette,
+                color_mapping: 0
             });
         };
 
@@ -221,7 +226,8 @@ impl SceneA {
             y: 0,
             id: TILE_SMILEY,
             flags: TileFlags::default(), // Player palette is zero
-            sub_palette: PaletteID(0),
+            // sub_palette: PaletteID(0),
+            color_mapping: 0
         });
 
         // ------------------- Return mode switch request -------------------

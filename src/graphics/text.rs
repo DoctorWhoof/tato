@@ -1,5 +1,5 @@
 use crate::TilesetID;
-use tato_video::{DynTilemap, color::PaletteID};
+use tato_video::DynTilemap;
 
 #[derive(Debug, Clone)]
 pub struct TextOp<'a> {
@@ -8,7 +8,7 @@ pub struct TextOp<'a> {
     pub col: i16,
     pub row: i16,
     pub width: Option<i16>,
-    pub palette_override: Option<PaletteID>,
+    pub color_mapping: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

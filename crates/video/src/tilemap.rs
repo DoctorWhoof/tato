@@ -33,7 +33,7 @@ pub struct BgOp {
     pub row: i16,
     pub tile_id: TileID,
     pub flags: TileFlags,
-    pub sub_palette: PaletteID,
+    pub color_mapping: u8
 }
 
 impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
@@ -79,7 +79,7 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         if let Some(index) = self.get_index(op.col, op.row) {
             self.cells[index].id = op.tile_id;
             self.cells[index].flags = op.flags;
-            self.cells[index].sub_palette = op.sub_palette;
+            self.cells[index].color_mapping = op.color_mapping;
         }
     }
 
@@ -103,9 +103,9 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    pub fn set_sub_palette(&mut self, col: i16, row: i16, sub_palette: PaletteID) {
+    pub fn set_color_mapping(&mut self, col: i16, row: i16, color_mapping:u8) {
         if let Some(index) = self.get_index(col, row) {
-            self.cells[index].sub_palette = sub_palette;
+            self.cells[index].color_mapping = color_mapping;
         }
     }
 

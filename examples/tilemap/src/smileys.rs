@@ -5,17 +5,8 @@ mod smileys_map;
 
 pub use smileys_map::*;
 
-pub const SMILEYS_TILESET: TilesetData = TilesetData {
-    tiles: Some(&SMILEYS_TILES),
-    colors: Some(&SMILEYS_COLORS),
-    sub_palettes: Some(&[
-        &SMILEYS_SUBPALETTE_0,
-        &SMILEYS_SUBPALETTE_1,
-        &SMILEYS_SUBPALETTE_2,
-        &SMILEYS_SUBPALETTE_3,
-        &SMILEYS_SUBPALETTE_4,
-    ]),
-};
+pub const SMILEYS_TILESET: TilesetData =
+    TilesetData { tiles: Some(&SMILEYS_TILES), colors: Some(&SMILEYS_COLORS) };
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_COLORS: [RGBA12; 12] = [
@@ -34,25 +25,10 @@ pub static SMILEYS_COLORS: [RGBA12; 12] = [
 ];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 5, 2];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [1, 5, 3, 4];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [6, 5, 1, 7];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 5, 8, 9];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 10, 5, 11];
-
-#[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_TILES: [Tile<2>; 5] = [
     Tile::new(0x0000000000000001, 0x0015005500550155),
     Tile::new(0x0000000000005555, 0x5555555555555555),
-    Tile::new(0x5555555F55FF57FF, 0x5FFF5FEF7FEF7FEF),
+    Tile::new(0x5555555A55AA56AA, 0x5AAA5A9A6A9A6A9A),
     Tile::new(0x5555555555555555, 0x5555555555555555),
-    Tile::new(0x7FFF7FAA5FAA5FEA, 0x57FA55FF555F5555),
+    Tile::new(0x6AAA6A555A555A95, 0x56A555AA555A5555),
 ];

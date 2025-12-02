@@ -22,7 +22,7 @@ fn main() -> TatoResult<()> {
     // Populate tilesets
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let _transparent = tato.banks[0].push_color(RGBA12::TRANSPARENT);
-    let _empty_palette = tato.new_subpalette(0, [0, 1, 2, 3]);
+    // let _empty_palette = tato.new_subpalette(0, [0, 1, 2, 3]);
 
     let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;

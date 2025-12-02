@@ -35,7 +35,7 @@ pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
         "Cell::new({}, {}, {}, {})",
         cell.id.0,
         cell.flags.0,
-        cell.sub_palette.0,
+        cell.color_mapping,
         cell.group
     )
 }
@@ -43,10 +43,10 @@ pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
 /// Formats a Tile using the compact Tile::new(u64, u64) constructor syntax
 pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
     assert_eq!(tile_pixels.len(), 64, "Tile must have exactly 64 pixels");
-    
+
     let mut data0 = 0u64;
     let mut data1 = 0u64;
-    
+
     // Process first 4 clusters (rows 0-3) into data0
     for cluster_idx in 0..4 {
         for byte_idx in 0..2 {
@@ -61,7 +61,7 @@ pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
             data0 |= (byte_val as u64) << shift;
         }
     }
-    
+
     // Process second 4 clusters (rows 4-7) into data1
     for cluster_idx in 0..4 {
         for byte_idx in 0..2 {
@@ -76,7 +76,7 @@ pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
             data1 |= (byte_val as u64) << shift;
         }
     }
-    
+
     format!("Tile::new(0x{:016X}, 0x{:016X})", data0, data1)
 }
 

@@ -7,7 +7,7 @@ pub struct SceneB {
     player: Entity,
     smileys: [Entity; 64],
     // palette_smiley: PaletteID,
-    palette_cycler: PaletteID,
+    // palette_cycler: PaletteID,
 }
 
 impl SceneB {
@@ -22,16 +22,16 @@ impl SceneB {
         t.banks[0].load_default_colors();
         t.video.bg_color = RGBA12::DARK_GREEN;
         t.video.crop_color = RGBA12::BLACK;
-        let palette_bg = t.banks[0].push_subpalette([9, 10, 9, 9]);
-        let palette_smiley = t.banks[0].push_subpalette([0, 8, 1, 1]);
-        let palette_cycler = t.banks[0].push_subpalette([0, 3, 1, 1]);
+        // let palette_bg = t.banks[0].push_subpalette([9, 10, 9, 9]);
+        // let palette_smiley = t.banks[0].push_subpalette([0, 8, 1, 1]);
+        // let palette_cycler = t.banks[0].push_subpalette([0, 3, 1, 1]);
         let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let tile = TILE_SMILEY;
 
         for cell in &mut state.bg.cells {
             cell.id = tile;
             cell.flags = TileFlags::default();
-            cell.sub_palette = palette_bg;
+            // cell.sub_palette = palette_bg;
         }
 
         Ok(Self {
@@ -40,7 +40,8 @@ impl SceneB {
                 y: y as f32,
                 tile,
                 flags: TileFlags::default(),
-                sub_palette: palette_cycler,
+                // sub_palette: palette_cycler,
+                color_mapping: 0
             },
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
@@ -49,9 +50,10 @@ impl SceneB {
                 y: rand::random_range(0.0..255.0), // + 32_000.0,
                 tile,
                 flags: TileFlags::default(),
-                sub_palette: palette_smiley,
+                // sub_palette: palette_smiley,
+                color_mapping: 0
             }),
-            palette_cycler,
+            // palette_cycler,
         })
     }
 
@@ -71,7 +73,7 @@ impl SceneB {
         }
 
         // Draw!
-        t.banks[0].color_cycle(self.palette_cycler, 1, 1, 15);
+        // t.banks[0].color_cycle(self.palette_cycler, 1, 1, 15);
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
@@ -82,7 +84,8 @@ impl SceneB {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                sub_palette: entity.sub_palette,
+                // sub_palette: entity.sub_palette,
+                color_mapping: 0
             });
         }
 
@@ -91,7 +94,8 @@ impl SceneB {
             y: self.player.y as i16,
             id: self.player.tile,
             flags: self.player.flags,
-            sub_palette: self.player.sub_palette,
+            // sub_palette: self.player.sub_palette,
+            color_mapping: 0
         });
 
         if state.pad.is_just_pressed(Button::Start) {

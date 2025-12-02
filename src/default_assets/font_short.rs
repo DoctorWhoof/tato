@@ -6,11 +6,8 @@ mod font_short_map;
 
 pub use font_short_map::*;
 
-pub const FONT_SHORT_TILESET: TilesetData = TilesetData {
-    tiles: Some(&FONT_SHORT_TILES),
-    colors: None,
-    sub_palettes: None,
-};
+pub const FONT_SHORT_TILESET: TilesetData =
+    TilesetData { tiles: Some(&FONT_SHORT_TILES), colors: None };
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static FONT_SHORT_TILES: [Tile<2>; 67] = [

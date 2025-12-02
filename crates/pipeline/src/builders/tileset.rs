@@ -30,7 +30,7 @@ pub struct TilesetBuilder<'a> {
     pub pixels: Vec<u8>,
     pub tile_hash: HashMap<CanonicalTile, Cell>,
     palette: &'a mut PaletteBuilder,
-    sub_palettes: SubPaletteBuilder,
+    // sub_palettes: SubPaletteBuilder,
     groups: &'a mut GroupBuilder,
     anims: Vec<AnimBuilder>,
     maps: Vec<MapBuilder>,
@@ -51,7 +51,7 @@ impl<'a> TilesetBuilder<'a> {
             pixels: vec![],
             tile_hash: HashMap::new(),
             palette,
-            sub_palettes: SubPaletteBuilder::default(),
+            // sub_palettes: SubPaletteBuilder::default(),
             groups,
             next_tile: 0,
             anims: vec![],
@@ -280,19 +280,19 @@ impl<'a> TilesetBuilder<'a> {
             code.write_line("    colors: None,");
         }
 
-        if self.save_colors && !self.sub_palettes.is_empty() {
-            code.write_line(&format!("    sub_palettes: Some(&["));
-            for i in 0..self.sub_palettes.data().len() {
-                code.write_line(&format!(
-                    "        &{}_SUBPALETTE_{},",
-                    self.name.to_uppercase(),
-                    i
-                ));
-            }
-            code.write_line("    ]),");
-        } else {
-            code.write_line("    sub_palettes: None,");
-        }
+        // if self.save_colors && !self.sub_palettes.is_empty() {
+        //     code.write_line(&format!("    sub_palettes: Some(&["));
+        //     for i in 0..self.sub_palettes.data().len() {
+        //         code.write_line(&format!(
+        //             "        &{}_SUBPALETTE_{},",
+        //             self.name.to_uppercase(),
+        //             i
+        //         ));
+        //     }
+        //     code.write_line("    ]),");
+        // } else {
+        //     code.write_line("    sub_palettes: None,");
+        // }
 
         code.write_line("};");
         code.write_line("");
@@ -302,33 +302,33 @@ impl<'a> TilesetBuilder<'a> {
             code.write_color_array(&self.name, &self.palette.colors);
         }
 
-        // Write sub-palettes
-        if self.save_colors {
-            for (i, sub_palette) in self.sub_palettes.data().iter().enumerate() {
-                code.write_line(&format!(
-                    "#[unsafe(link_section = \"{}\")]",
-                    crate::get_platform_link_section()
-                ));
-                code.write_line(&format!(
-                    "pub static {}_SUBPALETTE_{}: [u8; {}] = [",
-                    self.name.to_uppercase(),
-                    i,
-                    // sub_palette.colors().len()
-                    COLORS_PER_TILE
-                ));
+        // // Write sub-palettes
+        // if self.save_colors {
+        //     for (i, sub_palette) in self.sub_palettes.data().iter().enumerate() {
+        //         code.write_line(&format!(
+        //             "#[unsafe(link_section = \"{}\")]",
+        //             crate::get_platform_link_section()
+        //         ));
+        //         code.write_line(&format!(
+        //             "pub static {}_SUBPALETTE_{}: [u8; {}] = [",
+        //             self.name.to_uppercase(),
+        //             i,
+        //             // sub_palette.colors().len()
+        //             COLORS_PER_TILE
+        //         ));
 
-                for n in 0..COLORS_PER_TILE as usize {
-                    let color_index = sub_palette.colors().get(n).unwrap_or(&0);
-                    code.write_line(&format!("    {},", color_index));
-                }
-                // for &color_index in sub_palette.colors() {
-                //     code.write_line(&format!("    {},", color_index));
-                // }
+        //         for n in 0..COLORS_PER_TILE as usize {
+        //             let color_index = sub_palette.colors().get(n).unwrap_or(&0);
+        //             code.write_line(&format!("    {},", color_index));
+        //         }
+        //         // for &color_index in sub_palette.colors() {
+        //         //     code.write_line(&format!("    {},", color_index));
+        //         // }
 
-                code.write_line("];");
-                code.write_line("");
-            }
-        }
+        //         code.write_line("];");
+        //         code.write_line("");
+        //     }
+        // }
 
         // Write animation strips if any
         if !self.anims.is_empty() {
@@ -498,24 +498,24 @@ impl<'a> TilesetBuilder<'a> {
                         }
                         let colors: Vec<u8> = unique_colors.into_iter().collect();
 
-                        // Safety check with useful error.
-                        if colors.len() > COLORS_PER_TILE as usize {
-                            panic!(
-                                "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
-                                \tFrame: ({}, {})\n\
-                                \tTile within frame: row {}, col {}\n\
-                                \tAbsolute tile position: row {}, col {}\n\
-                                \tFound {} unique colors\x1b[0m",
-                                COLORS_PER_TILE,
-                                frame_h,
-                                frame_v,
-                                row,
-                                col,
-                                abs_row,
-                                abs_col,
-                                colors.len()
-                            );
-                        }
+                        // // Safety check with useful error.
+                        // if colors.len() > COLORS_PER_TILE as usize {
+                        //     panic!(
+                        //         "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
+                        //         \tFrame: ({}, {})\n\
+                        //         \tTile within frame: row {}, col {}\n\
+                        //         \tAbsolute tile position: row {}, col {}\n\
+                        //         \tFound {} unique colors\x1b[0m",
+                        //         COLORS_PER_TILE,
+                        //         frame_h,
+                        //         frame_v,
+                        //         row,
+                        //         col,
+                        //         abs_row,
+                        //         abs_col,
+                        //         colors.len()
+                        //     );
+                        // }
 
                         // Redefine pixels as canonical pixels from this point on
                         let canonical_tile = self.create_canonical_tile(&source_pixels);
@@ -541,6 +541,9 @@ impl<'a> TilesetBuilder<'a> {
                                             rotation,
                                         );
 
+                                        // TODO: Determine if this is right. I don't think I need to
+                                        // regenerate the canonical tiles - just trasnform the existing
+                                        // canonical tile sounds more right!
                                         let transformed =
                                             self.create_canonical_tile(&transformed_pixels);
 
@@ -566,13 +569,13 @@ impl<'a> TilesetBuilder<'a> {
                         }
 
                         // Remap colors
-                        let subp = SubPalette::from(&colors);
-                        let subp_insert = self.sub_palettes.add(subp);
+                        // let subp = SubPalette::from(&colors);
+                        // let subp_insert = self.sub_palettes.add(subp);
 
-                        let mapped_pixels: TilePixels = std::array::from_fn(|i| {
-                            let source_color = source_pixels[i];
-                            subp_insert.mapping[&source_color]
-                        });
+                        // let mapped_pixels: TilePixels = std::array::from_fn(|i| {
+                        //     let source_color = source_pixels[i];
+                        //     subp_insert.mapping[&source_color]
+                        // });
 
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
                         // self.handle_groups(tile_pixels, group);
@@ -591,7 +594,7 @@ impl<'a> TilesetBuilder<'a> {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
                                     group: group_bits,
-                                    sub_palette: PaletteID(subp_insert.position),
+                                    color_mapping: 0 //TODO: implement color mapping
                                     // sub_palette: existing_cell.sub_palette
                                 }
                             },
@@ -601,11 +604,11 @@ impl<'a> TilesetBuilder<'a> {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
                                     group: group_bits,
-                                    sub_palette: PaletteID(subp_insert.position),
+                                    color_mapping: 0 //TODO: implement color mapping
                                 };
 
                                 // Store the already computed normalized_tile tile data
-                                self.pixels.extend_from_slice(&mapped_pixels);
+                                self.pixels.extend_from_slice(&source_pixels);
 
                                 // Store remapped tile in hash (after remapping is complete)
                                 self.tile_hash.insert(canonical_tile, new_cell);
@@ -620,12 +623,15 @@ impl<'a> TilesetBuilder<'a> {
                                                 }
 
                                                 let transformed_pixels = Self::transform_tile(
-                                                    &mapped_pixels,
+                                                    &source_pixels,
                                                     flip_x,
                                                     flip_y,
                                                     rotation,
                                                 );
 
+                                                // TODO: Determine if this is right. I don't think I need to
+                                                // regenerate the canonical tiles - just trasnform the existing
+                                                // canonical tile sounds more right!
                                                 let transformed =
                                                     self.create_canonical_tile(&transformed_pixels);
 

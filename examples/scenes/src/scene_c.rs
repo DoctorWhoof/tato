@@ -25,21 +25,22 @@ impl SceneC {
                     row,
                     tile_id: cross,
                     flags: TileFlags::default().with_fg(),
-                    sub_palette: PaletteID(1),
+                    // sub_palette: PaletteID(1),
+                    color_mapping: 0
                 });
             }
         }
 
-        for id in 0..16 as u8 {
-            // state.bg.set_cell(BgOp {
-            //     col: id as u16,
-            //     row: 0,
-            //     tile_id: solid,
-            //     flags: TileFlags::default().with_fg(),
-            //     sub_palette: PaletteID(0),
-            // });
-            t.banks[0].push_subpalette([0, id, 0, 0]);
-        }
+        // for id in 0..16 as u8 {
+        //     state.bg.set_cell(BgOp {
+        //         col: id as u16,
+        //         row: 0,
+        //         tile_id: solid,
+        //         flags: TileFlags::default().with_fg(),
+        //         sub_palette: PaletteID(0),
+        //     });
+        //     t.banks[0].push_subpalette([0, id, 0, 0]);
+        // }
 
         Ok(SceneC { smiley, counter: 0 })
     }
@@ -57,7 +58,8 @@ impl SceneC {
                 y,
                 id: self.smiley,
                 flags: TileFlags::default(),
-                sub_palette: PaletteID(x as u8),
+                // sub_palette: PaletteID(x as u8),
+                color_mapping: 0
             });
         }
 

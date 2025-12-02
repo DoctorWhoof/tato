@@ -6,11 +6,8 @@ mod font_arcade_map;
 
 pub use font_arcade_map::*;
 
-pub const FONT_ARCADE_TILESET: TilesetData = TilesetData {
-    tiles: Some(&FONT_ARCADE_TILES),
-    colors: None,
-    sub_palettes: None,
-};
+pub const FONT_ARCADE_TILESET: TilesetData =
+    TilesetData { tiles: Some(&FONT_ARCADE_TILES), colors: None };
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static FONT_ARCADE_TILES: [Tile<2>; 41] = [

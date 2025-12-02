@@ -4,19 +4,19 @@ pub use rgba12::*;
 mod rgba32;
 pub use rgba32::*;
 
-/// Local Palette index. Each Local palette defines 4 colors out of the 16 "Main" palettes, FG and BG.
-#[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]
-pub struct PaletteID(pub u8);
+// /// Local Palette index. Each Local palette defines 4 colors out of the 16 "Main" palettes, FG and BG.
+// #[derive(Debug, Clone, Copy, PartialEq, Hash, Default)]
+// pub struct PaletteID(pub u8);
 
 /// Unique identifier for a color in the Main Palettes.
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub struct ColorID(pub u8);
 
-impl PaletteID {
-    pub fn id(self) -> usize {
-        self.0 as usize
-    }
-}
+// impl PaletteID {
+//     pub fn id(self) -> usize {
+//         self.0 as usize
+//     }
+// }
 
 impl ColorID {
     pub fn id(self) -> usize {
@@ -24,11 +24,11 @@ impl ColorID {
     }
 }
 
-impl From<PaletteID> for u8 {
-    fn from(value: PaletteID) -> Self {
-        value.0
-    }
-}
+// impl From<PaletteID> for u8 {
+//     fn from(value: PaletteID) -> Self {
+//         value.0
+//     }
+// }
 
 impl From<ColorID> for u8 {
     fn from(value: ColorID) -> Self {

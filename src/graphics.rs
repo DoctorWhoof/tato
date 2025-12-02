@@ -87,7 +87,8 @@ impl Tato {
             row: bg_rect.y,
             tile_id: top_left.id,
             flags: top_left.flags,
-            sub_palette: top_left.sub_palette,
+            color_mapping: top_left.color_mapping
+            // sub_palette: top_left.sub_palette,
         });
 
         if (bg_rect.x as usize + bg_rect.w as usize) >= u16::MAX as usize {
@@ -100,7 +101,7 @@ impl Tato {
                 row: bg_rect.y,
                 tile_id: top.id,
                 flags: top.flags,
-                sub_palette: top.sub_palette,
+                color_mapping: top.color_mapping,
             });
         }
 
@@ -110,7 +111,7 @@ impl Tato {
             row: bg_rect.y,
             tile_id: top_right.id,
             flags: top_right.flags,
-            sub_palette: top_right.sub_palette,
+            color_mapping: top_right.color_mapping,
         });
 
         let left = map.cells[3];
@@ -121,7 +122,7 @@ impl Tato {
                 row,
                 tile_id: left.id,
                 flags: left.flags,
-                sub_palette: left.sub_palette,
+                color_mapping: left.color_mapping,
             });
         }
 
@@ -136,7 +137,7 @@ impl Tato {
                     row,
                     tile_id: center.id,
                     flags: center.flags,
-                    sub_palette: center.sub_palette,
+                    color_mapping: center.color_mapping,
                 });
             }
         }
@@ -148,7 +149,7 @@ impl Tato {
                 row,
                 tile_id: right.id,
                 flags: right.flags,
-                sub_palette: right.sub_palette,
+                color_mapping: right.color_mapping,
             });
         }
 
@@ -158,7 +159,7 @@ impl Tato {
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_left.id,
             flags: bottom_left.flags,
-            sub_palette: bottom_left.sub_palette,
+            color_mapping: bottom_left.color_mapping,
         });
 
         let bottom = map.cells[7];
@@ -168,7 +169,7 @@ impl Tato {
                 row: bg_rect.y + bg_rect.h,
                 tile_id: bottom.id,
                 flags: bottom.flags,
-                sub_palette: bottom.sub_palette,
+                color_mapping: bottom.color_mapping,
             });
         }
 
@@ -178,7 +179,7 @@ impl Tato {
             row: bg_rect.y + bg_rect.h,
             tile_id: bottom_right.id,
             flags: bottom_right.flags,
-            sub_palette: bottom.sub_palette,
+            color_mapping: bottom.color_mapping,
         });
     }
 
@@ -207,17 +208,12 @@ impl Tato {
             let col = char_index % font_cols;
             let row = char_index / font_cols;
             if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
-                let sub_palette = if let Some(palette) = op.palette_override {
-                    palette
-                } else {
-                    cell.sub_palette
-                };
                 target.set_op(BgOp {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
                     tile_id: TileID(cell.id.0 + tile_start),
                     flags: cell.flags,
-                    sub_palette,
+                    color_mapping: cell.color_mapping,
                 });
             }
         };

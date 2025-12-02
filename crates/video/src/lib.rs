@@ -73,15 +73,15 @@ pub const TILE_PIXEL_COUNT: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 /// The number of pixel clusters in a tile.
 pub const TILE_CLUSTER_COUNT: usize = TILE_PIXEL_COUNT / PIXELS_PER_CLUSTER as usize;
 
-/// Number of colors per tile (2 bits per pixel)
-pub const COLORS_PER_TILE: u8 = 4;
+// /// Number of colors per tile (2 bits per pixel)
+// pub const COLORS_PER_TILE: u8 = 4;
 
 /// Number of colors per palette (applies to FG and BG palette, 32 colors total)
 pub const COLORS_PER_PALETTE: u8 = 16;
 
-/// How many "local" palettes
-/// (palettes of 4 colors that map each index to the main FG and BG palettes)
-pub const SUBPALETTE_COUNT: u8 = 64;
+// /// How many "local" palettes
+// /// (palettes of 4 colors that map each index to the main FG and BG palettes)
+// pub const SUBPALETTE_COUNT: u8 = 64;
 
 /// Maximum number of BG Tiles
 pub const BG_LEN: usize = 1024;

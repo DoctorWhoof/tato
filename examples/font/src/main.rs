@@ -14,9 +14,9 @@ fn main() -> TatoResult<()> {
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let ts_font = tato.push_tileset(0, FONT_LONG_TILESET)?;
 
-    let plt_default = tato.new_subpalette(0, [0, 14, 2, 2]);
-    let plt_light = tato.new_subpalette(0, [0, 3, 2, 2]);
-    let plt_cycle = tato.new_subpalette(0, [0, 3, 2, 0]);
+    // let plt_default = tato.new_subpalette(0, [0, 14, 2, 2]);
+    // let plt_light = tato.new_subpalette(0, [0, 3, 2, 2]);
+    // let plt_cycle = tato.new_subpalette(0, [0, 3, 2, 0]);
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
     tato.banks[0].load_default_colors();
@@ -36,7 +36,8 @@ fn main() -> TatoResult<()> {
                 col,
                 row: line,
                 width,
-                palette_override: Some(plt_light),
+                // palette_override: Some(plt_light),
+                color_mapping: 0
             },
         )
         .unwrap();
@@ -51,7 +52,8 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            palette_override: Some(plt_light),
+            // palette_override: Some(plt_light),
+            color_mapping: 0
         },
     );
 
@@ -65,7 +67,8 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            palette_override: Some(plt_default),
+            // palette_override: Some(plt_default),
+            color_mapping: 0
         },
     );
 
@@ -79,7 +82,8 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            palette_override: Some(plt_light),
+            // palette_override: Some(plt_light),
+            color_mapping: 0
         },
     );
 
@@ -93,7 +97,8 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            palette_override: Some(plt_default),
+            // palette_override: Some(plt_default),
+            color_mapping: 0,
         },
     );
 
@@ -108,7 +113,8 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            palette_override: Some(plt_cycle),
+            // palette_override: Some(plt_cycle),
+            color_mapping: 0
         },
     );
 
@@ -136,12 +142,12 @@ fn main() -> TatoResult<()> {
         }
 
         // Draw
-        let color = &mut tato.banks[0].sub_palettes[plt_cycle.0 as usize][1];
-        color.0 = cycle as u8;
-        cycle += backend.ray.get_frame_time() * 2.0;
-        if cycle >= 16.0 {
-            cycle = 1.0
-        }
+        // let color = &mut tato.banks[0].sub_palettes[plt_cycle.0 as usize][1];
+        // color.0 = cycle as u8;
+        // cycle += backend.ray.get_frame_time() * 2.0;
+        // if cycle >= 16.0 {
+        //     cycle = 1.0
+        // }
 
         // Update backends
         tato.frame_finish();

@@ -66,7 +66,7 @@ impl SubPaletteBuilder {
         self.data.is_empty()
     }
 
-    pub fn add_new(&mut self, incoming: SubPalette) -> SubPaletteInsert {
+    pub fn add_experimental(&mut self, incoming: SubPalette) -> SubPaletteInsert {
         for (position, candidate) in &mut self.data.iter_mut().enumerate() {
             let mut is_match = true;
             let mut mapping = incoming.generate_mapping();

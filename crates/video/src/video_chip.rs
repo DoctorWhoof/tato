@@ -9,7 +9,7 @@ pub struct DrawBundle {
     pub y: i16,
     pub id: TileID,
     pub flags: TileFlags,
-    pub sub_palette: PaletteID,
+    pub color_mapping: u8,
 }
 
 /// A convenient packet of data used to draw a tilemap as a sprite.
@@ -197,7 +197,7 @@ impl VideoChip {
                     y: (draw_row as i16 * TILE_SIZE as i16) + bundle.y,
                     id: cell.id,
                     flags,
-                    sub_palette: cell.sub_palette,
+                    color_mapping: cell.color_mapping,
                 });
             }
         }
@@ -253,7 +253,7 @@ impl VideoChip {
             self.h,
             data.flags,
             data.id,
-            data.sub_palette,
+            data.color_mapping,
         );
     }
 

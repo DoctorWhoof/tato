@@ -18,8 +18,8 @@ fn main() -> TatoResult<()> {
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
     tato.banks[0].load_default_colors();
-    let palette_default = tato.new_subpalette(0, [0, 14, 2, 2]);
-    let palette_light = tato.new_subpalette(0, [0, 3, 2, 2]);
+    // let palette_default = tato.new_subpalette(0, [0, 14, 2, 2]);
+    // let palette_light = tato.new_subpalette(0, [0, 3, 2, 2]);
 
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
     let font = tato.push_tileset(0, FONT_LONG_TILESET)?;
@@ -34,7 +34,8 @@ fn main() -> TatoResult<()> {
             col: 2,
             row: 2,
             width: None,
-            palette_override: Some(palette_default),
+            // palette_override: Some(palette_default),
+            color_mapping: 0
         },
     );
 
@@ -47,7 +48,8 @@ fn main() -> TatoResult<()> {
             col: 2,
             row: 6,
             width: None,
-            palette_override: Some(palette_light),
+            // palette_override: Some(palette_light),
+            color_mapping: 0
         },
     );
 
@@ -111,7 +113,8 @@ fn main() -> TatoResult<()> {
                 col: 2,
                 row: 8,
                 width: None,
-                palette_override: Some(palette_light),
+                // palette_override: Some(palette_light),
+                color_mapping: 0
             },
         );
 
@@ -124,7 +127,8 @@ fn main() -> TatoResult<()> {
                 col: 2,
                 row: 10,
                 width: None,
-                palette_override: Some(palette_light),
+                // palette_override: Some(palette_light),
+                color_mapping: 0
             },
         );
 
@@ -137,7 +141,8 @@ fn main() -> TatoResult<()> {
                 col: 2,
                 row: 12,
                 width: None,
-                palette_override: Some(palette_light),
+                // palette_override: Some(palette_light),
+                color_mapping: 0
             },
         );
 

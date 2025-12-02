@@ -23,7 +23,7 @@ pub struct Entity {
     pub y: f32,
     tile: TileID,
     flags: TileFlags,
-    sub_palette: PaletteID,
+    color_mapping: u8,
 }
 
 // Selects a scene to change into
