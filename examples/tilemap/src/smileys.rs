@@ -34,25 +34,25 @@ pub static SMILEYS_COLORS: [RGBA12; 12] = [
 ];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [1, 0, 5, 2];
+pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 5, 2];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [3, 5, 1, 4];
+pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [1, 5, 3, 4];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [5, 6, 1, 7];
+pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [6, 5, 1, 7];
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 5, 8, 9];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [5, 1, 10, 11];
+pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 10, 5, 11];
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_TILES: [Tile<2>; 5] = [
-    Tile::new(0x5555555555555554, 0x5540550055005400),
-    Tile::new(0x5555555555550000, 0x0000000000000000),
-    Tile::new(0x0000000F00FF03FF, 0x0FFF0FEF3FEF3FEF),
-    Tile::new(0x0000000000000000, 0x0000000000000000),
-    Tile::new(0x3FFF3FAA0FAA0FEA, 0x03FA00FF000F0000),
+    Tile::new(0x0000000000000001, 0x0015005500550155),
+    Tile::new(0x0000000000005555, 0x5555555555555555),
+    Tile::new(0x5555555F55FF57FF, 0x5FFF5FEF7FEF7FEF),
+    Tile::new(0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x7FFF7FAA5FAA5FEA, 0x57FA55FF555F5555),
 ];
