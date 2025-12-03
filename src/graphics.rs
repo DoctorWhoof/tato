@@ -88,7 +88,6 @@ impl Tato {
             tile_id: top_left.id,
             flags: top_left.flags,
             color_mapping: top_left.color_mapping
-            // sub_palette: top_left.sub_palette,
         });
 
         if (bg_rect.x as usize + bg_rect.w as usize) >= u16::MAX as usize {

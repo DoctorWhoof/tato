@@ -7,24 +7,20 @@ use core::array::from_fn;
 pub struct VideoBank<const TILES: usize> {
     pub tiles: [Tile<2>; TILES],
     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
-    // Local Palettes with 4 ColorIDs each. Each ID referes to a color in the main palette.
-    // pub sub_palettes: [[ColorID; COLORS_PER_TILE as usize]; SUBPALETTE_COUNT as usize],
+    pub color_mapping: [[u8; COLORS_PER_PALETTE as usize]; 16],
     // Everything that needs to be counted
     tile_head: u8,
     palette_head: u8,
-    // sub_palette_head: u8,
 }
 
 impl<const TILES: usize> VideoBank<TILES> {
     pub fn new() -> Self {
         Self {
             tiles: from_fn(|_| Tile::default()),
-            // bg: Tilemap::new(32, 32),
             palette: PALETTE_DEFAULT,
-            // sub_palettes: from_fn(|_| from_fn(|i| ColorID(i as u8))),
+            color_mapping: from_fn(|_| from_fn(|i| i as u8)), // default mapping is index=value
             tile_head: 0,
             palette_head: 0,
-            // sub_palette_head: 0,
         }
     }
 
@@ -37,8 +33,6 @@ impl<const TILES: usize> VideoBank<TILES> {
 
     pub fn reset_palettes(&mut self) {
         self.palette = PALETTE_DEFAULT;
-        // self.sub_palettes = from_fn(|_| from_fn(|i| ColorID(i as u8)));
-        // self.sub_palette_head = 0;
         self.palette_head = 0;
     }
 
@@ -51,7 +45,7 @@ impl<const TILES: usize> VideoBank<TILES> {
     }
 
     pub fn load_default_colors(&mut self) {
-        self.palette =  [
+        self.palette = [
             RGBA12::TRANSPARENT, // 0
             RGBA12::BLACK,       // 1
             RGBA12::GRAY,        // 2
@@ -77,60 +71,24 @@ impl<const TILES: usize> VideoBank<TILES> {
         self.palette[id.0 as usize] = color;
     }
 
-    // pub fn set_subpalette(
-    //     &mut self,
-    //     index: PaletteID,
-    //     colors: [ColorID; COLORS_PER_TILE as usize],
-    // ) {
-    //     assert!(
-    //         index.0 < SUBPALETTE_COUNT,
-    //         err!("Invalid local palette index, must be less than PALETTE_COUNT")
-    //     );
-    //     self.sub_palettes[index.0 as usize] = colors;
-    // }
+    pub fn palette_cycle(&mut self, color_mapping: u8, start_index: u8, end_index: u8, delta: i8) {
+        let original_colors = self.color_mapping[color_mapping as usize];
 
-    // pub fn push_subpalette(&mut self, colors: [u8; COLORS_PER_TILE as usize]) -> PaletteID {
-    //     assert!(self.sub_palette_head < SUBPALETTE_COUNT, err!("SUBPALETTE_COUNT exceeded"));
-    //     let result = self.sub_palette_head;
-    //     self.sub_palettes[self.sub_palette_head as usize] = colors.map(|c| ColorID(c));
-    //     self.sub_palette_head += 1;
-    //     PaletteID(result)
-    // }
-
-    // /// Increments or decrements an index in a local palette so that its value
-    // /// cycles between "min" and "max", which represent colors in the Main FG and BG palettes.
-    // pub fn color_cycle(&mut self, palette: PaletteID, color: u8, min: u8, max: u8) {
-    //     let color_cycle = &mut self.sub_palettes[palette.id()][color as usize].0;
-    //     if max > min {
-    //         *color_cycle += 1;
-    //         if *color_cycle > max {
-    //             *color_cycle = min
-    //         }
-    //     } else {
-    //         *color_cycle -= 1;
-    //         if *color_cycle < min {
-    //             *color_cycle = max
-    //         }
-    //     }
-    // }
-
-    // pub fn palette_cycle(&mut self, palette: PaletteID, start_index: u8, end_index: u8, delta: i8) {
-    //     let original_colors = self.sub_palettes[palette.id()];
-    //     for index in start_index as isize..=end_index as isize {
-    //         let mut new_index = index + delta as isize;
-    //         if delta > 0 {
-    //             if new_index > end_index as isize {
-    //                 new_index = start_index as isize;
-    //             }
-    //         } else {
-    //             if new_index < start_index as isize {
-    //                 new_index = end_index as isize;
-    //             }
-    //         }
-    //         let color = &mut self.sub_palettes[palette.id()][index as usize];
-    //         color.0 = original_colors[new_index as usize].0;
-    //     }
-    // }
+        for index in start_index as isize..=end_index as isize {
+            let mut new_index = index + delta as isize;
+            if delta > 0 {
+                if new_index > end_index as isize {
+                    new_index = start_index as isize;
+                }
+            } else {
+                if new_index < start_index as isize {
+                    new_index = end_index as isize;
+                }
+            }
+            let color = &mut self.color_mapping[color_mapping as usize][index as usize];
+            *color = original_colors[new_index as usize];
+        }
+    }
 
     pub fn tile_count(&self) -> usize {
         self.tile_head as usize
@@ -139,10 +97,6 @@ impl<const TILES: usize> VideoBank<TILES> {
     pub fn color_count(&self) -> u8 {
         self.palette_head
     }
-
-    // pub fn sub_palette_count(&self) -> u8 {
-    //     self.sub_palette_head
-    // }
 
     pub fn tile_capacity(&self) -> usize {
         TILES
@@ -159,9 +113,7 @@ impl<const TILES: usize> VideoBank<TILES> {
     /// Warning: Caller must ensure these are valid previous states!
     pub fn restore_palette_state(&mut self, color_count: u8) {
         assert!(color_count <= COLORS_PER_PALETTE as u8, "Invalid color count");
-        // assert!(sub_palette_count <= SUBPALETTE_COUNT, "Invalid sub-palette count");
         self.palette_head = color_count;
-        // self.sub_palette_head = sub_palette_count;
     }
 
     /// Adds a single tile, returns a TileID

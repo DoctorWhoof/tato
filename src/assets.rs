@@ -27,7 +27,6 @@ pub struct Assets<const CAP: usize> {
     strip_head: u8,
     map_head: u8,
     color_head: u8,
-    sub_palette_head: u8,
     anim_head: u8,
     // Asset types
     pub(crate) tilesets: [Tileset; 256],
@@ -52,12 +51,10 @@ struct TilesetCheckpoint {
     strip_head: u8,
     map_head: u8,
     color_head: u8,
-    sub_palette_head: u8,
     anim_head: u8,
     // Bank states (tile and palette counts)
     bank_tile_counts: [u8; TILE_BANK_COUNT],
     bank_palette_counts: [u8; TILE_BANK_COUNT],
-    // bank_sub_palette_counts: [u8; TILE_BANK_COUNT],
 }
 
 impl<const CAP: usize> Assets<CAP> {
@@ -75,7 +72,6 @@ impl<const CAP: usize> Assets<CAP> {
             strip_head: 0,
             map_head: 0,
             color_head: 0,
-            sub_palette_head: 0,
             anim_head: 0,
             // Checkpoint system
             checkpoints: from_fn(|_| TilesetCheckpoint::default()),
@@ -90,7 +86,6 @@ impl<const CAP: usize> Assets<CAP> {
         self.map_head = 0;
         self.anim_head = 0;
         self.color_head = 0;
-        self.sub_palette_head = 0;
         self.arena.clear();
         self.checkpoint_head = 0;
     }
@@ -110,7 +105,6 @@ impl Tato {
     // pub fn new_subpalette(
     //     &mut self,
     //     bank_id: u8,
-    //     sub_palette: [u8; COLORS_PER_TILE as usize],
     // ) -> PaletteID {
     //     let bank = self.banks.get_mut(bank_id as usize).unwrap();
     //     let assets = &mut self.assets;
@@ -138,11 +132,9 @@ impl Tato {
             // Save bank states
             let mut bank_tile_counts = [0u8; TILE_BANK_COUNT];
             let mut bank_palette_counts = [0u8; TILE_BANK_COUNT];
-            // let mut bank_sub_palette_counts = [0u8; TILE_BANK_COUNT];
             for (i, bank) in self.banks.iter().enumerate().take(TILE_BANK_COUNT) {
                 bank_tile_counts[i] = bank.tile_count() as u8;
                 bank_palette_counts[i] = bank.color_count();
-                // bank_sub_palette_counts[i] = bank.sub_palette_count();
             }
 
             assets.checkpoints[assets.checkpoint_head as usize] = TilesetCheckpoint {
@@ -152,7 +144,6 @@ impl Tato {
                 strip_head: assets.strip_head,
                 map_head: assets.map_head,
                 color_head: assets.color_head,
-                sub_palette_head: assets.sub_palette_head,
                 anim_head: assets.anim_head,
                 bank_tile_counts,
                 bank_palette_counts,
@@ -294,7 +285,6 @@ impl Tato {
         assets.strip_head = checkpoint.strip_head;
         assets.map_head = checkpoint.map_head;
         assets.color_head = checkpoint.color_head;
-        assets.sub_palette_head = checkpoint.sub_palette_head;
         assets.anim_head = checkpoint.anim_head;
 
         // Restore bank states
@@ -302,7 +292,6 @@ impl Tato {
             bank.restore_tile_count(checkpoint.bank_tile_counts[i]);
             bank.restore_palette_state(
                 checkpoint.bank_palette_counts[i],
-                // checkpoint.bank_sub_palette_counts[i],
             );
         }
         Ok(())
@@ -347,11 +336,8 @@ impl Tato {
             .arena
             .alloc_slice_from_fn(map.len(), |i| {
                 let cell = &map.cells()[i];
-                // let mut flags = cell.flags;
-                // flags.set_palette(PaletteID(cell.flags.palette().0 + tileset.sub_palettes_start));
                 Cell {
                     id: TileID(cell.id.0 + tileset_offset),
-                    // sub_palette: PaletteID(cell.sub_palette.0 + tileset.sub_palettes_start),
                     ..*cell
                 }
             })

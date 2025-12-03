@@ -4,7 +4,6 @@ use crate::*;
 pub struct Cell {
     pub id: TileID,
     pub flags: TileFlags,
-    // pub sub_palette: PaletteID,
     // Zero is the default mapping, any index above use one of the available mapppings
     pub color_mapping: u8,
     pub group: u8,
@@ -18,12 +17,11 @@ pub struct Cell {
 }
 
 impl Cell {
-    pub const fn new(id:u8, flags:u8, sub_palette:u8, group:u8) -> Self {
+    pub const fn new(id:u8, flags:u8, color_mapping:u8, group:u8) -> Self {
         Self {
             id: TileID(id),
             flags: TileFlags(flags),
-            // sub_palette: PaletteID(sub_palette),
-            color_mapping: 0,
+            color_mapping,
             group,
         }
     }
