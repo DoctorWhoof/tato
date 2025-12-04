@@ -9,6 +9,10 @@ use tato::{arena::Arena, prelude::*};
 
 use tato_raylib::*;
 
+// Color mappings. Mappings 2 to 15 map default colors to index 2 (gray)
+const MAP_SHADOW: u8 = 0;
+const MAP_CYCLE: u8 = 1;
+
 #[derive(Debug, Clone)]
 pub struct State {
     pub pad: AnaloguePad,

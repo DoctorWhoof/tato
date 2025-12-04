@@ -4,8 +4,6 @@ use tato::default_assets::*;
 use tato::prelude::*;
 
 const SMILEY_COUNT: usize = 32;
-const MAP_SHADOW: u8 = 0;
-const MAP_CYCLE: u8 = 1;
 
 #[derive(Debug)]
 pub struct SceneA {
@@ -70,7 +68,7 @@ impl SceneA {
                 mapping[0] = 0; // 0 stays transparent
                 mapping[1] = 1; // 1 is always black
                 mapping[2] = (i as u8 % 12) + 4;
-                mapping[3] = 3; // 3 is always white
+                mapping[3] = 1; // 3 is always black
             }
         }
 
