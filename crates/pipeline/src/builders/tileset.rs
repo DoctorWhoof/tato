@@ -2,7 +2,7 @@ use tato_video::*;
 
 use super::*;
 use crate::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 
@@ -10,6 +10,7 @@ const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 // pub(crate) type CanonicalTile = [u8; TILE_LEN];
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub(crate) struct CanonicalTile {
     pub pixels: [u8; TILE_LEN],
     pub mapping: Vec<u8>,
@@ -34,9 +35,10 @@ pub struct TilesetBuilder<'a> {
     name: String,
     pixels: Vec<u8>,
     tiles_to_cells: HashMap<Pixels, Cell>,
-    // stores the actual colored tile alongside the canonical tile, so that
-    // we can obtain color mappings from it
-    // original_color_mapping: HashMap<CanonicalTile, TilePixels>,
+    // Store canonical tile info for each pattern
+    canonical_tiles: HashMap<Pixels, CanonicalTile>,
+    // Store all unique color mappings (index 0 is always identity mapping)
+    color_mappings: Vec<[u8; COLORS_PER_PALETTE as usize]>,
     palette: &'a mut PaletteBuilder,
     groups: &'a mut GroupBuilder,
     anims: Vec<AnimBuilder>,
@@ -57,14 +59,16 @@ impl<'a> TilesetBuilder<'a> {
             name: String::from(name),
             pixels: vec![],
             tiles_to_cells: HashMap::new(),
-            // original_color_mapping: HashMap::new(),
+            canonical_tiles: HashMap::new(),
+            // Initialize with identity mapping at index 0
+            color_mappings: vec![core::array::from_fn(|i| i as u8)],
             palette,
             groups,
-            next_tile: 0,
             anims: vec![],
             maps: vec![],
             single_tiles: vec![],
-            deferred_commands: Vec::new(),
+            next_tile: 0,
+            deferred_commands: vec![],
         }
     }
 
@@ -287,19 +291,11 @@ impl<'a> TilesetBuilder<'a> {
             code.write_line("    colors: None,");
         }
 
-        // if self.save_colors && !self.sub_palettes.is_empty() {
-        //     code.write_line(&format!("    sub_palettes: Some(&["));
-        //     for i in 0..self.sub_palettes.data().len() {
-        //         code.write_line(&format!(
-        //             "        &{}_SUBPALETTE_{},",
-        //             self.name.to_uppercase(),
-        //             i
-        //         ));
-        //     }
-        //     code.write_line("    ]),");
-        // } else {
-        //     code.write_line("    sub_palettes: None,");
-        // }
+        if self.color_mappings.len() > 1 {
+            code.write_line(&format!("    color_mappings: Some(&{}_COLOR_MAPPINGS),", self.name.to_uppercase()));
+        } else {
+            code.write_line("    color_mappings: None,");
+        }
 
         code.write_line("};");
         code.write_line("");
@@ -308,34 +304,6 @@ impl<'a> TilesetBuilder<'a> {
         if self.save_colors {
             code.write_color_array(&self.name, &self.palette.rgb_colors);
         }
-
-        // // Write sub-palettes
-        // if self.save_colors {
-        //     for (i, sub_palette) in self.sub_palettes.data().iter().enumerate() {
-        //         code.write_line(&format!(
-        //             "#[unsafe(link_section = \"{}\")]",
-        //             crate::get_platform_link_section()
-        //         ));
-        //         code.write_line(&format!(
-        //             "pub static {}_SUBPALETTE_{}: [u8; {}] = [",
-        //             self.name.to_uppercase(),
-        //             i,
-        //             // sub_palette.colors().len()
-        //             COLORS_PER_TILE
-        //         ));
-
-        //         for n in 0..COLORS_PER_TILE as usize {
-        //             let color_index = sub_palette.colors().get(n).unwrap_or(&0);
-        //             code.write_line(&format!("    {},", color_index));
-        //         }
-        //         // for &color_index in sub_palette.colors() {
-        //         //     code.write_line(&format!("    {},", color_index));
-        //         // }
-
-        //         code.write_line("];");
-        //         code.write_line("");
-        //     }
-        // }
 
         // Write animation strips if any
         if !self.anims.is_empty() {
@@ -412,6 +380,29 @@ impl<'a> TilesetBuilder<'a> {
                 code.write_line(&format!("    {},", crate::format_tile_compact(tile_pixels)));
             }
             code.write_line("];");
+            code.write_line("");
+        }
+
+        // Write color mappings
+        if self.color_mappings.len() > 1 {  // Only write if there are mappings beyond identity
+            code.write_line("// Color mappings for tile reuse with different colors");
+            code.write_line(&format!(
+                "#[unsafe(link_section = \"{}\")]",
+                crate::get_platform_link_section()
+            ));
+            code.write_line(&format!(
+                "pub static {}_COLOR_MAPPINGS: [[u8; {}]; {}] = [",
+                self.name.to_uppercase(),
+                COLORS_PER_PALETTE,
+                self.color_mappings.len()
+            ));
+
+            for (idx, mapping) in self.color_mappings.iter().enumerate() {
+                let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
+                code.write_line(&format!("    [{}], // Mapping #{}", values.join(", "), idx));
+            }
+            code.write_line("];");
+            code.write_line("");
         }
 
         // Format the output
@@ -561,31 +552,12 @@ impl<'a> TilesetBuilder<'a> {
                                             self.tiles_to_cells.get(&transformed.pixels)
                                         {
                                             found_cell = Some(*existing);
-                                            // found_cell = Some(Cell {
-                                            //     id: existing.id,
-                                            //     flags: existing
-                                            //         .flags
-                                            //         .with_horizontal_state(flip_x)
-                                            //         .with_vertical_state(flip_y)
-                                            //         .with_rotation_state(rotation),
-                                            //     sub_palette: existing.sub_palette,
-                                            //     group: existing.group,
-                                            // });
                                             break 'outer;
                                         }
                                     }
                                 }
                             }
                         }
-
-                        // Remap colors
-                        // let subp = SubPalette::from(&colors);
-                        // let subp_insert = self.sub_palettes.add(subp);
-
-                        // let mapped_pixels: TilePixels = std::array::from_fn(|i| {
-                        //     let source_color = source_pixels[i];
-                        //     subp_insert.mapping[&source_color]
-                        // });
 
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
                         // self.handle_groups(tile_pixels, group);
@@ -600,25 +572,36 @@ impl<'a> TilesetBuilder<'a> {
                         let cell = match found_cell {
                             Some(existing_cell) => {
                                 // Found existing tile with same pattern
-                                // Use the same sub-palette mapping we used for lookup
+                                // Get the canonical tile info for the existing tile
+                                let color_mapping_idx = if let Some(existing_canonical) = self.canonical_tiles.get(&canonical_tile.pixels) {
+                                    // Clone the mapping to avoid borrow issues
+                                    let existing_mapping = existing_canonical.mapping.clone();
+                                    // Create remapping from current tile's colors to existing tile's colors
+                                    self.create_color_remapping(&canonical_tile.mapping, &existing_mapping)
+                                } else {
+                                    0 // Default identity mapping
+                                };
+
                                 Cell {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
                                     group: group_bits,
-                                    color_mapping: 0, //TODO: implement color mapping
-                                                      // sub_palette: existing_cell.sub_palette
+                                    color_mapping: color_mapping_idx,
                                 }
                             },
                             None => {
-                                // Create new cell using the sub-palette we already found/created
+                                // Create new cell - new tiles always use identity mapping
                                 let new_cell = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
                                     group: group_bits,
-                                    color_mapping: 0, //TODO: implement color mapping
+                                    color_mapping: 0, // Identity mapping for new tiles
                                 };
 
-                                // Store the already computed normalized_tile tile data
+                                // Store the canonical tile info
+                                self.canonical_tiles.insert(canonical_tile.pixels.clone(), canonical_tile.clone());
+
+                                // Store the actual pixel data
                                 self.pixels.extend_from_slice(&source_pixels);
 
                                 // Store remapped tile in hash (after remapping is complete)
@@ -651,8 +634,14 @@ impl<'a> TilesetBuilder<'a> {
                                                     cell_with_flags.flags.set_rotation(rotation);
 
                                                     self.tiles_to_cells.insert(
-                                                        transformed.pixels,
+                                                        transformed.pixels.clone(),
                                                         cell_with_flags,
+                                                    );
+
+                                                    // Also store the canonical tile for the transformed pattern
+                                                    self.canonical_tiles.insert(
+                                                        transformed.pixels,
+                                                        transformed,
                                                     );
                                                 }
                                             }
@@ -691,29 +680,29 @@ impl<'a> TilesetBuilder<'a> {
     /// palettes.
     /// The mapping is like a mini-palette with each color assigned to a normalized index
     fn create_canonical_tile(&mut self, tile_pixels: &Pixels) -> CanonicalTile {
-        // Normalize indices for canonical representation
-        // let mut unique_colors = HashMap::new(); //source color, canonical color
-        // let mut mapping = Vec::<u8>::new();
-        // let mut next_index = 0u8;
-        // let canonical_pixels: Pixels = std::array::from_fn(|i| {
-        //     let source_color = tile_pixels[i];
-        //     *unique_colors.entry(source_color).or_insert_with(|| {
-        //         let canonical_color = next_index;
-        //         next_index += 1;
-        //         mapping.push(source_color);
-        //         canonical_color
-        //     })
-        // });
-        //
-        let mapping = Vec::new(); // not doing anything
+        // Create canonical representation by normalizing color indices
+        let mut unique_colors = HashMap::new();
+        let mut mapping = Vec::<u8>::new();
+        let mut next_index = 0u8;
 
+        // First pass: create canonical pixels with normalized indices
+        let canonical_pixels: Pixels = std::array::from_fn(|i| {
+            let source_color = tile_pixels[i];
+            *unique_colors.entry(source_color).or_insert_with(|| {
+                let canonical_color = next_index;
+                mapping.push(source_color);
+                next_index += 1;
+                canonical_color
+            })
+        });
+
+        // Create neighbor mask based on canonical pixels
         let mut pixels = [0u8; TILE_LEN];
         let size = TILE_SIZE as u32;
         for y in 0..size {
             for x in 0..size {
                 let index = Self::get_index(x, y, size);
-                // pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
-                pixels[index] = Self::neighbor_mask(tile_pixels, x, y, size, size)
+                pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
             }
         }
 
@@ -798,5 +787,47 @@ impl<'a> TilesetBuilder<'a> {
     #[inline]
     fn get_index(x: u32, y: u32, map_width: u32) -> usize {
         (y as usize * map_width as usize) + x as usize
+    }
+
+    /// Create a color remapping from source tile colors to target tile colors
+    fn create_color_remapping(&mut self, source_mapping: &[u8], target_mapping: &[u8]) -> u8 {
+        let mut remapping = [0u8; COLORS_PER_PALETTE as usize];
+
+        // Initialize with identity mapping
+        for i in 0..COLORS_PER_PALETTE as usize {
+            remapping[i] = i as u8;
+        }
+
+        // Build the actual remapping
+        // source_mapping maps canonical indices to source colors
+        // target_mapping maps canonical indices to target colors
+        // We need to map target colors to source colors
+        // (because we're using the target/stored tile's pixels but want source's colors)
+        for (canonical_idx, &source_color) in source_mapping.iter().enumerate() {
+            if canonical_idx < target_mapping.len() {
+                let target_color = target_mapping[canonical_idx];
+                // Map from stored tile's color to desired color
+                remapping[target_color as usize] = source_color;
+            }
+        }
+
+        // Check if this is the identity mapping
+        let is_identity = remapping.iter().enumerate().all(|(i, &v)| i == v as usize);
+        if is_identity {
+            return 0; // Always use index 0 for identity mapping
+        }
+
+        // Check if this mapping already exists
+        for (idx, existing_mapping) in self.color_mappings.iter().enumerate() {
+            if *existing_mapping == remapping {
+                return idx as u8;
+            }
+        }
+
+        // Add new mapping
+        let mapping_idx = self.color_mappings.len();
+        println!("cargo:warning=Adding color mapping #{}: {:?}", mapping_idx, remapping);
+        self.color_mappings.push(remapping);
+        mapping_idx as u8
     }
 }

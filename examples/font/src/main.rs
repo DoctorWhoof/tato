@@ -14,10 +14,6 @@ fn main() -> TatoResult<()> {
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let ts_font = tato.push_tileset(0, FONT_LONG_TILESET)?;
 
-    // let plt_default = tato.new_subpalette(0, [0, 14, 2, 2]);
-    // let plt_light = tato.new_subpalette(0, [0, 3, 2, 2]);
-    // let plt_cycle = tato.new_subpalette(0, [0, 3, 2, 0]);
-
     tato.video.bg_color = RGBA12::new(1, 2, 3);
     tato.banks[0].load_default_colors();
 

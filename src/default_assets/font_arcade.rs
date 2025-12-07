@@ -6,8 +6,11 @@ mod font_arcade_map;
 
 pub use font_arcade_map::*;
 
-pub const FONT_ARCADE_TILESET: TilesetData =
-    TilesetData { tiles: Some(&FONT_ARCADE_TILES), colors: None };
+pub const FONT_ARCADE_TILESET: TilesetData = TilesetData {
+    tiles: Some(&FONT_ARCADE_TILES),
+    colors: None,
+    color_mappings: Some(&FONT_ARCADE_COLOR_MAPPINGS),
+};
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static FONT_ARCADE_TILES: [Tile<4>; 41] = [
@@ -52,4 +55,11 @@ pub static FONT_ARCADE_TILES: [Tile<4>; 41] = [
     Tile::new(0x0111110011001110, 0x0000111000011100, 0x0011100000000000, 0x0011100000000000),
     Tile::new(0x0000000000000000, 0x0000000000000000, 0x0000000000110000, 0x0011000000010000),
     Tile::new(0x0000000000000000, 0x0000000000000000, 0x0000000000110000, 0x0011000000000000),
+];
+
+// Color mappings for tile reuse with different colors
+#[unsafe(link_section = "__DATA,__const")]
+pub static FONT_ARCADE_COLOR_MAPPINGS: [[u8; 16]; 2] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #0
+    [2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #1
 ];

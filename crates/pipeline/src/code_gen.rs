@@ -21,23 +21,17 @@ pub struct CodeWriter {
 /// Returns the appropriate link section for the current platform
 pub fn get_platform_link_section() -> &'static str {
     if cfg!(target_os = "macos") {
-        "__DATA,__const"  // Mach-O format
+        "__DATA,__const" // Mach-O format
     } else if cfg!(target_os = "windows") {
-        ".rdata"          // PE/COFF read-only data section
+        ".rdata" // PE/COFF read-only data section
     } else {
-        ".rodata"         // ELF format (Linux, embedded)
+        ".rodata" // ELF format (Linux, embedded)
     }
 }
 
 /// Formats a Cell using the compact Cell::new() constructor syntax
 pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
-    format!(
-        "Cell::new({}, {}, {}, {})",
-        cell.id.0,
-        cell.flags.0,
-        cell.color_mapping,
-        cell.group
-    )
+    format!("Cell::new({}, {}, {}, {})", cell.id.0, cell.flags.0, cell.color_mapping, cell.group)
 }
 
 // /// Formats a Tile using the compact Tile::new() constructor syntax for 4-bit pixels
@@ -111,16 +105,21 @@ pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
         }
     }
 
-    format!("Tile::new(0x{:016X}, 0x{:016X}, 0x{:016X}, 0x{:016X})",
-            data[0], data[1], data[2], data[3])
+    format!(
+        "Tile::new(0x{:016X}, 0x{:016X}, 0x{:016X}, 0x{:016X})",
+        data[0], data[1], data[2], data[3]
+    )
 }
-
-
 
 impl CodeWriter {
     pub fn new(path: &str) -> Self {
         let file = File::create(path).expect("Could not create output file");
         Self { output_file: file, indentation: 0 }
+    }
+
+    pub fn write(&mut self, text: &str) {
+        let indent = " ".repeat(self.indentation);
+        write!(self.output_file, "{}{}", indent, text).expect("Failed to write to output file");
     }
 
     pub fn write_line(&mut self, line: &str) {

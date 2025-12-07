@@ -54,6 +54,7 @@ struct TilesetCheckpoint {
     anim_head: u8,
     // Bank states (tile and palette counts)
     bank_tile_counts: [u8; TILE_BANK_COUNT],
+    bank_color_mapping_counts: [u8; TILE_BANK_COUNT],
     // bank_palette_counts: [u8; TILE_BANK_COUNT],
 }
 
@@ -102,17 +103,7 @@ impl Tato {
         self.banks[bank_id as usize].add_tile(tile)
     }
 
-    // pub fn new_subpalette(
-    //     &mut self,
-    //     bank_id: u8,
-    // ) -> PaletteID {
-    //     let bank = self.banks.get_mut(bank_id as usize).unwrap();
-    //     let assets = &mut self.assets;
-    //     let palette_id = assets.sub_palette_head;
-    //     bank.push_subpalette(sub_palette);
-    //     assets.sub_palette_head += 1;
-    //     PaletteID(palette_id)
-    // }
+
 
     /// Adds a tileset as a batch of tiles to the bank
     /// Returns the tileset id.
@@ -132,9 +123,11 @@ impl Tato {
             // Save bank states
             let mut bank_tile_counts = [0u8; TILE_BANK_COUNT];
             let mut bank_palette_counts = [0u8; TILE_BANK_COUNT];
+            let mut bank_color_mapping_counts = [0u8; TILE_BANK_COUNT];
             for (i, bank) in self.banks.iter().enumerate().take(TILE_BANK_COUNT) {
                 bank_tile_counts[i] = bank.tile_count() as u8;
                 bank_palette_counts[i] = bank.color_count();
+                bank_color_mapping_counts[i] = bank.color_mapping_count();
             }
 
             assets.checkpoints[assets.checkpoint_head as usize] = TilesetCheckpoint {
@@ -146,8 +139,7 @@ impl Tato {
                 color_head: assets.color_head,
                 anim_head: assets.anim_head,
                 bank_tile_counts,
-                // bank_palette_counts,
-                // bank_sub_palette_counts,
+                bank_color_mapping_counts,
             };
 
             assets.checkpoint_head += 1;
@@ -184,6 +176,27 @@ impl Tato {
             }
         }
 
+        // Color mapping processing
+        // Track the actual bank indices where each mapping is stored
+        let mut mapping_indices = [0u8; 16]; // Max 16 mappings
+        let color_mapping_count = if let Some(mappings) = data.color_mappings {
+            // First mapping is always identity at index 0
+            mapping_indices[0] = 0;
+            
+            if mappings.len() > 1 {
+                // Push remaining mappings and track their actual indices
+                for (i, mapping) in mappings[1..].iter().enumerate() {
+                    let bank_index = bank.push_color_mapping(*mapping);
+                    mapping_indices[i + 1] = bank_index;
+                }
+                mappings.len() as u8
+            } else {
+                1 // Just identity mapping
+            }
+        } else {
+            1 // Default to identity only
+        };
+
         // Main Color processing
         let mut color_entries: [ColorEntry; COLORS_PER_PALETTE as usize] = Default::default();
         let mut tileset_colors = [RGBA12::default(); COLORS_PER_PALETTE as usize];
@@ -219,38 +232,16 @@ impl Tato {
             }
         }
 
-        // // Sub palette processing
-        // let sub_palettes_start = bank.sub_palette_count();
-        // let mut sub_palettes_len = 0;
-        // let mut tileset_sub_palettes = [[0u8; 4]; SUBPALETTE_COUNT as usize]; // Initialize tileset sub_palettes array
-
-        // if let Some(sub_palettes) = data.sub_palettes {
-        //     for (i, sub_palette) in sub_palettes.iter().enumerate() {
-        //         // Copy to tileset sub_palettes array
-        //         if i < 256 {
-        //             tileset_sub_palettes[i] = **sub_palette;
-        //         }
-
-        //         let mapped_sub_palette: [u8; COLORS_PER_TILE as usize] =
-        //             from_fn(|j| color_entries[sub_palette[j] as usize].index);
-        //         bank.push_subpalette(mapped_sub_palette);
-        //         sub_palettes_len += 1;
-        //     }
-        // }
-
         // Build tileset entry
         assets.tilesets[id as usize] = Tileset {
             bank_id,
             tile_start,
             colors: tileset_colors,
-            // sub_palettes: tileset_sub_palettes,
             color_count,
-            // sub_palette_count: sub_palettes_len,
-            // sub_palettes_start,
-            // sub_palettes_len,
+            color_mapping_indices: mapping_indices,
+            color_mapping_count,
         };
         assets.color_head += color_count;
-        // assets.sub_palette_head += sub_palettes_len;
         assets.tileset_head += 1;
         Ok(TilesetID(id))
     }
@@ -287,12 +278,13 @@ impl Tato {
         assets.color_head = checkpoint.color_head;
         assets.anim_head = checkpoint.anim_head;
 
-        // Restore bank states
+        // Restore bank state
         for (i, bank) in self.banks.iter_mut().enumerate().take(TILE_BANK_COUNT) {
             bank.restore_tile_count(checkpoint.bank_tile_counts[i]);
-            // bank.restore_palette_state(
-            //     checkpoint.bank_palette_counts[i],
-            // );
+            bank.restore_palette_state(
+                bank.color_count(), // Keep current color count
+                checkpoint.bank_color_mapping_counts[i],
+            );
         }
         Ok(())
     }
@@ -338,7 +330,14 @@ impl Tato {
                 let cell = &map.cells()[i];
                 Cell {
                     id: TileID(cell.id.0 + tileset_offset),
-                    ..*cell
+                    flags: cell.flags,
+                    // Translate color_mapping index using the mapping table
+                    color_mapping: if (cell.color_mapping as usize) < tileset.color_mapping_count as usize {
+                        tileset.color_mapping_indices[cell.color_mapping as usize]
+                    } else {
+                        0 // Fallback to identity if index is out of bounds
+                    },
+                    group: cell.group,
                 }
             })
             .map_err(TatoError::Arena)?;

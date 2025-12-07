@@ -6,8 +6,11 @@ mod font_long_map;
 
 pub use font_long_map::*;
 
-pub const FONT_LONG_TILESET: TilesetData =
-    TilesetData { tiles: Some(&FONT_LONG_TILES), colors: None };
+pub const FONT_LONG_TILESET: TilesetData = TilesetData {
+    tiles: Some(&FONT_LONG_TILES),
+    colors: None,
+    color_mappings: None,
+};
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static FONT_LONG_TILES: [Tile<4>; 82] = [

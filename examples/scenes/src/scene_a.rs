@@ -131,7 +131,6 @@ impl SceneA {
                 y: (t.video.height() / 2) as f32,
                 tile: arrow,
                 flags: TileFlags::default(),
-                // sub_palette: PaletteID(0),
                 color_mapping: MAP_CYCLE,
             },
             smileys,

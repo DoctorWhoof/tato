@@ -2,8 +2,11 @@
 #![allow(unused)]
 use tato::prelude::*;
 
-pub const ASTRO_TILESET: TilesetData =
-    TilesetData { tiles: Some(&ASTRO_TILES), colors: Some(&ASTRO_COLORS) };
+pub const ASTRO_TILESET: TilesetData = TilesetData {
+    tiles: Some(&ASTRO_TILES),
+    colors: Some(&ASTRO_COLORS),
+    color_mappings: None,
+};
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static ASTRO_COLORS: [RGBA12; 4] = [

@@ -2,7 +2,7 @@ use crate::*;
 use core::array::from_fn;
 
 /// A "Memory Bank" that contains the actual tile pixels, a color palette
-/// and the subpalettes associated with the main color palette.
+/// and color mappings for tile reuse with different colors.
 #[derive(Debug, Clone)]
 pub struct VideoBank<const TILES: usize> {
     pub tiles: [Tile<4>; TILES],
@@ -11,6 +11,7 @@ pub struct VideoBank<const TILES: usize> {
     // Everything that needs to be counted
     tile_head: u8,
     palette_head: u8,
+    color_mapping_head: u8,
 }
 
 impl<const TILES: usize> VideoBank<TILES> {
@@ -21,6 +22,7 @@ impl<const TILES: usize> VideoBank<TILES> {
             color_mapping: from_fn(|_| from_fn(|i| i as u8)), // default mapping is index=value
             tile_head: 0,
             palette_head: 0,
+            color_mapping_head: 1, // 0 is always identity mapping
         }
     }
 
@@ -29,11 +31,19 @@ impl<const TILES: usize> VideoBank<TILES> {
         self.tile_head = 0;
         // Will reset colors to their defaults
         self.reset_palettes();
+        // Reset color mappings to identity
+        self.reset_color_mappings();
     }
 
     pub fn reset_palettes(&mut self) {
         self.palette = PALETTE_DEFAULT;
         self.palette_head = 0;
+    }
+
+    pub fn reset_color_mappings(&mut self) {
+        // Reset all mappings to identity
+        self.color_mapping = from_fn(|_| from_fn(|i| i as u8));
+        self.color_mapping_head = 1; // 0 is always identity
     }
 
     pub fn push_color(&mut self, color: RGBA12) -> ColorID {
@@ -111,9 +121,11 @@ impl<const TILES: usize> VideoBank<TILES> {
 
     /// Restore palette counters to previous state (for checkpoint/restore)
     /// Warning: Caller must ensure these are valid previous states!
-    pub fn restore_palette_state(&mut self, color_count: u8) {
+    pub fn restore_palette_state(&mut self, color_count: u8, color_mapping_count: u8) {
         assert!(color_count <= COLORS_PER_PALETTE as u8, "Invalid color count");
+        assert!(color_mapping_count <= 16, "Invalid color mapping count");
         self.palette_head = color_count;
+        self.color_mapping_head = color_mapping_count;
     }
 
     /// Adds a single tile, returns a TileID
@@ -125,6 +137,36 @@ impl<const TILES: usize> VideoBank<TILES> {
         self.tiles[dest_index] = tile.clone();
         self.tile_head += 1;
         result
+    }
+
+    /// Push a single color mapping to the bank
+    /// Returns the index where the mapping was stored
+    pub fn push_color_mapping(&mut self, mapping: [u8; COLORS_PER_PALETTE as usize]) -> u8 {
+        assert!(self.color_mapping_head < 16, "Color mapping capacity reached");
+
+        // Check if this is the identity mapping
+        let is_identity = mapping.iter().enumerate().all(|(i, &v)| i == v as usize);
+        if is_identity {
+            return 0; // Always use index 0 for identity
+        }
+
+        // Check if this mapping already exists
+        for i in 1..self.color_mapping_head {
+            if self.color_mapping[i as usize] == mapping {
+                return i; // Reuse existing mapping
+            }
+        }
+
+        // Add new mapping
+        let index = self.color_mapping_head;
+        self.color_mapping[index as usize] = mapping;
+        self.color_mapping_head += 1;
+        index
+    }
+
+    /// Get the current count of color mappings
+    pub fn color_mapping_count(&self) -> u8 {
+        self.color_mapping_head
     }
 
     /// Get a specific tile within a tileset

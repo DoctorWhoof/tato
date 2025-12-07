@@ -2,7 +2,11 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-pub const DEFAULT_TILESET: TilesetData = TilesetData { tiles: Some(&DEFAULT_TILES), colors: None };
+pub const DEFAULT_TILESET: TilesetData = TilesetData {
+    tiles: Some(&DEFAULT_TILES),
+    colors: None,
+    color_mappings: Some(&DEFAULT_COLOR_MAPPINGS),
+};
 
 pub const TILE_EMPTY: TileID = TileID(0);
 pub const TILE_CHECKERS: TileID = TileID(1);
@@ -18,4 +22,11 @@ pub static DEFAULT_TILES: [Tile<4>; 5] = [
     Tile::new(0x0000000100000000, 0x0000000000000000, 0x0000000000000000, 0x0000000110000011),
     Tile::new(0x0002000000222000, 0x0222220022222220, 0x0022200000222000, 0x0022200000222000),
     Tile::new(0x0022220002222220, 0x2232232222322322, 0x2222222222111122, 0x0221122000222200),
+];
+
+// Color mappings for tile reuse with different colors
+#[unsafe(link_section = "__DATA,__const")]
+pub static DEFAULT_COLOR_MAPPINGS: [[u8; 16]; 2] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #0
+    [1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #1
 ];

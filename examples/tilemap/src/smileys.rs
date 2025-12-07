@@ -5,8 +5,11 @@ mod smileys_map;
 
 pub use smileys_map::*;
 
-pub const SMILEYS_TILESET: TilesetData =
-    TilesetData { tiles: Some(&SMILEYS_TILES), colors: Some(&SMILEYS_COLORS) };
+pub const SMILEYS_TILESET: TilesetData = TilesetData {
+    tiles: Some(&SMILEYS_TILES),
+    colors: Some(&SMILEYS_COLORS),
+    color_mappings: Some(&SMILEYS_COLOR_MAPPINGS),
+};
 
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_COLORS: [RGBA12; 16] = [
@@ -35,4 +38,18 @@ pub static SMILEYS_TILES: [Tile<4>; 5] = [
     Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
     Tile::new(0x5555555555555555, 0x5555555555555555, 0x5555555555555555, 0x5555555555555555),
     Tile::new(0x5666666656669999, 0x5566999955666999, 0x5556669955556666, 0x5555556655555555),
+];
+
+// Color mappings for tile reuse with different colors
+#[unsafe(link_section = "__DATA,__const")]
+pub static SMILEYS_COLOR_MAPPINGS: [[u8; 16]; 9] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #0
+    [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #1
+    [0, 1, 2, 3, 4, 5, 8, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #2
+    [0, 1, 2, 3, 4, 5, 10, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #3
+    [0, 1, 2, 3, 4, 5, 11, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #4
+    [0, 1, 2, 3, 4, 5, 12, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #5
+    [0, 1, 2, 3, 4, 5, 13, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #6
+    [0, 1, 2, 3, 4, 5, 14, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #7
+    [0, 1, 2, 3, 4, 5, 15, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #8
 ];

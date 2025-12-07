@@ -8,12 +8,6 @@ pub struct Cell {
     pub color_mapping: u8,
     pub group: u8,
 
-    // FUTURE USE: In case I abandon subpalettes, colors would be
-    // stored as 4 numbers, 4 bits each, like this:
-    // pub palette: u16
-    // If I want the tile to fit in 32 bits, I'd have to downgrade
-    // the group to 4 bits and fit it in flags.
-    // 4 groups sounds like... not enough! SO I probably won't do this.
 }
 
 impl Cell {
