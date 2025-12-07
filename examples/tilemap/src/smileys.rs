@@ -9,7 +9,11 @@ pub const SMILEYS_TILESET: TilesetData =
     TilesetData { tiles: Some(&SMILEYS_TILES), colors: Some(&SMILEYS_COLORS) };
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_COLORS: [RGBA12; 12] = [
+pub static SMILEYS_COLORS: [RGBA12; 16] = [
+    RGBA12::with_transparency(0, 0, 0, 0),
+    RGBA12::with_transparency(4, 4, 5, 7),
+    RGBA12::with_transparency(2, 2, 2, 7),
+    RGBA12::with_transparency(0, 0, 1, 7),
     RGBA12::with_transparency(7, 7, 7, 7),
     RGBA12::with_transparency(4, 4, 4, 7),
     RGBA12::with_transparency(7, 6, 3, 7),
@@ -25,10 +29,10 @@ pub static SMILEYS_COLORS: [RGBA12; 12] = [
 ];
 
 #[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_TILES: [Tile<2>; 5] = [
-    Tile::new(0x0000000000000001, 0x0015005500550155),
-    Tile::new(0x0000000000005555, 0x5555555555555555),
-    Tile::new(0x5555555A55AA56AA, 0x5AAA5A9A6A9A6A9A),
-    Tile::new(0x5555555555555555, 0x5555555555555555),
-    Tile::new(0x6AAA6A555A555A95, 0x56A555AA555A5555),
+pub static SMILEYS_TILES: [Tile<4>; 5] = [
+    Tile::new(0x4444444444444444, 0x4444444444444445, 0x4444455544445555, 0x4444555544455555),
+    Tile::new(0x4444444444444444, 0x4444444455555555, 0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
+    Tile::new(0x5555555555555555, 0x5555555555555555, 0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x5666666656669999, 0x5566999955666999, 0x5556669955556666, 0x5555556655555555),
 ];

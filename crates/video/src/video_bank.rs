@@ -5,7 +5,7 @@ use core::array::from_fn;
 /// and the subpalettes associated with the main color palette.
 #[derive(Debug, Clone)]
 pub struct VideoBank<const TILES: usize> {
-    pub tiles: [Tile<2>; TILES],
+    pub tiles: [Tile<4>; TILES],
     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
     pub color_mapping: [[u8; COLORS_PER_PALETTE as usize]; 16],
     // Everything that needs to be counted
@@ -117,7 +117,7 @@ impl<const TILES: usize> VideoBank<TILES> {
     }
 
     /// Adds a single tile, returns a TileID
-    pub fn add_tile(&mut self, tile: &Tile<2>) -> TileID {
+    pub fn add_tile(&mut self, tile: &Tile<4>) -> TileID {
         assert!((self.tile_head as usize) < TILES, err!("Tileset capacity reached"));
         let result = TileID(self.tile_head);
         // Copy tile data to bank
@@ -128,7 +128,7 @@ impl<const TILES: usize> VideoBank<TILES> {
     }
 
     /// Get a specific tile within a tileset
-    pub fn get_tile(&self, index: u8) -> Option<&Tile<2>> {
+    pub fn get_tile(&self, index: u8) -> Option<&Tile<4>> {
         if index < self.tile_head { Some(&self.tiles[index as usize]) } else { None }
     }
 }

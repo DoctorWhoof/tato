@@ -76,9 +76,9 @@ impl PalettizedImg {
                     let b = buf[buf_index + 2];
                     let a = buf[buf_index + 3];
 
-                    // let rgb_color = {
                     let rgb_color = if a < 255 {
-                        RGBA12::with_transparency(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
+                        // Ensures all transp. color_map are always the same in the hashmap.
+                        RGBA12::with_transparency(0, 0, 0, 0)
                     } else {
                         let color_32bit = RGBA32 { r, g, b, a };
                         RGBA12::from(color_32bit)
@@ -91,10 +91,12 @@ impl PalettizedImg {
                         // TODO: Error message here if palette is too large
                         let color_head = u8::try_from(palette.rgb_to_index.len()).ok().unwrap();
                         println!(
-                            "cargo:warning= Inserting Palette {:02} -> {:02}: {:?}",
+                            "cargo:warning= Inserting Palette {:02} -> {:02}: {},{},{}",
                             palette.id(),
                             color_head,
-                            rgb_color
+                            rgb_color.r(),
+                            rgb_color.g(),
+                            rgb_color.b()
                         );
                         palette.rgb_to_index.insert(rgb_color, color_head);
                         palette.push(rgb_color);

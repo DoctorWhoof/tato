@@ -21,7 +21,7 @@ impl Tato {
 
     /// Copies a rectangular area from a tilemap into another.
     /// If any rect is "None" the entire map is used.
-    pub fn draw_tilemap_to<const LEN: usize>(
+    pub fn draw_tilemap<const LEN: usize>(
         &self,
         dest: &mut Tilemap<LEN>,
         dest_rect: Option<Rect<u16>>,

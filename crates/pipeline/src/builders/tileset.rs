@@ -399,7 +399,7 @@ impl<'a> TilesetBuilder<'a> {
                 crate::get_platform_link_section()
             ));
             code.write_line(&format!(
-                "pub static {}_TILES: [Tile<2>; {}] = [",
+                "pub static {}_TILES: [Tile<4>; {}] = [",
                 self.name.to_uppercase(),
                 tiles_count
             ));
@@ -441,7 +441,8 @@ impl<'a> TilesetBuilder<'a> {
                 let abs_x = (TILE_SIZE as usize * abs_col) + x;
                 let abs_y = (TILE_SIZE as usize * abs_row) + y;
                 let index = (img.width * abs_y) + abs_x;
-                tile_data[(TILE_SIZE as usize * y) + x] = img.pixels[index];
+                let color = img.pixels[index];
+                tile_data[(TILE_SIZE as usize * y) + x] = color;
             }
         }
         tile_data
@@ -478,7 +479,6 @@ impl<'a> TilesetBuilder<'a> {
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
-        // Main detection routine.
         // Iterate animation frames, then tiles within frames.
         for frame_v in 0..img.frames_v as usize {
             for frame_h in 0..img.frames_h as usize {
@@ -692,26 +692,28 @@ impl<'a> TilesetBuilder<'a> {
     /// The mapping is like a mini-palette with each color assigned to a normalized index
     fn create_canonical_tile(&mut self, tile_pixels: &Pixels) -> CanonicalTile {
         // Normalize indices for canonical representation
-        let mut unique_colors = HashMap::new(); //source color, canonical color
-        let mut mapping = Vec::<u8>::new();
-        let mut next_index = 0u8;
-        let canonical_pixels: Pixels = std::array::from_fn(|i| {
-            let source_color = tile_pixels[i];
-            *unique_colors.entry(source_color).or_insert_with(|| {
-                let canonical_color = next_index;
-                next_index += 1;
-                mapping.push(source_color);
-                canonical_color
-            })
-        });
+        // let mut unique_colors = HashMap::new(); //source color, canonical color
+        // let mut mapping = Vec::<u8>::new();
+        // let mut next_index = 0u8;
+        // let canonical_pixels: Pixels = std::array::from_fn(|i| {
+        //     let source_color = tile_pixels[i];
+        //     *unique_colors.entry(source_color).or_insert_with(|| {
+        //         let canonical_color = next_index;
+        //         next_index += 1;
+        //         mapping.push(source_color);
+        //         canonical_color
+        //     })
+        // });
+        //
+        let mapping = Vec::new(); // not doing anything
 
         let mut pixels = [0u8; TILE_LEN];
         let size = TILE_SIZE as u32;
         for y in 0..size {
             for x in 0..size {
                 let index = Self::get_index(x, y, size);
-                pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
-                // canonical[index] = Self::neighbor_mask(tile_pixels, x, y, size, size)
+                // pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
+                pixels[index] = Self::neighbor_mask(tile_pixels, x, y, size, size)
             }
         }
 
@@ -795,6 +797,6 @@ impl<'a> TilesetBuilder<'a> {
 
     #[inline]
     fn get_index(x: u32, y: u32, map_width: u32) -> usize {
-        (x as usize * map_width as usize) + y as usize
+        (y as usize * map_width as usize) + x as usize
     }
 }

@@ -54,7 +54,7 @@ struct TilesetCheckpoint {
     anim_head: u8,
     // Bank states (tile and palette counts)
     bank_tile_counts: [u8; TILE_BANK_COUNT],
-    bank_palette_counts: [u8; TILE_BANK_COUNT],
+    // bank_palette_counts: [u8; TILE_BANK_COUNT],
 }
 
 impl<const CAP: usize> Assets<CAP> {
@@ -98,7 +98,7 @@ impl<const CAP: usize> Assets<CAP> {
 impl Tato {
     /// Adds a single tile, returns a TileID
     #[inline]
-    pub fn push_tile(&mut self, bank_id: u8, tile: &Tile<2>) -> TileID {
+    pub fn push_tile(&mut self, bank_id: u8, tile: &Tile<4>) -> TileID {
         self.banks[bank_id as usize].add_tile(tile)
     }
 
@@ -146,7 +146,7 @@ impl Tato {
                 color_head: assets.color_head,
                 anim_head: assets.anim_head,
                 bank_tile_counts,
-                bank_palette_counts,
+                // bank_palette_counts,
                 // bank_sub_palette_counts,
             };
 
@@ -290,9 +290,9 @@ impl Tato {
         // Restore bank states
         for (i, bank) in self.banks.iter_mut().enumerate().take(TILE_BANK_COUNT) {
             bank.restore_tile_count(checkpoint.bank_tile_counts[i]);
-            bank.restore_palette_state(
-                checkpoint.bank_palette_counts[i],
-            );
+            // bank.restore_palette_state(
+            //     checkpoint.bank_palette_counts[i],
+            // );
         }
         Ok(())
     }
