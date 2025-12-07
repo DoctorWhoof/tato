@@ -66,47 +66,6 @@ impl SubPaletteBuilder {
         self.data.is_empty()
     }
 
-    pub fn add_experimental(&mut self, incoming: SubPalette) -> SubPaletteInsert {
-        for (position, candidate) in &mut self.data.iter_mut().enumerate() {
-            let mut is_match = true;
-            let mut mapping = incoming.generate_mapping();
-
-            for &color in incoming.colors() {
-                let candidate_mapping = candidate.generate_mapping();
-                if let Some(match_index) = find(color, candidate.colors()) {
-                    // Color already exists in candidate
-                    if candidate_mapping.get(&color) == mapping.get(&color) {
-                        mapping.insert(color, match_index as u8);
-                    } else {
-                        is_match = false;
-                        break;
-                    }
-                } else {
-                    // Add new color
-                    if candidate.count < COLORS_PER_TILE {
-                        if candidate_mapping.get(&color) == mapping.get(&color) {
-                            mapping.insert(color, candidate.count);
-                            candidate.push(color);
-                        } else {
-                            is_match = false;
-                            break;
-                        }
-                    } else {
-                        is_match = false;
-                        break;
-                    }
-                }
-            }
-
-            if is_match {
-                self.map.insert(incoming, position as u8);
-                return SubPaletteInsert { position: position as u8, mapping };
-            }
-        }
-
-        self.insert(incoming)
-    }
-
     pub fn add(&mut self, incoming: SubPalette) -> SubPaletteInsert {
         // Early return
         if let Some(i) = self.map.get(&incoming) {

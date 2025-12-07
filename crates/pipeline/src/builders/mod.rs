@@ -1,6 +1,9 @@
 mod anim;
 pub(crate) use anim::*;
 
+mod color_mapping;
+pub(crate) use color_mapping::*;
+
 mod group;
 pub use group::*;
 

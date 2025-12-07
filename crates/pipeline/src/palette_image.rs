@@ -85,18 +85,18 @@ impl PalettizedImg {
                     };
 
                     // Result
-                    if palette.color_hash.contains_key(&rgb_color) {
-                        *palette.color_hash.get(&rgb_color).unwrap()
+                    if palette.rgb_to_index.contains_key(&rgb_color) {
+                        *palette.rgb_to_index.get(&rgb_color).unwrap()
                     } else {
                         // TODO: Error message here if palette is too large
-                        let color_head = u8::try_from(palette.color_hash.len()).ok().unwrap();
+                        let color_head = u8::try_from(palette.rgb_to_index.len()).ok().unwrap();
                         println!(
                             "cargo:warning= Inserting Palette {:02} -> {:02}: {:?}",
                             palette.id(),
                             color_head,
                             rgb_color
                         );
-                        palette.color_hash.insert(rgb_color, color_head);
+                        palette.rgb_to_index.insert(rgb_color, color_head);
                         palette.push(rgb_color);
                         color_head
                     }

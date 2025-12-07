@@ -1,4 +1,3 @@
-use core::array::from_fn;
 use tato_video::*;
 
 use super::*;
@@ -7,11 +6,17 @@ use std::collections::{HashMap, HashSet};
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 
-// Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
-pub(crate) type CanonicalTile = [u8; TILE_LEN];
+// // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
+// pub(crate) type CanonicalTile = [u8; TILE_LEN];
+
+#[derive(Debug)]
+pub(crate) struct CanonicalTile {
+    pub pixels: [u8; TILE_LEN],
+    pub mapping: Vec<u8>,
+}
 
 // Color mapped pixels in a tile
-type TilePixels = [u8; TILE_LEN];
+pub(crate) type Pixels = [u8; TILE_LEN];
 
 #[derive(Clone)]
 enum DeferredCommand {
@@ -26,9 +31,12 @@ pub struct TilesetBuilder<'a> {
     pub allow_unused: bool,
     pub use_crate_assets: bool,
     pub save_colors: bool,
-    pub name: String,
-    pub pixels: Vec<u8>,
-    pub tile_hash: HashMap<CanonicalTile, Cell>,
+    name: String,
+    pixels: Vec<u8>,
+    tiles_to_cells: HashMap<Pixels, Cell>,
+    // stores the actual colored tile alongside the canonical tile, so that
+    // we can obtain color mappings from it
+    // original_color_mapping: HashMap<CanonicalTile, TilePixels>,
     palette: &'a mut PaletteBuilder,
     groups: &'a mut GroupBuilder,
     anims: Vec<AnimBuilder>,
@@ -48,7 +56,8 @@ impl<'a> TilesetBuilder<'a> {
             save_colors: true,
             name: String::from(name),
             pixels: vec![],
-            tile_hash: HashMap::new(),
+            tiles_to_cells: HashMap::new(),
+            // original_color_mapping: HashMap::new(),
             palette,
             groups,
             next_tile: 0,
@@ -297,7 +306,7 @@ impl<'a> TilesetBuilder<'a> {
 
         // Write palette colors
         if self.save_colors {
-            code.write_color_array(&self.name, &self.palette.colors);
+            code.write_color_array(&self.name, &self.palette.rgb_colors);
         }
 
         // // Write sub-palettes
@@ -424,7 +433,8 @@ impl<'a> TilesetBuilder<'a> {
         }
     }
 
-    fn extract_tile_pixels(img: &PalettizedImg, abs_col: usize, abs_row: usize) -> TilePixels {
+    #[inline(always)]
+    fn extract_tile_pixels(img: &PalettizedImg, abs_col: usize, abs_row: usize) -> Pixels {
         let mut tile_data = [0u8; TILE_LEN];
         for y in 0..TILE_SIZE as usize {
             for x in 0..TILE_SIZE as usize {
@@ -470,33 +480,31 @@ impl<'a> TilesetBuilder<'a> {
 
         // Main detection routine.
         // Iterate animation frames, then tiles within frames.
-        for frame_v in 0..img.frames_v {
-            for frame_h in 0..img.frames_h {
+        for frame_v in 0..img.frames_v as usize {
+            for frame_h in 0..img.frames_h as usize {
                 let mut frame_tiles = vec![];
 
-                for row in 0..img.rows_per_frame {
-                    for col in 0..img.cols_per_frame {
+                for row in 0..img.rows_per_frame as usize {
+                    for col in 0..img.cols_per_frame as usize {
                         // Absolute coordinates
-                        let abs_col =
-                            (frame_h as usize * img.cols_per_frame as usize) + col as usize;
-                        let abs_row =
-                            (frame_v as usize * img.rows_per_frame as usize) + row as usize;
+                        let abs_col = (frame_h * img.cols_per_frame as usize) + col;
+                        let abs_row = (frame_v * img.rows_per_frame as usize) + row;
 
-                        // Extract pixels mapped to main palette (no subpalette)
+                        // Extract pixels mapped to main palette (no mapping)
                         let source_pixels = Self::extract_tile_pixels(img, abs_col, abs_row);
 
                         // Palette handling
-                        let mut unique_colors = HashSet::new();
-                        let mut original_mapping: HashMap<u8, usize> = HashMap::new();
-                        for color in source_pixels {
-                            if !unique_colors.contains(&color) {
-                                original_mapping.insert(color, unique_colors.len());
-                                unique_colors.insert(color);
-                            }
-                        }
-                        let colors: Vec<u8> = unique_colors.into_iter().collect();
+                        // let mut used_colors = HashSet::new();
+                        // let mut mapping: HashMap<u8, usize> = HashMap::new();
+                        // for color in source_pixels {
+                        //     if !used_colors.contains(&color) {
+                        //         mapping.insert(color, used_colors.len());
+                        //         used_colors.insert(color);
+                        //     }
+                        // }
 
                         // // Safety check with useful error.
+                        // let colors: Vec<u8> = unique_colors.into_iter().collect();
                         // if colors.len() > COLORS_PER_TILE as usize {
                         //     panic!(
                         //         "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color limit!\n\
@@ -518,11 +526,15 @@ impl<'a> TilesetBuilder<'a> {
                         // Redefine pixels as canonical pixels from this point on
                         let canonical_tile = self.create_canonical_tile(&source_pixels);
 
-                        // Check if this tile (or any transformation) exists
+                        // Check if this tile (or any transformation) is already
+                        // associated with a pre-generated Cell. Does not store tiles yet.
+                        // TODO: Rearrange so for two paths, one with and one without
+                        // tile transforms (no checking for flip_x, flip_y etc within the outer block)
                         let mut found_cell = None;
-
-                        if let Some(existing) = self.tile_hash.get(&canonical_tile) {
+                        if let Some(existing) = self.tiles_to_cells.get(&canonical_tile.pixels) {
+                            // Define cell for this tile
                             found_cell = Some(*existing);
+                        // If not, store canonical tile + associated cell
                         } else if self.allow_tile_transforms {
                             // Try all 7 other transformations using remapped data
                             'outer: for flip_x in [false, true] {
@@ -533,20 +545,20 @@ impl<'a> TilesetBuilder<'a> {
                                         }
 
                                         let transformed_pixels = Self::transform_tile(
-                                            &canonical_tile,
+                                            &canonical_tile.pixels,
                                             flip_x,
                                             flip_y,
                                             rotation,
                                         );
 
                                         // TODO: Determine if this is right. I don't think I need to
-                                        // regenerate the canonical tiles - just trasnform the existing
+                                        // regenerate the canonical tiles - just transform the existing
                                         // canonical tile sounds more right!
                                         let transformed =
                                             self.create_canonical_tile(&transformed_pixels);
 
                                         if let Some(existing) =
-                                            self.tile_hash.get(&transformed)
+                                            self.tiles_to_cells.get(&transformed.pixels)
                                         {
                                             found_cell = Some(*existing);
                                             // found_cell = Some(Cell {
@@ -577,11 +589,12 @@ impl<'a> TilesetBuilder<'a> {
 
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
                         // self.handle_groups(tile_pixels, group);
+
                         // Look up group membership for this tile pattern
                         // TODO: POSSIBLE BUG:
                         // May not be detecting transformed tiles. Will deal later.
                         let group_bits =
-                            self.groups.hash.get(&canonical_tile).copied().unwrap_or(0);
+                            self.groups.hash.get(&canonical_tile.pixels).copied().unwrap_or(0);
 
                         // Insert or reuse cell
                         let cell = match found_cell {
@@ -592,34 +605,28 @@ impl<'a> TilesetBuilder<'a> {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
                                     group: group_bits,
-                                    color_mapping: 0 //TODO: implement color mapping
-                                    // sub_palette: existing_cell.sub_palette
+                                    color_mapping: 0, //TODO: implement color mapping
+                                                      // sub_palette: existing_cell.sub_palette
                                 }
                             },
                             None => {
-                                // Create new tile using the sub-palette we already found/created
+                                // Create new cell using the sub-palette we already found/created
                                 let new_cell = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
                                     group: group_bits,
-                                    color_mapping: 0 //TODO: implement color mapping
+                                    color_mapping: 0, //TODO: implement color mapping
                                 };
 
                                 // Store the already computed normalized_tile tile data
                                 self.pixels.extend_from_slice(&source_pixels);
 
                                 // Store remapped tile in hash (after remapping is complete)
-                                self.tile_hash.insert(canonical_tile, new_cell);
-
                                 // Store all transformations using remapped data
                                 if self.allow_tile_transforms {
                                     for flip_x in [false, true] {
                                         for flip_y in [false, true] {
                                             for rotation in [false, true] {
-                                                if !flip_x && !flip_y && !rotation {
-                                                    continue;
-                                                }
-
                                                 let transformed_pixels = Self::transform_tile(
                                                     &source_pixels,
                                                     flip_x,
@@ -628,20 +635,25 @@ impl<'a> TilesetBuilder<'a> {
                                                 );
 
                                                 // TODO: Determine if this is right. I don't think I need to
-                                                // regenerate the canonical tiles - just trasnform the existing
+                                                // regenerate the canonical tiles - just transform the existing
                                                 // canonical tile sounds more right!
                                                 let transformed =
                                                     self.create_canonical_tile(&transformed_pixels);
 
                                                 // Only store if this transformation produces different data
-                                                if !self.tile_hash.contains_key(&transformed) {
+                                                if !self
+                                                    .tiles_to_cells
+                                                    .contains_key(&transformed.pixels)
+                                                {
                                                     let mut cell_with_flags = new_cell;
                                                     cell_with_flags.flags.set_flip_x(flip_x);
                                                     cell_with_flags.flags.set_flip_y(flip_y);
                                                     cell_with_flags.flags.set_rotation(rotation);
 
-                                                    self.tile_hash
-                                                        .insert(transformed, cell_with_flags);
+                                                    self.tiles_to_cells.insert(
+                                                        transformed.pixels,
+                                                        cell_with_flags,
+                                                    );
                                                 }
                                             }
                                         }
@@ -674,37 +686,40 @@ impl<'a> TilesetBuilder<'a> {
         img
     }
 
-    // /// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
-    // /// the same structure but different colors can still be detected as the same, but with different
-    // /// palettes.
-    fn create_canonical_tile(&mut self, tile_pixels: &TilePixels) -> CanonicalTile {
+    /// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
+    /// the same structure but different colors can still be detected as the same, but with different
+    /// palettes.
+    /// The mapping is like a mini-palette with each color assigned to a normalized index
+    fn create_canonical_tile(&mut self, tile_pixels: &Pixels) -> CanonicalTile {
         // Normalize indices for canonical representation
-        let mut index_mapping = HashMap::new();
+        let mut unique_colors = HashMap::new(); //source color, canonical color
+        let mut mapping = Vec::<u8>::new();
         let mut next_index = 0u8;
-        let canonical_pixels: TilePixels = std::array::from_fn(|i| {
-            let remapped_color = tile_pixels[i];
-            *index_mapping.entry(remapped_color).or_insert_with(|| {
-                let idx = next_index;
+        let canonical_pixels: Pixels = std::array::from_fn(|i| {
+            let source_color = tile_pixels[i];
+            *unique_colors.entry(source_color).or_insert_with(|| {
+                let canonical_color = next_index;
                 next_index += 1;
-                idx
+                mapping.push(source_color);
+                canonical_color
             })
         });
 
-        let mut canonical = [0u8; TILE_LEN];
+        let mut pixels = [0u8; TILE_LEN];
         let size = TILE_SIZE as u32;
         for y in 0..size {
             for x in 0..size {
-                let index = get_index(x, y, size);
-                canonical[index] = neighbor_mask(&canonical_pixels, x, y, size, size)
-                // canonical[index] = neighbor_mask(tile_pixels, x, y, size, size)
+                let index = Self::get_index(x, y, size);
+                pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
+                // canonical[index] = Self::neighbor_mask(tile_pixels, x, y, size, size)
             }
         }
 
-        canonical
+        CanonicalTile { pixels, mapping }
     }
 
     /// Generates a copy of the tile pixels with some transformation
-    fn transform_tile(tile: &TilePixels, flip_x: bool, flip_y: bool, rotation: bool) -> TilePixels {
+    fn transform_tile(tile: &Pixels, flip_x: bool, flip_y: bool, rotation: bool) -> Pixels {
         let mut result = [0u8; TILE_LEN];
         let size = TILE_SIZE as usize;
 
@@ -731,55 +746,55 @@ impl<'a> TilesetBuilder<'a> {
         }
         result
     }
-}
 
-/// Returns a u8 mask where each bit is one if the neighbor at that position
-/// matches the desired value. Bit order is:
-/// top_left, top_middle, top_right,
-/// middle_left, middle_right,
-/// bottom_left, bottom_middle, bottom_right
-fn neighbor_mask<T>(map: &[T], x: u32, y: u32, width: u32, height: u32) -> u8
-where
-    T: PartialEq,
-{
-    let mut mask = 0;
-    if x >= width || y >= height {
-        return 0;
-    }
+    /// Returns a u8 mask where each bit is one if the neighbor at that position
+    /// matches the desired value. Bit order is:
+    /// top_left, top_middle, top_right,
+    /// middle_left, middle_right,
+    /// bottom_left, bottom_middle, bottom_right
+    fn neighbor_mask<T>(map: &[T], x: u32, y: u32, width: u32, height: u32) -> u8
+    where
+        T: PartialEq,
+    {
+        let mut mask = 0;
+        if x >= width || y >= height {
+            return 0;
+        }
 
-    let desired_value = {
-        let index = get_index(x, y, width);
-        &map[index]
-    };
+        let desired_value = {
+            let index = Self::get_index(x, y, width);
+            &map[index]
+        };
 
-    let mut check = |dx: i32, dy: i32, value_to_add: u8| {
-        let target_x = x as i32 + dx;
-        let target_y = y as i32 + dy;
-        if target_x >= 0 && target_y >= 0 {
-            if (target_x as u32) < width && (target_y as u32) < height {
-                let index = get_index(target_x as u32, target_y as u32, width);
-                let neighbor = &map[index];
-                if *desired_value == *neighbor {
-                    mask += value_to_add;
+        let mut check = |dx: i32, dy: i32, value_to_add: u8| {
+            let target_x = x as i32 + dx;
+            let target_y = y as i32 + dy;
+            if target_x >= 0 && target_y >= 0 {
+                if (target_x as u32) < width && (target_y as u32) < height {
+                    let index = Self::get_index(target_x as u32, target_y as u32, width);
+                    let neighbor = &map[index];
+                    if *desired_value == *neighbor {
+                        mask += value_to_add;
+                    }
                 }
             }
-        }
-    };
+        };
 
-    // Checking all 8 neighbors left to right, top to bottom,
-    // excluding center tile
-    check(-1, -1, 128);
-    check(0, -1, 64);
-    check(1, -1, 32);
-    check(-1, 0, 16);
-    check(1, 0, 8);
-    check(-1, 1, 4);
-    check(0, 1, 2);
-    check(1, 1, 1);
-    mask
-}
+        // Checking all 8 neighbors left to right, top to bottom,
+        // excluding center tile
+        check(-1, -1, 128);
+        check(0, -1, 64);
+        check(1, -1, 32);
+        check(-1, 0, 16);
+        check(1, 0, 8);
+        check(-1, 1, 4);
+        check(0, 1, 2);
+        check(1, 1, 1);
+        mask
+    }
 
-#[inline]
-fn get_index(x: u32, y: u32, map_width: u32) -> usize {
-    (x as usize * map_width as usize) + y as usize
+    #[inline]
+    fn get_index(x: u32, y: u32, map_width: u32) -> usize {
+        (x as usize * map_width as usize) + y as usize
+    }
 }

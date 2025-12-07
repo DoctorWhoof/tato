@@ -292,7 +292,6 @@ impl Dashboard {
         let mut layout = Frame::new(screen_rect);
         layout.set_scale(self.gui_scale);
         layout.set_margin(MARGIN);
-        // layout.set_margin(10);
         layout.set_gap(3);
 
         // Panels have their own modules, for organization

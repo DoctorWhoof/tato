@@ -69,7 +69,7 @@ impl Dashboard {
                         // get color
                         let color_index =
                             bank.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
-                        let gray_value = color_index * 63; // Map 0-4 to 0-252
+                        // let gray_value = color_index * 63; // Map 0-4 to 0-252
                         // get coordinates
                         let pixel_x = tile_x as usize * TILE_SIZE as usize + x;
                         let pixel_y = tile_y as usize * TILE_SIZE as usize + y;
@@ -77,10 +77,16 @@ impl Dashboard {
 
                         // Seems safe for now, may need to insert a check for i < pixels.len()
                         // if I get out-of-bounds errors.
-                        pixels[i] = gray_value; // R
-                        pixels[i + 1] = gray_value; // G
-                        pixels[i + 2] = gray_value; // B
-                        pixels[i + 3] = 255; // A
+                        // pixels[i] = gray_value; // R
+                        // pixels[i + 1] = gray_value; // G
+                        // pixels[i + 2] = gray_value; // B
+                        // pixels[i + 3] = 255; // A
+
+                        let color:RGBA32 = bank.palette[color_index as usize].into();
+                        pixels[i] = color.r;
+                        pixels[i + 1] = color.g;
+                        pixels[i + 2] = color.b;
+                        pixels[i + 3] = color.a;
                     }
                 }
             }
