@@ -18,6 +18,7 @@ fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
+    tato.video.wrap_bg = true;
 
     // Populate tilesets
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);

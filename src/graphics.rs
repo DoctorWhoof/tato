@@ -212,7 +212,7 @@ impl Tato {
                     row: op.row + cursor_y,
                     tile_id: TileID(cell.id.0 + tile_start),
                     flags: cell.flags,
-                    color_mapping: cell.color_mapping,
+                    color_mapping: op.color_mapping,
                 });
             }
         };

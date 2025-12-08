@@ -1,6 +1,6 @@
+use tato::default_assets::*;
 use tato::{arena::Arena, prelude::*};
 use tato_raylib::*;
-use tato::default_assets::*;
 
 fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<32_768, u32>::new();
@@ -8,14 +8,16 @@ fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut dash = Dashboard::new().unwrap();
 
-    // tato.character_set = CharacterSet::Short;
-
     // Graphics setup
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let ts_font = tato.push_tileset(0, FONT_LONG_TILESET)?;
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
+    tato.video.bg_tile_bank = 0;
     tato.banks[0].load_default_colors();
+
+    tato.banks[0].color_mapping[1][1] = 14; //mapping 1, color 1 -> 14
+    tato.banks[0].color_mapping[2][1] = 3; //mapping 2, color 1 -> 3
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
@@ -32,8 +34,7 @@ fn main() -> TatoResult<()> {
                 col,
                 row: line,
                 width,
-                // palette_override: Some(plt_light),
-                color_mapping: 0
+                color_mapping: 2,
             },
         )
         .unwrap();
@@ -48,8 +49,7 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            // palette_override: Some(plt_light),
-            color_mapping: 0
+            color_mapping: 1,
         },
     );
 
@@ -63,8 +63,7 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            // palette_override: Some(plt_default),
-            color_mapping: 0
+            color_mapping: 1,
         },
     );
 
@@ -78,8 +77,7 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            // palette_override: Some(plt_light),
-            color_mapping: 0
+            color_mapping: 1,
         },
     );
 
@@ -93,8 +91,7 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            // palette_override: Some(plt_default),
-            color_mapping: 0,
+            color_mapping: 1,
         },
     );
 
@@ -109,8 +106,7 @@ fn main() -> TatoResult<()> {
             col,
             row: line,
             width,
-            // palette_override: Some(plt_cycle),
-            color_mapping: 0
+            color_mapping: 3,
         },
     );
 
@@ -138,12 +134,12 @@ fn main() -> TatoResult<()> {
         }
 
         // Draw
-        // let color = &mut tato.banks[0].sub_palettes[plt_cycle.0 as usize][1];
-        // color.0 = cycle as u8;
-        // cycle += backend.ray.get_frame_time() * 2.0;
-        // if cycle >= 16.0 {
-        //     cycle = 1.0
-        // }
+        let color = &mut tato.banks[0].color_mapping[3][1];
+        *color = cycle as u8;
+        cycle += backend.ray.get_frame_time() * 4.0;
+        if cycle >= 16.0 {
+            cycle = 1.0
+        }
 
         // Update backends
         tato.frame_finish();

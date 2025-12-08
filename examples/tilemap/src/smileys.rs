@@ -14,9 +14,9 @@ pub const SMILEYS_TILESET: TilesetData = TilesetData {
 #[unsafe(link_section = "__DATA,__const")]
 pub static SMILEYS_COLORS: [RGBA12; 16] = [
     RGBA12::with_transparency(0, 0, 0, 0),
-    RGBA12::with_transparency(4, 4, 5, 7),
-    RGBA12::with_transparency(2, 2, 2, 7),
-    RGBA12::with_transparency(0, 0, 1, 7),
+    RGBA12::with_transparency(4, 5, 5, 7),
+    RGBA12::with_transparency(3, 3, 3, 7),
+    RGBA12::with_transparency(1, 1, 1, 7),
     RGBA12::with_transparency(7, 7, 7, 7),
     RGBA12::with_transparency(4, 4, 4, 7),
     RGBA12::with_transparency(7, 6, 3, 7),
