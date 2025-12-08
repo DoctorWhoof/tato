@@ -54,7 +54,7 @@ impl SceneC {
     }
 
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
-        if t.video.frame_number() % 10 == 0 {
+        if t.video.frame_number() % 4 == 0 {
             unsafe {
                 LINE = LINE.wrapping_sub(1);
             }

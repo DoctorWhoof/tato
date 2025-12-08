@@ -125,7 +125,7 @@ impl<'a> PixelIter<'a> {
         // Pre-calculate viewport bounds
         let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
         let view_start = self.vid.view_left.max(0) as usize;
-        let view_end = (self.vid.view_right + 1).min(width) as usize;
+        let view_end = self.vid.view_right.min(width) as usize;
         if view_start >= view_end {
             return;
         }
@@ -293,7 +293,7 @@ impl<'a> PixelIter<'a> {
 
         // Pre-calculate viewport bounds
         let view_start = self.vid.view_left.max(0) as usize;
-        let view_end = (self.vid.view_right + 1).min(width) as usize;
+        let view_end = self.vid.view_right.min(width) as usize;
 
         // Pre-calculate Y coordinates once
         let bg_y_base = line_y + self.scroll_y;
