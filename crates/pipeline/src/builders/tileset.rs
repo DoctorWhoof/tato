@@ -6,19 +6,18 @@ use std::collections::HashMap;
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 
-// // Colors remapped to canonical form (0,1,2,3...) to allow detection of palette-swapped tiles!
-// pub(crate) type CanonicalTile = [u8; TILE_LEN];
+// Color mapped pixels in a tile
+pub(crate) type Pixels = [u8; TILE_LEN];
 
-#[derive(Debug)]
-#[derive(Clone)]
+// Canonical tiles store the pixel "structure", not the
+// colors themselves. Useful to detect palette swapped tiles!
+#[derive(Debug, Clone)]
 pub(crate) struct CanonicalTile {
     pub pixels: [u8; TILE_LEN],
     pub mapping: Vec<u8>,
 }
 
-// Color mapped pixels in a tile
-pub(crate) type Pixels = [u8; TILE_LEN];
-
+// Allows a single pass executing commands when writing
 #[derive(Clone)]
 enum DeferredCommand {
     NewGroup { path: String, name: String },
@@ -287,13 +286,16 @@ impl<'a> TilesetBuilder<'a> {
 
         if self.save_colors {
             code.write_line(&format!("    colors: Some(&{}_COLORS),", self.name.to_uppercase()));
+            if self.color_mappings.len() > 1 {
+                code.write_line(&format!(
+                    "    color_mappings: Some(&{}_COLOR_MAPPINGS),",
+                    self.name.to_uppercase()
+                ));
+            } else {
+                code.write_line("    color_mappings: None,");
+            }
         } else {
             code.write_line("    colors: None,");
-        }
-
-        if self.color_mappings.len() > 1 {
-            code.write_line(&format!("    color_mappings: Some(&{}_COLOR_MAPPINGS),", self.name.to_uppercase()));
-        } else {
             code.write_line("    color_mappings: None,");
         }
 
@@ -384,7 +386,8 @@ impl<'a> TilesetBuilder<'a> {
         }
 
         // Write color mappings
-        if self.color_mappings.len() > 1 {  // Only write if there are mappings beyond identity
+        if self.color_mappings.len() > 1 && self.save_colors {
+            // Only write if there are mappings beyond identity
             code.write_line("// Color mappings for tile reuse with different colors");
             code.write_line(&format!(
                 "#[unsafe(link_section = \"{}\")]",
@@ -399,7 +402,7 @@ impl<'a> TilesetBuilder<'a> {
 
             for (idx, mapping) in self.color_mappings.iter().enumerate() {
                 let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
-                code.write_line(&format!("    [{}], // Mapping #{}", values.join(", "), idx));
+                code.write_line(&format!("    [{}], // #{}", values.join(", "), idx));
             }
             code.write_line("];");
             code.write_line("");
@@ -439,32 +442,36 @@ impl<'a> TilesetBuilder<'a> {
         tile_data
     }
 
-    // fn handle_groups(&mut self, canonical_tile: CanonicalTile, group: Option<u8>) {
-    //     if let Some(group_idx) = group {
-    //         // // Only register multi-color tiles in groups (skip empty/solid-color tiles)
-    //         // if color_mapping.len() > 1 {
-    //         self.groups.register_tile(canonical_tile, group_idx);
+    fn handle_groups(&mut self, canonical_tile: &CanonicalTile, group: Option<u8>) {
+        if let Some(group_idx) = group {
+            // // Only register multi-color tiles in groups (skip empty/solid-color tiles)
+            // if color_mapping.len() > 1 {
+            self.groups.register_tile(canonical_tile.pixels, group_idx);
 
-    //         // Also register all transformations if enabled
-    //         if self.allow_tile_transforms {
-    //             for flip_x in [false, true] {
-    //                 for flip_y in [false, true] {
-    //                     for rotation in [false, true] {
-    //                         if !flip_x && !flip_y && !rotation {
-    //                             continue; // Skip identity transform
-    //                         }
+            // Also register all transformations if enabled
+            if self.allow_tile_transforms {
+                for flip_x in [false, true] {
+                    for flip_y in [false, true] {
+                        for rotation in [false, true] {
+                            if !flip_x && !flip_y && !rotation {
+                                continue; // Skip identity transform
+                            }
 
-    //                         let transformed_tile =
-    //                             Self::transform_tile(&canonical_tile, flip_x, flip_y, rotation);
+                            let transformed_tile = Self::transform_tile(
+                                &canonical_tile.pixels,
+                                flip_x,
+                                flip_y,
+                                rotation,
+                            );
 
-    //                         self.groups.register_tile(transformed_tile, group_idx);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         // }
-    //     }
-    // }
+                            self.groups.register_tile(transformed_tile, group_idx);
+                        }
+                    }
+                }
+            }
+            // }
+        }
+    }
 
     /// Main workhorse. Creates a tile map while storing tile pixels and subpalettes
     fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
@@ -560,7 +567,7 @@ impl<'a> TilesetBuilder<'a> {
                         }
 
                         // If we're registering a group, store this canonical pattern (but skip empty tiles)
-                        // self.handle_groups(tile_pixels, group);
+                        self.handle_groups(&canonical_tile, group);
 
                         // Look up group membership for this tile pattern
                         // TODO: POSSIBLE BUG:
@@ -573,11 +580,16 @@ impl<'a> TilesetBuilder<'a> {
                             Some(existing_cell) => {
                                 // Found existing tile with same pattern
                                 // Get the canonical tile info for the existing tile
-                                let color_mapping_idx = if let Some(existing_canonical) = self.canonical_tiles.get(&canonical_tile.pixels) {
+                                let color_mapping_idx = if let Some(existing_canonical) =
+                                    self.canonical_tiles.get(&canonical_tile.pixels)
+                                {
                                     // Clone the mapping to avoid borrow issues
                                     let existing_mapping = existing_canonical.mapping.clone();
                                     // Create remapping from current tile's colors to existing tile's colors
-                                    self.create_color_remapping(&canonical_tile.mapping, &existing_mapping)
+                                    self.create_color_remapping(
+                                        &canonical_tile.mapping,
+                                        &existing_mapping,
+                                    )
                                 } else {
                                     0 // Default identity mapping
                                 };
@@ -599,7 +611,8 @@ impl<'a> TilesetBuilder<'a> {
                                 };
 
                                 // Store the canonical tile info
-                                self.canonical_tiles.insert(canonical_tile.pixels.clone(), canonical_tile.clone());
+                                self.canonical_tiles
+                                    .insert(canonical_tile.pixels.clone(), canonical_tile.clone());
 
                                 // Store the actual pixel data
                                 self.pixels.extend_from_slice(&source_pixels);
@@ -639,10 +652,8 @@ impl<'a> TilesetBuilder<'a> {
                                                     );
 
                                                     // Also store the canonical tile for the transformed pattern
-                                                    self.canonical_tiles.insert(
-                                                        transformed.pixels,
-                                                        transformed,
-                                                    );
+                                                    self.canonical_tiles
+                                                        .insert(transformed.pixels, transformed);
                                                 }
                                             }
                                         }

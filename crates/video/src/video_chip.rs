@@ -147,6 +147,7 @@ impl VideoChip {
         self.reset_scroll();
         self.reset_viewport();
         self.reset_sprites();
+        self.irq_line = None;
     }
 
     pub fn reset_scroll(&mut self) {

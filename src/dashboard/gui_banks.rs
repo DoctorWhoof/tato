@@ -82,7 +82,7 @@ impl Dashboard {
                         // pixels[i + 2] = gray_value; // B
                         // pixels[i + 3] = 255; // A
 
-                        let color:RGBA32 = bank.palette[color_index as usize].into();
+                        let color: RGBA32 = bank.palette[color_index as usize].into();
                         pixels[i] = color.r;
                         pixels[i + 1] = color.g;
                         pixels[i + 2] = color.b;
@@ -129,14 +129,14 @@ impl Dashboard {
         // Bank info
         panel.push_edge(Edge::Top, h, |frame| {
             let rect = frame.rect();
-            let values = [bank.tile_count(), bank.color_count() as usize];
-            let text = Text::format_display(
-                frame_arena,
-                "{} tiles, {} colors",
-                &values,
-                "",
-            )
-            .unwrap();
+            let values = [
+                bank.tile_count(),
+                bank.color_count() as usize,
+                bank.color_mapping_count() as usize,
+            ];
+            let text =
+                Text::format_display(frame_arena, "{} tiles, {} colors, {} mappings", &values, "")
+                    .unwrap();
 
             let handle = frame_arena
                 .alloc(DrawOp::Text {

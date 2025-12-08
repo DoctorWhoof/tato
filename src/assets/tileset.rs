@@ -13,7 +13,7 @@ pub struct Tileset {
     pub tile_start: u8,
     pub colors: [RGBA12; COLORS_PER_PALETTE as usize],
     pub color_count: u8,
-    pub color_mapping_indices: [u8; 16],
+    pub color_mapping_indices: [u8; COLOR_MAPPING_COUNT as usize],
     pub color_mapping_count: u8,
 }
 
@@ -33,7 +33,7 @@ impl Default for Tileset {
             tile_start: 0,
             colors: from_fn(|_| RGBA12::default()),
             color_count: 0,
-            color_mapping_indices: [0; 16],
+            color_mapping_indices: [0; COLOR_MAPPING_COUNT as usize],
             color_mapping_count: 0,
         }
     }

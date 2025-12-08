@@ -7,7 +7,7 @@ use core::array::from_fn;
 pub struct VideoBank<const TILES: usize> {
     pub tiles: [Tile<4>; TILES],
     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
-    pub color_mapping: [[u8; COLORS_PER_PALETTE as usize]; 16],
+    pub color_mapping: [[u8; COLORS_PER_PALETTE as usize]; COLOR_MAPPING_COUNT as usize],
     // Everything that needs to be counted
     tile_head: u8,
     palette_head: u8,

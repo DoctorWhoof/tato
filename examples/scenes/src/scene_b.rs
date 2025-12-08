@@ -6,12 +6,14 @@ use tato::prelude::*;
 pub struct SceneB {
     player: Entity,
     smileys: [Entity; 64],
-    // palette_smiley: PaletteID,
-    // palette_cycler: PaletteID,
 }
 
 impl SceneB {
     pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
+        t.video.reset_all();
+        t.video.fg_tile_bank = 0;
+        t.video.bg_tile_bank = 1;
+
         // Center view
         let x = t.video.max_x() / 2;
         let y = t.video.max_y() / 2;
@@ -20,15 +22,35 @@ impl SceneB {
         t.video.wrap_sprites = true;
 
         // Colors
+        t.banks[0].reset();
         t.banks[0].load_default_colors();
-        t.video.bg_color = RGBA12::DARK_GREEN;
-        t.video.crop_color = RGBA12::BLACK;
+
+        t.banks[1].reset();
+        t.banks[1].load_default_colors();
+
+        t.video.bg_color = RGBA12::BLACK;
+        t.video.crop_color = RGBA12::DARK_GREEN;
+
         let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let tile = TILE_SMILEY;
 
-        for cell in &mut state.bg.cells {
+        // Define color mappings
+        {
+            let mut mapping:[u8; COLORS_PER_PALETTE as usize] = Default::default();
+            mapping[2] = 8;
+            t.banks[0].color_mapping[2] = mapping;
+        }
+        for n in 0 .. 3 {
+            let mut mapping:[u8; COLORS_PER_PALETTE as usize] = Default::default();
+            mapping[2] = 9 + n;
+            t.banks[1].push_color_mapping(mapping);
+        }
+
+        // Set BG cells to use mappings
+        for (i, cell) in state.bg.cells.iter_mut().enumerate() {
             cell.id = tile;
             cell.flags = TileFlags::default();
+            cell.color_mapping = (i % 3) as u8 + 1;
         }
 
         Ok(Self {
@@ -46,7 +68,7 @@ impl SceneB {
                 y: rand::random_range(0.0..255.0), // + 32_000.0,
                 tile,
                 flags: TileFlags::default(),
-                color_mapping: 0,
+                color_mapping: 2,
             }),
         })
     }
@@ -81,7 +103,7 @@ impl SceneB {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: 4,
+                color_mapping: entity.color_mapping,
             });
         }
 

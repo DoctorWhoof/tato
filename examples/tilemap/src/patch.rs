@@ -31,6 +31,6 @@ pub static PATCH_TILES: [Tile<4>; 5] = [
 // Color mappings for tile reuse with different colors
 #[unsafe(link_section = "__DATA,__const")]
 pub static PATCH_COLOR_MAPPINGS: [[u8; 16]; 2] = [
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #0
-    [3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Mapping #1
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #0
+    [3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #1
 ];

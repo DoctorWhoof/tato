@@ -8,8 +8,11 @@ pub struct SceneC {
     counter: u64,
 }
 
+static mut LINE: u16 = 0;
+
 impl SceneC {
     pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
+        t.video.reset_all();
         let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let _solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
@@ -29,21 +32,43 @@ impl SceneC {
                 });
             }
         }
+        // Color mappings
+        for n in 0..COLOR_MAPPING_COUNT as usize {
+            t.banks[0].color_mapping[n][2] = n as u8;
+        }
 
+        // BG color raster effects
+        t.video.irq_line = Some(|iter, _chip, _tilemap| {
+            let y = iter.y();
+            let line = unsafe { y.wrapping_add(LINE) };
+            let color = &mut iter.bg_color;
+
+            let scaled_line = line / 4;
+
+            color.set_r((scaled_line % 4) as u8 + 3);
+            color.set_g(((scaled_line.wrapping_add(1)) % 3) as u8 + 2);
+            color.set_b(((scaled_line.wrapping_add(2)) % 3) as u8 + 4);
+        });
 
         Ok(SceneC { smiley, counter: 0 })
     }
 
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
+        if t.video.frame_number() % 10 == 0 {
+            unsafe {
+                LINE = LINE.wrapping_sub(1);
+            }
+        }
+
         // Draw the sprite directly, no Entity
         let mut offset = 0.0;
         for x in 0..16 {
             let time = (self.counter as f32 / 60.0) + offset;
             let wave = ((time * 4.0).sin() + 1.0) / 2.0;
-            let y = (wave * 8.0) as i16 + 60;
+            let y = (wave * 16.0) as i16 + 80;
             offset += 0.1;
             t.video.draw_fg_tile(DrawBundle {
-                x: x * 8,
+                x: x * 15,
                 y,
                 id: self.smiley,
                 flags: TileFlags::default(),

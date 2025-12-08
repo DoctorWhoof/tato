@@ -153,6 +153,7 @@ impl Tato {
                 return Err(TatoError::InvalidBankId(bank_id));
             },
         };
+
         let assets = &mut self.assets;
         let tiles_len = data.tiles.map_or(0, |tiles| tiles.len());
         if bank.tile_count() + tiles_len > bank.tile_capacity() {
@@ -168,8 +169,6 @@ impl Tato {
 
         // Tile processing
         let tile_start = u8::try_from(bank.tile_count()).unwrap();
-        // let tiles_count = u8::try_from(data.tiles.len()).unwrap();
-
         if let Some(tiles) = data.tiles {
             for tile in tiles.iter() {
                 bank.add_tile(tile);
@@ -178,11 +177,11 @@ impl Tato {
 
         // Color mapping processing
         // Track the actual bank indices where each mapping is stored
-        let mut mapping_indices = [0u8; 16]; // Max 16 mappings
+        let mut mapping_indices = [0u8; COLOR_MAPPING_COUNT as usize]; // Max 16 mappings
         let color_mapping_count = if let Some(mappings) = data.color_mappings {
             // First mapping is always identity at index 0
             mapping_indices[0] = 0;
-            
+
             if mappings.len() > 1 {
                 // Push remaining mappings and track their actual indices
                 for (i, mapping) in mappings[1..].iter().enumerate() {
