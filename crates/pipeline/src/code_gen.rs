@@ -117,11 +117,6 @@ impl CodeWriter {
         Self { output_file: file, indentation: 0 }
     }
 
-    pub fn write(&mut self, text: &str) {
-        let indent = " ".repeat(self.indentation);
-        write!(self.output_file, "{}{}", indent, text).expect("Failed to write to output file");
-    }
-
     pub fn write_line(&mut self, line: &str) {
         let indent = " ".repeat(self.indentation);
         writeln!(self.output_file, "{}{}", indent, line).expect("Failed to write to output file");

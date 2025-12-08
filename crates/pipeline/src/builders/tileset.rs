@@ -549,9 +549,6 @@ impl<'a> TilesetBuilder<'a> {
                                             rotation,
                                         );
 
-                                        // TODO: Determine if this is right. I don't think I need to
-                                        // regenerate the canonical tiles - just transform the existing
-                                        // canonical tile sounds more right!
                                         let transformed =
                                             self.create_canonical_tile(&transformed_pixels);
 
@@ -594,6 +591,26 @@ impl<'a> TilesetBuilder<'a> {
                                     0 // Default identity mapping
                                 };
 
+                                // Safety check with useful error.
+                                if color_mapping_idx > COLOR_MAPPING_COUNT{
+                                    panic!(
+                                        "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color mappings limit!\n\
+                                        \tFrame: ({}, {})\n\
+                                        \tTile within frame: row {}, col {}\n\
+                                        \tAbsolute tile position: row {}, col {}\n\
+                                        \tAttempted mapping {}\x1b[0m",
+                                        COLOR_MAPPING_COUNT,
+                                        frame_h,
+                                        frame_v,
+                                        row,
+                                        col,
+                                        abs_row,
+                                        abs_col,
+                                        color_mapping_idx
+                                    );
+                                }
+
+                                // Define cell
                                 Cell {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
@@ -630,9 +647,6 @@ impl<'a> TilesetBuilder<'a> {
                                                     rotation,
                                                 );
 
-                                                // TODO: Determine if this is right. I don't think I need to
-                                                // regenerate the canonical tiles - just transform the existing
-                                                // canonical tile sounds more right!
                                                 let transformed =
                                                     self.create_canonical_tile(&transformed_pixels);
 

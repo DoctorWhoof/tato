@@ -1,4 +1,4 @@
-use crate::{CanonicalTile, CodeWriter, Pixels};
+use crate::{CodeWriter, Pixels};
 use std::collections::HashMap;
 
 #[derive(Debug, Default)]
