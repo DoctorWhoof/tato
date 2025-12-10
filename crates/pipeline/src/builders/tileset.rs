@@ -244,11 +244,7 @@ impl<'a> TilesetBuilder<'a> {
 
                 // Write the tilemap
                 code.write_line(&format!(
-                    "#[unsafe(link_section = \"{}\")]",
-                    crate::get_platform_link_section()
-                ));
-                code.write_line(&format!(
-                    "pub static {}: Tilemap<{}> = Tilemap {{",
+                    "pub const {}: Tilemap<{}> = Tilemap {{",
                     map.name.to_uppercase(),
                     map.cells.len()
                 ));
@@ -311,11 +307,7 @@ impl<'a> TilesetBuilder<'a> {
         if !self.anims.is_empty() {
             for anim in &self.anims {
                 code.write_line(&format!(
-                    "#[unsafe(link_section = \"{}\")]",
-                    crate::get_platform_link_section()
-                ));
-                code.write_line(&format!(
-                    "pub static {}: [Tilemap<{}>; {}] = [",
+                    "pub const {}: [Tilemap<{}>; {}] = [",
                     anim.name.to_uppercase(),
                     anim.frames[0].cells.len(),
                     anim.frames.len()
@@ -365,11 +357,7 @@ impl<'a> TilesetBuilder<'a> {
         if !self.pixels.is_empty() {
             let tiles_count = self.pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize);
             code.write_line(&format!(
-                "#[unsafe(link_section = \"{}\")]",
-                crate::get_platform_link_section()
-            ));
-            code.write_line(&format!(
-                "pub static {}_TILES: [Tile<4>; {}] = [",
+                "pub const {}_TILES: [Tile<4>; {}] = [",
                 self.name.to_uppercase(),
                 tiles_count
             ));
@@ -390,11 +378,7 @@ impl<'a> TilesetBuilder<'a> {
             // Only write if there are mappings beyond identity
             code.write_line("// Color mappings for tile reuse with different colors");
             code.write_line(&format!(
-                "#[unsafe(link_section = \"{}\")]",
-                crate::get_platform_link_section()
-            ));
-            code.write_line(&format!(
-                "pub static {}_COLOR_MAPPINGS: [[u8; {}]; {}] = [",
+                "pub const {}_COLOR_MAPPINGS: [[u8; {}]; {}] = [",
                 self.name.to_uppercase(),
                 COLORS_PER_PALETTE,
                 self.color_mappings.len()

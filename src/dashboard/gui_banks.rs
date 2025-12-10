@@ -59,6 +59,8 @@ impl Dashboard {
 
             // Generate tile pixels
             let pixels = self.tile_pixels[bank_index].as_slice_mut(&mut self.fixed_arena).unwrap();
+            // Zero out pixels. If not done there may be garbage from previous tiles
+            pixels.fill(0);
 
             for tile_index in 0..tile_count {
                 let tile_x = tile_index % tiles_per_row;
@@ -69,19 +71,12 @@ impl Dashboard {
                         // get color
                         let color_index =
                             bank.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
-                        // let gray_value = color_index * 63; // Map 0-4 to 0-252
                         // get coordinates
                         let pixel_x = tile_x as usize * TILE_SIZE as usize + x;
                         let pixel_y = tile_y as usize * TILE_SIZE as usize + y;
                         let i = ((pixel_y * w as usize) + pixel_x) * 4;
-
                         // Seems safe for now, may need to insert a check for i < pixels.len()
                         // if I get out-of-bounds errors.
-                        // pixels[i] = gray_value; // R
-                        // pixels[i + 1] = gray_value; // G
-                        // pixels[i + 2] = gray_value; // B
-                        // pixels[i + 3] = 255; // A
-
                         let color: RGBA32 = bank.palette[color_index as usize].into();
                         pixels[i] = color.r;
                         pixels[i + 1] = color.g;

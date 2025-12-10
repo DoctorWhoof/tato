@@ -11,8 +11,7 @@ pub const SMILEYS_TILESET: TilesetData = TilesetData {
     color_mappings: Some(&SMILEYS_COLOR_MAPPINGS),
 };
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_COLORS: [RGBA12; 16] = [
+pub const SMILEYS_COLORS: [RGBA12; 16] = [
     RGBA12::with_transparency(0, 0, 0, 0),
     RGBA12::with_transparency(4, 5, 5, 7),
     RGBA12::with_transparency(3, 3, 3, 7),
@@ -31,8 +30,7 @@ pub static SMILEYS_COLORS: [RGBA12; 16] = [
     RGBA12::with_transparency(4, 6, 7, 7),
 ];
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_TILES: [Tile<4>; 5] = [
+pub const SMILEYS_TILES: [Tile<4>; 5] = [
     Tile::new(0x4444444444444444, 0x4444444444444445, 0x4444455544445555, 0x4444555544455555),
     Tile::new(0x4444444444444444, 0x4444444455555555, 0x5555555555555555, 0x5555555555555555),
     Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
@@ -41,8 +39,7 @@ pub static SMILEYS_TILES: [Tile<4>; 5] = [
 ];
 
 // Color mappings for tile reuse with different colors
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_COLOR_MAPPINGS: [[u8; 16]; 9] = [
+pub const SMILEYS_COLOR_MAPPINGS: [[u8; 16]; 9] = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #0
     [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #1
     [0, 1, 2, 3, 4, 5, 8, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #2

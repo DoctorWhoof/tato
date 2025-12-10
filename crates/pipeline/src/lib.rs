@@ -11,7 +11,7 @@ pub use builders::*;
 
 mod code_gen;
 pub(crate) use code_gen::*;
-pub use code_gen::{get_platform_link_section, format_cell_compact, format_tile_compact};
+pub use code_gen::{format_cell_compact, format_tile_compact};
 
 mod palette_image;
 pub(crate) use palette_image::*;

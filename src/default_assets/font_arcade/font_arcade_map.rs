@@ -2,8 +2,7 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static FONT_ARCADE_MAP: Tilemap<50> = Tilemap {
+pub const FONT_ARCADE_MAP: Tilemap<50> = Tilemap {
     columns: 10,
     rows: 5,
     cells: [

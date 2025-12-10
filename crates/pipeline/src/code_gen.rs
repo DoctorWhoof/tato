@@ -18,16 +18,7 @@ pub struct CodeWriter {
 //
 // Note: indentation is now handled by simply calling rustfmt after generating code!
 
-/// Returns the appropriate link section for the current platform
-pub fn get_platform_link_section() -> &'static str {
-    if cfg!(target_os = "macos") {
-        "__DATA,__const" // Mach-O format
-    } else if cfg!(target_os = "windows") {
-        ".rdata" // PE/COFF read-only data section
-    } else {
-        ".rodata" // ELF format (Linux, embedded)
-    }
-}
+
 
 /// Formats a Cell using the compact Cell::new() constructor syntax
 pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
@@ -150,10 +141,8 @@ impl CodeWriter {
             return;
         }
 
-        // Use platform-specific link section for optimal bare-metal usage
-        self.write_line(&format!("#[unsafe(link_section = \"{}\")]", get_platform_link_section()));
         self.write_line(&format!(
-            "pub static {}_COLORS: [RGBA12; {}] = [",
+            "pub const {}_COLORS: [RGBA12; {}] = [",
             name.to_uppercase(),
             colors.len()
         ));

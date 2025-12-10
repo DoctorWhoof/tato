@@ -1,8 +1,7 @@
 // Auto-generated code. Do not edit manually!
 use tato::prelude::*;
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_MAP: Tilemap<160> = Tilemap {
+pub const SMILEYS_MAP: Tilemap<160> = Tilemap {
     columns: 16,
     rows: 10,
     cells: [

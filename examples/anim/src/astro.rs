@@ -8,16 +8,14 @@ pub const ASTRO_TILESET: TilesetData = TilesetData {
     color_mappings: None,
 };
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static ASTRO_COLORS: [RGBA12; 4] = [
+pub const ASTRO_COLORS: [RGBA12; 4] = [
     RGBA12::with_transparency(0, 0, 0, 0),
     RGBA12::with_transparency(7, 7, 7, 7),
     RGBA12::with_transparency(0, 0, 0, 7),
     RGBA12::with_transparency(1, 1, 6, 7),
 ];
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static STRIP_ASTRO: [Tilemap<4>; 24] = [
+pub const STRIP_ASTRO: [Tilemap<4>; 24] = [
     Tilemap {
         cells: [
             Cell::new(0, 0, 0, 0),
@@ -260,8 +258,7 @@ pub static STRIP_ASTRO: [Tilemap<4>; 24] = [
     },
 ];
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static ASTRO_TILES: [Tile<4>; 40] = [
+pub const ASTRO_TILES: [Tile<4>; 40] = [
     Tile::new(0x0000000000000111, 0x0000111100011111, 0x0001111100011111, 0x0001112100001121),
     Tile::new(0x0000011100001000, 0x0001111100011011, 0x0000101100000111, 0x0000011000000000),
     Tile::new(0x0000011100001111, 0x0001111100011111, 0x0001111100011111, 0x0000111100000111),
