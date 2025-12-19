@@ -11,10 +11,12 @@ pub use builders::*;
 
 mod code_gen;
 pub(crate) use code_gen::*;
-pub use code_gen::{get_platform_link_section, format_cell_compact, format_tile_compact};
+pub use code_gen::{format_cell_compact, format_tile_compact};
 
 mod palette_image;
 pub(crate) use palette_image::*;
+
+pub use {GroupBuilder, PaletteBuilder, TilesetBuilder};
 
 #[derive(Clone)]
 pub struct BuildSettings {
@@ -25,6 +27,26 @@ pub struct BuildSettings {
 // Initialization tracking
 static INIT_BUILD_CALLED: AtomicBool = AtomicBool::new(false);
 static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
+
+/// Initializes build script integration with cargo
+pub fn init_build(settings: BuildSettings) {
+    // Store build settings globally
+    let _ = BUILD_SETTINGS.set(settings.clone());
+
+    // Mark initialization as complete
+    INIT_BUILD_CALLED.store(true, Ordering::Relaxed);
+
+    // Cargo build setup
+    println!("cargo:warning=Working Dir:{:?}", std::env::current_dir().ok().unwrap());
+    println!("cargo:warning=Asset import path: {}", settings.asset_import_path);
+    println!("cargo:warning=Force reprocess: {}", settings.force_reprocess);
+
+    // Watch build.rs
+    println!("cargo:rerun-if-changed=build.rs");
+
+    // Watch all asset files so cargo will rerun when they change
+    watch_asset_files(&settings.asset_import_path);
+}
 
 fn get_build_settings() -> BuildSettings {
     BUILD_SETTINGS.get()
@@ -45,10 +67,7 @@ pub fn reset_init_build() {
     INIT_BUILD_CALLED.store(false, Ordering::Relaxed);
 }
 
-// Public API
-pub use {GroupBuilder, PaletteBuilder, TilesetBuilder};
-
-pub fn should_regenerate_file(file_path: &str) -> bool {
+pub(crate) fn should_regenerate_file(file_path: &str) -> bool {
     // If force reprocess is enabled, always regenerate
     if get_build_settings().force_reprocess {
         println!("cargo:warning=Force reprocess enabled for: {}", file_path);
@@ -75,7 +94,7 @@ pub fn should_regenerate_file(file_path: &str) -> bool {
     true
 }
 
-pub fn mark_file_processed(file_path: &str) {
+pub(crate) fn mark_file_processed(file_path: &str) {
     let mut metadata = load_metadata();
 
     if let Some(timestamp) = get_file_timestamp(file_path) {
@@ -83,26 +102,6 @@ pub fn mark_file_processed(file_path: &str) {
         metadata.insert(file_path.to_string(), timestamp);
         save_metadata(&metadata);
     }
-}
-
-/// Initializes build script integration with cargo
-pub fn init_build(settings: BuildSettings) {
-    // Store build settings globally
-    let _ = BUILD_SETTINGS.set(settings.clone());
-
-    // Mark initialization as complete
-    INIT_BUILD_CALLED.store(true, Ordering::Relaxed);
-
-    // Cargo build setup
-    println!("cargo:warning=Working Dir:{:?}", std::env::current_dir().ok().unwrap());
-    println!("cargo:warning=Asset import path: {}", settings.asset_import_path);
-    println!("cargo:warning=Force reprocess: {}", settings.force_reprocess);
-
-    // Watch build.rs
-    println!("cargo:rerun-if-changed=build.rs");
-
-    // Watch all asset files so cargo will rerun when they change
-    watch_asset_files(&settings.asset_import_path);
 }
 
 fn watch_asset_files(asset_import_path: &str) {
@@ -135,7 +134,7 @@ fn is_asset_file(file_name: &str) -> bool {
     lower.ends_with(".bmp") || lower.ends_with(".gif") || lower.ends_with(".tga")
 }
 
-pub fn strip_path_name(path: &str) -> String {
+pub(crate) fn strip_path_name(path: &str) -> String {
     let split = path.split('/');
     let file_name = split.last().unwrap();
     let mut file_name_split = file_name.split('.');

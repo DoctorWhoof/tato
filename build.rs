@@ -47,7 +47,6 @@ fn main() {
     tileset_default.use_crate_assets = true; // Only true when used by this crate
     // Add single tiles for default assets
     tileset_default.new_tile("import/tile_empty.png");
-    // Checkers goes first to assure 4 colors in subpalette in the desired order
     tileset_default.new_tile("import/tile_checkers.png");
     tileset_default.new_tile("import/tile_solid.png");
     tileset_default.new_tile("import/tile_crosshairs.png");

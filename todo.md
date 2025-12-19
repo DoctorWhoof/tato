@@ -28,7 +28,7 @@
     . GroupBuilder is separate from each TilesetBuilder, saves to its own module.
     . Gets passed to tilesetbuilder::new, just like palette?
 
---->[ ] Collider should be a TileFlag bit, not a group
+[x] Collider should be a TileFlag bit, not a group
     . Will allow 255 groups (u8::MAX), instead of 8 (1 bit per group)
     . Tile can only be in one group (water, door, powerup, etc), but can have multiple flags like "collider" or "trigger"
     . Will be ready if i decide to implement sprite collisions
@@ -107,7 +107,9 @@
 [x] Load individual named tiles into a tileset, each will be exported as a const
     . On the other end, insert single tiles into TileBank (returns TileID)
 
-[.] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
+[?] Invalid tiles (such as when color count is higher than allowed) should pinpoint tile coordinates where error occurred.
+
+[ ] Group detection needs testing in new 4bpp Pipeline
 
 ### Assets
 
@@ -122,7 +124,7 @@
     [.] Arena approach!
     [.] Basic push/pop implemented, needs testing!
     [x] Once tilesets + tilemaps are working, implement Anims!
-    . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
+    . Since animations use tilemaps, I just need a way to load multiple tilemaps from the "frames" array, and some draw_anim_to_fg mechanism to retrieve the TilemapRef from the Arena, already with the correct offset.
     . Maybe "load_animation_frames", which result in an AnimEntry with the frames data (start, count, frame_length)
     [ ] Detect and prevent loading "empty" animation frames
     [ ] Think about auto-loading assets? "load_tilemap" seems simple enough to allow this.

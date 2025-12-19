@@ -1,10 +1,10 @@
-use crate::{CanonicalTile, CodeWriter};
+use crate::{CodeWriter, Pixels};
 use std::collections::HashMap;
 
 #[derive(Debug, Default)]
 pub struct GroupBuilder {
-    pub hash: HashMap<CanonicalTile, u8>, // Key: tile, value:group bits
-    pub names: Vec<String>,               // Index is group index (0-based), value is group name
+    pub hash: HashMap<Pixels, u8>, // Key: tile, value:group bits
+    pub names: Vec<String>,        // Index is group index (0-based), value is group name
 }
 
 impl GroupBuilder {
@@ -35,7 +35,7 @@ impl GroupBuilder {
         group_index
     }
 
-    pub fn register_tile(&mut self, canonical_tile: CanonicalTile, group_index: u8) {
+    pub(crate) fn register_tile(&mut self, canonical_tile: Pixels, group_index: u8) {
         let group_bit = 1u8 << (group_index - 1); // Convert 1-based index to bit position
         let current_groups = self.hash.get(&canonical_tile).unwrap_or(&0);
         self.hash.insert(canonical_tile, current_groups | group_bit);

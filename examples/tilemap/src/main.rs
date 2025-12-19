@@ -18,19 +18,21 @@ fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
 
     tato.video.bg_color = RGBA12::new(1, 2, 3);
+    tato.video.wrap_bg = true;
 
     // Populate tilesets
     let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
     let _transparent = tato.banks[0].push_color(RGBA12::TRANSPARENT);
-    let _empty_palette = tato.new_subpalette(0, [0, 1, 2, 3]);
 
-    let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
-    let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;
-    tato.draw_tilemap_to(&mut bg_map, Some(Rect { x: 3, y: 5, w: 16, h: 10 }), map_smileys, None);
 
     let tileset_patch = tato.push_tileset(0, PATCH_TILESET)?;
     let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP)?;
     tato.draw_patch(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, map_patch);
+
+    let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
+    let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;
+    tato.draw_tilemap(&mut bg_map, Some(Rect { x: 3, y: 5, w: 16, h: 10 }), map_smileys, None);
+
 
     println!("Asset arena: {} Bytes", tato.assets.used_memory());
     // Backend

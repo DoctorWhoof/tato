@@ -153,6 +153,15 @@ where
         }
     }
 
+    pub fn to_i16(&self) -> Rect<i16> {
+        Rect {
+            x: self.x.to_f32() as i16,
+            y: self.y.to_f32() as i16,
+            w: self.w.to_f32() as i16,
+            h: self.h.to_f32() as i16,
+        }
+    }
+
     /// Convert a floating-point rectangle to this rectangle's number type
     pub fn from_f32(rect: Rect<f32>) -> Self {
         Self {
@@ -162,6 +171,17 @@ where
             h: T::from_f32(rect.h),
         }
     }
+
+    pub fn scale(&self, factor: T) -> Self {
+        Rect {
+            x: self.x / factor,
+            y: self.y / factor,
+            w: self.w / factor,
+            h: self.h / factor,
+        }
+    }
+
+
 
     pub fn contains(&self, x: T, y: T) -> bool {
         x >= self.x && x <= self.x + self.w && y >= self.y && y <= self.y + self.h

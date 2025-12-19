@@ -2,8 +2,7 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static FONT_SHORT_MAP: Tilemap<70> = Tilemap {
+pub const FONT_SHORT_MAP: Tilemap<70> = Tilemap {
     columns: 10,
     rows: 7,
     cells: [
@@ -69,13 +68,13 @@ pub static FONT_SHORT_MAP: Tilemap<70> = Tilemap {
         Cell::new(59, 0, 0, 0),
         Cell::new(60, 0, 0, 0),
         Cell::new(61, 0, 0, 0),
-        Cell::new(62, 0, 1, 0),
+        Cell::new(62, 0, 0, 0),
         Cell::new(63, 0, 0, 0),
         Cell::new(64, 0, 0, 0),
         Cell::new(65, 0, 0, 0),
         Cell::new(66, 0, 0, 0),
-        Cell::new(62, 0, 1, 0),
-        Cell::new(62, 0, 1, 0),
-        Cell::new(62, 0, 1, 0),
+        Cell::new(62, 0, 0, 0),
+        Cell::new(62, 0, 0, 0),
+        Cell::new(62, 0, 0, 0),
     ],
 };

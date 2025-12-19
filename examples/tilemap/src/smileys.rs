@@ -8,23 +8,14 @@ pub use smileys_map::*;
 pub const SMILEYS_TILESET: TilesetData = TilesetData {
     tiles: Some(&SMILEYS_TILES),
     colors: Some(&SMILEYS_COLORS),
-    sub_palettes: Some(&[
-        &SMILEYS_SUBPALETTE_0,
-        &SMILEYS_SUBPALETTE_1,
-        &SMILEYS_SUBPALETTE_2,
-        &SMILEYS_SUBPALETTE_3,
-        &SMILEYS_SUBPALETTE_4,
-        &SMILEYS_SUBPALETTE_5,
-        &SMILEYS_SUBPALETTE_6,
-        &SMILEYS_SUBPALETTE_7,
-        &SMILEYS_SUBPALETTE_8,
-        &SMILEYS_SUBPALETTE_9,
-        &SMILEYS_SUBPALETTE_10,
-    ]),
+    color_mappings: Some(&SMILEYS_COLOR_MAPPINGS),
 };
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_COLORS: [RGBA12; 12] = [
+pub const SMILEYS_COLORS: [RGBA12; 16] = [
+    RGBA12::with_transparency(0, 0, 0, 0),
+    RGBA12::with_transparency(4, 5, 5, 7),
+    RGBA12::with_transparency(3, 3, 3, 7),
+    RGBA12::with_transparency(1, 1, 1, 7),
     RGBA12::with_transparency(7, 7, 7, 7),
     RGBA12::with_transparency(4, 4, 4, 7),
     RGBA12::with_transparency(7, 6, 3, 7),
@@ -39,46 +30,23 @@ pub static SMILEYS_COLORS: [RGBA12; 12] = [
     RGBA12::with_transparency(4, 6, 7, 7),
 ];
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_0: [u8; 4] = [0, 1, 0, 0];
+pub const SMILEYS_TILES: [Tile<4>; 5] = [
+    Tile::new(0x4444444444444444, 0x4444444444444445, 0x4444455544445555, 0x4444555544455555),
+    Tile::new(0x4444444444444444, 0x4444444455555555, 0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
+    Tile::new(0x5555555555555555, 0x5555555555555555, 0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x5666666656669999, 0x5566999955666999, 0x5556669955556666, 0x5555556655555555),
+];
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_1: [u8; 4] = [1, 2, 5, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_2: [u8; 4] = [1, 0, 0, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_3: [u8; 4] = [1, 3, 5, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_4: [u8; 4] = [1, 4, 5, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_5: [u8; 4] = [1, 5, 6, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_6: [u8; 4] = [1, 5, 7, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_7: [u8; 4] = [1, 5, 8, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_8: [u8; 4] = [1, 5, 9, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_9: [u8; 4] = [1, 5, 10, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_SUBPALETTE_10: [u8; 4] = [1, 5, 11, 0];
-
-#[unsafe(link_section = "__DATA,__const")]
-pub static SMILEYS_TILES: [Tile<2>; 7] = [
-    Tile::new(0x0000000000000001, 0x0015005500550155),
-    Tile::new(0x0000000000005555, 0x5555555555555555),
-    Tile::new(0x0000000500550155, 0x0555056515651565),
-    Tile::new(0x0000000000000000, 0x0000000000000000),
-    Tile::new(0x155515AA05AA056A, 0x015A005500050000),
-    Tile::new(0x0000000A00AA02AA, 0x0AAA0A9A2A9A2A9A),
-    Tile::new(0x2AAA2A550A550A95, 0x02A500AA000A0000),
+// Color mappings for tile reuse with different colors
+pub const SMILEYS_COLOR_MAPPINGS: [[u8; 16]; 9] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #0
+    [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #1
+    [0, 1, 2, 3, 4, 5, 8, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #2
+    [0, 1, 2, 3, 4, 5, 10, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #3
+    [0, 1, 2, 3, 4, 5, 11, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #4
+    [0, 1, 2, 3, 4, 5, 12, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #5
+    [0, 1, 2, 3, 4, 5, 13, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #6
+    [0, 1, 2, 3, 4, 5, 14, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #7
+    [0, 1, 2, 3, 4, 5, 15, 7, 8, 9, 10, 11, 12, 13, 14, 15], // #8
 ];

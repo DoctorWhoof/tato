@@ -125,7 +125,7 @@ impl<'a> PixelIter<'a> {
         // Pre-calculate viewport bounds
         let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
         let view_start = self.vid.view_left.max(0) as usize;
-        let view_end = (self.vid.view_right + 1).min(width) as usize;
+        let view_end = self.vid.view_right.min(width) as usize;
         if view_start >= view_end {
             return;
         }
@@ -237,7 +237,7 @@ impl<'a> PixelIter<'a> {
             let flip_y = sprite.flags.is_flipped_y();
             let rotated = sprite.flags.is_rotated();
             let tile = &bank.tiles[sprite.id.0 as usize];
-            let palette = sprite.sub_palette;
+            // let color_mapping = sprite.color_mapping;
 
             // Render sprite pixels - only in active slots!
             for x in start_x..end_x {
@@ -272,8 +272,9 @@ impl<'a> PixelIter<'a> {
                 };
 
                 let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
-                let index = bank.sub_palettes[palette as usize][pixel].0;
-                let color = bank.palette[index as usize];
+                let map_index = sprite.color_mapping as usize;
+                let mapped_pixel = bank.color_mapping[map_index][pixel] as usize;
+                let color = bank.palette[mapped_pixel];
 
                 if color.a() > 0 {
                     self.sprite_buffer[x] = color.with_z(Z_SPRITE);
@@ -292,7 +293,7 @@ impl<'a> PixelIter<'a> {
 
         // Pre-calculate viewport bounds
         let view_start = self.vid.view_left.max(0) as usize;
-        let view_end = (self.vid.view_right + 1).min(width) as usize;
+        let view_end = self.vid.view_right.min(width) as usize;
 
         // Pre-calculate Y coordinates once
         let bg_y_base = line_y + self.scroll_y;
@@ -349,8 +350,8 @@ impl<'a> PixelIter<'a> {
             let bg_map_index = (bg_row as usize * bg_columns) + bg_col as usize;
             let bg_cell = bg.cells()[bg_map_index];
             let bg_flags = bg_cell.flags;
-            let bg_palette = bg_cell.sub_palette.0 as usize;
             let bg_tile_id = bg_cell.id.0 as usize;
+            // let bg_color_mapping = bg_cell.color_mapping as usize;
 
             // Skip invisible tiles - fill with bg_color instead
             if bg_flags.is_invisible() {
@@ -378,7 +379,6 @@ impl<'a> PixelIter<'a> {
             let bg_cluster = Cluster::from_tile(&tile.clusters, bg_flags, tile_y, TILE_SIZE);
 
             // Pre-fetch palette data
-            let sub_palette = &bank.sub_palettes[bg_palette];
             let palette = &bank.palette;
             let is_fg = bg_flags.is_fg();
             let bg_color = self.bg_color;
@@ -404,14 +404,16 @@ impl<'a> PixelIter<'a> {
                 let chunks = pixels_to_process / 4;
                 let remainder = pixels_to_process % 4;
 
+                let remap_id = bg_cell.color_mapping as usize;
+
                 for chunk in 0..chunks {
                     let base_idx = chunk * 4;
                     for i in 0..4 {
                         let tile_x = tile_x_start + (base_idx + i) as u8;
                         let color_idx =
                             bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                        let global_idx = sub_palette[color_idx].0 as usize;
-                        let color = palette[global_idx];
+                        let mapped_idx = bank.color_mapping[remap_id][color_idx] as usize;
+                        let color = palette[mapped_idx];
 
                         let final_color = if color.a() > 0 {
                             let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
@@ -429,8 +431,8 @@ impl<'a> PixelIter<'a> {
                     let idx = chunks * 4 + i;
                     let tile_x = tile_x_start + idx as u8;
                     let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                    let global_idx = sub_palette[color_idx].0 as usize;
-                    let color = palette[global_idx];
+                    let mapped_idx = bank.color_mapping[remap_id][color_idx] as usize;
+                    let color = palette[mapped_idx];
 
                     let final_color = if color.a() > 0 {
                         let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };

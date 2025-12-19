@@ -59,6 +59,8 @@ impl Dashboard {
 
             // Generate tile pixels
             let pixels = self.tile_pixels[bank_index].as_slice_mut(&mut self.fixed_arena).unwrap();
+            // Zero out pixels. If not done there may be garbage from previous tiles
+            pixels.fill(0);
 
             for tile_index in 0..tile_count {
                 let tile_x = tile_index % tiles_per_row;
@@ -69,18 +71,17 @@ impl Dashboard {
                         // get color
                         let color_index =
                             bank.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
-                        let gray_value = color_index * 63; // Map 0-4 to 0-252
                         // get coordinates
                         let pixel_x = tile_x as usize * TILE_SIZE as usize + x;
                         let pixel_y = tile_y as usize * TILE_SIZE as usize + y;
                         let i = ((pixel_y * w as usize) + pixel_x) * 4;
-
                         // Seems safe for now, may need to insert a check for i < pixels.len()
                         // if I get out-of-bounds errors.
-                        pixels[i] = gray_value; // R
-                        pixels[i + 1] = gray_value; // G
-                        pixels[i + 2] = gray_value; // B
-                        pixels[i + 3] = 255; // A
+                        let color: RGBA32 = bank.palette[color_index as usize].into();
+                        pixels[i] = color.r;
+                        pixels[i + 1] = color.g;
+                        pixels[i + 2] = color.b;
+                        pixels[i + 3] = color.a;
                     }
                 }
             }
@@ -123,15 +124,14 @@ impl Dashboard {
         // Bank info
         panel.push_edge(Edge::Top, h, |frame| {
             let rect = frame.rect();
-            let values =
-                [bank.tile_count(), bank.color_count() as usize, bank.sub_palette_count() as usize];
-            let text = Text::format_display(
-                frame_arena,
-                "{} tiles, {} colors, {} sub-palettes",
-                &values,
-                "",
-            )
-            .unwrap();
+            let values = [
+                bank.tile_count(),
+                bank.color_count() as usize,
+                bank.color_mapping_count() as usize,
+            ];
+            let text =
+                Text::format_display(frame_arena, "{} tiles, {} colors, {} mappings", &values, "")
+                    .unwrap();
 
             let handle = frame_arena
                 .alloc(DrawOp::Text {
@@ -145,7 +145,7 @@ impl Dashboard {
             self.ops.push(frame_arena, handle).unwrap();
         });
 
-        if bank.tile_count() == 0 && bank.color_count() == 0 && bank.sub_palette_count() == 0 {
+        if bank.tile_count() == 0 && bank.color_count() == 0 {
             return;
         }
 
@@ -180,84 +180,84 @@ impl Dashboard {
             }
         });
 
-        // Sub-palette swatches
-        {
-            let columns = 6;
-            let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
-            let frame_h = (rows as i16 * 4) + 4;
+        // // Sub-palette swatches
+        // {
+        //     let columns = 6;
+        //     let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
+        //     let frame_h = (rows as i16 * 4) + 4;
 
-            panel.push_edge(Edge::Top, frame_h, |frame| {
-                frame.set_margin(1);
-                frame.set_gap(1);
-                let column_w = frame.divide_width(columns);
-                for column in 0..columns {
-                    frame.push_edge(Edge::Left, column_w, |frame_column| {
-                        frame_column.set_gap(0);
-                        frame_column.set_margin(1);
+        //     panel.push_edge(Edge::Top, frame_h, |frame| {
+        //         frame.set_margin(1);
+        //         frame.set_gap(1);
+        //         let column_w = frame.divide_width(columns);
+        //         for column in 0..columns {
+        //             frame.push_edge(Edge::Left, column_w, |frame_column| {
+        //                 frame_column.set_gap(0);
+        //                 frame_column.set_margin(1);
 
-                        let rect = frame_column.rect();
-                        let rect_handle =
-                            frame_arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
-                        self.ops.push(frame_arena, rect_handle).unwrap();
+        //                 let rect = frame_column.rect();
+        //                 let rect_handle =
+        //                     frame_arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
+        //                 self.ops.push(frame_arena, rect_handle).unwrap();
 
-                        let row_h = frame_column.divide_height(rows);
-                        for row in 0..rows {
-                            frame_column.push_edge(Edge::Top, row_h, |frame_row| {
-                                // frame_row.set_gap(1);
-                                frame_row.set_margin(1);
-                                let subp_index = ((row * COLORS_PER_TILE as u32) + column) as usize;
-                                let current_item = (row * columns) + column;
+        //                 let row_h = frame_column.divide_height(rows);
+        //                 for row in 0..rows {
+        //                     frame_column.push_edge(Edge::Top, row_h, |frame_row| {
+        //                         // frame_row.set_gap(1);
+        //                         frame_row.set_margin(1);
+        //                         let subp_index = ((row * COLORS_PER_TILE as u32) + column) as usize;
+        //                         let current_item = (row * columns) + column;
 
-                                if current_item < bank.sub_palette_count() as u32
-                                    && subp_index < bank.sub_palettes.len()
-                                {
-                                    let subp = &bank.sub_palettes[subp_index];
-                                    let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
+        //                         if current_item < bank.sub_palette_count() as u32
+        //                             && subp_index < bank.sub_palettes.len()
+        //                         {
+        //                             let subp = &bank.sub_palettes[subp_index];
+        //                             let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
 
-                                    for n in 0..COLORS_PER_TILE as usize {
-                                        frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
-                                            let swatch_rect = swatch.rect();
-                                            let color_index = subp[n].0 as usize;
-                                            if color_index < bank.palette.len() {
-                                                let sub_rect_handle = frame_arena
-                                                    .alloc(DrawOp::Rect {
-                                                        rect: swatch_rect,
-                                                        color: RGBA32::from(
-                                                            bank.palette[color_index],
-                                                        ),
-                                                    })
-                                                    .unwrap();
-                                                self.ops
-                                                    .push(frame_arena, sub_rect_handle)
-                                                    .unwrap();
-                                            }
-                                        });
-                                    }
+        //                             for n in 0..COLORS_PER_TILE as usize {
+        //                                 frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
+        //                                     let swatch_rect = swatch.rect();
+        //                                     let color_index = subp[n].0 as usize;
+        //                                     if color_index < bank.palette.len() {
+        //                                         let sub_rect_handle = frame_arena
+        //                                             .alloc(DrawOp::Rect {
+        //                                                 rect: swatch_rect,
+        //                                                 color: RGBA32::from(
+        //                                                     bank.palette[color_index],
+        //                                                 ),
+        //                                             })
+        //                                             .unwrap();
+        //                                         self.ops
+        //                                             .push(frame_arena, sub_rect_handle)
+        //                                             .unwrap();
+        //                                     }
+        //                                 });
+        //                             }
 
-                                    // Mouse hover detection
-                                    if frame_row.rect().contains(mouse.x as i16, mouse.y as i16) {
-                                        let colors = [
-                                            subp_index as u8,
-                                            subp[0].0,
-                                            subp[1].0,
-                                            subp[2].0,
-                                            subp[3].0,
-                                        ];
-                                        self.mouse_over_text = Text::format_dbg(
-                                            frame_arena,
-                                            "Sub Palette {} = [{},{},{},{}]",
-                                            &colors,
-                                            "",
-                                        )
-                                        .unwrap();
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
+        //                             // Mouse hover detection
+        //                             if frame_row.rect().contains(mouse.x as i16, mouse.y as i16) {
+        //                                 let colors = [
+        //                                     subp_index as u8,
+        //                                     subp[0].0,
+        //                                     subp[1].0,
+        //                                     subp[2].0,
+        //                                     subp[3].0,
+        //                                 ];
+        //                                 self.mouse_over_text = Text::format_dbg(
+        //                                     frame_arena,
+        //                                     "Sub Palette {} = [{},{},{},{}]",
+        //                                     &colors,
+        //                                     "",
+        //                                 )
+        //                                 .unwrap();
+        //                             }
+        //                         }
+        //                     });
+        //                 }
+        //             });
+        //         }
+        //     });
+        // }
 
         // Tile visualization
         self.update_tile_texture(bank_index, bank, tiles_per_row);

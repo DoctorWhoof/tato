@@ -5,7 +5,7 @@ use crate::arena::{Arena, ArenaId, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
 use crate::video::{
-    COLORS_PER_PALETTE, COLORS_PER_TILE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank,
+    COLORS_PER_PALETTE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank,
 };
 
 mod command;
@@ -292,7 +292,6 @@ impl Dashboard {
         let mut layout = Frame::new(screen_rect);
         layout.set_scale(self.gui_scale);
         layout.set_margin(MARGIN);
-        // layout.set_margin(10);
         layout.set_gap(3);
 
         // Panels have their own modules, for organization

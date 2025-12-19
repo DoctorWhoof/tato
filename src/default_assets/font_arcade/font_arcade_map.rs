@@ -2,8 +2,7 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-#[unsafe(link_section = "__DATA,__const")]
-pub static FONT_ARCADE_MAP: Tilemap<50> = Tilemap {
+pub const FONT_ARCADE_MAP: Tilemap<50> = Tilemap {
     columns: 10,
     rows: 5,
     cells: [
@@ -43,19 +42,19 @@ pub static FONT_ARCADE_MAP: Tilemap<50> = Tilemap {
         Cell::new(33, 0, 0, 0),
         Cell::new(34, 0, 0, 0),
         Cell::new(35, 0, 0, 0),
-        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 0, 0),
         Cell::new(37, 0, 0, 0),
         Cell::new(38, 0, 0, 0),
         Cell::new(39, 0, 0, 0),
         Cell::new(40, 0, 0, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
-        Cell::new(36, 0, 2, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
+        Cell::new(36, 0, 1, 0),
     ],
 };

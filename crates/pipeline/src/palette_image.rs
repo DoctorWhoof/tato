@@ -1,8 +1,6 @@
 use image::{DynamicImage, ImageReader};
 use tato_video::*;
 
-// use crate::*;
-
 use super::*;
 
 /// Stores a palettized version of an image as well as layout data (frame count, columns and rows per frame).
@@ -32,6 +30,7 @@ impl PalettizedImg {
 
         println!("cargo:warning=Converting image {}", asset_name);
         let mut img_rgba = ImageReader::open(file_name).unwrap().decode().unwrap();
+
         if let DynamicImage::ImageRgba8 { .. } = img_rgba {
             println!("cargo:warning= Image for '{}' is Rgba8, proceeding... ", asset_name);
         } else {
@@ -76,27 +75,29 @@ impl PalettizedImg {
                     let b = buf[buf_index + 2];
                     let a = buf[buf_index + 3];
 
-                    // let rgb_color = {
                     let rgb_color = if a < 255 {
-                        RGBA12::with_transparency(0, 0, 0, 0) // Ensures all transp. color_map are always the same in the hashmap.
+                        // Ensures all transp. color_map are always the same in the hashmap.
+                        RGBA12::with_transparency(0, 0, 0, 0)
                     } else {
                         let color_32bit = RGBA32 { r, g, b, a };
                         RGBA12::from(color_32bit)
                     };
 
                     // Result
-                    if palette.color_hash.contains_key(&rgb_color) {
-                        *palette.color_hash.get(&rgb_color).unwrap()
+                    if palette.rgb_to_index.contains_key(&rgb_color) {
+                        *palette.rgb_to_index.get(&rgb_color).unwrap()
                     } else {
                         // TODO: Error message here if palette is too large
-                        let color_head = u8::try_from(palette.color_hash.len()).ok().unwrap();
+                        let color_head = u8::try_from(palette.rgb_to_index.len()).ok().unwrap();
                         println!(
-                            "cargo:warning= Inserting Palette {:02} -> {:02}: {:?}",
+                            "cargo:warning= Inserting Palette {:02} -> {:02}: {},{},{}",
                             palette.id(),
                             color_head,
-                            rgb_color
+                            rgb_color.r(),
+                            rgb_color.g(),
+                            rgb_color.b()
                         );
-                        palette.color_hash.insert(rgb_color, color_head);
+                        palette.rgb_to_index.insert(rgb_color, color_head);
                         palette.push(rgb_color);
                         color_head
                     }

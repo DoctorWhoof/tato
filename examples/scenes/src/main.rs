@@ -9,6 +9,10 @@ use tato::{arena::Arena, prelude::*};
 
 use tato_raylib::*;
 
+// Color mappings. Mappings 2 to 15 map default colors to index 2 (gray)
+const MAP_SHADOW: u8 = 0;
+const MAP_CYCLE: u8 = 1;
+
 #[derive(Debug, Clone)]
 pub struct State {
     pub pad: AnaloguePad,
@@ -23,7 +27,7 @@ pub struct Entity {
     pub y: f32,
     tile: TileID,
     flags: TileFlags,
-    sub_palette: PaletteID,
+    color_mapping: u8,
 }
 
 // Selects a scene to change into
@@ -56,13 +60,6 @@ fn main() -> TatoResult<()> {
         elapsed: 0.0,
         bg: Tilemap::<1600>::new(42, 28),
     };
-
-    // Line scrolling effect, adjusts scroll on every line
-    tato.video.irq_line = Some(|iter, video, _bg| {
-        let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;
-        let phase = ((video.frame_number() as f32 / 30.0) + line_offset).sin();
-        iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
-    });
 
     // Backend
     let target_fps = 60.0;

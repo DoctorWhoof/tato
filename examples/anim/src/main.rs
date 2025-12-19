@@ -103,7 +103,7 @@ fn main() -> TatoResult<()> {
             }
 
             // Draw!
-            tato.draw_anim(
+            tato.draw_anim_to_fg(
                 entity.anim,
                 SpriteBundle { x: entity.x, y: entity.y, flip_x: entity.flip, flip_y: false },
             );
