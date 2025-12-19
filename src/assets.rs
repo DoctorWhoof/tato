@@ -439,9 +439,52 @@ impl Tato {
         Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
-    // pub fn get_anim_frame(&self, anim_id:AnimID, frame: u8) {
+    pub fn get_anim_frame_tilemap(&self, anim_id: AnimID, frame_index: usize) -> TatoResult<TilemapRef<'_>> {
+        // Get the animation entry
+        let anim_entry = self
+            .assets
+            .anim_entries
+            .get(anim_id.0 as usize)
+            .ok_or(TatoError::InvalidAnimId(anim_id.0))?;
 
-    // }
+        // Get the frame value from the animation's frame array
+        let frames = self.assets.arena.get_slice(&anim_entry.frames).map_err(TatoError::Arena)?;
+        let frame_value = frames
+            .get(frame_index)
+            .ok_or(TatoError::InvalidFrameIndex {
+                frame: frame_index as u8,
+                max_frames: frames.len() as u8,
+            })?;
+
+        // Get the strip entry to find where the tilemaps are stored
+        let strip_entry = self
+            .assets
+            .strip_entries
+            .get(anim_entry.strip.0 as usize)
+            .ok_or(TatoError::InvalidStripId(anim_entry.strip.0))?;
+
+        // Calculate the actual tilemap index
+        let map_index = strip_entry.start_index + frame_value;
+
+        // Get the tilemap
+        self.get_tilemap(MapID(map_index))
+    }
+
+    /// Gets the tilemap for the current frame of an animation based on the video chip's
+    /// internal frame counter.
+    pub fn get_current_anim_tilemap(&self, anim_id: AnimID) -> TatoResult<TilemapRef<'_>> {
+        // AnimID(0) means no animation
+        if anim_id.0 == 0 {
+            return Err(TatoError::InvalidAnimId(0));
+        }
+
+        // Calculate current frame index based on animation timing
+        // This uses the public get_anim_frame method from graphics.rs
+        let frame_index = self.get_anim_frame(anim_id);
+
+        // Get the tilemap for that frame
+        self.get_anim_frame_tilemap(anim_id, frame_index)
+    }
 
     // pub fn get_animation(&self, anim_id: AnimID) -> AnimRef {
     //     let entry = &self.assets.anim_entries[anim_id.0 as usize];
@@ -470,9 +513,9 @@ mod tests {
         let frame = tato.get_anim_frame(default_anim);
         assert_eq!(frame, 0); // Should return 0 for "no animation"
 
-        // Test that draw_anim handles AnimID(0) gracefully (no panic)
+        // Test that draw_anim_to_fg handles AnimID(0) gracefully (no panic)
         let bundle = SpriteBundle { x: 0, y: 0, flip_x: false, flip_y: false };
-        tato.draw_anim(default_anim, bundle);
+        tato.draw_anim_to_fg(default_anim, bundle);
         // If we reach here without panic, the test passes
     }
 
@@ -488,5 +531,22 @@ mod tests {
         // Verify that after "allocation", head is updated correctly
         assets.anim_head = next_index;
         assert_eq!(assets.anim_head, 1);
+    }
+
+    #[test]
+    fn test_get_anim_frame_tilemap() {
+        let tato = crate::Tato::new(160, 144, 60);
+
+        // Test that AnimID(0) returns error for get_current_anim_tilemap
+        let no_anim = AnimID(0);
+        let result = tato.get_current_anim_tilemap(no_anim);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), TatoError::InvalidAnimId(0));
+
+        // Test that uninitialized AnimID returns error
+        // Note: We use ID 1 which is valid range but uninitialized
+        let uninit_anim = AnimID(1);
+        let result = tato.get_anim_frame_tilemap(uninit_anim, 0);
+        assert!(result.is_err());
     }
 }

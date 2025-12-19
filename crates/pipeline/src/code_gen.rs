@@ -6,56 +6,10 @@ pub struct CodeWriter {
     indentation: usize,
 }
 
-// Code generation now creates `static` items with automatic platform-specific `link_section` attributes
-// for optimal bare-metal/embedded usage:
-//
-// - `static` provides stable memory addresses and single instance in memory
-// - `link_section` allows placement in read-only sections that stay in flash/ROM
-// - Automatically uses ".rodata" for ELF targets (Linux, embedded)
-// - Automatically uses "__DATA,__const" for macOS (Mach-O format)
-// - Automatically uses ".rdata" for Windows (PE/COFF format)
-// - Data is loaded on-demand rather than eagerly into RAM
-//
-// Note: indentation is now handled by simply calling rustfmt after generating code!
-
-
-
 /// Formats a Cell using the compact Cell::new() constructor syntax
 pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
     format!("Cell::new({}, {}, {}, {})", cell.id.0, cell.flags.0, cell.color_mapping, cell.group)
 }
-
-// /// Formats a Tile using the compact Tile::new() constructor syntax for 4-bit pixels
-// pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
-//     assert_eq!(tile_pixels.len(), 64, "Tile must have exactly 64 pixels");
-
-//     let mut data = [0u64; 4];
-
-//     // With 4 bits per pixel and 8x8 tile:
-//     // - Each pixel uses 4 bits
-//     // - Each row has 8 pixels = 32 bits
-//     // - Each u64 can hold 2 rows (64 bits / 32 bits per row)
-//     // - data[0] = rows 0-1, data[1] = rows 2-3, data[2] = rows 4-5, data[3] = rows 6-7
-
-//     for row in 0..8 {
-//         for col in 0..8 {
-//             let pixel_idx = row * 8 + col;
-//             let pixel_val = tile_pixels[pixel_idx] & 0x0F; // Ensure 4-bit pixel (0-15)
-
-//             // Determine which u64 this pixel belongs to
-//             let data_idx = row / 2; // Which of the 4 u64s (0-3)
-
-//             // Position within that u64
-//             let row_in_u64 = row % 2;
-//             let bit_position = (1 - row_in_u64) * 32 + (7 - col) * 4; // MSB first
-
-//             data[data_idx] |= (pixel_val as u64) << bit_position;
-//         }
-//     }
-
-//     format!("Tile::new(0x{:016X}, 0x{:016X}, 0x{:016X}, 0x{:016X})",
-//             data[0], data[1], data[2], data[3])
-// }
 
 /// Formats a Tile using the compact Tile::new() constructor syntax for 4-bit pixels
 pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
@@ -67,7 +21,6 @@ pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
     // - Each row (cluster) has 8 pixels = 32 bits = 4 bytes
     // - Each u64 can hold 2 clusters (8 bytes)
     // - data[0] = rows 0-1, data[1] = rows 2-3, data[2] = rows 4-5, data[3] = rows 6-7
-
     for row in 0..8 {
         // Determine which u64 this row belongs to
         let data_idx = row / 2;

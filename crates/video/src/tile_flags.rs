@@ -128,7 +128,6 @@ impl TileFlags {
 
     pub fn rotate_up(&mut self) {
         self.0 &= 0b_0001_1111; // clear flags
-        // self.0 |= 0b_0000_0000; // set flags
     }
 
     pub fn rotate_left(&mut self) {
@@ -147,26 +146,22 @@ impl TileFlags {
     }
 
     /// Current horizontal flip state.
-    // First bit stores whether the tile is flipped horizontally
     pub const fn is_flipped_x(&self) -> bool {
         self.0 & FLAG_FLIP_H != 0
     }
 
     /// Current vertical flip state.
-    // Second bit stores whether the tile is flipped vertically
     pub const fn is_flipped_y(&self) -> bool {
         self.0 & FLAG_FLIP_V != 0
     }
 
     /// Current rotation state.
-    // third bit
     pub const fn is_rotated(&self) -> bool {
         self.0 & FLAG_ROTATED != 0
     }
 
     /// If true and this is a BG tile, it will be rendered in front of sprites.
     /// This value is ignored when used on sprites.
-    // fourth bit
     pub const fn is_fg(&self) -> bool {
         self.0 & FLAG_FG != 0
     }

@@ -1,8 +1,6 @@
 use image::{DynamicImage, ImageReader};
 use tato_video::*;
 
-// use crate::*;
-
 use super::*;
 
 /// Stores a palettized version of an image as well as layout data (frame count, columns and rows per frame).
@@ -32,6 +30,7 @@ impl PalettizedImg {
 
         println!("cargo:warning=Converting image {}", asset_name);
         let mut img_rgba = ImageReader::open(file_name).unwrap().decode().unwrap();
+
         if let DynamicImage::ImageRgba8 { .. } = img_rgba {
             println!("cargo:warning= Image for '{}' is Rgba8, proceeding... ", asset_name);
         } else {

@@ -34,35 +34,34 @@ impl Tato {
 
     /// Draws a sprite's current frame (calculated using the video chip's
     /// internal time counter).
-    pub fn draw_anim(&mut self, anim: AnimID, bundle: SpriteBundle) {
-        // AnimID(0) means no animation - don't draw anything
-        if anim.0 == 0 {
-            return;
-        }
-        let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
-            return;
+    pub fn draw_anim_to_fg(&mut self, anim: AnimID, bundle: SpriteBundle) {
+        if let Some(map_entry) = self.get_sprite_tilemap_entry(anim) {
+            if let Ok(cells) = self.assets.arena.get_slice(&map_entry.cells) {
+                self.video.draw_sprite(
+                    bundle,
+                    &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },
+                );
+            };
         };
-        let Some(strip_entry) = self.assets.strip_entries.get(anim_entry.strip.0 as usize) else {
-            return;
+    }
+
+    // TODO: Implement flipping
+    pub fn draw_anim_to_bg<const LEN: usize>(
+        &self,
+        dest: &mut Tilemap<LEN>,
+        anim: AnimID,
+        bundle: SpriteBundle,
+    ) {
+        if let Some(map_entry) = self.get_sprite_tilemap_entry(anim) {
+            let Some(src) = map_entry.to_ref(&self.assets.arena) else {
+                println!("Invalid map entry from {:?}", anim);
+                return;
+            };
+            let col = (bundle.x / TILE_SIZE as i16) as u16;
+            let row = (bundle.y / TILE_SIZE as i16) as u16;
+            let dst_rect = Rect { x: col, y: row, w: src.columns, h: src.rows };
+            dest.copy_from(&src, None, Some(dst_rect));
         };
-
-        let base_index = self.get_frame_from_anim_entry(anim_entry);
-        let Ok(frames) = self.assets.arena.get_slice(&anim_entry.frames) else { return };
-        let Some(anim_index) = frames.get(base_index) else { return };
-        let start_index = strip_entry.start_index;
-        let index = start_index + anim_index;
-        let Some(map_entry) = self.assets.map_entries.get(index as usize) else { return };
-
-        debug_assert!(
-            (index as usize) < strip_entry.start_index as usize + strip_entry.frame_count as usize,
-            err!("Animation frame exceeds strip length")
-        );
-
-        let Ok(cells) = self.assets.arena.get_slice(&map_entry.cells) else { return };
-        self.video.draw_sprite(
-            bundle,
-            &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },
-        );
     }
 
     /// Draws a "patch" (sometimes called "9-Patch") into a tilemap.
@@ -74,7 +73,6 @@ impl Tato {
         bg_rect: Rect<i16>,
         patch_id: MapID,
     ) {
-        // let map = &self.assets.map_entries[map_id.0 as usize];
         let Ok(map) = self.get_tilemap(patch_id) else { return };
 
         if map.columns != 3 || map.rows != 3 {
@@ -87,7 +85,7 @@ impl Tato {
             row: bg_rect.y,
             tile_id: top_left.id,
             flags: top_left.flags,
-            color_mapping: top_left.color_mapping
+            color_mapping: top_left.color_mapping,
         });
 
         if (bg_rect.x as usize + bg_rect.w as usize) >= u16::MAX as usize {
@@ -238,6 +236,24 @@ impl Tato {
 
         // If successful, return number of lines written
         Some(cursor_y + 1)
+    }
+
+    #[inline(always)]
+    fn get_sprite_tilemap_entry(&self, anim: AnimID) -> Option<TilemapEntry> {
+        if anim.0 == 0 {
+            // AnimID(0) means no animation
+            return None;
+        }
+        let anim_entry = self.assets.anim_entries.get(anim.0 as usize)?;
+        let strip_entry = self.assets.strip_entries.get(anim_entry.strip.0 as usize)?;
+
+        let base_index = self.get_frame_from_anim_entry(anim_entry);
+        let frames = self.assets.arena.get_slice(&anim_entry.frames).ok()?;
+        let anim_index = frames.get(base_index)?;
+        let start_index = strip_entry.start_index;
+        let index = start_index + anim_index;
+        let map_entry = self.assets.map_entries.get(index as usize)?;
+        Some(*map_entry)
     }
 
     // Internal way to get the current frame from an already obtained AnimEntry

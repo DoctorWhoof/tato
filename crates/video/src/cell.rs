@@ -20,10 +20,12 @@ impl Cell {
         }
     }
 
-    pub const fn with_id(self, id:u8) -> Self {
+    pub const fn with_id(id:u8) -> Self {
         Self {
             id: TileID(id),
-            .. self
+            flags: TileFlags::new(false, false, false, false),
+            color_mapping: 0,
+            group: 0
         }
     }
 }

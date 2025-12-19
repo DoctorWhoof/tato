@@ -36,6 +36,8 @@ pub enum TatoError {
     AnimationCapacityExceeded,
     /// Animation capacity reached (255 max)
     AnimationCapacityReached,
+    /// Invalid animation ID
+    InvalidAnimId(u8),
     /// Invalid strip ID
     InvalidStripId(u8),
     /// Invalid frame index for animation
@@ -96,6 +98,7 @@ impl fmt::Display for TatoError {
             },
             TatoError::AnimationCapacityExceeded => write!(f, "Animation capacity exceeded"),
             TatoError::AnimationCapacityReached => write!(f, "Animation capacity reached"),
+            TatoError::InvalidAnimId(id) => write!(f, "Invalid animation ID: {}", id),
             TatoError::InvalidStripId(id) => write!(f, "Invalid strip ID: {}", id),
             TatoError::InvalidFrameIndex { frame, max_frames } => {
                 write!(f, "Invalid frame index {} (max frames: {})", frame, max_frames)
