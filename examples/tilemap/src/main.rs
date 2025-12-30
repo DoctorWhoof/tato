@@ -27,7 +27,7 @@ fn main() -> TatoResult<()> {
 
     let tileset_patch = tato.push_tileset(0, PATCH_TILESET)?;
     let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP)?;
-    tato.draw_patch(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, map_patch);
+    tato.draw_patch_3x3(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, map_patch);
 
     let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
     let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;

@@ -182,7 +182,6 @@ where
     }
 
 
-
     pub fn contains(&self, x: T, y: T) -> bool {
         x >= self.x && x <= self.x + self.w && y >= self.y && y <= self.y + self.h
     }
@@ -241,4 +240,23 @@ where
             h: self.h + (other.h - self.h) * t,
         }
     }
+
+    pub fn floor(&self) -> Self {
+        Rect {
+            x: self.x.floor(),
+            y: self.y.floor(),
+            w: self.w.floor(),
+            h: self.h.floor(),
+        }
+    }
+
+    pub fn ceil(&self) -> Self {
+        Rect {
+            x: self.x.ceil(),
+            y: self.y.ceil(),
+            w: self.w.ceil(),
+            h: self.h.ceil(),
+        }
+    }
+
 }

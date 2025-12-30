@@ -4,9 +4,7 @@
 use crate::arena::{Arena, ArenaId, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
-use crate::video::{
-    COLORS_PER_PALETTE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank,
-};
+use crate::video::{COLORS_PER_PALETTE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank};
 
 mod command;
 pub use command::*;
@@ -182,6 +180,12 @@ impl Dashboard {
     /// in a list so it can be drawn when "render" is called.
     pub fn str(&mut self, text: &str) {
         let text = Text::from_str(&mut self.debug_arena, text).unwrap();
+        self.debug_text.push(&mut self.debug_arena, text).unwrap();
+    }
+
+    /// Presents a pre-formatted, arena allocated text
+    pub fn text(&mut self, text: Text) {
+        // Set to crash if arena fails, for now. TODO: Remove unwraps, maybe return result.
         self.debug_text.push(&mut self.debug_arena, text).unwrap();
     }
 

@@ -64,38 +64,37 @@ impl Tato {
         };
     }
 
-    /// Draws a "patch" (sometimes called "9-Patch") into a tilemap.
-    /// Patches are always 3x3 tilemaps, where each cell
-    /// can represent a corner, and edge or the center tile.
-    pub fn draw_patch<const LEN: usize>(
+    /// Draws a "3x3 patch" (sometimes called "9-Patch") into a tilemap.
+    /// Each cell can represent a corner, an edge or the center tile.
+    /// The pattern is:
+    /// top_left,    top,        top_right,
+    /// left,        center,     right,
+    /// bottom_left, bottom,     bottom_right
+    pub fn draw_patch_3x3<const LEN: usize>(
         &mut self,
         bg: &mut Tilemap<LEN>,
-        bg_rect: Rect<i16>,
+        rect: Rect<i16>,
         patch_id: MapID,
     ) {
         let Ok(map) = self.get_tilemap(patch_id) else { return };
 
-        if map.columns != 3 || map.rows != 3 {
-            return; // Silently return for invalid patch dimensions
-        }
+        debug_assert!(map.columns == 3 && map.rows == 3, "invalid patch dimensions");
 
         let top_left = map.cells[0];
         bg.set_op(BgOp {
-            col: bg_rect.x,
-            row: bg_rect.y,
+            col: rect.x,
+            row: rect.y,
             tile_id: top_left.id,
             flags: top_left.flags,
             color_mapping: top_left.color_mapping,
         });
 
-        if (bg_rect.x as usize + bg_rect.w as usize) >= u16::MAX as usize {
-            return; // Prevent overflow
-        }
+        let high_x = (rect.x + rect.w).min(i16::MAX); // Prevent overflow
         let top = map.cells[1];
-        for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
+        for col in rect.x + 1..high_x {
             bg.set_op(BgOp {
                 col,
-                row: bg_rect.y,
+                row: rect.y,
                 tile_id: top.id,
                 flags: top.flags,
                 color_mapping: top.color_mapping,
@@ -104,8 +103,8 @@ impl Tato {
 
         let top_right = map.cells[2];
         bg.set_op(BgOp {
-            col: bg_rect.x + bg_rect.w,
-            row: bg_rect.y,
+            col: rect.x + rect.w,
+            row: rect.y,
             tile_id: top_right.id,
             flags: top_right.flags,
             color_mapping: top_right.color_mapping,
@@ -113,9 +112,9 @@ impl Tato {
 
         let left = map.cells[3];
 
-        for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
+        for row in rect.y + 1..rect.y + rect.h {
             bg.set_op(BgOp {
-                col: bg_rect.x,
+                col: rect.x,
                 row,
                 tile_id: left.id,
                 flags: left.flags,
@@ -123,12 +122,10 @@ impl Tato {
             });
         }
 
-        if (bg_rect.y as usize + bg_rect.h as usize) >= u16::MAX as usize {
-            return; // Prevent overflow
-        }
+        let high_y = (rect.y + rect.h).min(i16::MAX); // Prevent overflow
         let center = map.cells[4];
-        for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
-            for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
+        for row in rect.y + 1..high_y {
+            for col in rect.x + 1..high_x {
                 bg.set_op(BgOp {
                     col,
                     row,
@@ -140,9 +137,9 @@ impl Tato {
         }
 
         let right = map.cells[5];
-        for row in bg_rect.y + 1..bg_rect.y + bg_rect.h {
+        for row in rect.y + 1..high_y {
             bg.set_op(BgOp {
-                col: bg_rect.x + bg_rect.w,
+                col: high_x,
                 row,
                 tile_id: right.id,
                 flags: right.flags,
@@ -152,18 +149,18 @@ impl Tato {
 
         let bottom_left = map.cells[6];
         bg.set_op(BgOp {
-            col: bg_rect.x,
-            row: bg_rect.y + bg_rect.h,
+            col: rect.x,
+            row: high_y,
             tile_id: bottom_left.id,
             flags: bottom_left.flags,
             color_mapping: bottom_left.color_mapping,
         });
 
         let bottom = map.cells[7];
-        for col in bg_rect.x + 1..bg_rect.x + bg_rect.w {
+        for col in rect.x + 1..high_x {
             bg.set_op(BgOp {
                 col,
-                row: bg_rect.y + bg_rect.h,
+                row: high_y,
                 tile_id: bottom.id,
                 flags: bottom.flags,
                 color_mapping: bottom.color_mapping,
@@ -172,13 +169,54 @@ impl Tato {
 
         let bottom_right = map.cells[8];
         bg.set_op(BgOp {
-            col: bg_rect.x + bg_rect.w,
-            row: bg_rect.y + bg_rect.h,
+            col: high_x,
+            row: high_y,
             tile_id: bottom_right.id,
             flags: bottom_right.flags,
             color_mapping: bottom.color_mapping,
         });
     }
+
+    // // UNTESTED
+    // /// Draws a "patch" with a single row of tiles into a tilemap.
+    // /// The pattern is:
+    // /// [top, bottom],
+    // /// where middle is optional
+    // pub fn draw_patch_1x2<const LEN: usize>(
+    //     &mut self,
+    //     bg: &mut Tilemap<LEN>,
+    //     rect: Rect<i16>,
+    //     patch_id: MapID,
+    // ) {
+    //     let Ok(map) = self.get_tilemap(patch_id) else { return };
+
+    //     debug_assert!(map.columns == 1 && map.rows == 2, "invalid patch dimensions");
+
+    //     let high_x = (rect.x + rect.w).min(i16::MAX); // Prevent overflow
+    //     let high_y = (rect.y + rect.h).min(i16::MAX); // Prevent overflow
+
+    //     let top = map.cells[0];
+    //     for col in rect.x + 1..high_x {
+    //         bg.set_op(BgOp {
+    //             col,
+    //             row: rect.y,
+    //             tile_id: top.id,
+    //             flags: top.flags,
+    //             color_mapping: top.color_mapping,
+    //         });
+    //     }
+
+    //     let bottom = map.cells[1];
+    //     for col in rect.x + 1..high_x {
+    //         bg.set_op(BgOp {
+    //             col,
+    //             row: high_y,
+    //             tile_id: bottom.id,
+    //             flags: bottom.flags,
+    //             color_mapping: bottom.color_mapping,
+    //         });
+    //     }
+    // }
 
     /// Draws a text string to a target Tilemap, using a tilemap as a character font.
     /// Returns the resulting height (in rows), if any.
