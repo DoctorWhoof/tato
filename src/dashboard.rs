@@ -1,7 +1,7 @@
 //! Generates the "Dashboard" UI, working in tandem with a Backend.
 //! Provides a buffer of DrawOps that the Backend can render, as well as a buffer of Console commands.
 
-use crate::arena::{Arena, ArenaId, ArenaRes, Buffer, Text};
+use crate::arena::{Arena, ArenaId, ArenaOps, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
 use crate::video::{COLORS_PER_PALETTE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank};
@@ -147,7 +147,7 @@ impl Dashboard {
     ) -> ArenaRes<impl Iterator<Item = &'a DrawOp>> {
         self.ops
             .items(frame_arena) //
-            .map(|iter| iter.filter_map(|id| frame_arena.get(id).ok()))
+            .map(|iter| iter.filter_map(|id| frame_arena.get(id.clone()).ok()))
     }
 
     /// If a console command has been processed this frame it is returned here.
@@ -214,9 +214,9 @@ impl Dashboard {
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
     pub fn poly(&mut self, points: &[Vec2<i16>], color: RGBA12, world_space: bool) {
-        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points.len()).unwrap();
+        let handle = self.debug_arena.alloc_slice::<Vec2<i16>>(points).unwrap();
         let color = self.debug_arena.alloc(color).unwrap();
-        let slice = self.debug_arena.get_slice_mut(&handle).unwrap();
+        let slice = self.debug_arena.get_slice_mut(handle).unwrap();
         slice.copy_from_slice(points);
         let poly = Polygon { points: handle, color };
         if world_space {

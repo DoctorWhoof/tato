@@ -9,8 +9,8 @@ impl Dashboard {
     ) {
         // Generate ops for debug polygons
         for all_polys in self.debug_polys_gui.items(&self.debug_arena).unwrap() {
-            let poly = self.debug_arena.get_slice(&all_polys.points).unwrap();
-            let color:RGBA32 = self.debug_arena.get(&all_polys.color)
+            let poly = self.debug_arena.get_slice(all_polys.points).unwrap();
+            let color:RGBA32 = self.debug_arena.get(all_polys.color)
                 .copied()
                 .unwrap()
                 .into();
@@ -36,8 +36,8 @@ impl Dashboard {
         if let Some(canvas_rect) = self.canvas_rect {
             let video_size = tato.video.size();
             for all_polys in self.debug_polys_world.items(&self.debug_arena).unwrap() {
-                let world_poly = self.debug_arena.get_slice(&all_polys.points).unwrap();
-                let color:RGBA32 = self.debug_arena.get(&all_polys.color)
+                let world_poly = self.debug_arena.get_slice(all_polys.points).unwrap();
+                let color:RGBA32 = self.debug_arena.get(all_polys.color)
                     .copied()
                     .unwrap()
                     .into();

@@ -478,12 +478,12 @@ impl Backend for MquadBackend {
 
         // Execute draw ops
         for id in self.draw_ops.drain(frame_arena) {
-            let cmd = frame_arena.get(&id).unwrap();
+            let cmd = frame_arena.get(id).unwrap();
             process_draw_ops(cmd);
         }
 
         for id in self.draw_ops_additional.drain(frame_arena) {
-            let cmd = frame_arena.get(&id).unwrap();
+            let cmd = frame_arena.get(id).unwrap();
             process_draw_ops(cmd);
         }
 

@@ -1,5 +1,5 @@
 use tato::default_assets::*;
-use tato::{arena::Arena, prelude::*};
+use tato::{arena::{Arena, ArenaOps}, prelude::*};
 use tato_raylib::*;
 
 fn main() -> TatoResult<()> {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{ArenaErr, ArenaRes};
+use crate::{ArenaErr, ArenaOps, ArenaRes};
 use core::slice::Iter;
 
 mod drain;
@@ -28,7 +28,7 @@ where
         arena: &mut Arena<LEN, I, M>,
         capacity: I,
     ) -> ArenaRes<Self> {
-        let slice = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
+        let (slice, _) = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
         Ok(Self { slice, len: I::zero() })
     }
 
@@ -79,7 +79,7 @@ where
         if self.len >= self.slice.capacity() {
             return Err(ArenaErr::CapacityExceeded);
         }
-        let slice = arena.get_slice_mut(&self.slice)?;
+        let slice = arena.get_slice_mut(self.slice.clone())?;
         slice[self.len.to_usize()] = value;
         self.len += I::one();
         Ok(())
@@ -97,7 +97,7 @@ where
         }
 
         self.len -= I::one();
-        let slice = arena.get_slice(&self.slice).expect("Buffer slice should always be valid");
+        let slice = arena.get_slice(self.slice.clone()).expect("Buffer slice should always be valid");
         Some(slice[self.len.to_usize()])
     }
 
@@ -118,7 +118,7 @@ where
             return;
         }
         if new_len >= self.len {
-            if let Ok(slice) = arena.get_slice_mut(&self.slice) {
+            if let Ok(slice) = arena.get_slice_mut(self.slice.clone()) {
                 for item in slice {
                     *item = T::default()
                 }
@@ -131,7 +131,7 @@ where
         &self,
         arena: &'a Arena<LEN, I, M>,
     ) -> ArenaRes<&'a [T]> {
-        let full_slice = arena.get_slice(&self.slice)?;
+        let full_slice = arena.get_slice(self.slice.clone())?;
         Ok(&full_slice[..self.len.to_usize()])
     }
 
@@ -139,7 +139,7 @@ where
         &self,
         arena: &'a mut Arena<LEN, I, M>,
     ) -> ArenaRes<&'a mut [T]> {
-        let full_slice = arena.get_slice_mut(&self.slice)?;
+        let full_slice = arena.get_slice_mut(self.slice.clone())?;
         Ok(&mut full_slice[..self.len.to_usize()])
     }
 
@@ -159,7 +159,7 @@ where
             core::mem::MaybeUninit::<Buffer<T, I, M>>::uninit()
         })?;
         let temp_ptr =
-            arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, I, M>;
+            arena.get_slice_mut(temp_slice)?.as_mut_ptr() as *mut Buffer<T, I, M>;
 
         // Initialize each buffer in the temporary space
         for i in 0..sub_buffer_count.to_usize() {
@@ -178,7 +178,7 @@ where
         &self,
         arena: &'a Arena<LEN, I, M>,
     ) -> ArenaRes<Iter<'a, T>> {
-        arena.iter_slice_range(&self.slice, I::zero(), self.len)
+        arena.iter_slice_range(self.slice.clone(), 0, self.len.to_usize())
     }
 
     pub fn drain<'a, const LEN: usize>(

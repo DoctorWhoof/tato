@@ -5,7 +5,7 @@ mod scene_c;
 use scene_a::*;
 use scene_b::*;
 use scene_c::*;
-use tato::{arena::Arena, prelude::*};
+use tato::{arena::{Arena, ArenaOps}, prelude::*};
 
 use tato_raylib::*;
 

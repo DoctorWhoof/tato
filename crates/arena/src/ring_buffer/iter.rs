@@ -1,4 +1,5 @@
 use super::*;
+use crate::ArenaOps;
 use core::marker::PhantomData;
 
 pub struct RingBufferIterator<'a, T, const LEN: usize, I, M> {
@@ -49,7 +50,7 @@ where
         }
 
         let slice_ref = Slice::new(self.slice_offset, self.slice_len, self.slice_generation, self.slice_arena_id);
-        let slice = self.arena.get_slice(&slice_ref).ok()?;
+        let slice = self.arena.get_slice(slice_ref).ok()?;
         let capacity = self.slice_len.to_usize();
         let physical_index = (self.head.to_usize() + self.current) % capacity;
 
@@ -84,7 +85,7 @@ where
         self.back -= 1;
 
         let slice_ref = Slice::new(self.slice_offset, self.slice_len, self.slice_generation, self.slice_arena_id);
-        let slice = self.arena.get_slice(&slice_ref).ok()?;
+        let slice = self.arena.get_slice(slice_ref).ok()?;
         let capacity = self.slice_len.to_usize();
         let physical_index = (self.head.to_usize() + self.back) % capacity;
 

@@ -1,5 +1,5 @@
 #![no_std]
-use tato::{arena::Arena, default_assets::*, prelude::*};
+use tato::{arena::{Arena, ArenaOps}, default_assets::*, prelude::*};
 use tato_raylib::RayBackend;
 
 const COLUMNS: usize = 40;

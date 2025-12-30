@@ -3,6 +3,8 @@ pub use text::*;
 
 use crate::prelude::*;
 
+use arena::ArenaOps;
+
 /// Drawing functions and graphics helpers.
 impl Tato {
     /// Obtains the frame index on a given Animation based on the video chip's
@@ -36,7 +38,7 @@ impl Tato {
     /// internal time counter).
     pub fn draw_anim_to_fg(&mut self, anim: AnimID, bundle: SpriteBundle) {
         if let Some(map_entry) = self.get_sprite_tilemap_entry(anim) {
-            if let Ok(cells) = self.assets.arena.get_slice(&map_entry.cells) {
+            if let Ok(cells) = self.assets.arena.get_slice(map_entry.cells) {
                 self.video.draw_sprite(
                     bundle,
                     &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },
@@ -286,7 +288,7 @@ impl Tato {
         let strip_entry = self.assets.strip_entries.get(anim_entry.strip.0 as usize)?;
 
         let base_index = self.get_frame_from_anim_entry(anim_entry);
-        let frames = self.assets.arena.get_slice(&anim_entry.frames).ok()?;
+        let frames = self.assets.arena.get_slice(anim_entry.frames).ok()?;
         let anim_index = frames.get(base_index)?;
         let start_index = strip_entry.start_index;
         let index = start_index + anim_index;

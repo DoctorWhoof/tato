@@ -1,5 +1,5 @@
 use super::*;
-use crate::{ArenaErr, ArenaRes};
+use crate::{ArenaErr, ArenaOps, ArenaRes};
 
 mod iter;
 pub use iter::*;
@@ -33,7 +33,7 @@ where
         arena: &mut Arena<LEN, I, M>,
         capacity: I,
     ) -> ArenaRes<Self> {
-        let slice = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
+        let (slice, _) = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
         Ok(Self {
             slice,
             head: I::zero(),
@@ -81,7 +81,7 @@ where
             return Err(ArenaErr::UnnallocatedObject);
         }
         let tail = self.tail_index();
-        let slice = arena.get_slice_mut(&self.slice)?;
+        let slice = arena.get_slice_mut(self.slice.clone())?;
         slice[tail.to_usize()] = value;
 
         if self.is_full() {
@@ -106,7 +106,7 @@ where
         }
 
         let tail = self.tail_index();
-        let slice = arena.get_slice_mut(&self.slice)?;
+        let slice = arena.get_slice_mut(self.slice.clone())?;
         slice[tail.to_usize()] = value;
         self.len += I::one();
         Ok(())
@@ -124,7 +124,7 @@ where
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).expect("RingBuffer slice should always be valid");
+        let slice = arena.get_slice(self.slice.clone()).expect("RingBuffer slice should always be valid");
         let value = slice[self.head.to_usize()];
 
         let capacity = self.slice.capacity().to_usize();
@@ -142,7 +142,7 @@ where
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).ok()?;
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
         Some(&slice[self.head.to_usize()])
     }
 
@@ -155,7 +155,7 @@ where
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).ok()?;
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
         let back_index = if self.len == I::one() {
             self.head
         } else {
@@ -177,7 +177,7 @@ where
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).ok()?;
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
         let capacity = self.slice.capacity().to_usize();
         let physical_index = (self.head.to_usize() + index.to_usize()) % capacity;
         Some(&slice[physical_index])

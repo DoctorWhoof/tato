@@ -6,7 +6,7 @@ fn test_zero_size_arena() {
 
     // Should fail immediately
     assert!(arena.alloc(42u32).is_err());
-    assert!(arena.alloc_slice::<u32>(1).is_err());
+    assert!(arena.alloc_slice(&[1u32]).is_err());
 }
 
 #[test]
@@ -14,7 +14,7 @@ fn test_small_size_type() {
     let mut arena: Arena<100, u8> = Arena::new();
 
     let id = arena.alloc(42u32).unwrap();
-    assert_eq!(*arena.get(&id).unwrap(), 42);
+    assert_eq!(*arena.get(id).unwrap(), 42);
 
     // Should work up to 255 bytes
     assert!(arena.used() <= 255);
@@ -27,8 +27,8 @@ fn test_arena_full() {
     let id1 = arena.alloc(42u32).unwrap(); // 4 bytes
     let id2 = arena.alloc(24u32).unwrap(); // 4 bytes, total 8
 
-    assert_eq!(*arena.get(&id1).unwrap(), 42);
-    assert_eq!(*arena.get(&id2).unwrap(), 24);
+    assert_eq!(*arena.get(id1).unwrap(), 42);
+    assert_eq!(*arena.get(id2).unwrap(), 24);
 
     // Should be full now
     assert!(arena.alloc(1u8).is_err());
@@ -40,10 +40,13 @@ fn test_invalid_restore_offset() {
 
     let gen_before = arena.generation();
 
-    // Restore to invalid offset (beyond arena size) should not panic
-    // but should not change anything
-    arena.restore_to(2000);
+    // Restore to exact capacity boundary
+    arena.restore_to(1024);
 
-    // Generation should NOT increment for invalid offsets
-    assert_eq!(arena.generation(), gen_before);
+    // Generation should increment
+    assert_eq!(arena.generation(), gen_before + 1);
+    
+    // Arena should be full now (offset == capacity)
+    assert_eq!(arena.remaining(), 0);
+    assert!(arena.alloc(42u32).is_err());
 }

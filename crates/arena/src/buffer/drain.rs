@@ -1,4 +1,5 @@
 use super::*;
+use crate::ArenaOps;
 
 pub struct DrainIterator<'a, T, const LEN: usize, I = u32, M = ()> {
     pub(super) arena: &'a Arena<LEN, I, M>,
@@ -18,7 +19,7 @@ where
             return None;
         }
 
-        let slice = self.arena.get_slice(&self.slice).ok()?;
+        let slice = self.arena.get_slice(self.slice.clone()).ok()?;
         let value = unsafe { core::ptr::read(&slice[self.current]) };
         self.current += 1;
         Some(value)

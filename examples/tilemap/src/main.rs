@@ -1,4 +1,4 @@
-use tato::{arena::Arena, prelude::*};
+use tato::{arena::{Arena, ArenaOps}, prelude::*};
 use tato_raylib::*;
 use tato::default_assets::*;
 

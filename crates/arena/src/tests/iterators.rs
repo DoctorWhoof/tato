@@ -4,8 +4,8 @@ use crate::Buffer;
 #[test]
 fn test_arena_iter_slice_empty() {
     let mut arena: Arena<1024> = Arena::new();
-    let empty_slice = arena.alloc_slice::<u32>(0).unwrap();
-    let iter = arena.iter_slice(&empty_slice).unwrap();
+    let empty_slice = arena.alloc_slice::<u32>(&[]).unwrap();
+    let iter = arena.iter_slice(empty_slice).unwrap();
     assert_eq!(iter.count(), 0);
 }
 
@@ -14,7 +14,7 @@ fn test_arena_iter_slice_with_elements() {
     let mut arena: Arena<1024> = Arena::new();
     let slice = arena.alloc_slice_from_fn(5, |i| i as u32 * 10).unwrap();
 
-    let mut iter = arena.iter_slice(&slice).unwrap();
+    let mut iter = arena.iter_slice(slice).unwrap();
     assert_eq!(iter.next(), Some(&0));
     assert_eq!(iter.next(), Some(&10));
     assert_eq!(iter.next(), Some(&20));
@@ -29,7 +29,7 @@ fn test_arena_iter_slice_invalid_after_clear() {
     let slice = arena.alloc_slice_from_fn(3, |i| i as u32).unwrap();
 
     arena.clear();
-    assert!(arena.iter_slice(&slice).is_err());
+    assert!(arena.iter_slice(slice).is_err());
 }
 
 #[test]
@@ -37,7 +37,7 @@ fn test_arena_iter_slice_range_full() {
     let mut arena: Arena<1024> = Arena::new();
     let slice = arena.alloc_slice_from_fn(5, |i| i as u32).unwrap();
 
-    let iter = arena.iter_slice_range(&slice, 0, 5).unwrap();
+    let iter = arena.iter_slice_range(slice, 0, 5).unwrap();
     assert_eq!(iter.count(), 5);
 }
 
@@ -46,7 +46,7 @@ fn test_arena_iter_slice_range_partial() {
     let mut arena: Arena<1024> = Arena::new();
     let slice = arena.alloc_slice_from_fn(10, |i| i as u32).unwrap();
 
-    let mut iter = arena.iter_slice_range(&slice, 2, 5).unwrap();
+    let mut iter = arena.iter_slice_range(slice, 2, 5).unwrap();
     assert_eq!(iter.next(), Some(&2));
     assert_eq!(iter.next(), Some(&3));
     assert_eq!(iter.next(), Some(&4));
@@ -58,7 +58,7 @@ fn test_arena_iter_slice_range_empty() {
     let mut arena: Arena<1024> = Arena::new();
     let slice = arena.alloc_slice_from_fn(5, |i| i as u32).unwrap();
 
-    let iter = arena.iter_slice_range(&slice, 3, 3).unwrap();
+    let iter = arena.iter_slice_range(slice, 3, 3).unwrap();
     assert_eq!(iter.count(), 0);
 }
 
@@ -68,10 +68,10 @@ fn test_arena_iter_slice_range_out_of_bounds() {
     let slice = arena.alloc_slice_from_fn(10, |i| i as u32).unwrap();
 
     // End beyond slice length
-    assert!(arena.iter_slice_range(&slice, 5, 15).is_err());
+    assert!(arena.iter_slice_range(slice, 5, 15).is_err());
 
     // Start > end
-    assert!(arena.iter_slice_range(&slice, 8, 5).is_err());
+    assert!(arena.iter_slice_range(slice, 8, 5).is_err());
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_arena_iter_slice_range_invalid_after_clear() {
     let slice = arena.alloc_slice_from_fn(5, |i| i as u32).unwrap();
 
     arena.clear();
-    assert!(arena.iter_slice_range(&slice, 0, 3).is_err());
+    assert!(arena.iter_slice_range(slice, 0, 3).is_err());
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn test_iter_enumerate_pattern() {
     let mut arena: Arena<1024> = Arena::new();
     let slice = arena.alloc_slice_from_fn(4, |i| (i + 1) * 100).unwrap();
 
-    for (i, &value) in arena.iter_slice(&slice).unwrap().enumerate() {
+    for (i, &value) in arena.iter_slice(slice).unwrap().enumerate() {
         assert_eq!(value, (i + 1) * 100);
     }
 }

@@ -1,7 +1,7 @@
 mod astro;
 
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
-use tato::{arena::Arena, prelude::*};
+use tato::{arena::{Arena, ArenaOps}, prelude::*};
 use tato_macroquad::{
     MquadBackend,
     macroquad::{

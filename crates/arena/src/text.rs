@@ -2,7 +2,7 @@
 mod debug_buffer;
 use debug_buffer::*;
 
-use crate::{Arena, ArenaErr, ArenaIndex, ArenaRes, Buffer, Slice};
+use crate::{Arena, ArenaErr, ArenaIndex, ArenaOps, ArenaRes, Buffer, Slice};
 use core::fmt::Write;
 
 /// Text stored as bytes in the arena
@@ -42,13 +42,13 @@ where
         &self,
         arena: &'a Arena<LEN, I>,
     ) -> ArenaRes<&'a [u8]> {
-        arena.get_slice(&self.slice)
+        arena.get_slice(self.slice.clone())
     }
 
     /// Get the text as &str (requires arena for safety)
     /// Returns an Error if the bytes are not valid UTF-8
     pub fn as_str<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, I>) -> ArenaRes<&'a str> {
-        let bytes = arena.get_slice(&self.slice)?;
+        let bytes = arena.get_slice(self.slice.clone())?;
         if let Ok(value) = core::str::from_utf8(bytes) {
             Ok(value)
         } else {
@@ -70,7 +70,21 @@ where
         buffer: &Buffer<u8, I>,
     ) -> ArenaRes<Self> {
         let used_len = I::from_usize_checked(buffer.len()).ok_or(ArenaErr::IndexConversion)?;
-        let slice = arena.copy_slice_via_tail(&buffer.slice, used_len)?;
+        let used_len_usize = used_len.to_usize();
+        
+        // Copy to temporary buffer to avoid borrow issues
+        let mut temp = [0u8; 4096];
+        if used_len_usize > 4096 {
+            return Err(ArenaErr::CapacityExceeded);
+        }
+        
+        {
+            let slice_content = arena.get_slice(buffer.slice.clone())?;
+            temp[..used_len_usize].copy_from_slice(&slice_content[..used_len_usize]);
+        }
+        
+        // Now allocate from the temporary buffer
+        let slice = arena.alloc_slice(&temp[..used_len_usize])?;
         Ok(Self { slice })
     }
 
@@ -134,7 +148,7 @@ where
                 let text_len = text.slice.len().to_usize();
                 if i < offset + text_len {
                     // Get the byte from this text
-                    let bytes = arena.get_slice(&text.slice).unwrap();
+                    let bytes = arena.get_slice(text.slice.clone()).unwrap();
                     return bytes[i - offset];
                 }
                 offset += text_len;
@@ -143,7 +157,7 @@ where
         })?;
 
         // Now copy from temp arena to dest arena
-        let temp_bytes = temp_arena.get_slice(&temp_slice)?;
+        let temp_bytes = temp_arena.get_slice(temp_slice.clone())?;
         let slice = arena.alloc_slice_from_fn(final_len, |i| temp_bytes[i])?;
         Ok(Self { slice })
     }
@@ -154,7 +168,7 @@ where
         slices: &[&[u8]],
     ) -> ArenaRes<Self> {
         if slices.is_empty() {
-            let empty_slice = arena.alloc_slice::<u8>(0)?;
+            let empty_slice = arena.alloc_slice::<u8>(&[])?;
             return Ok(Self { slice: empty_slice });
         }
 
