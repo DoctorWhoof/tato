@@ -460,7 +460,7 @@ impl Backend for MquadBackend {
                 }
             },
             DrawOp::Text { text, x, y, size, color } => {
-                if let Ok(text) = text.as_str(&frame_arena) {
+                if let Ok(text) = text.as_str(frame_arena) {
                     draw_text_ex(
                         text,
                         *x as f32,
@@ -477,14 +477,20 @@ impl Backend for MquadBackend {
         };
 
         // Execute draw ops
-        for id in self.draw_ops.drain(frame_arena) {
-            let cmd = frame_arena.get(id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
-        for id in self.draw_ops_additional.drain(frame_arena) {
-            let cmd = frame_arena.get(id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops_additional.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
         // Time to queue all backed drawing, does not include actual render time,

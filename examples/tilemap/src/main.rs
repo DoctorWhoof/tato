@@ -12,7 +12,7 @@ const MAP_LEN: usize = 1024;
 
 // Rects use "number of tiles" as the dimensions
 fn main() -> TatoResult<()> {
-    let mut frame_arena = Arena::<32_768, u32>::new();
+    let mut frame_arena = Arena::<65_536, u32>::new();
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
     let mut dash = Dashboard::new().unwrap();
     let mut tato = Tato::new(240, 180, 60);

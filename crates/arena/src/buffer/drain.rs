@@ -1,15 +1,20 @@
 use super::*;
 use crate::ArenaOps;
 
-pub struct DrainIterator<'a, T, const LEN: usize, I = u32, M = ()> {
-    pub(super) arena: &'a Arena<LEN, I, M>,
-    pub(super)slice: Slice<T, I, M>,
-    pub(super)current: usize,
-    pub(super)end: usize,
+pub struct DrainIterator<'a, T, A, I, M = ()>
+where
+    A: ArenaOps<I, M>,
+    I: ArenaIndex,
+{
+    pub(super) arena: &'a A,
+    pub(super) slice: Slice<T, I, M>,
+    pub(super) current: usize,
+    pub(super) end: usize,
 }
 
-impl<'a, T, const LEN: usize, I, M> Iterator for DrainIterator<'a, T, LEN, I, M>
+impl<'a, T, A, I, M> Iterator for DrainIterator<'a, T, A, I, M>
 where
+    A: ArenaOps<I, M>,
     I: ArenaIndex,
 {
     type Item = T;
@@ -31,8 +36,9 @@ where
     }
 }
 
-impl<'a, T, const LEN: usize, I, M> ExactSizeIterator for DrainIterator<'a, T, LEN, I, M>
+impl<'a, T, A, I, M> ExactSizeIterator for DrainIterator<'a, T, A, I, M>
 where
+    A: ArenaOps<I, M>,
     I: ArenaIndex,
 {
     fn len(&self) -> usize {

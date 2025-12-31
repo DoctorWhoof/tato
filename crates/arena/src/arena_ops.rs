@@ -397,4 +397,79 @@ where
             Ok(sub_slice.iter())
         }
     }
+    
+    // Internal tail allocation methods - not part of public API
+    
+    /// Allocate space from the tail (grows backwards from end).
+    /// Used internally for temporary allocations.
+    /// SAFETY: Caller must save tail position and restore it after use.
+    #[doc(hidden)]
+    #[inline]
+    fn tail_alloc_bytes_internal(&mut self, size: usize, align: usize) -> ArenaRes<*mut u8> {
+        let tail = self.tail_offset_ref().to_usize();
+        let new_tail = tail.saturating_sub(size);
+        let aligned_tail = new_tail & !(align - 1);
+        
+        if aligned_tail < self.offset_ref().to_usize() {
+            return Err(ArenaErr::OutOfSpace {
+                requested: size,
+                available: tail - self.offset_ref().to_usize(),
+            });
+        }
+        
+        *self.tail_offset_mut() = I::try_from(aligned_tail)
+            .map_err(|_| ArenaErr::IndexConversion)?;
+        
+        unsafe {
+            Ok(self.storage_ptr().add(aligned_tail))
+        }
+    }
+    
+    /// Copy a slice via tail allocation (temporary space).
+    /// Returns the copied slice and restores tail pointer after copy.
+    #[doc(hidden)]
+    #[inline]
+    fn copy_slice_via_tail_internal<T: Clone>(&mut self, src: &[T]) -> ArenaRes<Slice<T, I, M>> {
+        let item_size = size_of::<T>();
+        let align = align_of::<T>();
+        let total_size = item_size * src.len();
+        
+        // Save current tail position
+        let saved_tail = *self.tail_offset_ref();
+        
+        // Allocate from tail
+        let temp_ptr = self.tail_alloc_bytes_internal(total_size, align)?;
+        
+        // Copy items to temp space
+        unsafe {
+            let temp_slice = temp_ptr as *mut T;
+            for (i, item) in src.iter().enumerate() {
+                temp_slice.add(i).write(item.clone());
+            }
+        }
+        
+        // Now allocate from front
+        let result = self.alloc_slice_from_fn(src.len(), |i| unsafe {
+            ptr::read((temp_ptr as *const T).add(i))
+        });
+        
+        // Restore tail position (free the temp space)
+        *self.tail_offset_mut() = saved_tail;
+        
+        result
+    }
+    
+    /// Save the current tail position for later restoration.
+    #[doc(hidden)]
+    #[inline]
+    fn save_tail_position(&self) -> I {
+        *self.tail_offset_ref()
+    }
+    
+    /// Restore a previously saved tail position.
+    #[doc(hidden)]
+    #[inline]
+    fn restore_tail_position(&mut self, saved: I) {
+        *self.tail_offset_mut() = saved;
+    }
 }

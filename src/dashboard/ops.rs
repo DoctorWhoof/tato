@@ -3,7 +3,7 @@ use tato_math::Rect;
 use tato_video::RGBA32;
 
 /// A drawing command that can be executed by any backend
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum DrawOp {
     #[default]
     None,

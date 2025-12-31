@@ -10,4 +10,5 @@ mod slice;
 mod raw_id;
 mod tail_allocation;
 mod text;
+mod text_tail_allocation;
 mod unsafe_ops;

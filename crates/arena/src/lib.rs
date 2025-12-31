@@ -40,6 +40,8 @@ pub enum ArenaErr {
     CapacityExceeded,
     /// Text generation failed due to invalid characters
     InvalidUTF8,
+    /// Text formatting failed
+    FormatError,
     /// Attempted to use a default arena object
     UnnallocatedObject
 }
@@ -58,9 +60,10 @@ impl core::fmt::Display for ArenaErr {
             }
             ArenaErr::InvalidBounds => write!(f, "Invalid bounds or range"),
             ArenaErr::IndexConversion => write!(f, "Index type conversion failed"),
-            ArenaErr::CapacityExceeded => write!(f, "Capacity exceeded"),
+            ArenaErr::CapacityExceeded => write!(f, "Slice capacity exceeded"),
             ArenaErr::InvalidUTF8 => write!(f, "Invalid UTF8"),
-            ArenaErr::UnnallocatedObject => write!(f, "Attempted to use an unnallocated Arena object"),
+            ArenaErr::FormatError => write!(f, "Text formatting failed"),
+            ArenaErr::UnnallocatedObject => write!(f, "Attempted to use a default arena object"),
         }
     }
 }

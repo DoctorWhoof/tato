@@ -49,58 +49,7 @@ where
         }
     }
 
-    // /// Allocate space from the tail (grows backwards from end).
-    // /// Used internally for temporary allocations.
-    // pub(crate) fn tail_alloc_bytes(&mut self, size: usize, align: usize) -> crate::ArenaRes<*mut u8> {
-    //     let new_tail = self.tail_offset.to_usize().saturating_sub(size);
-    //     let aligned_tail = new_tail & !(align - 1);
-
-    //     if aligned_tail < self.offset.to_usize() {
-    //         return Err(crate::ArenaErr::OutOfSpace {
-    //             requested: size,
-    //             available: self.tail_offset.to_usize() - self.offset.to_usize(),
-    //         });
-    //     }
-
-    //     self.tail_offset = I::try_from(aligned_tail)
-    //         .map_err(|_| crate::ArenaErr::IndexConversion)?;
-
-    //     unsafe {
-    //         Ok(self.storage.as_mut_ptr().add(aligned_tail) as *mut u8)
-    //     }
-    // }
-
-    // /// Copy a slice via tail allocation (temporary space).
-    // /// Returns the copied slice ID and restores tail pointer after copy.
-    // pub(crate) fn copy_slice_via_tail<T: Clone>(&mut self, src: &[T]) -> crate::ArenaRes<crate::Slice<T, I, M>> {
-    //     let item_size = core::mem::size_of::<T>();
-    //     let align = core::mem::align_of::<T>();
-    //     let total_size = item_size * src.len();
-
-    //     // Save current tail position
-    //     let saved_tail = self.tail_offset;
-
-    //     // Allocate from tail
-    //     let temp_ptr = self.tail_alloc_bytes(total_size, align)?;
-
-    //     // Copy items to temp space
-    //     unsafe {
-    //         let temp_slice = temp_ptr as *mut T;
-    //         for (i, item) in src.iter().enumerate() {
-    //             temp_slice.add(i).write(item.clone());
-    //         }
-    //     }
-
-    //     // Now allocate from front
-    //     let result = self.alloc_slice_from_fn(src.len(), |i| unsafe {
-    //         core::ptr::read((temp_ptr as *const T).add(i))
-    //     });
-
-    //     // Restore tail position (free the temp space)
-    //     self.tail_offset = saved_tail;
-
-    //     result
-    // }
+    // Tail allocation methods have been moved to ArenaOps trait as internal methods
 }
 
 // Implement the ArenaOps trait for Arena

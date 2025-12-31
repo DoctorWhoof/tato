@@ -3,7 +3,7 @@ use tato::{arena::{Arena, ArenaOps}, prelude::*};
 use tato_raylib::*;
 
 fn main() -> TatoResult<()> {
-    let mut frame_arena = Arena::<32_768, u32>::new();
+    let mut frame_arena = Arena::<65_536, u32>::new();
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
     let mut dash = Dashboard::new().unwrap();

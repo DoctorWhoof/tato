@@ -158,7 +158,6 @@ impl Backend for RayBackend {
 
         use KeyboardKey::*;
 
-
         // Gamepad input
         let ray = &mut self.ray;
         pad.copy_current_to_previous_state();
@@ -371,7 +370,7 @@ impl Backend for RayBackend {
                 }
             },
             DrawOp::Text { text, x, y, size, color } => {
-                if let Ok(text) = text.as_str(&frame_arena) {
+                if let Ok(text) = text.as_str(frame_arena) {
                     canvas.draw_text_ex(
                         &self.font,
                         text,
@@ -385,14 +384,20 @@ impl Backend for RayBackend {
         };
 
         // Execute draw ops
-        for id in self.draw_ops.drain(frame_arena) {
-            let cmd = frame_arena.get(id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
-        for id in self.draw_ops_additional.drain(frame_arena) {
-            let cmd = frame_arena.get(id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops_additional.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
         // Time to queue all backed drawing, does not include actual render time,
