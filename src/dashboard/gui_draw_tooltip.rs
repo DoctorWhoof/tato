@@ -1,7 +1,10 @@
 use super::*;
 
 impl Dashboard {
-    pub(super) fn draw_tooltip<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>, backend: &impl Backend) {
+    pub(super) fn draw_tooltip<A>(&mut self, frame_arena: &mut A, backend: &impl Backend)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         // Generate tooltip command
         if !self.mouse_over_text.is_empty() {
             let mouse = backend.get_mouse();

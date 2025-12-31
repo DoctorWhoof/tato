@@ -130,12 +130,9 @@ impl Dashboard {
 
     /// A reference to the pixel buffer used to debug tile pixels, if
     /// the desired bank contains one
-    pub fn tile_pixels<'a, A>(&self, arena: &'a A, bank_index: usize) -> Option<&'a [u8]>
-    where
-        A: ArenaOps<u32, ()>,
-    {
+    pub fn tile_pixels(&self, bank_index: usize) -> Option<&[u8]> {
         let pixel_buffer = self.tile_pixels.get(bank_index)?;
-        pixel_buffer.as_slice(arena).ok()
+        pixel_buffer.as_slice(&self.fixed_arena).ok()
     }
 
     /// An iterator with every DrawOp processed so far. DrawOps must be stored
@@ -151,12 +148,10 @@ impl Dashboard {
     }
 
     /// If a console command has been processed this frame it is returned here.
-    pub fn process_console_line<'a, F, const LEN: usize>(
-        &'a mut self,
-        frame_arena: &mut Arena<LEN>,
-        func: F,
-    ) where
+    pub fn process_console_line<'a, F, A>(&'a mut self, frame_arena: &mut A, func: F)
+    where
         F: FnOnce(Command) -> Option<&'a [u8]>,
+        A: ArenaOps<u32, ()>,
     {
         if let Some(command) = &self.console_latest_command {
             let temp = ['?' as u8];
@@ -281,11 +276,10 @@ impl Dashboard {
 
     /// Must be called at the beginning of each frame, after the Backend has
     /// started its own frame
-    pub fn frame_start<const LEN: usize>(
-        &mut self,
-        frame_arena: &mut Arena<LEN>,
-        backend: &mut impl Backend,
-    ) {
+    pub fn frame_start<A>(&mut self, frame_arena: &mut A, backend: &mut impl Backend)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         self.console_latest_command = None;
         self.last_frame_draw_op_count = self.ops.len();
 
@@ -306,12 +300,10 @@ impl Dashboard {
     }
 
     /// Generate debug UI Draw Ops before presenting them via the Backend.
-    pub fn frame_present<const LEN: usize>(
-        &mut self,
-        frame_arena: &mut Arena<LEN>,
-        backend: &mut impl Backend,
-        tato: &Tato,
-    ) {
+    pub fn frame_present<A>(&mut self, frame_arena: &mut A, backend: &mut impl Backend, tato: &Tato)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         if !self.display_debug_info {
             return;
         }
@@ -358,7 +350,7 @@ impl Dashboard {
         // Copy tile pixels from dashboard to GPU textures
         for bank_index in 0..TILE_BANK_COUNT {
             // texture ID = bank_index
-            if let Some(pixels) = self.tile_pixels(frame_arena, bank_index) {
+            if let Some(pixels) = self.tile_pixels(bank_index) {
                 if !pixels.is_empty() {
                     backend.update_texture(bank_index, pixels);
                 }

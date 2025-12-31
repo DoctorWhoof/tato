@@ -2,13 +2,15 @@ use super::*;
 
 // Right panel
 impl Dashboard {
-    pub(super) fn process_video_banks_panel<const LEN: usize>(
+    pub(super) fn process_video_banks_panel<A>(
         &mut self,
         layout: &mut Frame<i16>,
-        frame_arena: &mut Arena<LEN>,
+        frame_arena: &mut A,
         backend: &impl Backend,
         tato: &Tato,
-    ) {
+    ) where
+        A: ArenaOps<u32, ()>,
+    {
         layout.push_edge(Edge::Right, PANEL_WIDTH, |panel| {
             panel.set_margin(5);
             panel.set_gap(0);
@@ -88,14 +90,16 @@ impl Dashboard {
         }
     }
 
-    fn process_bank<const LEN: usize>(
+    fn process_bank<A>(
         &mut self,
-        frame_arena: &mut Arena<LEN>,
+        frame_arena: &mut A,
         backend: &impl Backend,
         panel: &mut Frame<i16>,
         bank_index: usize,
         tato: &Tato,
-    ) {
+    ) where
+        A: ArenaOps<u32, ()>,
+    {
         let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
 

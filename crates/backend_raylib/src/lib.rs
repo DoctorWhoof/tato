@@ -147,11 +147,10 @@ impl Backend for RayBackend {
         self.allow_game_input = state;
     }
 
-    fn frame_start<const LEN: usize>(
-        &mut self,
-        frame_arena: &mut Arena<LEN>,
-        pad: &mut AnaloguePad,
-    ) {
+    fn frame_start<A>(&mut self, frame_arena: &mut A, pad: &mut AnaloguePad)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
         self.pressed_key = None;
         self.canvas_rect = None;
@@ -270,13 +269,14 @@ impl Backend for RayBackend {
     }
 
     /// Finish canvas and GUI drawing, present to window
-    fn frame_present<'a, const LEN: usize, T>(
+    fn frame_present<'a, A, T>(
         &mut self,
-        frame_arena: &'a mut Arena<LEN>,
+        frame_arena: &'a mut A,
         tato: &'a Tato,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
+        A: ArenaOps<u32, ()>,
     {
         let time_iter = Instant::now();
         // let mut temp_texts = Arena::<32768, u32>::new();
