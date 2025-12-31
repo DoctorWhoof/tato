@@ -4,7 +4,7 @@ use crate::{
     Tato,
     prelude::{DrawOp, Key},
 };
-use tato_arena::{Arena, ArenaId, ArenaOps, Buffer};
+use tato_arena::{ArenaId, ArenaOps, Buffer};
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
 use tato_video::{RGBA32, TilemapRef};
