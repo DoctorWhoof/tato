@@ -43,7 +43,7 @@ const DEBUG_POLY_COUNT: u32 = 100;
 #[derive(Debug, Clone, Copy)]
 struct Polygon {
     points: Slice<Vec2<i16>>,
-    color: ArenaId<RGBA12>,
+    color: RGBA12,
 }
 
 /// Backend-agnostic debug UI system that generates drawing ops
@@ -221,7 +221,7 @@ impl Dashboard {
         A: ArenaOps<u32, ()>,
     {
         let handle = arena.alloc_slice::<Vec2<i16>>(points).unwrap();
-        let color = arena.alloc(color).unwrap();
+        // let color = arena.alloc(color).unwrap();
         let slice = arena.get_slice_mut(handle).unwrap();
         slice.copy_from_slice(points);
         let poly = Polygon { points: handle, color };
