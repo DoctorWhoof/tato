@@ -358,7 +358,6 @@ impl Dashboard {
         }
 
         // Draw additional items over everything
-
         self.draw_polys(frame_arena, &tato);
         self.draw_tooltip(frame_arena, backend);
         backend.set_additional_draw_ops(self.ops.clone());
