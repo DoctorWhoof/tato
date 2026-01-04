@@ -6,7 +6,7 @@
 pub use macroquad;
 use macroquad::prelude::*;
 use std::{time::Instant, vec};
-use tato::{Tato, arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*, prelude::*};
+use tato::{arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*, prelude::*, Tato};
 
 pub use tato;
 
@@ -102,8 +102,8 @@ pub struct MquadBackend {
     draw_ops_additional: Buffer<ArenaId<DrawOp>>,
     canvas_texture: TextureId,
     pixels: Vec<u8>,
-    buffer_iter_time: AvgBuffer<120, f64>,
-    buffer_canvas_time: AvgBuffer<120, f64>,
+    buffer_iter_time: AvgBuffer<120, f32>,
+    buffer_canvas_time: AvgBuffer<120, f32>,
     pressed_key: Option<Key>,
     allow_game_input: bool,
     target_fps: u32,
@@ -139,7 +139,7 @@ impl MquadBackend {
 
         // Build struct
         let mut result = Self {
-            bg_color: Color::new(16.0/255.0, 16.0/255.0, 16.0/255.0, 1.0),
+            bg_color: Color::new(16.0 / 255.0, 16.0 / 255.0, 16.0 / 255.0, 1.0),
             integer_scaling: true,
             print_frame_time: false,
             canvas_rect: None,
@@ -171,11 +171,7 @@ impl MquadBackend {
 
     /// Internal method to update texture data
     #[inline(always)]
-    fn update_texture_internal(
-        textures: &mut [Texture2D],
-        id: TextureId,
-        pixels: &[u8],
-    ) {
+    fn update_texture_internal(textures: &mut [Texture2D], id: TextureId, pixels: &[u8]) {
         if id < textures.len() {
             let texture_pixel_count =
                 textures[id].width() as usize * textures[id].height() as usize * 4;
@@ -208,11 +204,7 @@ impl MquadBackend {
             let width = textures[id].width() as u16;
             let height = textures[id].height() as u16;
 
-            let image = Image {
-                width,
-                height,
-                bytes: pixels.to_vec(),
-            };
+            let image = Image { width, height, bytes: pixels.to_vec() };
             textures[id].update(&image);
             textures[id].set_filter(FilterMode::Nearest);
         }
@@ -231,11 +223,10 @@ impl Backend for MquadBackend {
         self.allow_game_input = state;
     }
 
-    fn frame_start<const LEN: usize>(
-        &mut self,
-        frame_arena: &mut Arena<LEN>,
-        pad: &mut AnaloguePad,
-    ) {
+    fn frame_start<A>(&mut self, frame_arena: &mut A, pad: &mut AnaloguePad)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
         self.pressed_key = None;
         self.canvas_rect = None;
@@ -305,12 +296,34 @@ impl Backend for MquadBackend {
                     && !is_key_down(KeyCode::RightControl) =>
                 {
                     // Handle letters A-Z
-                    if matches!(key,
-                        KeyCode::A | KeyCode::B | KeyCode::C | KeyCode::D | KeyCode::E |
-                        KeyCode::F | KeyCode::G | KeyCode::H | KeyCode::I | KeyCode::J |
-                        KeyCode::K | KeyCode::L | KeyCode::M | KeyCode::N | KeyCode::O |
-                        KeyCode::P | KeyCode::Q | KeyCode::R | KeyCode::S | KeyCode::T |
-                        KeyCode::U | KeyCode::V | KeyCode::W | KeyCode::X | KeyCode::Y | KeyCode::Z
+                    if matches!(
+                        key,
+                        KeyCode::A
+                            | KeyCode::B
+                            | KeyCode::C
+                            | KeyCode::D
+                            | KeyCode::E
+                            | KeyCode::F
+                            | KeyCode::G
+                            | KeyCode::H
+                            | KeyCode::I
+                            | KeyCode::J
+                            | KeyCode::K
+                            | KeyCode::L
+                            | KeyCode::M
+                            | KeyCode::N
+                            | KeyCode::O
+                            | KeyCode::P
+                            | KeyCode::Q
+                            | KeyCode::R
+                            | KeyCode::S
+                            | KeyCode::T
+                            | KeyCode::U
+                            | KeyCode::V
+                            | KeyCode::W
+                            | KeyCode::X
+                            | KeyCode::Y
+                            | KeyCode::Z
                     ) {
                         // Letters: apply shift for case
                         if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
@@ -320,9 +333,18 @@ impl Backend for MquadBackend {
                         }
                     }
                     // Handle number keys 0-9
-                    else if matches!(key,
-                        KeyCode::Key0 | KeyCode::Key1 | KeyCode::Key2 | KeyCode::Key3 | KeyCode::Key4 |
-                        KeyCode::Key5 | KeyCode::Key6 | KeyCode::Key7 | KeyCode::Key8 | KeyCode::Key9
+                    else if matches!(
+                        key,
+                        KeyCode::Key0
+                            | KeyCode::Key1
+                            | KeyCode::Key2
+                            | KeyCode::Key3
+                            | KeyCode::Key4
+                            | KeyCode::Key5
+                            | KeyCode::Key6
+                            | KeyCode::Key7
+                            | KeyCode::Key8
+                            | KeyCode::Key9
                     ) {
                         // Number row: apply shift for symbols
                         if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
@@ -331,16 +353,27 @@ impl Backend for MquadBackend {
                             let index = (key as u32 - KeyCode::Key0 as u32) as usize;
                             self.pressed_key = Some(Key::Text(symbols[index]));
                         } else {
-                            self.pressed_key = Some(Key::Text(b'0' + (key as u32 - KeyCode::Key0 as u32) as u8));
+                            self.pressed_key =
+                                Some(Key::Text(b'0' + (key as u32 - KeyCode::Key0 as u32) as u8));
                         }
                     }
                     // Handle keypad numbers
-                    else if matches!(key,
-                        KeyCode::Kp0 | KeyCode::Kp1 | KeyCode::Kp2 | KeyCode::Kp3 | KeyCode::Kp4 |
-                        KeyCode::Kp5 | KeyCode::Kp6 | KeyCode::Kp7 | KeyCode::Kp8 | KeyCode::Kp9
+                    else if matches!(
+                        key,
+                        KeyCode::Kp0
+                            | KeyCode::Kp1
+                            | KeyCode::Kp2
+                            | KeyCode::Kp3
+                            | KeyCode::Kp4
+                            | KeyCode::Kp5
+                            | KeyCode::Kp6
+                            | KeyCode::Kp7
+                            | KeyCode::Kp8
+                            | KeyCode::Kp9
                     ) {
                         // Keypad numbers (no shift variants)
-                        self.pressed_key = Some(Key::Text(b'0' + (key as u32 - KeyCode::Kp0 as u32) as u8));
+                        self.pressed_key =
+                            Some(Key::Text(b'0' + (key as u32 - KeyCode::Kp0 as u32) as u8));
                     }
                     // Handle other characters
                     else {
@@ -362,13 +395,14 @@ impl Backend for MquadBackend {
     }
 
     /// Finish canvas and GUI drawing, present to window
-    fn frame_present<'a, const LEN: usize, T>(
+    fn frame_present<'a, A, T>(
         &mut self,
-        frame_arena: &'a mut Arena<LEN>,
+        frame_arena: &'a mut A,
         tato: &'a Tato,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
+        A: ArenaOps<u32, ()>,
     {
         let time_iter = Instant::now();
 
@@ -388,7 +422,7 @@ impl Backend for MquadBackend {
             self.pixels[index + 2] = color.b;
             self.pixels[index + 3] = color.a;
         }
-        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f64());
+        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f32());
 
         // Update main render texture and queue draw operation
         let time_queue = Instant::now();
@@ -409,7 +443,8 @@ impl Backend for MquadBackend {
             self.draw_ops.push(frame_arena, op_id).unwrap();
         } else {
             let screen_size = self.get_screen_size();
-            let screen_rect = tato::prelude::Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
+            let screen_rect =
+                tato::prelude::Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
             let (canvas_rect, _scale) = canvas_rect_and_scale(screen_rect, tato.video.size(), true);
             let op_id = frame_arena
                 .alloc(DrawOp::Texture {
@@ -453,14 +488,17 @@ impl Backend for MquadBackend {
                         rect.y as f32,
                         rgba32_to_mq_color(*tint),
                         DrawTextureParams {
-                            dest_size: Some(macroquad::math::Vec2::new(rect.w as f32, rect.h as f32)),
+                            dest_size: Some(macroquad::math::Vec2::new(
+                                rect.w as f32,
+                                rect.h as f32,
+                            )),
                             ..Default::default()
                         },
                     );
                 }
             },
             DrawOp::Text { text, x, y, size, color } => {
-                if let Ok(text) = text.as_str(&frame_arena) {
+                if let Ok(text) = text.as_str(frame_arena) {
                     draw_text_ex(
                         text,
                         *x as f32,
@@ -477,19 +515,25 @@ impl Backend for MquadBackend {
         };
 
         // Execute draw ops
-        for id in self.draw_ops.drain(frame_arena) {
-            let cmd = frame_arena.get(&id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
-        for id in self.draw_ops_additional.drain(frame_arena) {
-            let cmd = frame_arena.get(&id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops_additional.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
-        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f64());
+        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f32());
 
         // This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.

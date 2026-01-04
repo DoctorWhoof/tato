@@ -1,8 +1,13 @@
 use super::*;
+use crate::ArenaOps;
 use core::marker::PhantomData;
 
-pub struct RingBufferIterator<'a, T, const LEN: usize, I, M> {
-    arena: &'a Arena<LEN, I, M>,
+pub struct RingBufferIterator<'a, A, T, I, M>
+where
+    I: ArenaIndex,
+    A: ArenaOps<I, M>,
+{
+    arena: &'a A,
     slice_offset: I,
     slice_len: I,
     slice_generation: u32,
@@ -10,19 +15,16 @@ pub struct RingBufferIterator<'a, T, const LEN: usize, I, M> {
     head: I,
     current: usize,
     back: usize,
-    _phantom: PhantomData<&'a T>,
+    _phantom_t: PhantomData<&'a T>,
+    _phantom_m: PhantomData<&'a M>,
 }
 
-impl<'a, T, const LEN: usize, I, M> RingBufferIterator<'a, T, LEN, I, M>
+impl<'a, A, T, I, M> RingBufferIterator<'a, A, T, I, M>
 where
     I: ArenaIndex,
+    A: ArenaOps<I, M>,
 {
-    pub(super) fn new(
-        arena: &'a Arena<LEN, I, M>,
-        slice: &Slice<T, I, M>,
-        head: I,
-        len: I,
-    ) -> Self {
+    pub(super) fn new(arena: &'a A, slice: &Slice<T, I, M>, head: I, len: I) -> Self {
         Self {
             arena,
             slice_offset: slice.offset(),
@@ -32,14 +34,17 @@ where
             head,
             current: 0,
             back: len.to_usize(),
-            _phantom: PhantomData,
+            _phantom_t: PhantomData,
+            _phantom_m: PhantomData,
         }
     }
 }
 
-impl<'a, T: 'a, const LEN: usize, I, M> Iterator for RingBufferIterator<'a, T, LEN, I, M>
+impl<'a, A, T, I, M> Iterator for RingBufferIterator<'a, A, T, I, M>
 where
+    T: 'a,
     I: ArenaIndex,
+    A: ArenaOps<I, M>,
 {
     type Item = &'a T;
 
@@ -48,8 +53,13 @@ where
             return None;
         }
 
-        let slice_ref = Slice::new(self.slice_offset, self.slice_len, self.slice_generation, self.slice_arena_id);
-        let slice = self.arena.get_slice(&slice_ref).ok()?;
+        let slice_ref = Slice::new(
+            self.slice_offset,
+            self.slice_len,
+            self.slice_generation,
+            self.slice_arena_id,
+        );
+        let slice = self.arena.get_slice(slice_ref).ok()?;
         let capacity = self.slice_len.to_usize();
         let physical_index = (self.head.to_usize() + self.current) % capacity;
 
@@ -63,18 +73,20 @@ where
     }
 }
 
-impl<'a, T: 'a, const LEN: usize, I, M> ExactSizeIterator for RingBufferIterator<'a, T, LEN, I, M>
+impl<'a, A, T: 'a, I, M> ExactSizeIterator for RingBufferIterator<'a, A, T, I, M>
 where
     I: ArenaIndex,
+    A: ArenaOps<I, M>,
 {
     fn len(&self) -> usize {
         self.back - self.current
     }
 }
 
-impl<'a, T: 'a, const LEN: usize, I, M> DoubleEndedIterator for RingBufferIterator<'a, T, LEN, I, M>
+impl<'a, A, T: 'a, I, M> DoubleEndedIterator for RingBufferIterator<'a, A, T, I, M>
 where
     I: ArenaIndex,
+    A: ArenaOps<I, M>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.current >= self.back {
@@ -83,8 +95,13 @@ where
 
         self.back -= 1;
 
-        let slice_ref = Slice::new(self.slice_offset, self.slice_len, self.slice_generation, self.slice_arena_id);
-        let slice = self.arena.get_slice(&slice_ref).ok()?;
+        let slice_ref = Slice::new(
+            self.slice_offset,
+            self.slice_len,
+            self.slice_generation,
+            self.slice_arena_id,
+        );
+        let slice = self.arena.get_slice(slice_ref).ok()?;
         let capacity = self.slice_len.to_usize();
         let physical_index = (self.head.to_usize() + self.back) % capacity;
 

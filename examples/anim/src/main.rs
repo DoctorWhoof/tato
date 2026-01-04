@@ -1,7 +1,7 @@
 mod astro;
 
 use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
-use tato::{arena::Arena, prelude::*};
+use tato::{arena::{Arena, ArenaOps}, prelude::*};
 use tato_raylib::RayBackend;
 
 // A minimal entity that fits in a single 64 bit value! :-)
@@ -18,10 +18,10 @@ const W: u16 = 240;
 const H: u16 = 180;
 const BANK_BG: u8 = 0;
 const BANK_FG: u8 = 1;
-
+const ARENA_LEN:usize = 64 * 1024;
 fn main() -> TatoResult<()> {
     // Init
-    let mut frame_arena = Arena::<32_768, u32>::new();
+    let mut frame_arena = Arena::<ARENA_LEN , u32>::new();
     let mut tato = Tato::new(W, H, 60);
     let mut backend = RayBackend::new(&tato);
     let mut dash = Dashboard::new().unwrap();

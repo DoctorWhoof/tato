@@ -30,9 +30,9 @@ impl RGBA12 {
     pub const EMPTY_COLOR: RGBA12 = RGBA12::new(7, 0, 7);
 
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        assert!(r < 8, err!("Exceeded maximum value for Red channel"));
-        assert!(g < 8, err!("Exceeded maximum value for Green channel"));
-        assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
+        debug_assert!(r < 8, err!("Exceeded maximum value for Red channel"));
+        debug_assert!(g < 8, err!("Exceeded maximum value for Green channel"));
+        debug_assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
         // Pack the 3-bit color values into the data field (z-buffer defaults to 0)
         // Z in bits 12-15, Alpha in bits 9-11, Red in bits 6-8, Green in bits 3-5, Blue in bits 0-2
         let packed_data = ((7 as u16) << 9) | ((r as u16) << 6) | ((g as u16) << 3) | (b as u16);
@@ -40,10 +40,10 @@ impl RGBA12 {
     }
 
     pub const fn with_transparency(r: u8, g: u8, b: u8, a: u8) -> Self {
-        assert!(r < 8, err!("Exceeded maximum value for Red channel"));
-        assert!(g < 8, err!("Exceeded maximum value for Green channel"));
-        assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
-        assert!(a < 8, err!("Exceeded maximum value for Alpha channel"));
+        debug_assert!(r < 8, err!("Exceeded maximum value for Red channel"));
+        debug_assert!(g < 8, err!("Exceeded maximum value for Green channel"));
+        debug_assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
+        debug_assert!(a < 8, err!("Exceeded maximum value for Alpha channel"));
         // Pack the 3-bit color values into the data field (z-buffer defaults to 0)
         // Z in bits 12-15, Alpha in bits 9-11, Red in bits 6-8, Green in bits 3-5, Blue in bits 0-2
         let packed_data = ((a as u16) << 9) | ((r as u16) << 6) | ((g as u16) << 3) | (b as u16);
@@ -71,27 +71,27 @@ impl RGBA12 {
     }
 
     pub fn set_r(&mut self, r: u8) {
-        assert!(r < 8, err!("Exceeded maximum value for Red channel"));
+        debug_assert!(r < 8, err!("Exceeded maximum value for Red channel"));
         self.data = (self.data & !(0b_0111 << 6)) | ((r as u16) << 6);
     }
 
     pub fn set_g(&mut self, g: u8) {
-        assert!(g < 8, err!("Exceeded maximum value for Green channel"));
+        debug_assert!(g < 8, err!("Exceeded maximum value for Green channel"));
         self.data = (self.data & !(0b_0111 << 3)) | ((g as u16) << 3);
     }
 
     pub fn set_b(&mut self, b: u8) {
-        assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
+        debug_assert!(b < 8, err!("Exceeded maximum value for Blue channel"));
         self.data = (self.data & !(0b_0111)) | (b as u16);
     }
 
     pub fn set_a(&mut self, a: u8) {
-        assert!(a < 8, err!("Exceeded maximum value for Alpha channel"));
+        debug_assert!(a < 8, err!("Exceeded maximum value for Alpha channel"));
         self.data = (self.data & !(0b_0111 << 9)) | ((a as u16) << 9);
     }
 
     pub fn set_z(&mut self, z: u8) {
-        assert!(z < 16, err!("Z value must be less than 16 (4 bits)"));
+        debug_assert!(z < 16, err!("Z value must be less than 16 (4 bits)"));
         self.data = (self.data & !(0b_1111 << 12)) | ((z as u16) << 12);
     }
 

@@ -1,3 +1,5 @@
+use arena::ArenaOps;
+
 use crate::prelude::*;
 use core::array::from_fn;
 
@@ -435,7 +437,7 @@ impl Tato {
             .get(map_id.0 as usize)
             .ok_or(TatoError::InvalidMapId(map_id.0))?;
         let cells =
-            self.assets.arena.get_slice(&entry.cells).map_err(TatoError::Arena)?;
+            self.assets.arena.get_slice(entry.cells).map_err(TatoError::Arena)?;
         Ok(TilemapRef { cells, columns: entry.columns, rows: entry.rows })
     }
 
@@ -448,7 +450,7 @@ impl Tato {
             .ok_or(TatoError::InvalidAnimId(anim_id.0))?;
 
         // Get the frame value from the animation's frame array
-        let frames = self.assets.arena.get_slice(&anim_entry.frames).map_err(TatoError::Arena)?;
+        let frames = self.assets.arena.get_slice(anim_entry.frames).map_err(TatoError::Arena)?;
         let frame_value = frames
             .get(frame_index)
             .ok_or(TatoError::InvalidFrameIndex {

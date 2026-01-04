@@ -61,7 +61,7 @@ impl Dashboard {
                 },
                 Key::Backspace => {
                     if !self.console_line_buffer.is_empty() {
-                        self.console_line_buffer.pop(&self.fixed_arena);
+                        self.console_line_buffer.pop(&mut self.fixed_arena);
                     }
                 },
                 Key::Delete => {},

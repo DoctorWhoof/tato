@@ -1,5 +1,5 @@
 use super::*;
-use crate::{ArenaErr, ArenaRes};
+use crate::{ArenaErr, ArenaOps, ArenaRes};
 
 mod iter;
 pub use iter::*;
@@ -8,8 +8,8 @@ pub use iter::*;
 #[derive(Debug, Clone)]
 pub struct RingBuffer<T, I = u32, M = ()> {
     pub slice: Slice<T, I, M>,
-    head: I,  // Index of the first element
-    len: I,   // Current number of elements used
+    head: I, // Index of the first element
+    len: I,  // Current number of elements used
 }
 
 impl<T, I, M> Default for RingBuffer<T, I, M>
@@ -29,16 +29,12 @@ impl<T, I, M> RingBuffer<T, I, M>
 where
     I: ArenaIndex,
 {
-    pub fn new<const LEN: usize>(
-        arena: &mut Arena<LEN, I, M>,
-        capacity: I,
-    ) -> ArenaRes<Self> {
-        let slice = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
-        Ok(Self {
-            slice,
-            head: I::zero(),
-            len: I::zero(),
-        })
+    pub fn new<A>(arena: &mut A, capacity: I) -> ArenaRes<Self>
+    where
+        A: ArenaOps<I, M>,
+    {
+        let (slice, _) = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
+        Ok(Self { slice, head: I::zero(), len: I::zero() })
     }
 
     pub fn is_empty(&self) -> bool {
@@ -72,16 +68,15 @@ where
 
     /// Push a value to the back of the ring buffer (FIFO).
     /// Automatically overwrites the oldest element if buffer is full.
-    pub fn push<const LEN: usize>(
-        &mut self,
-        arena: &mut Arena<LEN, I, M>,
-        value: T,
-    ) -> ArenaRes<()> {
+    pub fn push<A>(&mut self, arena: &mut A, value: T) -> ArenaRes<()>
+    where
+        A: ArenaOps<I, M>,
+    {
         if self.slice.capacity() == I::zero() {
             return Err(ArenaErr::UnnallocatedObject);
         }
         let tail = self.tail_index();
-        let slice = arena.get_slice_mut(&self.slice)?;
+        let slice = arena.get_slice_mut(self.slice.clone())?;
         slice[tail.to_usize()] = value;
 
         if self.is_full() {
@@ -96,35 +91,33 @@ where
 
     /// Push a value to the back of the ring buffer (FIFO).
     /// Returns error if buffer is full.
-    pub fn try_push<const LEN: usize>(
-        &mut self,
-        arena: &mut Arena<LEN, I, M>,
-        value: T,
-    ) -> ArenaRes<()> {
+    pub fn try_push<A>(&mut self, arena: &mut A, value: T) -> ArenaRes<()>
+    where
+        A: ArenaOps<I, M>,
+    {
         if self.is_full() {
             return Err(ArenaErr::CapacityExceeded);
         }
 
         let tail = self.tail_index();
-        let slice = arena.get_slice_mut(&self.slice)?;
+        let slice = arena.get_slice_mut(self.slice.clone())?;
         slice[tail.to_usize()] = value;
         self.len += I::one();
         Ok(())
     }
 
     /// Pop a value from the front of the ring buffer (FIFO).
-    pub fn pop<const LEN: usize>(
-        &mut self,
-        arena: &Arena<LEN, I, M>,
-    ) -> Option<T>
+    pub fn pop<A>(&mut self, arena: &A) -> Option<T>
     where
         T: Copy,
+        A: ArenaOps<I, M>,
     {
         if self.is_empty() {
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).expect("RingBuffer slice should always be valid");
+        let slice =
+            arena.get_slice(self.slice.clone()).expect("RingBuffer slice should always be valid");
         let value = slice[self.head.to_usize()];
 
         let capacity = self.slice.capacity().to_usize();
@@ -134,28 +127,28 @@ where
     }
 
     /// Get a reference to the front element without removing it.
-    pub fn front<'a, const LEN: usize>(
-        &self,
-        arena: &'a Arena<LEN, I, M>,
-    ) -> Option<&'a T> {
+    pub fn front<'a, A>(&self, arena: &'a A) -> Option<&'a T>
+    where
+        A: ArenaOps<I, M>,
+    {
         if self.is_empty() {
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).ok()?;
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
         Some(&slice[self.head.to_usize()])
     }
 
     /// Get a reference to the back element without removing it.
-    pub fn back<'a, const LEN: usize>(
-        &self,
-        arena: &'a Arena<LEN, I, M>,
-    ) -> Option<&'a T> {
+    pub fn back<'a, A>(&self, arena: &'a A) -> Option<&'a T>
+    where
+        A: ArenaOps<I, M>,
+    {
         if self.is_empty() {
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).ok()?;
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
         let back_index = if self.len == I::one() {
             self.head
         } else {
@@ -168,29 +161,30 @@ where
     }
 
     /// Get element at logical index (0 is front, 1 is next, etc).
-    pub fn get<'a, const LEN: usize>(
-        &self,
-        arena: &'a Arena<LEN, I, M>,
-        index: I,
-    ) -> Option<&'a T> {
+    pub fn get<'a, A>(&self, arena: &'a A, index: I) -> Option<&'a T>
+    where
+        A: ArenaOps<I, M>,
+    {
         if index >= self.len {
             return None;
         }
 
-        let slice = arena.get_slice(&self.slice).ok()?;
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
         let capacity = self.slice.capacity().to_usize();
         let physical_index = (self.head.to_usize() + index.to_usize()) % capacity;
         Some(&slice[physical_index])
     }
 
     /// Iterate over elements in logical order (from front to back).
-    pub fn items<'a, const LEN: usize>(
+    pub fn items<'a, A>(
         &self,
-        arena: &'a Arena<LEN, I, M>,
-    ) -> RingBufferIterator<'a, T, LEN, I, M> {
+        arena: &'a A,
+    ) -> RingBufferIterator<'a, A, T, I, M>
+    where
+        A: ArenaOps<I, M>,
+    {
         RingBufferIterator::new(arena, &self.slice, self.head, self.len)
     }
-
 
     fn tail_index(&self) -> I {
         let capacity = self.slice.capacity().to_usize();

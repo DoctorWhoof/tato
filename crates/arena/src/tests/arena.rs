@@ -7,8 +7,8 @@ fn test_basic_allocation() {
     let id1 = arena.alloc(42u32).unwrap();
     let id2 = arena.alloc(3.14f32).unwrap();
 
-    assert_eq!(*arena.get(&id1).unwrap(), 42u32);
-    assert_eq!(*arena.get(&id2).unwrap(), 3.14f32);
+    assert_eq!(*arena.get(id1).unwrap(), 42u32);
+    assert_eq!(*arena.get(id2).unwrap(), 3.14f32);
 }
 
 #[test]
@@ -19,9 +19,9 @@ fn test_different_types() {
     let char_id = arena.alloc('x').unwrap();
     let array_id = arena.alloc([1, 2, 3, 4]).unwrap();
 
-    assert_eq!(*arena.get(&bool_id).unwrap(), true);
-    assert_eq!(*arena.get(&char_id).unwrap(), 'x');
-    assert_eq!(*arena.get(&array_id).unwrap(), [1, 2, 3, 4]);
+    assert_eq!(*arena.get(bool_id).unwrap(), true);
+    assert_eq!(*arena.get(char_id).unwrap(), 'x');
+    assert_eq!(*arena.get(array_id).unwrap(), [1, 2, 3, 4]);
 }
 
 #[test]
@@ -29,10 +29,10 @@ fn test_mutable_access() {
     let mut arena: Arena<1024> = Arena::new();
 
     let id = arena.alloc(42u32).unwrap();
-    assert_eq!(*arena.get(&id).unwrap(), 42);
+    assert_eq!(*arena.get(id).unwrap(), 42);
 
-    *arena.get_mut(&id).unwrap() = 100;
-    assert_eq!(*arena.get(&id).unwrap(), 100);
+    *arena.get_mut(id).unwrap() = 100;
+    assert_eq!(*arena.get(id).unwrap(), 100);
 }
 
 #[test]
@@ -44,10 +44,10 @@ fn test_alignment() {
 
     // This should be properly aligned
     let id2 = arena.alloc(42u64).unwrap();
-    assert_eq!(*arena.get(&id2).unwrap(), 42u64);
+    assert_eq!(*arena.get(id2).unwrap(), 42u64);
 
     // Check that alignment worked
-    let ptr = arena.get(&id2).unwrap() as *const u64;
+    let ptr = arena.get(id2).unwrap() as *const u64;
     assert_eq!(ptr as usize % core::mem::align_of::<u64>(), 0);
 }
 
@@ -84,7 +84,7 @@ fn test_clear() {
     let mut arena: Arena<1024> = Arena::new();
 
     let id = arena.alloc(42u32).unwrap();
-    assert_eq!(*arena.get(&id).unwrap(), 42);
+    assert_eq!(*arena.get(id).unwrap(), 42);
     assert_eq!(arena.used(), 4);
 
     let gen_before = arena.generation();
@@ -95,7 +95,7 @@ fn test_clear() {
     assert_eq!(arena.used(), 0);
 
     // Old ID should be invalid
-    assert!(arena.get(&id).is_err());
+    assert!(arena.get(id).is_err());
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn test_custom_size_type() {
     let mut arena: Arena<256, u16> = Arena::new();
 
     let id = arena.alloc(42u32).unwrap();
-    assert_eq!(*arena.get(&id).unwrap(), 42);
+    assert_eq!(*arena.get(id).unwrap(), 42);
     assert_eq!(id.offset(), 0);
     assert_eq!(id.size(), 4);
 }
@@ -117,8 +117,8 @@ fn test_restore_to() {
     let gen_before = arena.generation();
 
     let id2 = arena.alloc(100u32).unwrap();
-    assert_eq!(*arena.get(&id1).unwrap(), 42);
-    assert_eq!(*arena.get(&id2).unwrap(), 100);
+    assert_eq!(*arena.get(id1).unwrap(), 42);
+    assert_eq!(*arena.get(id2).unwrap(), 100);
 
     // Restore to checkpoint
     arena.restore_to(checkpoint);
@@ -127,14 +127,14 @@ fn test_restore_to() {
     assert_eq!(arena.generation(), gen_before + 1);
 
     // id1 should still be valid (created before checkpoint)
-    assert!(arena.get(&id1).is_err()); // Actually, it becomes invalid too since generation changed
+    assert!(arena.get(id1).is_err()); // Actually, it becomes invalid too since generation changed
 
     // id2 should be invalid (created after checkpoint)
-    assert!(arena.get(&id2).is_err());
+    assert!(arena.get(id2).is_err());
 
     // Can allocate new data in the restored space
     let id3 = arena.alloc(200u32).unwrap();
-    assert_eq!(*arena.get(&id3).unwrap(), 200);
+    assert_eq!(*arena.get(id3).unwrap(), 200);
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn test_generational_safety() {
     let id1 = arena.alloc(42u32).unwrap();
     let gen1 = arena.generation();
     assert_eq!(id1.generation(), gen1);
-    assert_eq!(*arena.get(&id1).unwrap(), 42);
+    assert_eq!(*arena.get(id1).unwrap(), 42);
 
     // Clear arena (increments generation)
     arena.clear();
@@ -152,14 +152,14 @@ fn test_generational_safety() {
     assert_eq!(gen2, gen1 + 1);
 
     // Old ID should be invalid
-    assert!(arena.get(&id1).is_err());
-    // assert!(!arena.is_valid(&id1)); // is_valid method removed
+    assert!(arena.get(id1).is_err());
+    // assert!(!arena.is_valid(id1)); // is_valid method removed
 
     // New allocation should work
     let id2 = arena.alloc(100u32).unwrap();
     assert_eq!(id2.generation(), gen2);
-    assert_eq!(*arena.get(&id2).unwrap(), 100);
-    // assert!(arena.is_valid(&id2)); // is_valid method removed
+    assert_eq!(*arena.get(id2).unwrap(), 100);
+    // assert!(arena.is_valid(id2)); // is_valid method removed
 }
 
 #[test]
@@ -174,12 +174,12 @@ fn test_type_markers() {
     let id_b = arena_b.alloc(100u32).unwrap();
 
     // This should work
-    assert_eq!(*arena_a.get(&id_a).unwrap(), 42);
-    assert_eq!(*arena_b.get(&id_b).unwrap(), 100);
+    assert_eq!(*arena_a.get(id_a).unwrap(), 42);
+    assert_eq!(*arena_b.get(id_b).unwrap(), 100);
 
     // These should not compile due to type mismatch:
-    // arena_a.get(&id_b); // Compile error!
-    // arena_b.get(&id_a); // Compile error!
+    // arena_a.get(id_b); // Compile error!
+    // arena_b.get(id_a); // Compile error!
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn test_pop_functionality() {
     let mut arena: Arena<1024> = Arena::new();
 
     // Test pop on empty arena
-    assert!(!arena.pop());
+    assert!(arena.pop::<u32>().is_err());
 
     // Allocate some values
     let id1 = arena.alloc(42u32).unwrap();
@@ -195,54 +195,58 @@ fn test_pop_functionality() {
     let id3 = arena.alloc(200u16).unwrap();
 
     // All should be valid
-    assert_eq!(*arena.get(&id1).unwrap(), 42);
-    assert_eq!(*arena.get(&id2).unwrap(), 100);
-    assert_eq!(*arena.get(&id3).unwrap(), 200);
+    assert_eq!(*arena.get(id1).unwrap(), 42);
+    assert_eq!(*arena.get(id2).unwrap(), 100);
+    assert_eq!(*arena.get(id3).unwrap(), 200);
 
     let used_before_pop = arena.used();
 
-    // Pop the last allocation
-    assert!(arena.pop());
+    // Pop the last allocation (was u16)
+    assert_eq!(arena.pop::<u16>().unwrap(), 200);
 
-    // All IDs should now be invalid (generation was incremented)
-    assert!(arena.get(&id1).is_err());
-    assert!(arena.get(&id2).is_err());
-    assert!(arena.get(&id3).is_err());
+    // Pop doesn't change generation, so id1 and id2 are still valid
+    // but id3 was popped so it's in undefined state (its memory was deallocated)
+    assert_eq!(*arena.get(id1).unwrap(), 42);
+    assert_eq!(*arena.get(id2).unwrap(), 100);
 
     // Used space should have decreased
     assert!(arena.used() < used_before_pop);
 
     // Allocate new values after pop
     let new_id1 = arena.alloc(999u32).unwrap();
-    assert_eq!(*arena.get(&new_id1).unwrap(), 999);
+    assert_eq!(*arena.get(new_id1).unwrap(), 999);
 
     // Pop again
-    assert!(arena.pop());
-    assert!(arena.get(&new_id1).is_err()); // new_id1 now invalid
+    assert_eq!(arena.pop::<u32>().unwrap(), 999);
+    // new_id1 was just popped, its memory is deallocated
+    // id1 and id2 are still valid though
+    assert_eq!(*arena.get(id1).unwrap(), 42);
+    assert_eq!(*arena.get(id2).unwrap(), 100);
 
     // No more to pop
-    assert!(!arena.pop());
+    assert!(arena.pop::<u32>().is_err());
 }
 
 #[test]
-fn test_pop_with_slice() {
+fn test_pop_with_single_values() {
     let mut arena: Arena<1024> = Arena::new();
 
-    let slice1 = arena.alloc_slice_from_fn(4, |i| i + 1).unwrap();
-    let slice2 = arena.alloc_slice_from_fn(2, |i| (i + 1) * 10).unwrap();
+    // Allocate some single values
+    let id1 = arena.alloc(100u32).unwrap();
+    let id2 = arena.alloc(200u32).unwrap();
 
     // Both should be valid
-    assert_eq!(arena.get_slice(&slice1).unwrap(), &[1, 2, 3, 4]);
-    assert_eq!(arena.get_slice(&slice2).unwrap(), &[10, 20]);
+    assert_eq!(*arena.get(id1).unwrap(), 100);
+    assert_eq!(*arena.get(id2).unwrap(), 200);
 
-    // Pop the last slice
-    assert!(arena.pop());
+    // Pop the last allocation
+    assert_eq!(arena.pop::<u32>().unwrap(), 200);
 
-    // Both slices should now be invalid (generation was incremented)
-    assert!(arena.get_slice(&slice1).is_err());
-    assert!(arena.get_slice(&slice2).is_err());
+    // Pop doesn't change generation, so id1 is still valid
+    // id2 was popped so it's in undefined state (its memory was deallocated)
+    assert_eq!(*arena.get(id1).unwrap(), 100);
 
-    // Allocate new slice after pop
-    let new_slice = arena.alloc_slice_from_fn(3, |i| i * 2).unwrap();
-    assert_eq!(arena.get_slice(&new_slice).unwrap(), &[0, 2, 4]);
+    // Allocate new value after pop
+    let new_id = arena.alloc(300u32).unwrap();
+    assert_eq!(*arena.get(new_id).unwrap(), 300);
 }

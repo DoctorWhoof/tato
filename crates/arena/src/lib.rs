@@ -4,6 +4,8 @@
 //! can't be used with large arenas (max 1Mb on Windows, 8Mb on Linux/Mac)
 
 pub mod arena;
+pub mod arena_ops;
+pub mod arena_ref;
 pub mod buffer;
 pub mod id;
 pub mod ring_buffer;
@@ -12,6 +14,8 @@ pub mod text;
 // pub mod typed_arena;
 
 pub use arena::Arena;
+pub use arena_ops::{ArenaOps, RawAllocId};
+pub use arena_ref::ArenaRef;
 pub use buffer::*;
 pub use id::{ArenaId, RawId};
 pub use ring_buffer::*;
@@ -36,6 +40,8 @@ pub enum ArenaErr {
     CapacityExceeded,
     /// Text generation failed due to invalid characters
     InvalidUTF8,
+    /// Text formatting failed
+    FormatError,
     /// Attempted to use a default arena object
     UnnallocatedObject
 }
@@ -54,9 +60,10 @@ impl core::fmt::Display for ArenaErr {
             }
             ArenaErr::InvalidBounds => write!(f, "Invalid bounds or range"),
             ArenaErr::IndexConversion => write!(f, "Index type conversion failed"),
-            ArenaErr::CapacityExceeded => write!(f, "Capacity exceeded"),
+            ArenaErr::CapacityExceeded => write!(f, "Slice capacity exceeded"),
             ArenaErr::InvalidUTF8 => write!(f, "Invalid UTF8"),
-            ArenaErr::UnnallocatedObject => write!(f, "Attempted to use an unnallocated Arena object"),
+            ArenaErr::FormatError => write!(f, "Text formatting failed"),
+            ArenaErr::UnnallocatedObject => write!(f, "Attempted to use a default arena object"),
         }
     }
 }
@@ -117,8 +124,8 @@ mod u32_tests {
         let id2 = arena.alloc(100i32).expect("Failed to allocate");
 
         // Test retrieval
-        assert_eq!(*arena.get(&id1).expect("Failed to get value"), 42);
-        assert_eq!(*arena.get(&id2).expect("Failed to get value"), 100);
+        assert_eq!(*arena.get(id1).expect("Failed to get value"), 42);
+        assert_eq!(*arena.get(id2).expect("Failed to get value"), 100);
 
         // Test that the indices can be converted to usize
         assert!(id1.offset() < 1024);
@@ -126,7 +133,7 @@ mod u32_tests {
 
         // Test slice allocation
         let slice_id = arena.alloc_slice_from_fn(3, |i| i as u8).expect("Failed to allocate slice");
-        let slice = arena.get_slice(&slice_id).expect("Failed to get slice");
+        let slice = arena.get_slice(slice_id).expect("Failed to get slice");
         assert_eq!(slice, &[0u8, 1u8, 2u8]);
     }
 }

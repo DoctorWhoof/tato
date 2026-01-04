@@ -274,7 +274,7 @@ impl<const CAP: usize, T: Num> AvgBuffer<CAP, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const MARGIN: f64 = 0.000001;
+    const MARGIN: f32 = 0.000001;
 
     #[test]
     fn create_and_push() {
@@ -310,20 +310,20 @@ mod tests {
 
     #[test]
     fn iteration() {
-        let mut buf = AvgBuffer::<10, f64>::new();
+        let mut buf = AvgBuffer::<10, f32>::new();
         let len = 7;
         for n in 0..len {
-            buf.push(n as f64);
+            buf.push(n as f32);
         }
 
         for (i, value) in buf.iter().enumerate() {
-            assert_eq!(i as f64, *value);
+            assert_eq!(i as f32, *value);
         }
     }
 
     #[test]
     fn test_min_max_recalculation() {
-        let mut buf = AvgBuffer::<5, f64>::new();
+        let mut buf = AvgBuffer::<5, f32>::new();
 
         // Fill buffer with increasing values
         buf.push(1.0);
@@ -393,11 +393,11 @@ mod tests {
 
     #[test]
     fn test_dirty_flag_behavior() {
-        let mut buf = AvgBuffer::<5, f64>::new();
+        let mut buf = AvgBuffer::<5, f32>::new();
 
         // Fill buffer
         for i in 0..5 {
-            buf.push(i as f64);
+            buf.push(i as f32);
         }
 
         // First access should use cached values
@@ -423,15 +423,15 @@ mod tests {
     #[test]
     fn test_pre_filled_edge_cases() {
         // Test with very large values
-        let buf_large = AvgBuffer::<5, f64>::pre_filled(1e10);
+        let buf_large = AvgBuffer::<5, f32>::pre_filled(1e10);
         assert!((buf_large.average() - 1e10).abs() < MARGIN);
 
         // Test with very small values
-        let buf_small = AvgBuffer::<5, f64>::pre_filled(1e-10);
+        let buf_small = AvgBuffer::<5, f32>::pre_filled(1e-10);
         assert!((buf_small.average() - 1e-10).abs() < MARGIN);
 
         // Test with negative values
-        let mut buf_neg = AvgBuffer::<5, f64>::pre_filled(-5.0);
+        let mut buf_neg = AvgBuffer::<5, f32>::pre_filled(-5.0);
         assert!((buf_neg.average() - (-5.0)).abs() < MARGIN);
         assert!((buf_neg.min() - (-5.0)).abs() < MARGIN);
         assert!((buf_neg.max() - (-5.0)).abs() < MARGIN);
@@ -473,11 +473,11 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let mut buf = AvgBuffer::<5, f64>::new();
+        let mut buf = AvgBuffer::<5, f32>::new();
 
         // Push known values: 1, 2, 3, 4, 5
         for i in 1..=5 {
-            buf.push(i as f64);
+            buf.push(i as f32);
         }
 
         // Mean should be 3.0
@@ -486,7 +486,7 @@ mod tests {
 
     #[test]
     fn test_rms_and_sum_functions() {
-        let mut buf = AvgBuffer::<3, f64>::new();
+        let mut buf = AvgBuffer::<3, f32>::new();
 
         buf.push(3.0);
         buf.push(4.0);
@@ -498,10 +498,10 @@ mod tests {
 
     #[test]
     fn test_statistical_functions() {
-        let mut buf = AvgBuffer::<5, f64>::new();
+        let mut buf = AvgBuffer::<5, f32>::new();
 
         for i in 1..=5 {
-            buf.push(i as f64);
+            buf.push(i as f32);
         }
 
         assert!((buf.average() - 3.0).abs() < MARGIN);
@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_rolling_updates() {
-        let mut buf = AvgBuffer::<3, f64>::new();
+        let mut buf = AvgBuffer::<3, f32>::new();
 
         buf.push(1.0);
         buf.push(2.0);

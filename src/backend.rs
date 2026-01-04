@@ -1,7 +1,10 @@
 //! Backend trait for abstracting rendering operations across different graphics libraries
 
-use crate::{prelude::{DrawOp, Key}, Tato};
-use tato_arena::{Arena, ArenaId, Buffer};
+use crate::{
+    Tato,
+    prelude::{DrawOp, Key},
+};
+use tato_arena::{ArenaId, ArenaOps, Buffer};
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
 use tato_video::{RGBA32, TilemapRef};
@@ -46,16 +49,15 @@ pub trait Backend {
     /// Clear the screen with the given color
     fn clear(&mut self, color: RGBA32);
 
-    fn frame_start<const LEN: usize>(&mut self, frame_arena: &mut Arena<LEN>, pad:&mut AnaloguePad);
+    fn frame_start<A>(&mut self, frame_arena: &mut A, pad: &mut AnaloguePad)
+    where
+        A: ArenaOps<u32, ()>;
 
     /// Present the rendered frame to the screen
-    fn frame_present<'a, const LEN: usize, T>(
-        &mut self,
-        arena: &'a mut Arena<LEN>,
-        tato: &'a Tato,
-        bg_banks: &[&'a T],
-    ) where
-        &'a T: Into<TilemapRef<'a>>;
+    fn frame_present<'a, A, T>(&mut self, arena: &'a mut A, tato: &'a Tato, bg_banks: &[&'a T])
+    where
+        &'a T: Into<TilemapRef<'a>>,
+        A: ArenaOps<u32, ()>;
 
     /// Check if the window should close
     fn should_close(&self) -> bool;
@@ -80,7 +82,7 @@ pub trait Backend {
 
     fn get_pressed_key(&self) -> Option<Key>;
 
-    fn set_game_input(&mut self, state:bool);
+    fn set_game_input(&mut self, state: bool);
 
     // ---------------------- Window Info ----------------------
 
@@ -108,5 +110,4 @@ pub trait Backend {
     fn get_pixel_iter_elapsed_time(&self) -> f32;
 
     fn get_drawing_elapsed_time(&self) -> f32;
-
 }

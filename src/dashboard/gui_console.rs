@@ -1,12 +1,14 @@
 use super::*;
 
 impl Dashboard {
-    pub(super) fn process_console<const LEN: usize>(
+    pub(super) fn process_console<A>(
         &mut self,
         tato: &Tato,
         layout: &mut Frame<i16>,
-        frame_arena: &mut Arena<LEN>,
-    ) {
+        frame_arena: &mut A,
+    ) where
+        A: ArenaOps<u32, ()>,
+    {
         // Console
         if !self.display_console {
             return;

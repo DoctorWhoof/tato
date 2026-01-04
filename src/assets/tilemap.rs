@@ -1,4 +1,4 @@
-use tato_arena::{Arena, Slice};
+use tato_arena::{Arena, ArenaOps, Slice};
 use tato_video::{Cell, TilemapRef};
 
 /// A reference to a tilemap associated with a tileset.
@@ -14,7 +14,7 @@ pub(crate) struct TilemapEntry {
 
 impl TilemapEntry {
     pub fn to_ref<'a, const LEN: usize>(&self, arena: &'a Arena<LEN, u16>) -> Option<TilemapRef<'a>> {
-        let cells = arena.get_slice(&self.cells).ok()?;
+        let cells = arena.get_slice(self.cells).ok()?;
         Some(TilemapRef { cells, columns: self.columns, rows: self.rows })
     }
 }

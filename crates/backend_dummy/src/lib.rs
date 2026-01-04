@@ -5,7 +5,7 @@ pub use tato;
 
 pub struct DummyBackend {
     pub print_frame_time: bool,
-    buffer_iter_time: AvgBuffer<120, f64>,
+    buffer_iter_time: AvgBuffer<120, f32>,
     last_print_time: Instant,
     pressed_key: Option<Key>,
     frame_count: u64,
@@ -34,23 +34,23 @@ impl Backend for DummyBackend {
         // Do nothing - dummy backend doesn't handle input
     }
 
-    fn frame_start<const LEN: usize>(
-        &mut self,
-        _frame_arena: &mut Arena<LEN>,
-        pad: &mut AnaloguePad,
-    ) {
+    fn frame_start<A>(&mut self, _frame_arena: &mut A, pad: &mut AnaloguePad)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         self.pressed_key = None;
         // Clear pad input since we're not handling any
         pad.clear();
     }
 
-    fn frame_present<'a, const LEN: usize, T>(
+    fn frame_present<'a, A, T>(
         &mut self,
-        _frame_arena: &'a mut Arena<LEN>,
+        _frame_arena: &'a mut A,
         tato: &'a Tato,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
+        A: ArenaOps<u32, ()>,
     {
         let time_iter = Instant::now();
 

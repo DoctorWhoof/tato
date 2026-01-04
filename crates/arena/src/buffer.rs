@@ -1,5 +1,5 @@
 use super::*;
-use crate::{ArenaErr, ArenaRes};
+use crate::{ArenaErr, ArenaOps, ArenaRes};
 use core::slice::Iter;
 
 mod drain;
@@ -24,21 +24,18 @@ impl<T, I, M> Buffer<T, I, M>
 where
     I: ArenaIndex,
 {
-    pub fn new<const LEN: usize>(
-        arena: &mut Arena<LEN, I, M>,
-        capacity: I,
-    ) -> ArenaRes<Self> {
-        let slice = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
+    pub fn new<A>(arena: &mut A, capacity: I) -> ArenaRes<Self>
+    where
+        A: ArenaOps<I, M>,
+    {
+        let (slice, _) = arena.alloc_slice_uninit::<T>(capacity.to_usize())?;
         Ok(Self { slice, len: I::zero() })
     }
 
-    pub fn from_fn<const LEN: usize, F>(
-        arena: &mut Arena<LEN, I, M>,
-        capacity: I,
-        func: F,
-    ) -> ArenaRes<Self>
+    pub fn from_fn<A, F>(arena: &mut A, capacity: I, func: F) -> ArenaRes<Self>
     where
         F: Fn(usize) -> T,
+        A: ArenaOps<I, M>,
     {
         let slice = arena.alloc_slice_from_fn(capacity.to_usize(), func)?;
         Ok(Self { slice, len: capacity })
@@ -68,36 +65,34 @@ where
         self.len
     }
 
-    pub fn push<const LEN: usize>(
-        &mut self,
-        arena: &mut Arena<LEN, I, M>,
-        value: T,
-    ) -> ArenaRes<()> {
+    pub fn push<A>(&mut self, arena: &mut A, value: T) -> ArenaRes<()>
+    where
+        A: ArenaOps<I, M>,
+    {
         if self.slice.capacity() == I::zero() {
             return Err(ArenaErr::UnnallocatedObject);
         }
         if self.len >= self.slice.capacity() {
             return Err(ArenaErr::CapacityExceeded);
         }
-        let slice = arena.get_slice_mut(&self.slice)?;
+        let slice = arena.get_slice_mut(self.slice.clone())?;
         slice[self.len.to_usize()] = value;
         self.len += I::one();
         Ok(())
     }
 
-    pub fn pop<const LEN: usize>(
-        &mut self,
-        arena: &Arena<LEN, I, M>,
-    ) -> Option<T>
+    pub fn pop<A>(&mut self, arena: &mut A) -> Option<T>
     where
         T: Copy,
+        A: ArenaOps<I, M>,
     {
         if self.len == I::zero() {
             return None;
         }
 
         self.len -= I::one();
-        let slice = arena.get_slice(&self.slice).expect("Buffer slice should always be valid");
+        let slice =
+            arena.get_slice(self.slice.clone()).expect("Buffer slice should always be valid");
         Some(slice[self.len.to_usize()])
     }
 
@@ -110,15 +105,16 @@ where
 
     /// Resizes the buffer within the capacity boundaries. If new length is longer
     /// than the current, the new items are filled with the default value.
-    pub fn resize<const LEN: usize>(&mut self, arena: &mut Arena<LEN, I, M>, new_len: I)
+    pub fn resize<A>(&mut self, arena: &mut A, new_len: I)
     where
         T: Default,
+        A: ArenaOps<I, M>,
     {
         if new_len >= self.slice.capacity() {
             return;
         }
         if new_len >= self.len {
-            if let Ok(slice) = arena.get_slice_mut(&self.slice) {
+            if let Ok(slice) = arena.get_slice_mut(self.slice.clone()) {
                 for item in slice {
                     *item = T::default()
                 }
@@ -127,19 +123,32 @@ where
         self.len = new_len;
     }
 
-    pub fn as_slice<'a, const LEN: usize>(
-        &self,
-        arena: &'a Arena<LEN, I, M>,
-    ) -> ArenaRes<&'a [T]> {
-        let full_slice = arena.get_slice(&self.slice)?;
+    pub fn get<A>(&self, arena: &A, index: usize) -> Option<T>
+    where
+        T: Copy,
+        A: ArenaOps<I, M>,
+    {
+        if index >= self.len.to_usize() {
+            return None;
+        }
+
+        let slice = arena.get_slice(self.slice.clone()).ok()?;
+        Some(slice[index])
+    }
+
+    pub fn as_slice<'a, A>(&self, arena: &'a A) -> ArenaRes<&'a [T]>
+    where
+        A: ArenaOps<I, M>,
+    {
+        let full_slice = arena.get_slice(self.slice.clone())?;
         Ok(&full_slice[..self.len.to_usize()])
     }
 
-    pub fn as_slice_mut<'a, const LEN: usize>(
-        &self,
-        arena: &'a mut Arena<LEN, I, M>,
-    ) -> ArenaRes<&'a mut [T]> {
-        let full_slice = arena.get_slice_mut(&self.slice)?;
+    pub fn as_slice_mut<'a, A>(&self, arena: &'a mut A) -> ArenaRes<&'a mut [T]>
+    where
+        A: ArenaOps<I, M>,
+    {
+        let full_slice = arena.get_slice_mut(self.slice.clone())?;
         Ok(&mut full_slice[..self.len.to_usize()])
     }
 
@@ -158,8 +167,7 @@ where
         let temp_slice = arena.alloc_slice_from_fn(sub_buffer_count.to_usize(), |_| {
             core::mem::MaybeUninit::<Buffer<T, I, M>>::uninit()
         })?;
-        let temp_ptr =
-            arena.get_slice_mut(&temp_slice)?.as_mut_ptr() as *mut Buffer<T, I, M>;
+        let temp_ptr = arena.get_slice_mut(temp_slice)?.as_mut_ptr() as *mut Buffer<T, I, M>;
 
         // Initialize each buffer in the temporary space
         for i in 0..sub_buffer_count.to_usize() {
@@ -174,17 +182,15 @@ where
     }
 
     // Iterators
-    pub fn items<'a, const LEN: usize>(
-        &self,
-        arena: &'a Arena<LEN, I, M>,
-    ) -> ArenaRes<Iter<'a, T>> {
-        arena.iter_slice_range(&self.slice, I::zero(), self.len)
+    pub fn items<'a, A>(&self, arena: &'a A) -> ArenaRes<Iter<'a, T>>
+    where A: ArenaOps<I, M>,
+    {
+        arena.iter_slice_range(self.slice.clone(), 0, self.len.to_usize())
     }
 
-    pub fn drain<'a, const LEN: usize>(
-        &'a mut self,
-        arena: &'a Arena<LEN, I, M>,
-    ) -> DrainIterator<'a, T, LEN, I, M> {
+    pub fn drain<'a, A>(&'a mut self, arena: &'a mut A) -> DrainIterator<'a, T, A, I, M>
+    where A: ArenaOps<I, M>,
+    {
         let end = self.len.to_usize();
         let iter = DrainIterator {
             arena,

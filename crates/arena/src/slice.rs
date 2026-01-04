@@ -3,7 +3,7 @@
 use crate::ArenaIndex;
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Slice<T, I = u32, M = ()> {
     pub(crate) offset: I,
     pub(crate) len: I,
@@ -11,6 +11,22 @@ pub struct Slice<T, I = u32, M = ()> {
     pub(crate) arena_id: u16,
     pub(crate) _phantom: PhantomData<(T, M)>,
 }
+
+// Manually implement Clone without T: Clone bound
+impl<T, I: Clone, M> Clone for Slice<T, I, M> {
+    fn clone(&self) -> Self {
+        Self {
+            offset: self.offset.clone(),
+            len: self.len.clone(),
+            generation: self.generation,
+            arena_id: self.arena_id,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+// Manually implement Copy without T: Copy bound
+impl<T, I: Copy, M> Copy for Slice<T, I, M> {}
 
 impl<T, I, M> Slice<T, I, M>
 where

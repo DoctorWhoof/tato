@@ -25,8 +25,8 @@ pub struct RayBackend {
     draw_ops_additional: Buffer<ArenaId<DrawOp>>,
     canvas_texture: TextureId,
     pixels: Vec<u8>,
-    buffer_iter_time: AvgBuffer<120, f64>,
-    buffer_canvas_time: AvgBuffer<120, f64>,
+    buffer_iter_time: AvgBuffer<120, f32>,
+    buffer_canvas_time: AvgBuffer<120, f32>,
     pressed_key: Option<Key>,
     allow_game_input: bool,
 }
@@ -147,17 +147,15 @@ impl Backend for RayBackend {
         self.allow_game_input = state;
     }
 
-    fn frame_start<const LEN: usize>(
-        &mut self,
-        frame_arena: &mut Arena<LEN>,
-        pad: &mut AnaloguePad,
-    ) {
+    fn frame_start<A>(&mut self, frame_arena: &mut A, pad: &mut AnaloguePad)
+    where
+        A: ArenaOps<u32, ()>,
+    {
         self.draw_ops = Buffer::new(frame_arena, 1000).unwrap();
         self.pressed_key = None;
         self.canvas_rect = None;
 
         use KeyboardKey::*;
-
 
         // Gamepad input
         let ray = &mut self.ray;
@@ -271,13 +269,14 @@ impl Backend for RayBackend {
     }
 
     /// Finish canvas and GUI drawing, present to window
-    fn frame_present<'a, const LEN: usize, T>(
+    fn frame_present<'a, A, T>(
         &mut self,
-        frame_arena: &'a mut Arena<LEN>,
+        frame_arena: &'a mut A,
         tato: &'a Tato,
         bg_banks: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
+        A: ArenaOps<u32, ()>,
     {
         let time_iter = Instant::now();
         // let mut temp_texts = Arena::<32768, u32>::new();
@@ -298,7 +297,7 @@ impl Backend for RayBackend {
             self.pixels[index + 2] = color.b;
             self.pixels[index + 3] = color.a;
         }
-        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f64());
+        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f32());
 
         // Update main render texture and queue draw operation
         let time_queue = Instant::now();
@@ -371,7 +370,7 @@ impl Backend for RayBackend {
                 }
             },
             DrawOp::Text { text, x, y, size, color } => {
-                if let Ok(text) = text.as_str(&frame_arena) {
+                if let Ok(text) = text.as_str(frame_arena) {
                     canvas.draw_text_ex(
                         &self.font,
                         text,
@@ -385,19 +384,25 @@ impl Backend for RayBackend {
         };
 
         // Execute draw ops
-        for id in self.draw_ops.drain(frame_arena) {
-            let cmd = frame_arena.get(&id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
-        for id in self.draw_ops_additional.drain(frame_arena) {
-            let cmd = frame_arena.get(&id).unwrap();
-            process_draw_ops(cmd);
+        if let Ok(slice) = self.draw_ops_additional.as_slice(frame_arena) {
+            for ids in slice {
+                if let Ok(cmd) = frame_arena.get(*ids) {
+                    process_draw_ops(cmd);
+                }
+            }
         }
 
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
-        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f64());
+        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f32());
 
         // This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
