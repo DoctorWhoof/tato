@@ -110,8 +110,8 @@ pub struct WinitBackend {
     // Performance tracking
     pub pixel_iter_elapsed_time: f32,
     pub drawing_elapsed_time: f32,
-    pub buffer_iter_time: AvgBuffer<120, f64>,
-    pub buffer_canvas_time: AvgBuffer<120, f64>,
+    pub buffer_iter_time: AvgBuffer<120, f32>,
+    pub buffer_canvas_time: AvgBuffer<120, f32>,
 
     // Canvas
     pub canvas_texture_id: TextureId,
@@ -126,8 +126,8 @@ impl WinitBackend {
         let window_attributes = Window::default_attributes()
             .with_title("Tato Demo")
             .with_inner_size(LogicalSize::new(
-                tato.video.width() as f64 * 3.0,
-                tato.video.height() as f64 * 3.0,
+                tato.video.width() as f32 * 3.0,
+                tato.video.height() as f32 * 3.0,
             ));
 
         // Note: In real usage, window creation should happen in the resumed() callback
@@ -509,10 +509,10 @@ impl Backend for WinitBackend {
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: self.bg_color.r as f64 / 255.0,
-                                g: self.bg_color.g as f64 / 255.0,
-                                b: self.bg_color.b as f64 / 255.0,
-                                a: self.bg_color.a as f64 / 255.0,
+                                r: self.bg_color.r as f32 / 255.0,
+                                g: self.bg_color.g as f32 / 255.0,
+                                b: self.bg_color.b as f32 / 255.0,
+                                a: self.bg_color.a as f32 / 255.0,
                             }),
                             store: wgpu::StoreOp::Store,
                         },

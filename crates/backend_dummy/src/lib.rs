@@ -5,7 +5,7 @@ pub use tato;
 
 pub struct DummyBackend {
     pub print_frame_time: bool,
-    buffer_iter_time: AvgBuffer<120, f64>,
+    buffer_iter_time: AvgBuffer<120, f32>,
     last_print_time: Instant,
     pressed_key: Option<Key>,
     frame_count: u64,

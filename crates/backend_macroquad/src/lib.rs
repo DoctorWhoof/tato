@@ -102,8 +102,8 @@ pub struct MquadBackend {
     draw_ops_additional: Buffer<ArenaId<DrawOp>>,
     canvas_texture: TextureId,
     pixels: Vec<u8>,
-    buffer_iter_time: AvgBuffer<120, f64>,
-    buffer_canvas_time: AvgBuffer<120, f64>,
+    buffer_iter_time: AvgBuffer<120, f32>,
+    buffer_canvas_time: AvgBuffer<120, f32>,
     pressed_key: Option<Key>,
     allow_game_input: bool,
     target_fps: u32,
@@ -422,7 +422,7 @@ impl Backend for MquadBackend {
             self.pixels[index + 2] = color.b;
             self.pixels[index + 3] = color.a;
         }
-        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f64());
+        self.buffer_iter_time.push(time_iter.elapsed().as_secs_f32());
 
         // Update main render texture and queue draw operation
         let time_queue = Instant::now();
@@ -533,7 +533,7 @@ impl Backend for MquadBackend {
 
         // Time to queue all backed drawing, does not include actual render time,
         // which will happen when this function returns
-        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f64());
+        self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f32());
 
         // This print exists for a silly reason: the game actually runs slower if I don't! :-0
         // CPU usage increases and Frame Update time increases if I don't print every frame. Super weird.
