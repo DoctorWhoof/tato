@@ -18,6 +18,7 @@ pub struct Tato {
     // Internals
     pub target_fps: u8,
     time: u64,
+    time_cache:f32, // will be pre-divided per frame
     delta: f32,
     elapsed_time: f32,
     frame_started: bool,
@@ -37,6 +38,7 @@ impl Tato {
             character_set: CharacterSet::Long,
             target_fps,
             time: 0,
+            time_cache:0.0,
             delta: 1.0,
             elapsed_time: 1.0 / target_fps as f32,
             frame_finished: true,
@@ -48,6 +50,7 @@ impl Tato {
         // self.pad.clear(); // Handled by backend, otherwise it messes up "just_pressed" detection
         self.paused = false;
         self.time = 0;
+        self.time_cache = 0.0;
         self.time_scale = 1.0;
         self.video.reset_all();
         self.assets.reset();
@@ -60,7 +63,7 @@ impl Tato {
     }
 
     pub fn time(&self) -> f32 {
-        self.time as f32 / 1_000_000.0
+        self.time_cache
     }
 
     pub fn elapsed_time(&self) -> f32 {
@@ -85,7 +88,7 @@ impl Tato {
         // typical display refresh rates. Works with 60, 72, 90, 120, 180 and 240 Hz.
         // Does NOT work with PAL refresh rates. Sorry, not sorry.
         const ELAPSED_QUANT_SIZE: f32 = 1.0 / 1440.0; // 3X 120Hz, 6X 60Hz
-        // Will not attempt to delta-correct is frame rate is ridiculously low, since
+        // Will not attempt to delta-correct if frame rate is ridiculously low, since
         // that could cause weird physics (like teleporting through objects)
         const ELAPSED_MAX: f32 = 1.0 / 15.0;
         let elapsed = tato_math::quantize(elapsed, ELAPSED_QUANT_SIZE) //
@@ -99,6 +102,7 @@ impl Tato {
             self.delta = self.elapsed_time / reference_frame_time;
             let elapsed_microseconds = (elapsed * self.time_scale * 1_000_000.0) as u64;
             self.time += elapsed_microseconds;
+            self.time_cache = self.time as f32 / 1_000_000.0;
         }
 
         self.frame_finished = false;

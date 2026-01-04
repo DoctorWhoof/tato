@@ -18,12 +18,14 @@ pub mod vec2;
 pub use vec2::Vec2;
 
 /// Linear interpolation.
+/// Pre-multiply "t" by delta time if needed.
 #[inline(always)]
 pub fn lerp(start: f32, end: f32, t: f32) -> f32 {
     start + (t * (end - start))
 }
 
 /// Smooth interpolation using smoothstep function.
+/// Pre-multiply "t" by delta time if needed.
 #[inline(always)]
 pub fn smerp(start: f32, end: f32, t: f32) -> f32 {
     let t = t.clamp(0.0, 1.0);
