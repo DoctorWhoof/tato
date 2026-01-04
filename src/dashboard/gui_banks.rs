@@ -100,7 +100,7 @@ impl Dashboard {
     ) where
         A: ArenaOps<u32, ()>,
     {
-        let tiles_per_row = ((TILE_COUNT as f64).sqrt().ceil()) as u16;
+        let tiles_per_row = ((TILE_COUNT as f32).sqrt().ceil()) as u16;
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
 
         let gap = self.gui_scale as i16;

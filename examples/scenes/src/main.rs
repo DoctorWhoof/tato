@@ -16,8 +16,8 @@ const MAP_CYCLE: u8 = 1;
 #[derive(Debug, Clone)]
 pub struct State {
     pub pad: AnaloguePad,
-    pub time: f64,
-    pub elapsed: f64,
+    pub time: f32,
+    pub elapsed: f32,
     pub bg: Tilemap<1600>,
 }
 
@@ -72,8 +72,8 @@ fn main() -> TatoResult<()> {
         dash.frame_start(&mut frame_arena, &mut backend);
         tato.frame_start(backend.ray.get_frame_time());
 
-        state.time = backend.ray.get_time();
-        state.elapsed = 1.0 / target_fps as f64;
+        state.time = backend.ray.get_time() as f32;
+        state.elapsed = 1.0 / target_fps as f32;
         state.pad = tato.pad;
 
         // If scene_change is None, immediately switch to A, otherwise process it.

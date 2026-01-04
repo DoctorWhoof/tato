@@ -3,7 +3,7 @@ use crate::{prelude::CharacterSet, *};
 #[derive(Debug)]
 pub struct Tato {
     pub paused: bool,
-    pub time_scale: f64,
+    pub time_scale: f32,
     // Input
     pub pad: tato_pad::AnaloguePad,
     // Audio
@@ -17,7 +17,7 @@ pub struct Tato {
     pub assets: Assets<16384>,
     // Internals
     pub target_fps: u8,
-    time: f64,
+    time: u64,
     delta: f32,
     elapsed_time: f32,
     frame_started: bool,
@@ -36,7 +36,7 @@ impl Tato {
             banks: core::array::from_fn(|_| VideoBank::new()),
             character_set: CharacterSet::Long,
             target_fps,
-            time: 0.0,
+            time: 0,
             delta: 1.0,
             elapsed_time: 1.0 / target_fps as f32,
             frame_finished: true,
@@ -47,7 +47,7 @@ impl Tato {
     pub fn reset(&mut self) {
         // self.pad.clear(); // Handled by backend, otherwise it messes up "just_pressed" detection
         self.paused = false;
-        self.time = 0.0;
+        self.time = 0;
         self.time_scale = 1.0;
         self.video.reset_all();
         self.assets.reset();
@@ -59,8 +59,8 @@ impl Tato {
         ();
     }
 
-    pub fn time(&self) -> f64 {
-        self.time
+    pub fn time(&self) -> f32 {
+        self.time as f32 / 1_000_000.0
     }
 
     pub fn elapsed_time(&self) -> f32 {
@@ -95,9 +95,10 @@ impl Tato {
             self.delta = 0.0;
         } else {
             let reference_frame_time = 1.0 / 60.0;
-            self.elapsed_time = elapsed * self.time_scale as f32;
+            self.elapsed_time = elapsed * self.time_scale;
             self.delta = self.elapsed_time / reference_frame_time;
-            self.time += elapsed as f64 * self.time_scale;
+            let elapsed_microseconds = (elapsed * self.time_scale * 1_000_000.0) as u64;
+            self.time += elapsed_microseconds;
         }
 
         self.frame_finished = false;
