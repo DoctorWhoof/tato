@@ -128,6 +128,11 @@ impl Dashboard {
         })
     }
 
+    /// The visibility state of the console.
+    pub fn console_visible(&self) -> bool {
+        self.display_console && self.display_debug_info
+    }
+
     /// A reference to the pixel buffer used to debug tile pixels, if
     /// the desired bank contains one
     pub fn tile_pixels(&self, bank_index: usize) -> Option<&[u8]> {
