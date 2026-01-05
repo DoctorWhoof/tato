@@ -73,18 +73,18 @@ impl SceneB {
         })
     }
 
-    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato) -> Option<SceneChange> {
         let speed = 1.0;
 
         // Input
-        if state.pad.is_down(Button::Left) {
+        if t.pad.is_down(Button::Left) {
             self.player.x -= speed;
-        } else if state.pad.is_down(Button::Right) {
+        } else if t.pad.is_down(Button::Right) {
             self.player.x += speed;
         }
-        if state.pad.is_down(Button::Up) {
+        if t.pad.is_down(Button::Up) {
             self.player.y -= speed;
-        } else if state.pad.is_down(Button::Down) {
+        } else if t.pad.is_down(Button::Down) {
             self.player.y += speed;
         }
 
@@ -115,10 +115,10 @@ impl SceneB {
             color_mapping: MAP_CYCLE,
         });
 
-        if state.pad.is_just_pressed(Button::Start) {
+        if t.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;
         }
 
-        if state.pad.is_just_pressed(Button::Menu) { Some(SceneChange::C) } else { None }
+        if t.pad.is_just_pressed(Button::Menu) { Some(SceneChange::C) } else { None }
     }
 }

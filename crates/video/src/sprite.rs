@@ -29,7 +29,7 @@ pub struct Scanline {
 #[derive(Debug)]
 pub struct SpriteGenerator {
     pub sprites: [SpriteEntry; MAX_SPRITES],
-    pub scanlines: [Scanline; MAX_LINES],
+    pub scanlines: [Scanline; MAX_RESOLUTION_Y],
     sprite_count: u8,
 }
 

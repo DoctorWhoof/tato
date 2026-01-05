@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 mod cell;
 pub use cell::*;
@@ -47,8 +47,8 @@ pub type VideoIRQ = fn(&mut PixelIter, &VideoChip, &TilemapRef);
 // -------------------------------- Constants --------------------------------
 
 /// Maximum number of video scanlines
-pub const MAX_LINES: usize = 240;
-pub const MAX_VERTICAL_LINES: usize = 320;
+pub const MAX_RESOLUTION_X: usize = 320;
+pub const MAX_RESOLUTION_Y: usize = 240;
 
 /// Maximum number of simultaneous sprites on a single frame
 pub const MAX_SPRITES: usize = 256;

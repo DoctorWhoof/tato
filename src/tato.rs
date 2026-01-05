@@ -82,7 +82,7 @@ impl Tato {
                 "Frame must be finished on each main loop iteration with 'Tato::frame_finish'."
             ))
         }
-        self.video.frame_start();
+        self.video.frame_start(self.paused);
 
         // Quantized to a fixed interval to ensure it exactly matches
         // typical display refresh rates. Works with 60, 72, 90, 120, 180 and 240 Hz.

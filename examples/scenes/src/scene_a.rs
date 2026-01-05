@@ -21,7 +21,7 @@ impl SceneA {
         t.video.wrap_bg = false;
         t.video.wrap_sprites = false;
 
-        // Line scrolling effect, adjusts scroll on every line
+        // Line scrolling effect, adjusts on every line
         t.video.irq_line = Some(|iter, video, _bg| {
             let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;
             let phase = ((video.frame_number() as f32 / 30.0) + line_offset).sin();
@@ -136,38 +136,40 @@ impl SceneA {
 
         // ------------------------------ Input ------------------------------
 
-        if state.pad.is_just_pressed(Button::Start) {
+        if t.pad.is_just_pressed(Button::Start) {
             t.video.wrap_sprites = !t.video.wrap_sprites;
             t.video.wrap_bg = !t.video.wrap_bg;
         }
 
+        if t.paused { return None }
+
         // Increase speed if any "face" button (A,B,X,Y) is down
-        // let speed = if state.pad.is_any_down(AnyButton::Face) {
-        let speed = if state.pad.is_down(Button::A) {
+        // let speed = if t.pad.is_any_down(AnyButton::Face) {
+        let speed = if t.pad.is_down(Button::A) {
             30.0 * state.elapsed as f32
         } else {
             120.0 * state.elapsed as f32
         };
 
         // Ensures animation always starts from phase = 0.0;
-        if state.pad.is_any_just_pressed(AnyButton::Direction) {
+        if t.pad.is_any_just_pressed(AnyButton::Direction) {
             self.movement_start = state.time as f32;
         }
 
         // Player Movement
         let is_walking = {
             let (mut vel_x, mut vel_y) = (0.0, 0.0);
-            if state.pad.is_down(Button::Left) {
+            if t.pad.is_down(Button::Left) {
                 vel_x = -speed;
                 self.player.flags.rotate_left();
-            } else if state.pad.is_down(Button::Right) {
+            } else if t.pad.is_down(Button::Right) {
                 vel_x = speed;
                 self.player.flags.rotate_right();
             }
-            if state.pad.is_down(Button::Up) {
+            if t.pad.is_down(Button::Up) {
                 vel_y = -speed;
                 self.player.flags.rotate_up();
-            } else if state.pad.is_down(Button::Down) {
+            } else if t.pad.is_down(Button::Down) {
                 vel_y = speed;
                 self.player.flags.rotate_down();
             }
@@ -256,7 +258,7 @@ impl SceneA {
 
         // ------------------- Return mode switch request -------------------
 
-        if state.pad.is_just_pressed(Button::Menu) {
+        if t.pad.is_just_pressed(Button::Menu) {
             println!("Menu");
             Some(SceneChange::B)
         } else {

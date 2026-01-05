@@ -53,7 +53,7 @@ impl SceneC {
         Ok(SceneC { smiley, counter: 0 })
     }
 
-    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato) -> Option<SceneChange> {
         if t.video.frame_number() % 4 == 0 {
             unsafe {
                 LINE = LINE.wrapping_sub(1);
@@ -79,6 +79,6 @@ impl SceneC {
         self.counter += 1;
 
         // Input
-        if state.pad.is_just_pressed(Button::Menu) { Some(SceneChange::A) } else { None }
+        if t.pad.is_just_pressed(Button::Menu) { Some(SceneChange::A) } else { None }
     }
 }

@@ -34,8 +34,8 @@ pub struct PixelIter<'a> {
     pub crop_color: RGBA12, // Crop color (outside viewport)
 
     // Dual buffers for parallel processing
-    sprite_buffer: [RGBA12; MAX_VERTICAL_LINES], // Sprite layer
-    bg_buffer: [RGBA12; MAX_VERTICAL_LINES],     // Background layer (tiles + bg_color)
+    sprite_buffer: [RGBA12; MAX_RESOLUTION_X], // Sprite layer
+    bg_buffer: [RGBA12; MAX_RESOLUTION_X],     // Background layer (tiles + bg_color)
 }
 
 impl<'a> PixelIter<'a> {
@@ -83,7 +83,7 @@ impl<'a> PixelIter<'a> {
             bg_color: vid.bg_color,
             crop_color: vid.crop_color,
             // scanline: vid.sprite_gen.scanlines[0].clone(),
-            sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES],
+            sprite_buffer: [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_RESOLUTION_X],
             bg_buffer: Self::generate_bg_color(0, vid),
         };
 
@@ -100,7 +100,7 @@ impl<'a> PixelIter<'a> {
         self.y
     }
 
-    #[inline(always)]
+    #[inline]
     fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
             let bg_map = self.bg_banks[self.bg_map_bank as usize];
@@ -108,22 +108,22 @@ impl<'a> PixelIter<'a> {
         }
     }
 
-    #[inline(always)]
-    fn generate_bg_color(y:u16, vid:&VideoChip) -> [RGBA12;MAX_VERTICAL_LINES]  {
+    #[inline]
+    fn generate_bg_color(y:u16, vid:&VideoChip) -> [RGBA12;MAX_RESOLUTION_X]  {
         if y < vid.view_top || y > vid.view_bottom {
-            [vid.crop_color.with_z(Z_BG); MAX_VERTICAL_LINES]
+            [vid.crop_color.with_z(Z_BG); MAX_RESOLUTION_X]
         } else {
-            [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_VERTICAL_LINES]
+            [RGBA12::TRANSPARENT.with_z(Z_BG); MAX_RESOLUTION_X]
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn pre_render_line(&mut self) {
         // Run Y IRQ before rendering the line
         self.call_line_irq();
 
         // Pre-calculate viewport bounds
-        let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
+        let width = self.vid.width().min(MAX_RESOLUTION_X as u16);
         let view_start = self.vid.view_left.max(0) as usize;
         let view_end = self.vid.view_right.min(width) as usize;
         if view_start >= view_end {
@@ -137,7 +137,7 @@ impl<'a> PixelIter<'a> {
         if self.y > self.vid.view_bottom {
             // Clear bg bottom. This can probably be eliminated if I change how BG renders
             self.bg_buffer = Self::generate_bg_color(self.y, self.vid);
-            self.sprite_buffer = [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_VERTICAL_LINES];
+            self.sprite_buffer = [RGBA12::TRANSPARENT.with_z(Z_SPRITE); MAX_RESOLUTION_X];
             return;
         }
 
@@ -171,7 +171,7 @@ impl<'a> PixelIter<'a> {
         self.pre_render_background(width);
     }
 
-    #[inline(always)]
+    #[inline]
     fn pre_render_sprites(&mut self, width: u16, view_start: usize, view_end: usize) {
         self.x = 0;
         // self.scanline = self.vid.sprite_gen.scanlines[self.y as usize].clone();
@@ -283,7 +283,7 @@ impl<'a> PixelIter<'a> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn pre_render_background(&mut self, width: u16) {
         // Reset x position for iteration
         self.x = 0;

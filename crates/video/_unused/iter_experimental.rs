@@ -8,7 +8,7 @@ const Z_BG_TILE: u8 = 1; // Normal background tiles
 const Z_SPRITE: u8 = 2; // Sprites
 const Z_BG_FOREGROUND: u8 = 3; // Background tiles with is_fg() flag (highest priority)
 
-const PIXEL_COUNT: usize = MAX_LINES * MAX_VERTICAL_LINES;
+const PIXEL_COUNT: usize = MAX_RESOLUTION_Y * MAX_RESOLUTION_X;
 
 /// Renders every pixel as it iterates the entire screen.
 /// All public fields can be manipulated per line with VideoIRQ!
@@ -119,7 +119,7 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_line(&mut self, y: usize, view_left: usize, view_right: usize) {
-        let width = self.vid.width().min(MAX_VERTICAL_LINES as u16);
+        let width = self.vid.width().min(MAX_RESOLUTION_X as u16);
         // self.pre_render_sprites(y, view_left, view_right, width);
         self.pre_render_background(y, view_left, view_right, width);
     }

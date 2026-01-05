@@ -60,7 +60,10 @@ pub struct VideoChip {
 impl VideoChip {
     /// Creates a new drawing context with default settings.
     pub fn new(w: u16, h: u16) -> Self {
-        assert!(h > 7 && h <= MAX_LINES as u16, err!("Screen height range is 8 to MAX_LINES"));
+        assert!(
+            h > 7 && h <= MAX_RESOLUTION_Y as u16,
+            err!("Screen height range is 8 to MAX_RESOLUTION_Y")
+        );
 
         let mut result = Self {
             bg_color: RGBA12::BLACK,
@@ -258,7 +261,12 @@ impl VideoChip {
         );
     }
 
-    pub fn frame_start(&mut self) {
+    pub fn frame_start(&mut self, is_paused: bool) {
+        if is_paused {
+            return;
+        }
+        // Frame count pauses just in case someone uses the frame count to
+        // process animations (not recommended...)
         self.frame_number += 1;
         self.reset_sprites();
     }

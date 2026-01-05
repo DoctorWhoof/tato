@@ -13,7 +13,7 @@
     Going to try option 1 but with a custom HBlank position, so that the code can run before the end of the line.
 
 [x] crop_x and crop_y, as a way to allow sprites to disappear under the left and top edges.
-    . Adds to scroll_x and scroll_y, but max out at 256 - width and MAX_LINES - height
+    . Adds to scroll_x and scroll_y, but max out at 256 - width and MAX_RESOLUTION_Y - height
 
 [x] Scanline cache in iterator
 
