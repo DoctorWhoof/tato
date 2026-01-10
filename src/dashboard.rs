@@ -25,7 +25,7 @@ mod gui_text;
 
 // The Fixed arena is never cleared - this may need to changed when
 // I dynamically update the tiles! (i.e. pop() and load())
-const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (32 * 1024);
+const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (64 * 1024);
 // 256 tiles per bank
 const MAX_TILE_PIXELS: usize =
     TILE_BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;

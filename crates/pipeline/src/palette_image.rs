@@ -1,4 +1,5 @@
-use image::{DynamicImage, ImageReader};
+use minipng::ImageData;
+// use image::{DynamicImage, ImageReader};
 use tato_video::*;
 
 use super::*;
@@ -29,13 +30,21 @@ impl PalettizedImg {
         let asset_name = last_split.next().unwrap().to_string();
 
         println!("cargo:warning=Converting image {}", asset_name);
-        let mut img_rgba = ImageReader::open(file_name).unwrap().decode().unwrap();
+        let img_bytes = std::fs::read(file_name).unwrap();
+        let img_header =
+            minipng::decode_png_header(img_bytes.as_slice()).expect("Invalid PNG file");
+        let capacity = img_header.required_bytes_rgba8bpc();
+        let mut img_buf = vec![0u8; capacity];
+        let mut img_rgba = minipng::decode_png(img_bytes.as_slice(), img_buf.as_mut_slice())
+            .expect("Failed converting PNG file to pixels");
 
-        if let DynamicImage::ImageRgba8 { .. } = img_rgba {
-            println!("cargo:warning= Image for '{}' is Rgba8, proceeding... ", asset_name);
-        } else {
-            println!("cargo:warning= Image for '{}' is not Rgba8, converting... ", asset_name);
-            img_rgba = DynamicImage::from(img_rgba.to_rgba8());
+        match img_rgba.color_type() {
+            //  do nothing
+            minipng::ColorType::Rgba => {},
+            _ => {
+                // convert to rgba, 8 bits per pixel if necessary
+                img_rgba.convert_to_rgba8bpc().expect("Failed converting to RGBA");
+            },
         }
 
         let (width, height) = (img_rgba.width() as usize, img_rgba.height() as usize);
@@ -62,12 +71,13 @@ impl PalettizedImg {
     }
 
     // Creates a palettized image from a source RGBA image, populates the palette.
-    pub fn palletize(img: DynamicImage, palette: &mut PaletteBuilder) -> Vec<u8> {
+    pub fn palletize(img: ImageData, palette: &mut PaletteBuilder) -> Vec<u8> {
         let mut pixels = vec![];
         for y in 0..img.height() as usize {
             for x in 0..img.width() as usize {
                 let color_index = {
-                    let buf = img.as_bytes();
+                    let buf = img.pixels();
+                    // let buf = img.as_bytes();
                     let index = x + (y * img.width() as usize);
                     let buf_index = index * 4;
                     let r = buf[buf_index];
