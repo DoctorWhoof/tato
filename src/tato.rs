@@ -10,7 +10,7 @@ pub struct Tato {
     pub audio: tato_audio::AudioChip,
     // Video
     pub video: tato_video::VideoChip,
-    pub banks: [tato_video::VideoBank<TILE_COUNT>; TILE_BANK_COUNT],
+    pub banks: [tato_video::Bank; BANK_COUNT],
     pub character_set: CharacterSet,
     // 16Kb asset memory. Currently only stores remapped tilemaps -
     // the tiles are stored directly in the memory banks
@@ -34,7 +34,7 @@ impl Tato {
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
-            banks: core::array::from_fn(|_| VideoBank::new()),
+            banks: core::array::from_fn(|_| Bank::new()),
             character_set: CharacterSet::Long,
             target_fps,
             time: 0,
@@ -127,7 +127,7 @@ impl Tato {
     where
         &'a T: Into<TilemapRef<'a>>,
     {
-        let video_banks: [&'a VideoBank<256>; TILE_BANK_COUNT] =
+        let video_banks: [&'a Bank; BANK_COUNT] =
             core::array::from_fn(|i| &self.banks[i]);
         self.video.iter_pixels(&video_banks[..], bg_banks)
     }

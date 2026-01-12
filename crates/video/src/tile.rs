@@ -6,7 +6,7 @@ use core::ops::{Index, IndexMut};
 pub struct TileID(pub u8);
 
 /// An array of clusters, each holding 8 pixels
-#[derive(Debug, Clone, Hash, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Default)]
 pub struct Tile<const BITS_PER_PIXEL: usize> {
     pub clusters: [Cluster<BITS_PER_PIXEL>; TILE_CLUSTER_COUNT],
 }

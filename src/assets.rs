@@ -55,9 +55,9 @@ struct TilesetCheckpoint {
     color_head: u8,
     anim_head: u8,
     // Bank states (tile and palette counts)
-    bank_tile_counts: [u8; TILE_BANK_COUNT],
-    bank_color_mapping_counts: [u8; TILE_BANK_COUNT],
-    // bank_palette_counts: [u8; TILE_BANK_COUNT],
+    bank_tile_counts: [u8; BANK_COUNT],
+    bank_color_mapping_counts: [u8; BANK_COUNT],
+    // bank_palette_counts: [u8; BANK_COUNT],
 }
 
 impl<const CAP: usize> Assets<CAP> {
@@ -123,10 +123,10 @@ impl Tato {
             }
 
             // Save bank states
-            let mut bank_tile_counts = [0u8; TILE_BANK_COUNT];
-            let mut bank_palette_counts = [0u8; TILE_BANK_COUNT];
-            let mut bank_color_mapping_counts = [0u8; TILE_BANK_COUNT];
-            for (i, bank) in self.banks.iter().enumerate().take(TILE_BANK_COUNT) {
+            let mut bank_tile_counts = [0u8; BANK_COUNT];
+            let mut bank_palette_counts = [0u8; BANK_COUNT];
+            let mut bank_color_mapping_counts = [0u8; BANK_COUNT];
+            for (i, bank) in self.banks.iter().enumerate().take(BANK_COUNT) {
                 bank_tile_counts[i] = bank.tile_count() as u8;
                 bank_palette_counts[i] = bank.color_count();
                 bank_color_mapping_counts[i] = bank.color_mapping_count();
@@ -280,7 +280,7 @@ impl Tato {
         assets.anim_head = checkpoint.anim_head;
 
         // Restore bank state
-        for (i, bank) in self.banks.iter_mut().enumerate().take(TILE_BANK_COUNT) {
+        for (i, bank) in self.banks.iter_mut().enumerate().take(BANK_COUNT) {
             bank.restore_tile_count(checkpoint.bank_tile_counts[i]);
             bank.restore_palette_state(
                 bank.color_count(), // Keep current color count

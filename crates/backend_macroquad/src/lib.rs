@@ -157,7 +157,7 @@ impl MquadBackend {
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
-        for _ in 0..TILE_BANK_COUNT {
+        for _ in 0..BANK_COUNT {
             // Each texture ID is the same as the bank
             result.create_texture(size, size);
         }

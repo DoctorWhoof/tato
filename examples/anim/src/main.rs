@@ -1,6 +1,6 @@
 mod astro;
 
-use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
+use crate::astro::{BANK_ASTRO, STRIP_ASTRO};
 use tato::{arena::{Arena, ArenaOps}, prelude::*};
 use tato_raylib::RayBackend;
 
@@ -32,7 +32,14 @@ fn main() -> TatoResult<()> {
     tato.video.fg_tile_bank = BANK_FG;
 
     // Animations
-    let astro = tato.push_tileset(BANK_FG, ASTRO_TILESET)?;
+    // TODO: Bank is now const data, old push_tileset API is being deprecated
+    // let astro = tato.push_tileset(BANK_FG, ASTRO_TILESET)?;
+    // For now, we have BANK_ASTRO available as const but need to update runtime API
+    let astro = tato.push_tileset(BANK_FG, TilesetData {
+        tiles: Some(&BANK_ASTRO.tiles),
+        colors: Some(&BANK_ASTRO.palette),
+        color_mappings: Some(&BANK_ASTRO.color_mapping),
+    })?;
     let strip = tato.load_animation_strip(astro, &STRIP_ASTRO)?;
     let anim_right = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [12, 13, 14, 13] })?;
     let anim_down = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [4, 5, 6, 5] })?;

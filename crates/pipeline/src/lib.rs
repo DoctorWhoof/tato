@@ -16,7 +16,7 @@ pub use code_gen::{format_cell_compact, format_tile_compact};
 mod palette_image;
 pub(crate) use palette_image::*;
 
-pub use {GroupBuilder, PaletteBuilder, TilesetBuilder};
+pub use {BankBuilder, GroupBuilder, PaletteBuilder, TilesetBuilder};
 
 #[derive(Clone)]
 pub struct BuildSettings {

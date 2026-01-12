@@ -4,7 +4,7 @@
 use crate::arena::{Arena, ArenaId, ArenaOps, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
-use crate::video::{COLORS_PER_PALETTE, RGBA32, TILE_BANK_COUNT, TILE_COUNT, TILE_SIZE, VideoBank};
+use crate::video::{COLORS_PER_PALETTE, RGBA32, BANK_COUNT, TILE_COUNT, TILE_SIZE, Bank};
 
 mod command;
 pub use command::*;
@@ -28,7 +28,7 @@ mod gui_text;
 const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (64 * 1024);
 // 256 tiles per bank
 const MAX_TILE_PIXELS: usize =
-    TILE_BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;
+    BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;
 const COMMAND_MAX_LEN: u32 = 100;
 const COMMAND_MAX_ARGS: usize = 8;
 
@@ -69,7 +69,7 @@ pub struct Dashboard {
     debug_text: Buffer<Text, u32>,
     debug_polys_world: Buffer<Polygon>,
     debug_polys_gui: Buffer<Polygon>,
-    tile_pixels: [Buffer<u8, u32>; TILE_BANK_COUNT], // one vec per bank
+    tile_pixels: [Buffer<u8, u32>; BANK_COUNT], // one vec per bank
 }
 
 pub const PANEL_WIDTH: i16 = 150;
@@ -86,10 +86,10 @@ impl Dashboard {
             // 4 bytes per pixel (RGBA)
             const CAP: u32 = TILE_COUNT as u32 * TILE_SIZE as u32 * TILE_SIZE as u32 * 4;
             // Messy, but allows using '?' per bank
-            let mut result: [core::mem::MaybeUninit<Buffer<u8, u32>>; TILE_BANK_COUNT] =
+            let mut result: [core::mem::MaybeUninit<Buffer<u8, u32>>; BANK_COUNT] =
                 unsafe { core::mem::MaybeUninit::uninit().assume_init() };
 
-            for i in 0..TILE_BANK_COUNT {
+            for i in 0..BANK_COUNT {
                 result[i] = core::mem::MaybeUninit::new(Buffer::<u8, u32>::from_fn(
                     &mut fixed_arena,
                     CAP,
@@ -353,7 +353,7 @@ impl Dashboard {
         });
 
         // Copy tile pixels from dashboard to GPU textures
-        for bank_index in 0..TILE_BANK_COUNT {
+        for bank_index in 0..BANK_COUNT {
             // texture ID = bank_index
             if let Some(pixels) = self.tile_pixels(bank_index) {
                 if !pixels.is_empty() {

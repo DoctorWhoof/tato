@@ -22,7 +22,7 @@ impl Dashboard {
             self.ops.push(frame_arena, rect_handle.unwrap()).unwrap();
 
             // Process each video memory bank
-            for bank_index in 0..TILE_BANK_COUNT {
+            for bank_index in 0..BANK_COUNT {
                 // Draw each bank debug data
                 self.process_bank(frame_arena, backend, panel, bank_index, tato);
                 // Small separator
@@ -34,7 +34,7 @@ impl Dashboard {
     fn update_tile_texture(
         &mut self,
         bank_index: usize,
-        bank: &VideoBank<{ TILE_COUNT }>,
+        bank: &Bank,
         tiles_per_row: u16,
     ) {
         // Early return for empty banks

@@ -6,8 +6,6 @@ use std::collections::HashMap;
 
 const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 
-
-
 // Canonical tiles store the pixel "structure", not the
 // colors themselves. Useful to detect palette swapped tiles!
 #[derive(Debug, Clone)]
@@ -25,11 +23,10 @@ enum DeferredCommand {
     NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
 }
 
-pub struct TilesetBuilder<'a> {
+pub struct BankBuilder<'a> {
     pub allow_tile_transforms: bool,
     pub allow_unused: bool,
     pub use_crate_assets: bool,
-    pub save_colors: bool,
     name: String,
     pixels: Vec<u8>,
     tiles_to_cells: HashMap<Pixels, Cell>,
@@ -46,14 +43,13 @@ pub struct TilesetBuilder<'a> {
     deferred_commands: Vec<DeferredCommand>,
 }
 
-impl<'a> TilesetBuilder<'a> {
+impl<'a> BankBuilder<'a> {
     pub fn new(name: &str, palette: &'a mut PaletteBuilder, groups: &'a mut GroupBuilder) -> Self {
         crate::ensure_init_build();
         Self {
             allow_tile_transforms: true,
             allow_unused: false,
             use_crate_assets: false,
-            save_colors: true,
             name: String::from(name),
             pixels: vec![],
             tiles_to_cells: HashMap::new(),
@@ -72,7 +68,7 @@ impl<'a> TilesetBuilder<'a> {
 
     /// Defines a new tile group. Adds the tiles only, does not add Tilemaps or Animations,
     /// there's a match. To add an "empty" group, with no tiles, simply add it directly to
-    /// the GroupBuilder instead of using the TilesetBuilder.
+    /// the GroupBuilder instead of using the BankBuilder.
     pub fn new_group(&mut self, path: &str, name: &str) {
         self.deferred_commands
             .push(DeferredCommand::NewGroup { path: path.to_string(), name: name.to_string() });
@@ -99,7 +95,7 @@ impl<'a> TilesetBuilder<'a> {
         });
     }
 
-    /// Writes the tileset constants to a file
+    /// Writes the bank constants to a file
     pub fn write(&mut self, file_path: &str) {
         // Check if any input files have changed
         let mut should_regenerate = false;
@@ -120,7 +116,7 @@ impl<'a> TilesetBuilder<'a> {
             return;
         }
 
-        println!("cargo:warning=Regenerating tileset: {}", file_path);
+        println!("cargo:warning=Regenerating bank: {}", file_path);
         // Execute all deferred commands now
         {
             let commands = self.deferred_commands.clone();
@@ -207,7 +203,7 @@ impl<'a> TilesetBuilder<'a> {
             code.write_line("");
         }
 
-        // Generate separate files for each tilemap
+        // Generate separate files for each tilemap (keeping sub-module structure for LSP performance)
         {
             use std::fs;
             use std::path::Path;
@@ -268,39 +264,70 @@ impl<'a> TilesetBuilder<'a> {
             }
         }
 
-        // Write tileset data structure
+        // Write Bank struct constant
         code.write_line(&format!(
-            "pub const {}_TILESET: TilesetData = TilesetData{{",
+            "pub const {}: Bank = Bank {{",
             self.name.to_uppercase(),
         ));
-        if !self.pixels.is_empty() {
-            code.write_line(&format!("    tiles: Some(&{}_TILES),", self.name.to_uppercase()));
-        } else {
-            code.write_line("    tiles: None,");
+        
+        // Write tiles array (pad to TILE_COUNT)
+        code.write_line("    tiles: [");
+        let tiles_count = self.pixels.len() / TILE_LEN;
+        for i in 0..TILE_COUNT {
+            if i < tiles_count {
+                let start = i * TILE_LEN;
+                let end = start + TILE_LEN;
+                let tile_pixels = &self.pixels[start..end];
+                code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
+            } else {
+                // Padding with default/empty tiles
+                code.write_line("        Tile::new(0, 0, 0, 0),");
+            }
         }
+        code.write_line("    ],");
 
-        if self.save_colors {
-            code.write_line(&format!("    colors: Some(&{}_COLORS),", self.name.to_uppercase()));
-            if self.color_mappings.len() > 1 {
+        // Write palette array (pad to COLORS_PER_PALETTE)
+        code.write_line("    palette: [");
+        for i in 0..COLORS_PER_PALETTE as usize {
+            if i < self.palette.rgb_colors.len() {
+                let color = &self.palette.rgb_colors[i];
                 code.write_line(&format!(
-                    "    color_mappings: Some(&{}_COLOR_MAPPINGS),",
-                    self.name.to_uppercase()
+                    "        RGBA12::with_transparency({}, {}, {}, {}),",
+                    color.r(),
+                    color.g(),
+                    color.b(),
+                    color.a()
                 ));
             } else {
-                code.write_line("    color_mappings: None,");
+                // Padding with transparent color
+                code.write_line("        RGBA12::with_transparency(0, 0, 0, 0),");
             }
-        } else {
-            code.write_line("    colors: None,");
-            code.write_line("    color_mappings: None,");
         }
+        code.write_line("    ],");
+
+        // Write color_mapping array (pad to COLOR_MAPPING_COUNT)
+        code.write_line("    color_mapping: [");
+        for i in 0..COLOR_MAPPING_COUNT as usize {
+            if i < self.color_mappings.len() {
+                let mapping = &self.color_mappings[i];
+                let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
+                code.write_line(&format!("        [{}],", values.join(", ")));
+            } else {
+                // Padding with identity mapping
+                let identity: Vec<String> = (0..COLORS_PER_PALETTE).map(|v| v.to_string()).collect();
+                code.write_line(&format!("        [{}],", identity.join(", ")));
+            }
+        }
+        code.write_line("    ],");
+
+        // Write runtime tracking fields
+        let tiles_count = self.pixels.len() / TILE_LEN;
+        code.write_line(&format!("    tile_head: {},", tiles_count));
+        code.write_line(&format!("    palette_head: {},", self.palette.rgb_colors.len()));
+        code.write_line(&format!("    color_mapping_head: {},", self.color_mappings.len().max(1)));
 
         code.write_line("};");
         code.write_line("");
-
-        // Write palette colors
-        if self.save_colors {
-            code.write_color_array(&self.name, &self.palette.rgb_colors);
-        }
 
         // Write animation strips if any
         if !self.anims.is_empty() {
@@ -333,61 +360,13 @@ impl<'a> TilesetBuilder<'a> {
 
         // Write single tiles
         for tile in &self.single_tiles {
-            if self.name == "default" {
-                // For default tileset, generate TileID constants for type safety
-                code.write_line(&format!(
-                    "pub const {}: TileID = TileID({});",
-                    tile.name.to_uppercase(),
-                    tile.cell.id.0
-                ));
-            } else {
-                code.write_line(&format!(
-                    "pub const {}: Cell = {};",
-                    tile.name.to_uppercase(),
-                    crate::format_cell_compact(&tile.cell)
-                ));
-            }
+            code.write_line(&format!(
+                "pub const {}: Cell = {};",
+                tile.name.to_uppercase(),
+                crate::format_cell_compact(&tile.cell)
+            ));
         }
         if !self.single_tiles.is_empty() {
-            code.write_line("");
-        }
-
-        // Write tile pixel data
-        if !self.pixels.is_empty() {
-            let tiles_count = self.pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize);
-            code.write_line(&format!(
-                "pub const {}_TILES: [Tile<4>; {}] = [",
-                self.name.to_uppercase(),
-                tiles_count
-            ));
-
-            for i in 0..tiles_count {
-                let start = i * (TILE_SIZE as usize * TILE_SIZE as usize);
-                let end = start + (TILE_SIZE as usize * TILE_SIZE as usize);
-                let tile_pixels = &self.pixels[start..end];
-
-                code.write_line(&format!("    {},", crate::format_tile_compact(tile_pixels)));
-            }
-            code.write_line("];");
-            code.write_line("");
-        }
-
-        // Write color mappings
-        if self.color_mappings.len() > 1 && self.save_colors {
-            // Only write if there are mappings beyond identity
-            code.write_line("// Color mappings for tile reuse with different colors");
-            code.write_line(&format!(
-                "pub const {}_COLOR_MAPPINGS: [[u8; {}]; {}] = [",
-                self.name.to_uppercase(),
-                COLORS_PER_PALETTE,
-                self.color_mappings.len()
-            ));
-
-            for (idx, mapping) in self.color_mappings.iter().enumerate() {
-                let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
-                code.write_line(&format!("    [{}], // #{}", values.join(", "), idx));
-            }
-            code.write_line("];");
             code.write_line("");
         }
 
@@ -427,8 +406,6 @@ impl<'a> TilesetBuilder<'a> {
 
     fn handle_groups(&mut self, canonical_tile: &CanonicalTile, group: Option<u8>) {
         if let Some(group_idx) = group {
-            // // Only register multi-color tiles in groups (skip empty/solid-color tiles)
-            // if color_mapping.len() > 1 {
             self.groups.register_tile(canonical_tile.pixels, group_idx);
 
             // Also register all transformations if enabled
@@ -452,7 +429,6 @@ impl<'a> TilesetBuilder<'a> {
                     }
                 }
             }
-            // }
         }
     }
 
@@ -479,8 +455,6 @@ impl<'a> TilesetBuilder<'a> {
 
                         // Check if this tile (or any transformation) is already
                         // associated with a pre-generated Cell. Does not store tiles yet.
-                        // TODO: Rearrange so for two paths, one with and one without
-                        // tile transforms (no checking for flip_x, flip_y etc within the outer block)
                         let mut found_cell = None;
                         if let Some(existing) = self.tiles_to_cells.get(&canonical_tile.pixels) {
                             // Define cell for this tile
@@ -520,8 +494,6 @@ impl<'a> TilesetBuilder<'a> {
                         self.handle_groups(&canonical_tile, group);
 
                         // Look up group membership for this tile pattern
-                        // TODO: POSSIBLE BUG:
-                        // May not be detecting transformed tiles. Will deal later.
                         let group_bits =
                             self.groups.hash.get(&canonical_tile.pixels).copied().unwrap_or(0);
 

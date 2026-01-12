@@ -1,5 +1,8 @@
 // #![no_std]
 
+mod bank;
+pub use bank::*;
+
 mod cell;
 pub use cell::*;
 
@@ -29,8 +32,8 @@ pub use tilemap_ref::*;
 mod tile_flags;
 pub use tile_flags::*;
 
-mod video_bank;
-pub use video_bank::*;
+// mod video_bank;
+// pub use video_bank::*;
 
 mod video_chip;
 pub use video_chip::*;
@@ -61,7 +64,8 @@ pub const SPRITES_PER_LINE: usize = 16;
 /// quickly determine if any sprite is present in that section.
 pub const SLOTS_PER_LINE: usize = 16;
 
-/// Maximum tile count in video memory (4 Kb with Cluster<2> used).
+/// Maximum tile count in video memory. Will be indexed by a single byte,
+/// so must be 256 or less.
 pub const TILE_COUNT: usize = 256;
 
 /// Determines the X and Y size used by every tile.
@@ -83,4 +87,4 @@ pub const COLOR_MAPPING_COUNT:u8 = 16;
 pub const BG_LEN: usize = 1024;
 
 pub const BG_BANK_COUNT: usize = 4;
-pub const TILE_BANK_COUNT: usize = 4;
+pub const BANK_COUNT: usize = 4;

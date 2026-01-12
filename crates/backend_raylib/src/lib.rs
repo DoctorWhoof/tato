@@ -85,7 +85,7 @@ impl RayBackend {
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
-        for _ in 0..TILE_BANK_COUNT {
+        for _ in 0..BANK_COUNT {
             // Each texture ID is the same as the bank
             result.create_texture(size, size);
         }
@@ -400,7 +400,7 @@ impl Backend for RayBackend {
             }
         }
 
-        // Time to queue all backed drawing, does not include actual render time,
+        // Time to queue all backend drawing, does not include actual render time,
         // which will happen when this function returns
         self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f32());
 
