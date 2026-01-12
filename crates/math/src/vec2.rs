@@ -74,6 +74,10 @@ where
         Self { x: self.x.floor(), y: self.y.floor() }
     }
 
+    pub fn ceil(&self) -> Self {
+        Self { x: self.x.ceil(), y: self.y.ceil() }
+    }
+
     pub fn round(&self) -> Self {
         Self { x: self.x.round(), y: self.y.round() }
     }
