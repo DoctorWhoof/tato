@@ -10,8 +10,8 @@ pub use tato_pad as pad;
 pub use tato_rng as rng;
 pub use tato_video as video;
 
-pub mod assets;
-pub use assets::*;
+// pub mod assets;
+// pub use assets::*;
 
 pub mod dashboard;
 

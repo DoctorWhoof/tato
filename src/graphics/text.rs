@@ -1,10 +1,8 @@
-use crate::TilesetID;
 use tato_video::DynTilemap;
 
 #[derive(Debug, Clone)]
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
-    pub tileset: TilesetID,
     pub col: i16,
     pub row: i16,
     pub width: Option<i16>,

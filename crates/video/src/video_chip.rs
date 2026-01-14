@@ -54,7 +54,7 @@ pub struct VideoChip {
     pub(crate) view_right: u16,
     pub(crate) view_bottom: u16,
     // Internal timer.
-    frame_number: usize,
+    pub frame_number: usize,
 }
 
 impl VideoChip {
@@ -275,12 +275,12 @@ impl VideoChip {
     /// Requires a reference to the Tile array and one for the BG Tilemap array.
     pub fn iter_pixels<'a, T>(
         &'a self,
-        video_banks: &[&'a Bank],
-        bg_banks: &[&'a T],
+        video_banks: &'a [Bank],
+        tilemaps: &'a [&'a T],
     ) -> PixelIter<'a>
     where
         &'a T: Into<TilemapRef<'a>>,
     {
-        PixelIter::new(self, video_banks, bg_banks)
+        PixelIter::new(self, video_banks, tilemaps)
     }
 }

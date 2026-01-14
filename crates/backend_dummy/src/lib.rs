@@ -47,7 +47,7 @@ impl Backend for DummyBackend {
         &mut self,
         _frame_arena: &'a mut A,
         tato: &'a Tato,
-        bg_banks: &[&'a T],
+        tilemaps: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
         A: ArenaOps<u32, ()>,
@@ -56,7 +56,7 @@ impl Backend for DummyBackend {
 
         // Iterate through all pixels just like Raylib backend does, but don't store them
         let mut pixel_count = 0;
-        for _color in tato.iter_pixels(bg_banks) {
+        for _color in tato.iter_pixels(tilemaps) {
             // Silly task just to be busy and not get optimized out
             pixel_count += 1;
         }

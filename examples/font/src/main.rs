@@ -1,5 +1,8 @@
 use tato::default_assets::*;
-use tato::{arena::{Arena, ArenaOps}, prelude::*};
+use tato::{
+    arena::{Arena, ArenaOps},
+    prelude::*,
+};
 use tato_raylib::*;
 
 fn main() -> TatoResult<()> {
@@ -7,17 +10,22 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
     let mut dash = Dashboard::new().unwrap();
+    let mut banks = [Bank::new()];
 
     // Graphics setup
-    let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let ts_font = tato.push_tileset(0, FONT_LONG_TILESET)?;
-
     tato.video.bg_color = RGBA12::new(1, 2, 3);
     tato.video.bg_tile_bank = 0;
-    tato.banks[0].load_default_colors();
+    banks[0].load_default_colors();
+    banks[0].add_tile(&Tile::default());
+    banks[0].append(&BANK_FONT_LONG).unwrap();
 
-    tato.banks[0].color_mapping[1][1] = 14; //mapping 1, color 1 -> 14
-    tato.banks[0].color_mapping[2][1] = 3; //mapping 2, color 1 -> 3
+    banks[0].color_mapping[1][1] = 0;
+    banks[0].color_mapping[1][3] = 14;
+
+    banks[0].color_mapping[2][1] = 0;
+    banks[0].color_mapping[2][3] = 3;
+
+    banks[0].color_mapping[3][1] = 0;
 
     // Pre-draw fixed text (writes to BG Map)
     let mut line = 1;
@@ -30,7 +38,6 @@ fn main() -> TatoResult<()> {
         the rest of the map! Use the arrow keys to try it out.",
             TextOp {
                 font: &FONT_LONG_MAP,
-                tileset: ts_font,
                 col,
                 row: line,
                 width,
@@ -45,7 +52,6 @@ fn main() -> TatoResult<()> {
         "0123456789",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: ts_font,
             col,
             row: line,
             width,
@@ -59,7 +65,6 @@ fn main() -> TatoResult<()> {
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: ts_font,
             col,
             row: line,
             width,
@@ -73,7 +78,6 @@ fn main() -> TatoResult<()> {
         "abcdefghijklmnopqrstuvwxyz",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: ts_font,
             col,
             row: line,
             width,
@@ -87,7 +91,6 @@ fn main() -> TatoResult<()> {
         ":;<=>? !\"#$%&\'()*+,-./",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: ts_font,
             col,
             row: line,
             width,
@@ -102,7 +105,6 @@ fn main() -> TatoResult<()> {
         "Animated palette",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: ts_font,
             col,
             row: line,
             width,
@@ -134,7 +136,7 @@ fn main() -> TatoResult<()> {
         }
 
         // Draw
-        let color = &mut tato.banks[0].color_mapping[3][1];
+        let color = &mut banks[0].color_mapping[3][3];
         *color = cycle as u8;
         cycle += backend.ray.get_frame_time() * 4.0;
         if cycle >= 16.0 {
@@ -143,8 +145,8 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &mut backend, &tato);
-        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
+        dash.frame_present(&mut frame_arena, &banks, &tato, &mut backend);
+        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
     }
     Ok(())
 }

@@ -1,3 +1,8 @@
+### Priority List
+
+- 🔥 Bank.append should get the offset, apply to tilemap indices. Somehow.
+- 🔥 BgOp should just take col, row and cell
+
 ### General Engine
 
 [.] Implement command-agnostic console

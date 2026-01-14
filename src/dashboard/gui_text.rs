@@ -40,15 +40,15 @@ impl Dashboard {
             " Kb",
         );
 
-        self.display(
-            frame_arena,
-            "Asset Mem.: {:.1} / {:.1}",
-            &[
-                tato.assets.arena.used() as f32 / 1024.0,
-                tato.assets.arena.capacity() as f32 / 1024.0,
-            ],
-            " Kb",
-        );
+        // self.display(
+        //     frame_arena,
+        //     "Asset Mem.: {:.1} / {:.1}",
+        //     &[
+        //         tato.assets.arena.used() as f32 / 1024.0,
+        //         tato.assets.arena.capacity() as f32 / 1024.0,
+        //     ],
+        //     " Kb",
+        // );
 
         let fixed_arena_cap = self.fixed_arena.capacity();
         self.display(

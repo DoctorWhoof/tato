@@ -7,7 +7,7 @@ use crate::{
 use tato_arena::{ArenaId, ArenaOps, Buffer};
 use tato_math::{Rect, Vec2};
 use tato_pad::AnaloguePad;
-use tato_video::{RGBA32, TilemapRef};
+use tato_video::{Bank, TilemapRef, RGBA32};
 
 /// Texture identifier
 pub type TextureId = usize;
@@ -54,8 +54,13 @@ pub trait Backend {
         A: ArenaOps<u32, ()>;
 
     /// Present the rendered frame to the screen
-    fn frame_present<'a, A, T>(&mut self, arena: &'a mut A, tato: &'a Tato, bg_banks: &[&'a T])
-    where
+    fn frame_present<'a, A, T>(
+        &mut self,
+        frame_arena: &'a mut A,
+        tato: &'a Tato,
+        banks: &'a [Bank],
+        tilemaps: &'a [&'a T],
+    ) where
         &'a T: Into<TilemapRef<'a>>,
         A: ArenaOps<u32, ()>;
 

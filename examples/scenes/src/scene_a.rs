@@ -14,7 +14,7 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
+    pub fn new(t: &mut Tato, banks:&mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(2, 1, 0);
@@ -28,9 +28,13 @@ impl SceneA {
             iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
         });
 
-        t.banks[0].load_default_colors();
+        banks[0].reset();
+        banks[0].load_default_colors();
+        banks[0].append_tiles(&BANK_DEFAULT, None).unwrap();
         // Palette test - defines BG palette with a golden tint!
-        t.banks[1].palette = [
+        banks[1].reset();
+        banks[1].append(&BANK_DEFAULT).unwrap();
+        banks[1].palette = [
             RGBA12::TRANSPARENT,
             RGBA12::new(2, 1, 1),
             RGBA12::new(3, 1, 1),
@@ -49,15 +53,15 @@ impl SceneA {
             RGBA12::new(7, 7, 5),
         ];
 
-        for (i, mapping) in t.banks[0].color_mapping[MAP_CYCLE as usize].iter().enumerate() {
-            let color = t.banks[0].palette[*mapping as usize];
+        for (i, mapping) in banks[0].color_mapping[COLORMAP_CYCLE as usize].iter().enumerate() {
+            let color = banks[0].palette[*mapping as usize];
             println!("{}: {} ({})", i, mapping, color);
         }
 
         // Color mappings.
         {
             // mapping 0 is for the shadow
-            let mapping = &mut t.banks[0].color_mapping[MAP_SHADOW as usize];
+            let mapping = &mut banks[0].color_mapping[COLORMAP_SHADOW as usize];
             mapping[0] = 0; // 0 stays transparent
             mapping[1] = 1;
             mapping[2] = 1;
@@ -67,7 +71,7 @@ impl SceneA {
         {
             // mappings 2 to 15 replace color 2 with a color from the palette
             for i in 2..COLORS_PER_PALETTE as usize {
-                let mapping = &mut t.banks[0].color_mapping[i];
+                let mapping = &mut banks[0].color_mapping[i];
                 mapping[2] = (i as u8 % 12) + 4;
             }
         }
@@ -76,7 +80,7 @@ impl SceneA {
             // And now the BG palette
             for i in 0..COLORS_PER_PALETTE as usize {
                 let bg_color = (i % 16) as u8;
-                let mapping = &mut t.banks[1].color_mapping[i];
+                let mapping = &mut banks[1].color_mapping[i];
                 mapping[0] = 0; // 0 stays transparent
                 mapping[1] = bg_color;
                 mapping[2] = bg_color;
@@ -85,8 +89,8 @@ impl SceneA {
         }
 
         // Define new tiles
-        let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
-        let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET)?;
+        // let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
+        // let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET)?;
 
         // Set BG tiles, acquire width and height of bg map
         let (w, h) = {
@@ -95,7 +99,7 @@ impl SceneA {
                     state.bg.set_op(BgOp {
                         col,
                         row,
-                        tile_id: TILE_ARROW,
+                        tile_id: TILE_ARROW.id,
                         flags: TileFlags::default().with_rotation(),
                         // Calculate palette ID based on coordinates, limits to 14
                         // indices, adds 2 to avoid colors 0 and 1 in the BG
@@ -110,7 +114,7 @@ impl SceneA {
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| Entity {
             x: rand::random_range(0..w - TILE_SIZE as i16) as f32,
             y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
-            tile: TILE_SMILEY,
+            tile: TILE_SMILEY.id,
             flags: TileFlags::default(),
             color_mapping: (i as u8 % 14) + 2,
         });
@@ -122,9 +126,9 @@ impl SceneA {
             player: Entity {
                 x: (t.video.width() / 2) as f32,
                 y: (t.video.height() / 2) as f32,
-                tile: TILE_ARROW,
+                tile: TILE_ARROW.id,
                 flags: TileFlags::default(),
-                color_mapping: MAP_CYCLE,
+                color_mapping: COLORMAP_CYCLE,
             },
             smileys,
             movement_start: 0.0,
@@ -132,7 +136,7 @@ impl SceneA {
     }
 
     // Process the scene on each frame
-    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, banks:&mut [Bank], state: &mut State) -> Option<SceneChange> {
 
         // ------------------------------ Input ------------------------------
 
@@ -192,7 +196,7 @@ impl SceneA {
         t.video.scroll_y = target_y;
 
         {
-            let cycle_color = &mut t.banks[0].color_mapping[MAP_CYCLE as usize][2];
+            let cycle_color = &mut banks[0].color_mapping[COLORMAP_CYCLE as usize][2];
             *cycle_color = ((*cycle_color + 1) % 12) + 4;
         }
 
@@ -215,7 +219,7 @@ impl SceneA {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: MAP_SHADOW,
+                color_mapping: COLORMAP_SHADOW,
             });
         };
         for entity in &self.smileys {
@@ -251,9 +255,9 @@ impl SceneA {
         t.video.draw_fg_tile(DrawBundle {
             x: 0,
             y: 0,
-            id: TILE_SMILEY,
+            id: TILE_SMILEY.id,
             flags: TileFlags::default(),
-            color_mapping: MAP_CYCLE,
+            color_mapping: COLORMAP_CYCLE,
         });
 
         // ------------------- Return mode switch request -------------------

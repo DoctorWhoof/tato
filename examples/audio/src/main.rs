@@ -14,14 +14,14 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(240, 180, 60);
     let mut dash = Dashboard::new().unwrap();
+    let mut banks = [Bank::new()];
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
-    tato.banks[0].load_default_colors();
-    tato.banks[0].color_mapping[1][1] = 3; //mapping 1, color 1 -> 3
-
-    let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
-    let font = tato.push_tileset(0, FONT_LONG_TILESET)?;
+    banks[0].load_default_colors();
+    banks[0].add_tile(&Tile::default());
+    banks[0].append(&BANK_FONT_LONG).unwrap();
+    banks[0].color_mapping[1][1] = 0; //mapping 1, color 1 -> 3
 
     // Pre-draw fixed text (writes to BG Map)
     tato.draw_text(
@@ -29,12 +29,11 @@ fn main() -> TatoResult<()> {
         "SOUND TEST",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: font,
             col: 2,
             row: 2,
             width: None,
             // palette_override: Some(palette_default),
-            color_mapping: 1
+            color_mapping: 1,
         },
     );
 
@@ -43,12 +42,11 @@ fn main() -> TatoResult<()> {
         "Currently playing:",
         TextOp {
             font: &FONT_LONG_MAP,
-            tileset: font,
             col: 2,
             row: 6,
             width: None,
             // palette_override: Some(palette_light),
-            color_mapping: 1
+            color_mapping: 1,
         },
     );
 
@@ -108,12 +106,11 @@ fn main() -> TatoResult<()> {
             },
             TextOp {
                 font: &FONT_LONG_MAP,
-                tileset: font,
                 col: 2,
                 row: 8,
                 width: None,
                 // palette_override: Some(palette_light),
-                color_mapping: 1
+                color_mapping: 1,
             },
         );
 
@@ -122,12 +119,11 @@ fn main() -> TatoResult<()> {
             &format!("Volume: {}    ", audio.channels[0].volume()),
             TextOp {
                 font: &FONT_LONG_MAP,
-                tileset: font,
                 col: 2,
                 row: 10,
                 width: None,
                 // palette_override: Some(palette_light),
-                color_mapping: 1
+                color_mapping: 1,
             },
         );
 
@@ -136,20 +132,19 @@ fn main() -> TatoResult<()> {
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
             TextOp {
                 font: &FONT_LONG_MAP,
-                tileset: font,
                 col: 2,
                 row: 12,
                 width: None,
                 // palette_override: Some(palette_light),
-                color_mapping: 1
+                color_mapping: 1,
             },
         );
 
         // Update backends
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &mut backend, &tato);
+        dash.frame_present(&mut frame_arena, &banks, &tato, &mut backend);
         audio_backend.process_frame(&mut audio);
-        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
+        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

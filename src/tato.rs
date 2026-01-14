@@ -1,3 +1,6 @@
+use tato_audio::AudioChip;
+use tato_pad::AnaloguePad;
+
 use crate::{prelude::CharacterSet, *};
 
 #[derive(Debug)]
@@ -5,20 +8,17 @@ pub struct Tato {
     pub paused: bool,
     pub time_scale: f32,
     // Input
-    pub pad: tato_pad::AnaloguePad,
+    pub pad: AnaloguePad,
     // Audio
-    pub audio: tato_audio::AudioChip,
+    pub audio: AudioChip,
     // Video
-    pub video: tato_video::VideoChip,
-    pub banks: [tato_video::Bank; BANK_COUNT],
+    pub video: VideoChip,
+    // pub banks: [Option<&'a Bank>; BANK_COUNT],
     pub character_set: CharacterSet,
-    // 16Kb asset memory. Currently only stores remapped tilemaps -
-    // the tiles are stored directly in the memory banks
-    pub assets: Assets<16384>,
     // Internals
     pub target_fps: u8,
     time: u64,
-    time_cache:f32, // will be pre-divided per frame
+    time_cache: f32, // will be pre-divided per frame
     delta: f32,
     elapsed_time: f32,
     frame_started: bool,
@@ -30,15 +30,15 @@ impl Tato {
         Self {
             paused: false,
             time_scale: 1.0,
-            assets: Assets::new(),
+            // assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
-            banks: core::array::from_fn(|_| Bank::new()),
+            // banks: core::array::from_fn(|_| None),
             character_set: CharacterSet::Long,
             target_fps,
             time: 0,
-            time_cache:0.0,
+            time_cache: 0.0,
             delta: 1.0,
             elapsed_time: 1.0 / target_fps as f32,
             frame_finished: true,
@@ -53,14 +53,20 @@ impl Tato {
         self.time_cache = 0.0;
         self.time_scale = 1.0;
         self.video.reset_all();
-        self.assets.reset();
-        for bank in &mut self.banks {
-            bank.reset();
-        }
+        // self.assets.reset();
+        // for bank in &mut self.banks {
+        //     bank.reset();
+        // }
         self.frame_started = false;
         self.frame_finished = true;
         ();
     }
+
+    // /// Load a Bank reference directly into a bank slot
+    // pub fn load_bank(&mut self, bank_id: u8, bank: &'a Bank) {
+    //     assert!((bank_id as usize) < BANK_COUNT, "Invalid bank_id");
+    //     self.banks[bank_id as usize] = Some(bank);
+    // }
 
     pub fn time(&self) -> f32 {
         self.time_cache
@@ -121,14 +127,27 @@ impl Tato {
         self.frame_started = false;
     }
 
+
     // --------------------- Iterators ---------------------
 
-    pub fn iter_pixels<'a, T>(&'a self, bg_banks: &[&'a T]) -> PixelIter<'a>
+    // pub fn iter_pixels<T>(&'a self, tilemaps: &[&'a T]) -> PixelIter<'a>
+    // where
+    //     &'a T: Into<TilemapRef<'a>>,
+    // {
+    //     let default_bank = self.banks[0].expect("Tato banks mmust have at least one valid bank at index 0");
+    //     let video_banks: [&'a Bank; BANK_COUNT] =
+    //         core::array::from_fn(|i| match self.banks[i] {
+    //             Some(bank) => bank,
+    //             None => default_bank
+    //         });
+    //     self.video.iter_pixels(&video_banks[..], tilemaps)
+    // }
+
+    pub fn iter_pixels<'a, T>(&'a self, banks: &'a [Bank], tilemaps: &'a [&'a T]) -> PixelIter<'a>
     where
         &'a T: Into<TilemapRef<'a>>,
     {
-        let video_banks: [&'a Bank; BANK_COUNT] =
-            core::array::from_fn(|i| &self.banks[i]);
-        self.video.iter_pixels(&video_banks[..], bg_banks)
+        self.video.iter_pixels(banks, tilemaps)
     }
+
 }

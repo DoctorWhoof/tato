@@ -305,7 +305,7 @@ impl Dashboard {
     }
 
     /// Generate debug UI Draw Ops before presenting them via the Backend.
-    pub fn frame_present<A>(&mut self, frame_arena: &mut A, backend: &mut impl Backend, tato: &Tato)
+    pub fn frame_present<A>(&mut self, frame_arena: &mut A, banks:&[Bank], tato: &Tato, backend: &mut impl Backend)
     where
         A: ArenaOps<u32, ()>,
     {
@@ -323,7 +323,7 @@ impl Dashboard {
 
         // Panels have their own modules, for organization
         self.process_text_panel(&mut layout, frame_arena, backend, tato);
-        self.process_video_banks_panel(&mut layout, frame_arena, backend, tato);
+        self.process_video_banks_panel(&mut layout, frame_arena, banks, backend);
         self.process_console(tato, &mut layout, frame_arena);
 
         // Canvas

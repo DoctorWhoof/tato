@@ -27,10 +27,10 @@ pub struct PixelIter<'a> {
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
     pub tile_banks: [&'a Bank; BANK_COUNT],
-    pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
+    pub tilemaps: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
-    pub bg_color: RGBA12, // Background color
+    pub bg_color: RGBA12,   // Background color
     pub crop_color: RGBA12, // Crop color (outside viewport)
 
     // Dual buffers for parallel processing
@@ -39,11 +39,7 @@ pub struct PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new<T>(
-        vid: &'a VideoChip,
-        video_mem: &[&'a Bank],
-        bg_maps: &[&'a T],
-    ) -> Self
+    pub fn new<T>(vid: &'a VideoChip, video_mem: &'a [Bank], bg_maps: &'a [&'a T]) -> Self
     where
         &'a T: Into<TilemapRef<'a>>,
     {
@@ -63,8 +59,8 @@ impl<'a> PixelIter<'a> {
         );
         let mut result = Self {
             vid,
-            tile_banks: from_fn(|i| if i < video_mem.len() { video_mem[i] } else { video_mem[0] }),
-            bg_banks: from_fn(|i| {
+            tile_banks: from_fn(|i| if i < video_mem.len() { &video_mem[i] } else { &video_mem[0] }),
+            tilemaps: from_fn(|i| {
                 if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }
             }),
             fg_tile_bank: vid.fg_tile_bank,
@@ -103,13 +99,13 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
-            let bg_map = self.bg_banks[self.bg_map_bank as usize];
+            let bg_map = self.tilemaps[self.bg_map_bank as usize];
             func(self, self.vid, &bg_map);
         }
     }
 
     #[inline]
-    fn generate_bg_color(y:u16, vid:&VideoChip) -> [RGBA12;MAX_RESOLUTION_X]  {
+    fn generate_bg_color(y: u16, vid: &VideoChip) -> [RGBA12; MAX_RESOLUTION_X] {
         if y < vid.view_top || y > vid.view_bottom {
             [vid.crop_color.with_z(Z_BG); MAX_RESOLUTION_X]
         } else {
@@ -287,7 +283,7 @@ impl<'a> PixelIter<'a> {
     fn pre_render_background(&mut self, width: u16) {
         // Reset x position for iteration
         self.x = 0;
-        let bg = self.bg_banks[self.bg_map_bank as usize];
+        let bg = self.tilemaps[self.bg_map_bank as usize];
         let line_y = self.y as i16;
         let bank = self.tile_banks[self.bg_tile_bank as usize];
 

@@ -11,6 +11,7 @@ fn main() {
     let mut bank = BankBuilder::new("BANK_ASTRO", &mut palette, &mut groups);
     bank.allow_unused = true;
 
+    bank.new_empty_tile();
     bank.new_animation_strip("import/astro.png", "STRIP_ASTRO", 8, 3);
     bank.write("src/astro.rs");
 }

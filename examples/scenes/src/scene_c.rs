@@ -11,14 +11,16 @@ pub struct SceneC {
 static mut LINE: u16 = 0;
 
 impl SceneC {
-    pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
+    pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
-        let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
+        // let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let _solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
 
-        t.banks[0].load_default_colors();
+        banks[0].reset();
+        banks[1].reset();
+        banks[0].load_default_colors();
         t.video.bg_color = RGBA12::GRAY;
 
         for col in 0..state.bg.columns() as i16 {
@@ -26,7 +28,7 @@ impl SceneC {
                 state.bg.set_op(BgOp {
                     col,
                     row,
-                    tile_id: cross,
+                    tile_id: cross.id,
                     flags: TileFlags::default().with_fg(),
                     color_mapping: 0,
                 });
@@ -34,7 +36,7 @@ impl SceneC {
         }
         // Color mappings
         for n in 0..COLOR_MAPPING_COUNT as usize {
-            t.banks[0].color_mapping[n][2] = n as u8;
+            banks[0].color_mapping[n][2] = n as u8;
         }
 
         // BG color raster effects
@@ -50,10 +52,10 @@ impl SceneC {
             color.set_b(((scaled_line.wrapping_add(2)) % 3) as u8 + 4);
         });
 
-        Ok(SceneC { smiley, counter: 0 })
+        Ok(SceneC { smiley: smiley.id, counter: 0 })
     }
 
-    pub fn update(&mut self, t: &mut Tato) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, _banks: &mut [Bank]) -> Option<SceneChange> {
         if t.video.frame_number() % 4 == 0 {
             unsafe {
                 LINE = LINE.wrapping_sub(1);

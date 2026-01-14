@@ -1,7 +1,10 @@
 mod astro;
 
-use crate::astro::{ASTRO_TILESET, STRIP_ASTRO};
-use tato::{arena::{Arena, ArenaOps}, prelude::*};
+use crate::astro::{BANK_ASTRO, STRIP_ASTRO};
+use tato::{
+    arena::{Arena, ArenaOps},
+    prelude::*,
+};
 use tato_macroquad::{
     MquadBackend,
     macroquad::{
@@ -19,7 +22,8 @@ struct Entity {
     y: i16,
     vel_x: i8,
     vel_y: i8,
-    anim: AnimID,
+    anim_frames: [u8; 4], // Frame sequence for this entity's animation
+    anim_fps: u8,
     flip: bool,
 }
 
@@ -41,23 +45,19 @@ async fn main() -> TatoResult<()> {
     tato.video.bg_tile_bank = BANK_BG;
     tato.video.fg_tile_bank = BANK_FG;
 
-    // Animations
-    let astro = tato.push_tileset(BANK_FG, ASTRO_TILESET)?;
-    let strip = tato.load_animation_strip(astro, &STRIP_ASTRO)?;
-    let anim_right = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [12, 13, 14, 13] })?;
-    let anim_down = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [4, 5, 6, 5] })?;
-    let anim_up = tato.init_anim(Anim { strip, fps: 8, rep: true, frames: [8, 9, 10, 9] })?;
+    // Animation frame sequences (indices into STRIP_ASTRO)
+    let anim_right_frames = [12, 13, 14, 13];
+    let anim_down_frames = [4, 5, 6, 5];
+    let anim_up_frames = [8, 9, 10, 9];
 
     // To be able to apply delta timing to entities with integer coordinates
     // and velocities, we're using a SCALE factor - everything is scaled up
     // internally, velocities are applied, and then scaled down at the end
     // for drawing. This was a common technique in the 80's to apply simple
-    // physics to 16 bit integer  coordinates.
+    // physics to 16 bit integer coordinates.
     const SCALE: i16 = 16;
 
-    // Entities.
-    // TODO: Obtain anims from tileset, so that we can probe a frame
-    // (which is just a tilemap) for its dimensions
+    // Entities - sprite info
     let sprite_w = 16;
     let sprite_h = 16;
     let min_x = 0;
@@ -78,7 +78,8 @@ async fn main() -> TatoResult<()> {
             y: rng.range_i32(min_y as i32, max_y as i32) as i16,
             vel_x,
             vel_y,
-            anim: anim_right,
+            anim_frames: anim_right_frames,
+            anim_fps: 8,
             flip: vel_x < 0,
         }
     });
@@ -106,37 +107,41 @@ async fn main() -> TatoResult<()> {
                 entity.y -= vel_y as i16;
             }
 
-            // Anim control
+            // Anim control - choose which animation based on direction
             if entity.vel_x.abs() > entity.vel_y.abs() {
-                entity.anim = anim_right;
-                if entity.vel_x > 0 {
-                    entity.flip = false;
-                } else {
-                    entity.flip = true;
-                }
+                entity.anim_frames = anim_right_frames;
+                entity.flip = entity.vel_x < 0;
             } else {
                 if entity.vel_y > 0 {
-                    entity.anim = anim_down;
+                    entity.anim_frames = anim_down_frames;
                 } else {
-                    entity.anim = anim_up;
+                    entity.anim_frames = anim_up_frames;
                 }
+                entity.flip = false;
             }
 
-            // Draw!
-            tato.draw_anim_to_fg(
-                entity.anim,
-                SpriteBundle {
-                    x: entity.x / SCALE,
-                    y: entity.y / SCALE,
-                    flip_x: entity.flip,
-                    flip_y: false,
-                },
-            );
+            // Calculate current frame in animation
+            let frame_idx =
+                anim_get_frame(tato.video.frame_number, &entity.anim_frames, entity.anim_fps, true);
+            let strip_frame = entity.anim_frames[frame_idx] as usize;
+
+            // Draw the sprite using the tilemap from the const strip
+            if let Some(tilemap) = STRIP_ASTRO.get(strip_frame) {
+                tato.draw_tilemap_to_fg(
+                    tilemap,
+                    SpriteBundle {
+                        x: entity.x / SCALE,
+                        y: entity.y / SCALE,
+                        flip_x: entity.flip,
+                        flip_y: false,
+                    },
+                );
+            }
         }
 
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &mut backend, &tato);
-        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
+        dash.frame_present(&mut frame_arena, &[BANK_ASTRO], &tato, &mut backend);
+        backend.frame_present(&mut frame_arena, &tato, &[BANK_ASTRO], &[&bg_map]);
         if is_quit_requested() {
             break;
         }
@@ -148,14 +153,3 @@ async fn main() -> TatoResult<()> {
 fn window_conf() -> Conf {
     tato_window_conf("Tato Macroquad Example", 320, 240)
 }
-
-
-// Curiosity! To flicker sprites that go above the sprites-per-scanline
-// limit, you can do this:
-// let frame_offset = tato.video.frame_number() % 2;
-// for priority_group in 0..2 {
-//     let actual_group = (priority_group + frame_offset) % 2;
-//     for i in (0..entities.len()).filter(|&i| i % 2 == actual_group) {
-//         // Draw entities in this group
-//     }
-// }

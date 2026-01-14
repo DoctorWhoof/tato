@@ -456,14 +456,14 @@ impl Backend for WinitBackend {
         &mut self,
         _frame_arena: &'a mut Arena<LEN>,
         tato: &'a Tato,
-        bg_banks: &[&'a T],
+        tilemaps: &[&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
     {
         let time_profile = Instant::now();
 
         // Copy pixels from video chip
-        for (i, color) in tato.iter_pixels(bg_banks).enumerate() {
+        for (i, color) in tato.iter_pixels(tilemaps).enumerate() {
             let index = i * 4;
             self.pixels[index] = color.r;
             self.pixels[index + 1] = color.g;

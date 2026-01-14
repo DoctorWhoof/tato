@@ -273,7 +273,8 @@ impl Backend for RayBackend {
         &mut self,
         frame_arena: &'a mut A,
         tato: &'a Tato,
-        bg_banks: &[&'a T],
+        banks: &'a [Bank],
+        tilemaps: &'a [&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
         A: ArenaOps<u32, ()>,
@@ -290,7 +291,7 @@ impl Backend for RayBackend {
         );
 
         // Copy pixels from video chip
-        for (i, color) in tato.iter_pixels(bg_banks).enumerate() {
+        for (i, color) in tato.video.iter_pixels(banks, tilemaps).enumerate() {
             let index = i * 4;
             self.pixels[index] = color.r;
             self.pixels[index + 1] = color.g;

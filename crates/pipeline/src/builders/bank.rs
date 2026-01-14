@@ -17,8 +17,9 @@ pub(crate) struct CanonicalTile {
 // Allows a single pass executing commands when writing
 #[derive(Clone)]
 enum DeferredCommand {
-    NewGroup { path: String, name: String },
+    NewEmptyTile,
     NewTile { path: String },
+    NewGroup { path: String, name: String },
     NewMap { path: String, name: String },
     NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
 }
@@ -79,6 +80,11 @@ impl<'a> BankBuilder<'a> {
         self.deferred_commands.push(DeferredCommand::NewTile { path: path.to_string() });
     }
 
+    /// Creates a new single tile from a .png file
+    pub fn new_empty_tile(&mut self) {
+        self.deferred_commands.push(DeferredCommand::NewEmptyTile);
+    }
+
     /// Creates a new map from a .png file
     pub fn new_map(&mut self, path: &str, name: &str) {
         self.deferred_commands
@@ -100,13 +106,14 @@ impl<'a> BankBuilder<'a> {
         // Check if any input files have changed
         let mut should_regenerate = false;
         for command in &self.deferred_commands {
-            // Check if any deferred command file needs regeneration
             let file_path = match command {
+                DeferredCommand::NewEmptyTile => "",
                 DeferredCommand::NewGroup { path, .. } => path,
                 DeferredCommand::NewTile { path } => path,
                 DeferredCommand::NewMap { path, .. } => path,
                 DeferredCommand::NewAnimationStrip { path, .. } => path,
             };
+            // Check if any deferred command file needs regeneration
             if !file_path.is_empty() && crate::should_regenerate_file(file_path) {
                 should_regenerate = true;
                 break;
@@ -122,12 +129,14 @@ impl<'a> BankBuilder<'a> {
             let commands = self.deferred_commands.clone();
             for command in commands {
                 match command {
-                    DeferredCommand::NewGroup { path, name } => {
-                        let group_index = self.groups.add_group(&name);
-                        if !path.is_empty() {
-                            let img = self.load_valid_image(&path, 1, 1);
-                            let _ = self.add_tiles(&img, Some(group_index));
-                        }
+                    DeferredCommand::NewEmptyTile => {
+                        let img = PalettizedImg::empty(self.palette);
+                        let cells = self.add_tiles(&img, None);
+                        assert!(cells.len() == 1 && cells[0].len() == 1);
+                        let tile_name = "EMPTY".to_string();
+                        let single_tile =
+                            SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
+                        self.single_tiles.push(single_tile);
                     },
                     DeferredCommand::NewTile { path } => {
                         let img = self.load_valid_image(&path, 1, 1);
@@ -146,6 +155,13 @@ impl<'a> BankBuilder<'a> {
                         let single_tile =
                             SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
                         self.single_tiles.push(single_tile);
+                    },
+                    DeferredCommand::NewGroup { path, name } => {
+                        let group_index = self.groups.add_group(&name);
+                        if !path.is_empty() {
+                            let img = self.load_valid_image(&path, 1, 1);
+                            let _ = self.add_tiles(&img, Some(group_index));
+                        }
                     },
                     DeferredCommand::NewMap { path, name } => {
                         let img = self.load_valid_image(&path, 1, 1);
@@ -269,7 +285,7 @@ impl<'a> BankBuilder<'a> {
             "pub const {}: Bank = Bank {{",
             self.name.to_uppercase(),
         ));
-        
+
         // Write tiles array (pad to TILE_COUNT)
         code.write_line("    tiles: [");
         let tiles_count = self.pixels.len() / TILE_LEN;
@@ -378,8 +394,9 @@ impl<'a> BankBuilder<'a> {
         // Mark all input files as processed
         for command in &self.deferred_commands {
             let file_path = match command {
-                DeferredCommand::NewGroup { path, .. } => path,
+                DeferredCommand::NewEmptyTile => "",
                 DeferredCommand::NewTile { path } => path,
+                DeferredCommand::NewGroup { path, .. } => path,
                 DeferredCommand::NewMap { path, .. } => path,
                 DeferredCommand::NewAnimationStrip { path, .. } => path,
             };

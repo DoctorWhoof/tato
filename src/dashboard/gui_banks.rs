@@ -6,8 +6,9 @@ impl Dashboard {
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut A,
+        banks: &[Bank],
         backend: &impl Backend,
-        tato: &Tato,
+        // tato: &Tato,
     ) where
         A: ArenaOps<u32, ()>,
     {
@@ -24,7 +25,9 @@ impl Dashboard {
             // Process each video memory bank
             for bank_index in 0..BANK_COUNT {
                 // Draw each bank debug data
-                self.process_bank(frame_arena, backend, panel, bank_index, tato);
+                // self.process_bank(frame_arena, backend, panel, bank_index, tato);
+                let Some(bank) = banks.get(bank_index) else { continue };
+                self.process_bank(frame_arena, backend, panel, bank_index, bank);
                 // Small separator
                 panel.push_edge(Edge::Top, 5, |_separator| {});
             }
@@ -96,7 +99,8 @@ impl Dashboard {
         backend: &impl Backend,
         panel: &mut Frame<i16>,
         bank_index: usize,
-        tato: &Tato,
+        bank: &Bank,
+        // tato: &Tato,
     ) where
         A: ArenaOps<u32, ()>,
     {
@@ -104,7 +108,7 @@ impl Dashboard {
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
 
         let gap = self.gui_scale as i16;
-        let bank = &tato.banks[bank_index];
+        // let Some(bank) = banks[bank_index] else { return; };
 
         let mouse = backend.get_mouse();
 
