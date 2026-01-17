@@ -22,6 +22,3 @@ pub(crate) use single_tile::*;
 
 mod palette;
 pub use palette::*;
-
-mod tileset;
-pub use tileset::*;

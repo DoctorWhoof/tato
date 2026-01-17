@@ -1,3 +1,6 @@
+mod anim;
+pub use anim::*;
+
 mod text;
 pub use text::*;
 
@@ -30,29 +33,19 @@ pub fn anim_get_frame<const LEN: usize>(
     }
 }
 
-/// Clears a rectangular area in a tilemap with a specific tile.
-pub fn tilemap_clear_rect<const LEN: usize>(
-    bg: &mut Tilemap<LEN>,
-    rect: Rect<i16>,
-    tile_id: TileID,
-) {
+/// Clears a rectangular area in a tilemap with a specific cell.
+pub fn tilemap_clear_rect<const LEN: usize>(bg: &mut Tilemap<LEN>, rect: Rect<i16>, cell: Cell) {
     for row in rect.y..rect.y + rect.h {
         for col in rect.x..rect.x + rect.w {
-            bg.set_op(BgOp {
-                col,
-                row,
-                tile_id,
-                flags: TileFlags::default(),
-                color_mapping: 0,
-            });
+            bg.set_op(BgOp { col, row, cell });
         }
     }
 }
 
 /// Fills the entire tilemap with a specific tile.
-pub fn tilemap_fill<const LEN: usize>(bg: &mut Tilemap<LEN>, tile_id: TileID) {
+pub fn tilemap_fill<const LEN: usize>(bg: &mut Tilemap<LEN>, cell: Cell) {
     let rect = Rect { x: 0, y: 0, w: bg.columns as i16, h: bg.rows as i16 };
-    tilemap_clear_rect(bg, rect, tile_id);
+    tilemap_clear_rect(bg, rect, cell);
 }
 
 /// Drawing functions and graphics helpers.
@@ -109,9 +102,12 @@ impl Tato {
         bg.set_op(BgOp {
             col: rect.x,
             row: rect.y,
-            tile_id: top_left.id,
-            flags: top_left.flags,
-            color_mapping: top_left.color_mapping,
+            cell: Cell {
+                id: top_left.id,
+                flags: top_left.flags,
+                color_mapping: top_left.color_mapping,
+                group: 0,
+            },
         });
 
         let high_x = (rect.x + rect.w).min(i16::MAX);
@@ -120,9 +116,12 @@ impl Tato {
             bg.set_op(BgOp {
                 col,
                 row: rect.y,
-                tile_id: top.id,
-                flags: top.flags,
-                color_mapping: top.color_mapping,
+                cell: Cell {
+                    id: top.id,
+                    flags: top.flags,
+                    color_mapping: top.color_mapping,
+                    group: 0,
+                },
             });
         }
 
@@ -130,9 +129,12 @@ impl Tato {
         bg.set_op(BgOp {
             col: high_x,
             row: rect.y,
-            tile_id: top_right.id,
-            flags: top_right.flags,
-            color_mapping: top_right.color_mapping,
+            cell: Cell {
+                id: top_right.id,
+                flags: top_right.flags,
+                color_mapping: top_right.color_mapping,
+                group: 0,
+            },
         });
 
         let high_y = (rect.y + rect.h).min(i16::MAX);
@@ -141,9 +143,12 @@ impl Tato {
             bg.set_op(BgOp {
                 col: rect.x,
                 row,
-                tile_id: left.id,
-                flags: left.flags,
-                color_mapping: left.color_mapping,
+                cell: Cell {
+                    id: left.id,
+                    flags: left.flags,
+                    color_mapping: left.color_mapping,
+                    group: 0,
+                },
             });
         }
 
@@ -153,9 +158,12 @@ impl Tato {
                 bg.set_op(BgOp {
                     col,
                     row,
-                    tile_id: center.id,
-                    flags: center.flags,
-                    color_mapping: center.color_mapping,
+                    cell: Cell {
+                        id: center.id,
+                        flags: center.flags,
+                        color_mapping: center.color_mapping,
+                        group: 0,
+                    },
                 });
             }
         }
@@ -165,9 +173,12 @@ impl Tato {
             bg.set_op(BgOp {
                 col: high_x,
                 row,
-                tile_id: right.id,
-                flags: right.flags,
-                color_mapping: right.color_mapping,
+                cell: Cell {
+                    id: right.id,
+                    flags: right.flags,
+                    color_mapping: right.color_mapping,
+                    group: 0,
+                },
             });
         }
 
@@ -175,9 +186,12 @@ impl Tato {
         bg.set_op(BgOp {
             col: rect.x,
             row: high_y,
-            tile_id: bottom_left.id,
-            flags: bottom_left.flags,
-            color_mapping: bottom_left.color_mapping,
+            cell: Cell {
+                id: bottom_left.id,
+                flags: bottom_left.flags,
+                color_mapping: bottom_left.color_mapping,
+                group: 0,
+            },
         });
 
         let Some(bottom) = patch.get_cell(1, 2) else { return };
@@ -185,9 +199,12 @@ impl Tato {
             bg.set_op(BgOp {
                 col,
                 row: high_y,
-                tile_id: bottom.id,
-                flags: bottom.flags,
-                color_mapping: bottom.color_mapping,
+                cell: Cell {
+                    id: bottom.id,
+                    flags: bottom.flags,
+                    color_mapping: bottom.color_mapping,
+                    group: 0,
+                },
             });
         }
 
@@ -195,9 +212,12 @@ impl Tato {
         bg.set_op(BgOp {
             col: high_x,
             row: high_y,
-            tile_id: bottom_right.id,
-            flags: bottom_right.flags,
-            color_mapping: bottom_right.color_mapping,
+            cell: Cell {
+                id: bottom_right.id,
+                flags: bottom_right.flags,
+                color_mapping: bottom_right.color_mapping,
+                group: 0,
+            },
         });
     }
 
@@ -227,10 +247,12 @@ impl Tato {
                 target.set_op(BgOp {
                     col: op.col + cursor_x,
                     row: op.row + cursor_y,
-                    // tile_id: TileID(cell.id.0 + tile_start),
-                    tile_id: TileID(cell.id.0),
-                    flags: cell.flags,
-                    color_mapping: op.color_mapping,
+                    cell: Cell {
+                        id: TileID(cell.id.0),
+                        flags: cell.flags,
+                        color_mapping: op.color_mapping,
+                        group: 0,
+                    },
                 });
             }
         };

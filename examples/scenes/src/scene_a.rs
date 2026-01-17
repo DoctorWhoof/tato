@@ -14,7 +14,7 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(t: &mut Tato, banks:&mut [Bank], state: &mut State) -> TatoResult<Self> {
+    pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(2, 1, 0);
@@ -99,11 +99,14 @@ impl SceneA {
                     state.bg.set_op(BgOp {
                         col,
                         row,
-                        tile_id: TILE_ARROW.id,
-                        flags: TileFlags::default().with_rotation(),
-                        // Calculate palette ID based on coordinates, limits to 14
-                        // indices, adds 2 to avoid colors 0 and 1 in the BG
-                        color_mapping: ((col + row) % 14) as u8 + 2,
+                        cell: Cell {
+                            id: TILE_ARROW.id,
+                            flags: TileFlags::default().with_rotation(),
+                            group: 0,
+                            // Calculate palette ID based on coordinates, limits to 14
+                            // indices, adds 2 to avoid colors 0 and 1 in the BG
+                            color_mapping: ((col + row) % 14) as u8 + 2,
+                        },
                     });
                 }
             }
@@ -136,8 +139,12 @@ impl SceneA {
     }
 
     // Process the scene on each frame
-    pub fn update(&mut self, t: &mut Tato, banks:&mut [Bank], state: &mut State) -> Option<SceneChange> {
-
+    pub fn update(
+        &mut self,
+        t: &mut Tato,
+        banks: &mut [Bank],
+        state: &mut State,
+    ) -> Option<SceneChange> {
         // ------------------------------ Input ------------------------------
 
         if t.pad.is_just_pressed(Button::Start) {
@@ -145,7 +152,9 @@ impl SceneA {
             t.video.wrap_bg = !t.video.wrap_bg;
         }
 
-        if t.paused { return None }
+        if t.paused {
+            return None;
+        }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
         // let speed = if t.pad.is_any_down(AnyButton::Face) {

@@ -31,9 +31,7 @@ pub struct Tilemap<const CELL_COUNT: usize> {
 pub struct BgOp {
     pub col: i16,
     pub row: i16,
-    pub tile_id: TileID,
-    pub flags: TileFlags,
-    pub color_mapping: u8
+    pub cell: Cell
 }
 
 impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
@@ -77,9 +75,7 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
 
     pub fn set_op(&mut self, op: BgOp) {
         if let Some(index) = self.get_index(op.col, op.row) {
-            self.cells[index].id = op.tile_id;
-            self.cells[index].flags = op.flags;
-            self.cells[index].color_mapping = op.color_mapping;
+            self.cells[index] = op.cell;
         }
     }
 

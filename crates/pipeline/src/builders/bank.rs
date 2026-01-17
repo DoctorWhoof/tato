@@ -1,3 +1,4 @@
+use super::Anim;
 use tato_video::*;
 
 use super::*;
@@ -22,6 +23,7 @@ enum DeferredCommand {
     NewGroup { path: String, name: String },
     NewMap { path: String, name: String },
     NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
+    NewAnim { fps: u8, repeat: bool, strip_name: String, frames: Vec<u8> },
 }
 
 pub struct BankBuilder<'a> {
@@ -37,7 +39,8 @@ pub struct BankBuilder<'a> {
     color_mappings: Vec<[u8; COLORS_PER_PALETTE as usize]>,
     palette: &'a mut PaletteBuilder,
     groups: &'a mut GroupBuilder,
-    anims: Vec<AnimBuilder>,
+    strips: HashMap<String, StripBuilder>,
+    anims: Vec<Anim>,
     maps: Vec<MapBuilder>,
     single_tiles: Vec<SingleTileBuilder>,
     next_tile: u8,
@@ -59,6 +62,7 @@ impl<'a> BankBuilder<'a> {
             color_mappings: vec![core::array::from_fn(|i| i as u8)],
             palette,
             groups,
+            strips: HashMap::new(),
             anims: vec![],
             maps: vec![],
             single_tiles: vec![],
@@ -101,13 +105,22 @@ impl<'a> BankBuilder<'a> {
         });
     }
 
+    pub fn new_anim<const LEN: usize>(
+        &mut self,
+        strip_name: &str,
+        fps: u8,
+        repeat: bool,
+        frames: [u8; LEN],
+    ) {
+    }
+
     /// Writes the bank constants to a file
     pub fn write(&mut self, file_path: &str) {
         // Check if any input files have changed
         let mut should_regenerate = false;
         for command in &self.deferred_commands {
             let file_path = match command {
-                DeferredCommand::NewEmptyTile => "",
+                DeferredCommand::NewEmptyTile | DeferredCommand::NewAnim { .. } => "",
                 DeferredCommand::NewGroup { path, .. } => path,
                 DeferredCommand::NewTile { path } => path,
                 DeferredCommand::NewMap { path, .. } => path,
@@ -180,7 +193,7 @@ impl<'a> BankBuilder<'a> {
                         let cells = self.add_tiles(&img, None);
                         let frame_count = img.frames_h as usize * img.frames_v as usize;
                         assert!(frame_count > 0);
-                        let anim = AnimBuilder {
+                        let strip = StripBuilder {
                             name: name.clone(),
                             frames: (0..frame_count)
                                 .map(|i| MapBuilder {
@@ -191,7 +204,33 @@ impl<'a> BankBuilder<'a> {
                                 })
                                 .collect(),
                         };
-                        self.anims.push(anim);
+                        self.strips.insert(name, strip);
+                    },
+                    DeferredCommand::NewAnim { fps, repeat, strip_name, frames } => {
+                        if self.anims.len() == 255 {
+                            panic!("BankBuilder: animation capacity of 256 reached");
+                        }
+
+                        let Some(strip) = self.strips.get(&strip_name) else {
+                            panic!("BankBuilder: Can't find strip name {}", strip_name)
+                        };
+
+                        // Validate
+                        for frame in &frames {
+                            if *frame as usize >= strip.frames.len() {
+                                panic!(
+                                    "BankBuilder: Invalid Anim frame number '{}' on sequence {:?}",
+                                    *frame, frames
+                                );
+                            }
+                        }
+
+                        self.anims.push(Anim {
+                            fps,
+                            repeat,
+                            frames: frames.into(),
+                            strip_name: strip_name.into(),
+                        })
                     },
                 }
             }
@@ -281,73 +320,63 @@ impl<'a> BankBuilder<'a> {
         }
 
         // Write Bank struct constant
-        code.write_line(&format!(
-            "pub const {}: Bank = Bank {{",
-            self.name.to_uppercase(),
-        ));
+        code.write_line(
+            &format!("pub const {}: Bank = Bank::new_from(", self.name.to_uppercase(),),
+        );
 
-        // Write tiles array (pad to TILE_COUNT)
-        code.write_line("    tiles: [");
-        let tiles_count = self.pixels.len() / TILE_LEN;
-        for i in 0..TILE_COUNT {
-            if i < tiles_count {
-                let start = i * TILE_LEN;
-                let end = start + TILE_LEN;
-                let tile_pixels = &self.pixels[start..end];
-                code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
-            } else {
-                // Padding with default/empty tiles
-                code.write_line("        Tile::new(0, 0, 0, 0),");
-            }
+        // Write palette array
+        code.write_line("    &[ // palette");
+        for color in &self.palette.rgb_colors {
+            code.write_line(&format!(
+                "        RGBA12::with_transparency({}, {}, {}, {}),",
+                color.r(),
+                color.g(),
+                color.b(),
+                color.a()
+            ));
         }
         code.write_line("    ],");
 
-        // Write palette array (pad to COLORS_PER_PALETTE)
-        code.write_line("    palette: [");
-        for i in 0..COLORS_PER_PALETTE as usize {
-            if i < self.palette.rgb_colors.len() {
-                let color = &self.palette.rgb_colors[i];
-                code.write_line(&format!(
-                    "        RGBA12::with_transparency({}, {}, {}, {}),",
-                    color.r(),
-                    color.g(),
-                    color.b(),
-                    color.a()
-                ));
-            } else {
-                // Padding with transparent color
-                code.write_line("        RGBA12::with_transparency(0, 0, 0, 0),");
-            }
+        // Write color_mapping array
+        code.write_line("    &[ // color mappings");
+        for mapping in &self.color_mappings {
+            let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
+            code.write_line(&format!("        [{}],", values.join(", ")));
         }
         code.write_line("    ],");
 
-        // Write color_mapping array (pad to COLOR_MAPPING_COUNT)
-        code.write_line("    color_mapping: [");
-        for i in 0..COLOR_MAPPING_COUNT as usize {
-            if i < self.color_mappings.len() {
-                let mapping = &self.color_mappings[i];
-                let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
-                code.write_line(&format!("        [{}],", values.join(", ")));
-            } else {
-                // Padding with identity mapping
-                let identity: Vec<String> = (0..COLORS_PER_PALETTE).map(|v| v.to_string()).collect();
-                code.write_line(&format!("        [{}],", identity.join(", ")));
-            }
+        // Write tiles array
+        code.write_line("    &[ // tiles");
+        // let tiles_count = self.pixels.len() / TILE_LEN;
+        // for i in 0..TILE_COUNT {
+        //     if i < tiles_count {
+        //         let start = i * TILE_LEN;
+        //         let end = start + TILE_LEN;
+        //         let tile_pixels = &self.pixels[start..end];
+        //         code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
+        //     } else {
+        //         // Padding with default/empty tiles
+        //         code.write_line("        Tile::new(0, 0, 0, 0),");
+        //     }
+        // }
+        for tile_pixels in self.pixels.chunks(TILE_LEN) {
+            code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
         }
         code.write_line("    ],");
 
-        // Write runtime tracking fields
-        let tiles_count = self.pixels.len() / TILE_LEN;
-        code.write_line(&format!("    tile_head: {},", tiles_count));
-        code.write_line(&format!("    palette_head: {},", self.palette.rgb_colors.len()));
-        code.write_line(&format!("    color_mapping_head: {},", self.color_mappings.len().max(1)));
+        // // Write runtime tracking fields
+        // let tiles_count = self.pixels.len() / TILE_LEN;
+        // code.write_line(&format!("    tile_head: {},", tiles_count));
+        // code.write_line(&format!("    palette_head: {},", self.palette.rgb_colors.len()));
+        // code.write_line(&format!("    color_mapping_head: {},", self.color_mappings.len().max(1)));
 
-        code.write_line("};");
+        // code.write_line("};");
+        code.write_line(");");
         code.write_line("");
 
         // Write animation strips if any
-        if !self.anims.is_empty() {
-            for anim in &self.anims {
+        if !self.strips.is_empty() {
+            for anim in self.strips.values() {
                 code.write_line(&format!(
                     "pub const {}: [Tilemap<{}>; {}] = [",
                     anim.name.to_uppercase(),
@@ -394,7 +423,7 @@ impl<'a> BankBuilder<'a> {
         // Mark all input files as processed
         for command in &self.deferred_commands {
             let file_path = match command {
-                DeferredCommand::NewEmptyTile => "",
+                DeferredCommand::NewEmptyTile | DeferredCommand::NewAnim { .. } => "",
                 DeferredCommand::NewTile { path } => path,
                 DeferredCommand::NewGroup { path, .. } => path,
                 DeferredCommand::NewMap { path, .. } => path,
@@ -534,7 +563,7 @@ impl<'a> BankBuilder<'a> {
                                 };
 
                                 // Safety check with useful error.
-                                if color_mapping_idx > COLOR_MAPPING_COUNT{
+                                if color_mapping_idx > COLOR_MAPPING_COUNT {
                                     panic!(
                                         "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color mappings limit!\n\
                                         \tFrame: ({}, {})\n\

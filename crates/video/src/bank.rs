@@ -32,6 +32,60 @@ impl Bank {
         }
     }
 
+    pub const fn new_from(
+        palette: &[RGBA12],
+        color_mapping: &[[u8; COLORS_PER_PALETTE as usize]],
+        tiles: &[Tile<4>],
+    ) -> Self {
+        // Create tiles array
+        let mut tiles_array = [Tile::new(0, 0, 0, 0); TILE_COUNT];
+        let mut i = 0;
+        while i < TILE_COUNT {
+            if i < tiles.len() {
+                tiles_array[i] = tiles[i];
+            }
+            i += 1;
+        }
+
+        // Create palette array
+        let mut palette_array = [RGBA12::new(0, 0, 0); COLORS_PER_PALETTE as usize];
+        let mut i = 0;
+        while i < COLORS_PER_PALETTE as usize {
+            if i < palette.len() {
+                palette_array[i] = palette[i];
+            }
+            i += 1;
+        }
+
+        // Create color mapping array
+        let mut color_mapping_array =
+            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]; COLOR_MAPPING_COUNT as usize];
+        let mut i = 0;
+        while i < COLOR_MAPPING_COUNT as usize {
+            if i < color_mapping.len() {
+                color_mapping_array[i] = color_mapping[i];
+            } else {
+                let mut identity_mapping = [0u8; COLORS_PER_PALETTE as usize];
+                let mut j = 0;
+                while j < COLORS_PER_PALETTE as usize {
+                    identity_mapping[j] = j as u8;
+                    j += 1;
+                }
+                color_mapping_array[i] = identity_mapping;
+            }
+            i += 1;
+        }
+
+        Self {
+            tiles: tiles_array,
+            palette: palette_array,
+            color_mapping: color_mapping_array,
+            tile_head: tiles.len() as u8,
+            palette_head: palette.len() as u8,
+            color_mapping_head: color_mapping.len() as u8,
+        }
+    }
+
     pub fn reset(&mut self) {
         // Simply sets internal counters to 0.
         self.tile_head = 0;

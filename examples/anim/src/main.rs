@@ -103,7 +103,7 @@ fn main() -> TatoResult<()> {
 
             // Calculate current frame in animation
             let frame_idx =
-                get_anim_frame(tato.video.frame_number, &entity.anim_frames, entity.anim_fps, true);
+                anim_get_frame(tato.video.frame_number, &entity.anim_frames, entity.anim_fps, true);
             let strip_frame = entity.anim_frames[frame_idx] as usize;
 
             // Draw the sprite using the tilemap from the const strip

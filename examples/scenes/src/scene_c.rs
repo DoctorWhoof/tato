@@ -28,9 +28,12 @@ impl SceneC {
                 state.bg.set_op(BgOp {
                     col,
                     row,
-                    tile_id: cross.id,
-                    flags: TileFlags::default().with_fg(),
-                    color_mapping: 0,
+                    cell: Cell {
+                        id: cross.id,
+                        flags: TileFlags::default().with_fg(),
+                        color_mapping: 0,
+                        group: 0,
+                    },
                 });
             }
         }
