@@ -11,19 +11,17 @@ use crate::prelude::*;
 /// internal frame counter.
 pub fn anim_get_frame<const LEN: usize>(
     current_video_frame: usize,
-    frames: &[u8; LEN],
-    fps: u8,
-    repeat: bool,
+    anim: &Anim<LEN>
 ) -> usize {
-    if frames.is_empty() {
+    if anim.frames.is_empty() {
         return 0;
     }
 
-    let fps = fps.max(1) as usize;
+    let fps = anim.fps.max(1) as usize;
     let frame_duration = 60 / fps; // Assuming 60fps base
     let total_duration = frame_duration * LEN;
 
-    if repeat {
+    if anim.repeat {
         let cycle = current_video_frame % total_duration;
         let frame_idx = cycle / frame_duration;
         frame_idx.min(LEN - 1)

@@ -1,20 +1,19 @@
 mod astro;
 
-use crate::astro::{BANK_ASTRO, STRIP_ASTRO};
+use crate::astro::*;
 use tato::{
     arena::{Arena, ArenaOps},
     prelude::*,
 };
 use tato_raylib::RayBackend;
 
-// A minimal entity that fits in a single 64 bit value! :-)
+// A minimal entity
 struct Entity {
     x: i16,
     y: i16,
     vel_x: i8,
     vel_y: i8,
-    anim_frames: [u8; 4], // Frame sequence for this entity's animation
-    anim_fps: u8,
+    anim: &'static Anim<'static, 4>,
     flip: bool,
 }
 
@@ -35,11 +34,6 @@ fn main() -> TatoResult<()> {
     tato.video.bg_color = RGBA12::new(2, 3, 4);
     tato.video.bg_tile_bank = BANK_BG;
     tato.video.fg_tile_bank = BANK_FG;
-
-    // Animation frame sequences (indices into STRIP_ASTRO)
-    let anim_right_frames = [12, 13, 14, 13];
-    let anim_down_frames = [4, 5, 6, 5];
-    let anim_up_frames = [8, 9, 10, 9];
 
     // Entities - sprite info
     let sprite_w = 16;
@@ -62,8 +56,7 @@ fn main() -> TatoResult<()> {
             y: rng.range_i32(min_y as i32, max_y as i32) as i16,
             vel_x,
             vel_y,
-            anim_frames: anim_right_frames,
-            anim_fps: 8,
+            anim: &ANIM_RIGHT,
             flip: vel_x < 0,
         }
     });
@@ -90,21 +83,20 @@ fn main() -> TatoResult<()> {
 
             // Anim control - choose which animation based on direction
             if entity.vel_x.abs() > entity.vel_y.abs() {
-                entity.anim_frames = anim_right_frames;
+                entity.anim = &ANIM_RIGHT;
                 entity.flip = entity.vel_x < 0;
             } else {
                 if entity.vel_y > 0 {
-                    entity.anim_frames = anim_down_frames;
+                    entity.anim = &ANIM_DOWN;
                 } else {
-                    entity.anim_frames = anim_up_frames;
+                    entity.anim = &ANIM_UP;
                 }
                 entity.flip = false;
             }
 
             // Calculate current frame in animation
-            let frame_idx =
-                anim_get_frame(tato.video.frame_number, &entity.anim_frames, entity.anim_fps, true);
-            let strip_frame = entity.anim_frames[frame_idx] as usize;
+            let frame_idx = anim_get_frame(tato.video.frame_number, entity.anim);
+            let strip_frame = entity.anim.frames[frame_idx] as usize;
 
             // Draw the sprite using the tilemap from the const strip
             if let Some(tilemap) = STRIP_ASTRO.get(strip_frame) {

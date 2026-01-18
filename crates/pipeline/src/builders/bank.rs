@@ -23,7 +23,7 @@ enum DeferredCommand {
     NewGroup { path: String, name: String },
     NewMap { path: String, name: String },
     NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
-    NewAnim { fps: u8, repeat: bool, strip_name: String, frames: Vec<u8> },
+    NewAnim { name: String, fps: u8, repeat: bool, strip_name: String, frames: Vec<u8> },
 }
 
 pub struct BankBuilder<'a> {
@@ -107,11 +107,19 @@ impl<'a> BankBuilder<'a> {
 
     pub fn new_anim<const LEN: usize>(
         &mut self,
+        anim_name: &str,
         strip_name: &str,
         fps: u8,
         repeat: bool,
         frames: [u8; LEN],
     ) {
+        self.deferred_commands.push(DeferredCommand::NewAnim {
+            name: anim_name.into(),
+            fps,
+            repeat,
+            strip_name: strip_name.into(),
+            frames: frames.into(),
+        });
     }
 
     /// Writes the bank constants to a file
@@ -206,7 +214,7 @@ impl<'a> BankBuilder<'a> {
                         };
                         self.strips.insert(name, strip);
                     },
-                    DeferredCommand::NewAnim { fps, repeat, strip_name, frames } => {
+                    DeferredCommand::NewAnim { name, fps, repeat, strip_name, frames } => {
                         if self.anims.len() == 255 {
                             panic!("BankBuilder: animation capacity of 256 reached");
                         }
@@ -226,6 +234,7 @@ impl<'a> BankBuilder<'a> {
                         }
 
                         self.anims.push(Anim {
+                            name,
                             fps,
                             repeat,
                             frames: frames.into(),
@@ -347,30 +356,10 @@ impl<'a> BankBuilder<'a> {
 
         // Write tiles array
         code.write_line("    &[ // tiles");
-        // let tiles_count = self.pixels.len() / TILE_LEN;
-        // for i in 0..TILE_COUNT {
-        //     if i < tiles_count {
-        //         let start = i * TILE_LEN;
-        //         let end = start + TILE_LEN;
-        //         let tile_pixels = &self.pixels[start..end];
-        //         code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
-        //     } else {
-        //         // Padding with default/empty tiles
-        //         code.write_line("        Tile::new(0, 0, 0, 0),");
-        //     }
-        // }
         for tile_pixels in self.pixels.chunks(TILE_LEN) {
             code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
         }
         code.write_line("    ],");
-
-        // // Write runtime tracking fields
-        // let tiles_count = self.pixels.len() / TILE_LEN;
-        // code.write_line(&format!("    tile_head: {},", tiles_count));
-        // code.write_line(&format!("    palette_head: {},", self.palette.rgb_colors.len()));
-        // code.write_line(&format!("    color_mapping_head: {},", self.color_mappings.len().max(1)));
-
-        // code.write_line("};");
         code.write_line(");");
         code.write_line("");
 
@@ -401,6 +390,22 @@ impl<'a> BankBuilder<'a> {
                 code.write_line("];");
                 code.write_line("");
             }
+        }
+
+        // Write animations
+
+        for anim in &self.anims {
+            code.write_line(&format!(
+                "pub const {}: Anim<{}> = Anim {{",
+                anim.name.to_uppercase(),
+                anim.frames.len(),
+            ));
+            code.write_line(&format!("   fps: {},", anim.fps));
+            code.write_line(&format!("   repeat: {},", anim.repeat));
+            code.write_line(&format!("   frames: &{:?},", anim.frames.as_slice()));
+            code.write_line(&format!("   strip: &{}", anim.strip_name.to_ascii_uppercase()));
+            code.write_line("        };");
+            code.write_line("");
         }
 
         // Write single tiles

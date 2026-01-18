@@ -3,6 +3,29 @@ use core::array::from_fn;
 
 type PaletteRemap = [u8; COLORS_PER_PALETTE as usize];
 
+// // TODO: Proposed refactor.
+// // Will allow const tiles + mutable colors at the same time.
+// // Methods need to be shifted from Bank to TileBank and ColorBank accordingly
+// #[derive(Debug, Clone)]
+// pub struct TileBank {
+//     pub tiles: [Tile<4>; TILE_COUNT],
+//     pub tile_head: u8,
+// }
+
+// #[derive(Debug, Clone)]
+// pub struct ColorBank {
+//     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
+//     pub mapping: [PaletteRemap; COLOR_MAPPING_COUNT as usize],
+//     palette_head: u8,
+//     color_mapping_head: u8,
+// }
+
+// #[derive(Debug, Clone)]
+// pub struct NewBank<'a> {
+//     tiles: &'a TileBank,
+//     colors: &'a ColorBank,
+// }
+
 /// A "Memory Bank" that contains the actual tile pixels, a color palette
 /// and color mappings for tile reuse with different colors.
 /// Can be used both as:
@@ -12,7 +35,7 @@ type PaletteRemap = [u8; COLORS_PER_PALETTE as usize];
 pub struct Bank {
     pub tiles: [Tile<4>; TILE_COUNT],
     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
-    pub color_mapping: [[u8; COLORS_PER_PALETTE as usize]; COLOR_MAPPING_COUNT as usize],
+    pub color_mapping: [PaletteRemap; COLOR_MAPPING_COUNT as usize],
     // Runtime tracking (set to appropriate values for const banks, 0 for runtime banks)
     pub tile_head: u8,
     pub palette_head: u8,

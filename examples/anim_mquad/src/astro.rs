@@ -303,4 +303,25 @@ pub const STRIP_ASTRO: [Tilemap<4>; 24] = [
     },
 ];
 
+pub const ANIM_DOWN: Anim<4> = Anim {
+    fps: 10,
+    repeat: true,
+    frames: &[4, 5, 6, 5],
+    strip: &STRIP_ASTRO,
+};
+
+pub const ANIM_UP: Anim<4> = Anim {
+    fps: 10,
+    repeat: true,
+    frames: &[8, 9, 10, 9],
+    strip: &STRIP_ASTRO,
+};
+
+pub const ANIM_RIGHT: Anim<4> = Anim {
+    fps: 10,
+    repeat: true,
+    frames: &[12, 13, 14, 13],
+    strip: &STRIP_ASTRO,
+};
+
 pub const EMPTY: Cell = Cell::new(0, 0, 0, 0);

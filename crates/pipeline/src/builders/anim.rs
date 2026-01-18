@@ -1,5 +1,4 @@
 use crate::MapBuilder;
-use tato_video::*;
 
 #[derive(Debug, Clone)]
 pub(crate) struct StripBuilder {
@@ -7,8 +6,8 @@ pub(crate) struct StripBuilder {
     pub frames: Vec<MapBuilder>,
 }
 
-
 pub struct Anim {
+    pub name: String,
     pub fps: u8,
     pub repeat: bool,
     pub frames: Vec<u8>,
