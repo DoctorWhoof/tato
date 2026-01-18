@@ -1,7 +1,7 @@
 ### Priority List
 
-- 🔥 Bank.append should get the offset, apply to tilemap indices. Somehow.
-- [ ] Init anim should still exist, so that we can create animations from strip frames - Maybe as part of the build phase, instead of runtime init?
+- [ ] Bank.append should get the offset, apply to tilemap indices. Somehow.
+- [?] Init anim should still exist, so that we can create animations from strip frames - Maybe as part of the build phase, instead of runtime init?
 
 ### General Engine
 

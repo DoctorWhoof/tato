@@ -303,7 +303,7 @@ impl<'a> BankBuilder<'a> {
 
                 // Write the tilemap
                 code.write_line(&format!(
-                    "pub const {}: Tilemap<{}> = Tilemap {{",
+                    "pub const MAP_{}: Tilemap<{}> = Tilemap {{",
                     map.name.to_uppercase(),
                     map.cells.len()
                 ));
@@ -329,12 +329,21 @@ impl<'a> BankBuilder<'a> {
         }
 
         // Write Bank struct constant
-        code.write_line(
-            &format!("pub const {}: Bank = Bank::new_from(", self.name.to_uppercase(),),
-        );
+        let bank_name = self.name.to_uppercase();
+        code.write_line(&format!("pub const BANK_{}: Bank = Bank {{", bank_name));
 
-        // Write palette array
-        code.write_line("    &[ // palette");
+        code.write_line(&format!("  colors: COLORS_{}, ", bank_name,));
+        code.write_line(&format!("  tiles: TILES_{}, ", bank_name));
+
+        code.write_line("};");
+        code.write_line("");
+
+        // Write bank colors
+        code.write_line(&format!(
+            "pub const COLORS_{}: ColorBank = ColorBank::new_from(",
+            bank_name
+        ));
+        code.write_line("    &[");
         for color in &self.palette.rgb_colors {
             code.write_line(&format!(
                 "        RGBA12::with_transparency({}, {}, {}, {}),",
@@ -345,17 +354,18 @@ impl<'a> BankBuilder<'a> {
             ));
         }
         code.write_line("    ],");
-
-        // Write color_mapping array
-        code.write_line("    &[ // color mappings");
+        code.write_line("    &[");
         for mapping in &self.color_mappings {
             let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
             code.write_line(&format!("        [{}],", values.join(", ")));
         }
         code.write_line("    ],");
+        code.write_line(");");
+        code.write_line("");
 
-        // Write tiles array
-        code.write_line("    &[ // tiles");
+        // Write bank tiles
+        code.write_line(&format!("pub const TILES_{}: TileBank = TileBank::new_from(", bank_name));
+        code.write_line("    &[");
         for tile_pixels in self.pixels.chunks(TILE_LEN) {
             code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
         }
@@ -367,7 +377,7 @@ impl<'a> BankBuilder<'a> {
         if !self.strips.is_empty() {
             for anim in self.strips.values() {
                 code.write_line(&format!(
-                    "pub const {}: [Tilemap<{}>; {}] = [",
+                    "pub const STRIP_{}: [Tilemap<{}>; {}] = [",
                     anim.name.to_uppercase(),
                     anim.frames[0].cells.len(),
                     anim.frames.len()
@@ -393,7 +403,6 @@ impl<'a> BankBuilder<'a> {
         }
 
         // Write animations
-
         for anim in &self.anims {
             code.write_line(&format!(
                 "pub const {}: Anim<{}> = Anim {{",
@@ -403,7 +412,7 @@ impl<'a> BankBuilder<'a> {
             code.write_line(&format!("   fps: {},", anim.fps));
             code.write_line(&format!("   repeat: {},", anim.repeat));
             code.write_line(&format!("   frames: &{:?},", anim.frames.as_slice()));
-            code.write_line(&format!("   strip: &{}", anim.strip_name.to_ascii_uppercase()));
+            code.write_line(&format!("   strip: &STRIP_{}", anim.strip_name.to_ascii_uppercase()));
             code.write_line("        };");
             code.write_line("");
         }

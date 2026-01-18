@@ -20,7 +20,7 @@ impl SceneC {
 
         banks[0].reset();
         banks[1].reset();
-        banks[0].load_default_colors();
+        banks[0].colors.load_default();
         t.video.bg_color = RGBA12::GRAY;
 
         for col in 0..state.bg.columns() as i16 {
@@ -39,7 +39,7 @@ impl SceneC {
         }
         // Color mappings
         for n in 0..COLOR_MAPPING_COUNT as usize {
-            banks[0].color_mapping[n][2] = n as u8;
+            banks[0].colors.mapping[n][2] = n as u8;
         }
 
         // BG color raster effects

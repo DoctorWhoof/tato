@@ -1,13 +1,14 @@
 // Auto-generated code. Do not edit manually!
 use tato::prelude::*;
 
-mod smileys_map;
+mod smileys;
 
-pub use smileys_map::*;
+pub use smileys::*;
 
-pub const BANK_SMILEYS: Bank = Bank::new_from(
+pub const BANK_SMILEYS: Bank = Bank { colors: COLORS_SMILEYS, tiles: TILES_SMILEYS };
+
+pub const COLORS_SMILEYS: ColorBank = ColorBank::new_from(
     &[
-        // palette
         RGBA12::with_transparency(0, 0, 0, 0),
         RGBA12::with_transparency(4, 5, 5, 7),
         RGBA12::with_transparency(3, 3, 3, 7),
@@ -26,7 +27,6 @@ pub const BANK_SMILEYS: Bank = Bank::new_from(
         RGBA12::with_transparency(4, 6, 7, 7),
     ],
     &[
-        // color mappings
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         [0, 1, 2, 3, 4, 5, 8, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -37,12 +37,12 @@ pub const BANK_SMILEYS: Bank = Bank::new_from(
         [0, 1, 2, 3, 4, 5, 14, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         [0, 1, 2, 3, 4, 5, 15, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     ],
-    &[
-        // tiles
-        Tile::new(0x4444444444444444, 0x4444444444444445, 0x4444455544445555, 0x4444555544455555),
-        Tile::new(0x4444444444444444, 0x4444444455555555, 0x5555555555555555, 0x5555555555555555),
-        Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
-        Tile::new(0x5555555555555555, 0x5555555555555555, 0x5555555555555555, 0x5555555555555555),
-        Tile::new(0x5666666656669999, 0x5566999955666999, 0x5556669955556666, 0x5555556655555555),
-    ],
 );
+
+pub const TILES_SMILEYS: TileBank = TileBank::new_from(&[
+    Tile::new(0x4444444444444444, 0x4444444444444445, 0x4444455544445555, 0x4444555544455555),
+    Tile::new(0x4444444444444444, 0x4444444455555555, 0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
+    Tile::new(0x5555555555555555, 0x5555555555555555, 0x5555555555555555, 0x5555555555555555),
+    Tile::new(0x5666666656669999, 0x5566999955666999, 0x5556669955556666, 0x5555556655555555),
+]);

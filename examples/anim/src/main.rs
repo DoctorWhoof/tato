@@ -100,9 +100,16 @@ fn main() -> TatoResult<()> {
 
             // Draw the sprite using the tilemap from the const strip
             if let Some(tilemap) = STRIP_ASTRO.get(strip_frame) {
-                tato.draw_tilemap_to_fg(
+                draw_sprite_to_fg(
+                    &mut tato.video,
                     tilemap,
-                    SpriteBundle { x: entity.x, y: entity.y, flip_x: entity.flip, flip_y: false },
+                    SpriteBundle {
+                        x: entity.x,
+                        y: entity.y,
+                        flip_x: entity.flip,
+                        flip_y: false,
+                        tile_offset: 0,
+                    },
                 );
             }
         }

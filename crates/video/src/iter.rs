@@ -232,7 +232,7 @@ impl<'a> PixelIter<'a> {
             let flip_x = sprite.flags.is_flipped_x();
             let flip_y = sprite.flags.is_flipped_y();
             let rotated = sprite.flags.is_rotated();
-            let tile = &bank.tiles[sprite.id.0 as usize];
+            let tile = &bank.tiles.tiles[sprite.id.0 as usize];
             // let color_mapping = sprite.color_mapping;
 
             // Render sprite pixels - only in active slots!
@@ -269,8 +269,8 @@ impl<'a> PixelIter<'a> {
 
                 let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
                 let map_index = sprite.color_mapping as usize;
-                let mapped_pixel = bank.color_mapping[map_index][pixel] as usize;
-                let color = bank.palette[mapped_pixel];
+                let mapped_pixel = bank.colors.mapping[map_index][pixel] as usize;
+                let color = bank.colors.palette[mapped_pixel];
 
                 if color.a() > 0 {
                     self.sprite_buffer[x] = color.with_z(Z_SPRITE);
@@ -371,11 +371,11 @@ impl<'a> PixelIter<'a> {
             }
 
             // Get the tile cluster for this row
-            let tile = &bank.tiles[bg_tile_id];
+            let tile = &bank.tiles.tiles[bg_tile_id];
             let bg_cluster = Cluster::from_tile(&tile.clusters, bg_flags, tile_y, TILE_SIZE);
 
             // Pre-fetch palette data
-            let palette = &bank.palette;
+            let palette = &bank.colors.palette;
             let is_fg = bg_flags.is_fg();
             let bg_color = self.bg_color;
 
@@ -408,7 +408,7 @@ impl<'a> PixelIter<'a> {
                         let tile_x = tile_x_start + (base_idx + i) as u8;
                         let color_idx =
                             bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                        let mapped_idx = bank.color_mapping[remap_id][color_idx] as usize;
+                        let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
                         let color = palette[mapped_idx];
 
                         let final_color = if color.a() > 0 {
@@ -427,7 +427,7 @@ impl<'a> PixelIter<'a> {
                     let idx = chunks * 4 + i;
                     let tile_x = tile_x_start + idx as u8;
                     let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                    let mapped_idx = bank.color_mapping[remap_id][color_idx] as usize;
+                    let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
                     let color = palette[mapped_idx];
 
                     let final_color = if color.a() > 0 {

@@ -3,6 +3,12 @@
 mod bank;
 pub use bank::*;
 
+mod bank_tiles;
+pub use bank_tiles::*;
+
+mod bank_colors;
+pub use bank_colors::*;
+
 mod cell;
 pub use cell::*;
 

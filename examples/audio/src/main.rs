@@ -18,37 +18,32 @@ fn main() -> TatoResult<()> {
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
-    banks[0].load_default_colors();
-    banks[0].add_tile(&Tile::default());
-    banks[0].append(&BANK_FONT_LONG).unwrap();
-    banks[0].color_mapping[1][1] = 0; //mapping 1, color 1 -> 3
+    banks[0].colors.load_default();
+    banks[0].tiles.add(&Tile::default());
+    let offset_text = banks[0].append(&BANK_FONT_LONG).unwrap();
+    banks[0].colors.mapping[1][1] = 0; //mapping 1, color 1 -> 3
+    banks[0].colors.mapping[2][1] = 0; //mapping 2, color 1 -> 3
+    banks[0].colors.mapping[2][3] = 14; //mapping 2, color 3 -> 14
+
+    let text_white = &TextOp {
+        font: &MAP_FONT_LONG,
+        width: None,
+        color_mapping: 1,
+        tile_offset: offset_text,
+        character_set: CharacterSet::Long,
+    };
+
+    let text_blue = &TextOp {
+        font: &MAP_FONT_LONG,
+        width: None,
+        color_mapping: 2,
+        tile_offset: offset_text,
+        character_set: CharacterSet::Long,
+    };
 
     // Pre-draw fixed text (writes to BG Map)
-    tato.draw_text(
-        &mut bg_map,
-        "SOUND TEST",
-        TextOp {
-            font: &FONT_LONG_MAP,
-            col: 2,
-            row: 2,
-            width: None,
-            // palette_override: Some(palette_default),
-            color_mapping: 1,
-        },
-    );
-
-    tato.draw_text(
-        &mut bg_map,
-        "Currently playing:",
-        TextOp {
-            font: &FONT_LONG_MAP,
-            col: 2,
-            row: 6,
-            width: None,
-            // palette_override: Some(palette_light),
-            color_mapping: 1,
-        },
-    );
+    draw_text(&mut bg_map, 2, 2, text_blue, "SOUND TEST");
+    draw_text(&mut bg_map, 2, 6, text_white, "Currently playing:");
 
     // Audio setup
     let mut audio = AudioChip::default();
@@ -95,49 +90,28 @@ fn main() -> TatoResult<()> {
         }
 
         // Text info
-        tato.draw_text(
-            &mut bg_map,
-            &{
-                if audio.channels[0].noise_mix() == 0 {
-                    format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
-                } else {
-                    format!("Wave Type: White Noise        ")
-                }
-            },
-            TextOp {
-                font: &FONT_LONG_MAP,
-                col: 2,
-                row: 8,
-                width: None,
-                // palette_override: Some(palette_light),
-                color_mapping: 1,
-            },
-        );
+        draw_text(&mut bg_map, 2, 8, text_white, &{
+            if audio.channels[0].noise_mix() == 0 {
+                format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
+            } else {
+                format!("Wave Type: White Noise        ")
+            }
+        });
 
-        tato.draw_text(
+        draw_text(
             &mut bg_map,
+            2,
+            10,
+            text_white,
             &format!("Volume: {}    ", audio.channels[0].volume()),
-            TextOp {
-                font: &FONT_LONG_MAP,
-                col: 2,
-                row: 10,
-                width: None,
-                // palette_override: Some(palette_light),
-                color_mapping: 1,
-            },
         );
 
-        tato.draw_text(
+        draw_text(
             &mut bg_map,
+            2,
+            12,
+            text_white,
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
-            TextOp {
-                font: &FONT_LONG_MAP,
-                col: 2,
-                row: 12,
-                width: None,
-                // palette_override: Some(palette_light),
-                color_mapping: 1,
-            },
         );
 
         // Update backends

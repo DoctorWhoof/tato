@@ -1,7 +1,7 @@
 // Auto-generated code. Do not edit manually!
 use tato::prelude::*;
 
-pub const MAP_PATCH_MAP: Tilemap<9> = Tilemap {
+pub const MAP_PATCH: Tilemap<9> = Tilemap {
     columns: 3,
     rows: 3,
     cells: [

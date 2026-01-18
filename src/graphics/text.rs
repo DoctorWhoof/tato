@@ -3,10 +3,10 @@ use tato_video::DynTilemap;
 #[derive(Debug, Clone)]
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
-    pub col: i16,
-    pub row: i16,
     pub width: Option<i16>,
     pub color_mapping: u8,
+    pub tile_offset: u8,
+    pub character_set: CharacterSet
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

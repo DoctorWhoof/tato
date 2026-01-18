@@ -11,13 +11,13 @@ fn main() {
     let mut palette = PaletteBuilder::new("patch");
 
     // 9 Patch
-    let mut bank_patch = BankBuilder::new("BANK_PATCH", &mut palette, &mut groups);
-    bank_patch.new_map("import/patch.png", "PATCH_MAP");
+    let mut bank_patch = BankBuilder::new("PATCH", &mut palette, &mut groups);
+    bank_patch.new_map("import/patch.png", "PATCH");
     bank_patch.write("src/patch.rs");
 
     // Smileys
-    let mut bank_smileys = BankBuilder::new("BANK_SMILEYS", &mut palette, &mut groups);
-    bank_smileys.new_map("import/smileys.png", "SMILEYS_MAP");
+    let mut bank_smileys = BankBuilder::new("SMILEYS", &mut palette, &mut groups);
+    bank_smileys.new_map("import/smileys.png", "SMILEYS");
     bank_smileys.write("src/smileys.rs");
 
     // Write groups to their own file

@@ -16,27 +16,27 @@ fn main() {
 
     // Default fonts
     let mut palette_font = PaletteBuilder::new("fonts");
-    let mut bank_font_long = BankBuilder::new("BANK_FONT_LONG", &mut palette_font, &mut groups);
+    let mut bank_font_long = BankBuilder::new("FONT_LONG", &mut palette_font, &mut groups);
     bank_font_long.allow_unused = true;
     bank_font_long.use_crate_assets = true; // Only true when used by this crate
-    bank_font_long.new_map("import/font_long.png", "FONT_LONG_MAP");
+    bank_font_long.new_map("import/font_long.png", "FONT_LONG");
     bank_font_long.write("src/default_assets/font_long.rs");
 
-    let mut bank_font_short = BankBuilder::new("BANK_FONT_SHORT", &mut palette_font, &mut groups);
+    let mut bank_font_short = BankBuilder::new("FONT_SHORT", &mut palette_font, &mut groups);
     bank_font_short.allow_unused = true;
     bank_font_short.use_crate_assets = true;
-    bank_font_short.new_map("import/font_short.png", "FONT_SHORT_MAP");
+    bank_font_short.new_map("import/font_short.png", "FONT_SHORT");
     bank_font_short.write("src/default_assets/font_short.rs");
 
-    let mut bank_font_arcade = BankBuilder::new("BANK_FONT_ARCADE", &mut palette_font, &mut groups);
+    let mut bank_font_arcade = BankBuilder::new("FONT_ARCADE", &mut palette_font, &mut groups);
     bank_font_arcade.allow_unused = true;
     bank_font_arcade.use_crate_assets = true;
-    bank_font_arcade.new_map("import/font_arcade.png", "FONT_ARCADE_MAP");
+    bank_font_arcade.new_map("import/font_arcade.png", "FONT_ARCADE");
     bank_font_arcade.write("src/default_assets/font_arcade.rs");
 
     // Default basic tiles
     let mut palette_default = PaletteBuilder::new("default");
-    let mut bank_default = BankBuilder::new("BANK_DEFAULT", &mut palette_default, &mut groups);
+    let mut bank_default = BankBuilder::new("DEFAULT", &mut palette_default, &mut groups);
     bank_default.allow_unused = true;
     bank_default.use_crate_assets = true;
     // Add single tiles for default assets

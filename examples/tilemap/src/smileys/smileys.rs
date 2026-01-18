@@ -1,7 +1,7 @@
 // Auto-generated code. Do not edit manually!
 use tato::prelude::*;
 
-pub const MAP_SMILEYS_MAP: Tilemap<160> = Tilemap {
+pub const MAP_SMILEYS: Tilemap<160> = Tilemap {
     columns: 16,
     rows: 10,
     cells: [

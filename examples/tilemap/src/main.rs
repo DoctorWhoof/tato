@@ -24,37 +24,18 @@ fn main() -> TatoResult<()> {
     tato.video.wrap_bg = true;
 
     // Combine multiple banks into bank 0
-    banks[0].add_tile(&Tile::default());
-    let patch_offset = banks[0].append(&BANK_PATCH).expect("Failed to append patch bank");
-    let smileys_offset =
-        banks[0].append(&BANK_SMILEYS).expect("Failed to append smileys bank");
-
-    // Display bank info to verify color deduplication
-    println!("Combined bank stats:");
-    println!("  Tiles: {}/{}", banks[0].tile_count(), banks[0].tile_capacity());
-    println!("  Colors: {}/{}", banks[0].color_count(), COLORS_PER_PALETTE);
-    println!("  Color mappings: {}/{}", banks[0].color_mapping_count(), COLOR_MAPPING_COUNT);
-
-    // tato.load_bank(0, &bank);
-
-    // Create offset tilemaps for patch and smileys
-    let mut patch_map_offsetted = PATCH_MAP.clone();
-    for cell in &mut patch_map_offsetted.cells {
-        cell.id = TileID(cell.id.0 + patch_offset);
-    }
-
-    let mut smileys_map_offsetted = SMILEYS_MAP.clone();
-    for cell in &mut smileys_map_offsetted.cells {
-        cell.id = TileID(cell.id.0 + smileys_offset);
-    }
+    banks[0].tiles.add(&Tile::default());
+    let patch_offset = banks[0].append(&BANK_PATCH).unwrap();
+    let smileys_offset = banks[0].append(&BANK_SMILEYS).unwrap();
 
     // Draw using the new direct tilemap API
-    tato.draw_patch_3x3(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, &patch_map_offsetted);
-    tato.draw_tilemap_to_tilemap(
+    draw_patch_to_tilemap(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, &MAP_PATCH, patch_offset);
+    draw_tilemap_to_tilemap(
         &mut bg_map,
         Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
-        &smileys_map_offsetted,
+        &MAP_SMILEYS,
         None,
+        smileys_offset,
     );
 
     // Backend

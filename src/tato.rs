@@ -1,7 +1,7 @@
 use tato_audio::AudioChip;
 use tato_pad::AnaloguePad;
 
-use crate::{prelude::CharacterSet, *};
+use crate::prelude::*;
 
 #[derive(Debug)]
 pub struct Tato {
@@ -13,8 +13,6 @@ pub struct Tato {
     pub audio: AudioChip,
     // Video
     pub video: VideoChip,
-    // pub banks: [Option<&'a Bank>; BANK_COUNT],
-    pub character_set: CharacterSet,
     // Internals
     pub target_fps: u8,
     time: u64,
@@ -34,8 +32,6 @@ impl Tato {
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
             video: tato_video::VideoChip::new(w, h),
-            // banks: core::array::from_fn(|_| None),
-            character_set: CharacterSet::Long,
             target_fps,
             time: 0,
             time_cache: 0.0,

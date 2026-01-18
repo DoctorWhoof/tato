@@ -29,12 +29,12 @@ impl SceneA {
         });
 
         banks[0].reset();
-        banks[0].load_default_colors();
+        banks[0].colors.load_default();
         banks[0].append_tiles(&BANK_DEFAULT, None).unwrap();
         // Palette test - defines BG palette with a golden tint!
         banks[1].reset();
         banks[1].append(&BANK_DEFAULT).unwrap();
-        banks[1].palette = [
+        banks[1].colors.palette = [
             RGBA12::TRANSPARENT,
             RGBA12::new(2, 1, 1),
             RGBA12::new(3, 1, 1),
@@ -53,15 +53,15 @@ impl SceneA {
             RGBA12::new(7, 7, 5),
         ];
 
-        for (i, mapping) in banks[0].color_mapping[COLORMAP_CYCLE as usize].iter().enumerate() {
-            let color = banks[0].palette[*mapping as usize];
+        for (i, mapping) in banks[0].colors.mapping[COLORMAP_CYCLE as usize].iter().enumerate() {
+            let color = banks[0].colors.palette[*mapping as usize];
             println!("{}: {} ({})", i, mapping, color);
         }
 
         // Color mappings.
         {
             // mapping 0 is for the shadow
-            let mapping = &mut banks[0].color_mapping[COLORMAP_SHADOW as usize];
+            let mapping = &mut banks[0].colors.mapping[COLORMAP_SHADOW as usize];
             mapping[0] = 0; // 0 stays transparent
             mapping[1] = 1;
             mapping[2] = 1;
@@ -71,7 +71,7 @@ impl SceneA {
         {
             // mappings 2 to 15 replace color 2 with a color from the palette
             for i in 2..COLORS_PER_PALETTE as usize {
-                let mapping = &mut banks[0].color_mapping[i];
+                let mapping = &mut banks[0].colors.mapping[i];
                 mapping[2] = (i as u8 % 12) + 4;
             }
         }
@@ -80,7 +80,7 @@ impl SceneA {
             // And now the BG palette
             for i in 0..COLORS_PER_PALETTE as usize {
                 let bg_color = (i % 16) as u8;
-                let mapping = &mut banks[1].color_mapping[i];
+                let mapping = &mut banks[1].colors.mapping[i];
                 mapping[0] = 0; // 0 stays transparent
                 mapping[1] = bg_color;
                 mapping[2] = bg_color;
@@ -205,7 +205,7 @@ impl SceneA {
         t.video.scroll_y = target_y;
 
         {
-            let cycle_color = &mut banks[0].color_mapping[COLORMAP_CYCLE as usize][2];
+            let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
             *cycle_color = ((*cycle_color + 1) % 12) + 4;
         }
 

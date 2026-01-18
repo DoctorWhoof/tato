@@ -41,13 +41,13 @@ impl Dashboard {
         tiles_per_row: u16,
     ) {
         // Early return for empty banks
-        if bank.tile_count() == 0 {
+        if bank.tiles.count() == 0 {
             // self.tile_pixels[bank_index].clear();
             return;
         }
 
         // Calculate actual dimensions based on tile layout
-        let tile_count = bank.tile_count() as u16;
+        let tile_count = bank.tiles.count() as u16;
         let num_rows = (tile_count + tiles_per_row - 1) / tiles_per_row; // Ceiling division
 
         let w = tiles_per_row as usize * TILE_SIZE as usize;
@@ -75,14 +75,14 @@ impl Dashboard {
                     for x in 0..TILE_SIZE as usize {
                         // get color
                         let color_index =
-                            bank.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
+                            bank.tiles.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
                         // get coordinates
                         let pixel_x = tile_x as usize * TILE_SIZE as usize + x;
                         let pixel_y = tile_y as usize * TILE_SIZE as usize + y;
                         let i = ((pixel_y * w as usize) + pixel_x) * 4;
                         // Seems safe for now, may need to insert a check for i < pixels.len()
                         // if I get out-of-bounds errors.
-                        let color: RGBA32 = bank.palette[color_index as usize].into();
+                        let color: RGBA32 = bank.colors.palette[color_index as usize].into();
                         pixels[i] = color.r;
                         pixels[i + 1] = color.g;
                         pixels[i + 2] = color.b;
@@ -133,9 +133,9 @@ impl Dashboard {
         panel.push_edge(Edge::Top, h, |frame| {
             let rect = frame.rect();
             let values = [
-                bank.tile_count(),
-                bank.color_count() as usize,
-                bank.color_mapping_count() as usize,
+                bank.tiles.count(),
+                bank.colors.color_count() as usize,
+                bank.colors.mappings_count() as usize,
             ];
             let text =
                 Text::format_display(frame_arena, "{} tiles, {} colors, {} mappings", &values, "")
@@ -153,7 +153,7 @@ impl Dashboard {
             self.ops.push(frame_arena, handle).unwrap();
         });
 
-        if bank.tile_count() == 0 && bank.color_count() == 0 {
+        if bank.tiles.count() == 0 && bank.colors.color_count() == 0 {
             return;
         }
 
@@ -168,7 +168,7 @@ impl Dashboard {
             for c in 0..COLORS_PER_PALETTE as usize {
                 frame.push_edge(Edge::Left, swatch_w, |swatch| {
                     let rect = swatch.rect();
-                    let color = bank.palette[c];
+                    let color = bank.colors.palette[c];
                     let rgba32 = RGBA32::from(color);
 
                     let handle = frame_arena.alloc(DrawOp::Rect { rect, color: rgba32 }).unwrap();
@@ -269,7 +269,7 @@ impl Dashboard {
 
         // Tile visualization
         self.update_tile_texture(bank_index, bank, tiles_per_row);
-        let max_row = (bank.tile_count() / tiles_per_row as usize) + 1;
+        let max_row = (bank.tiles.count() / tiles_per_row as usize) + 1;
         // tile_size is already in screen coordinates,
         // so I need to divide by the GUI scale.
         let tiles_height = max_row as f32 * (tile_size / self.gui_scale);
@@ -294,7 +294,7 @@ impl Dashboard {
                 let col = ((mouse.x - rect.x) as f32 / tile_size) as i16;
                 let row = ((mouse.y - rect.y) as f32 / tile_size) as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
-                if tile_index < bank.tile_count() as i16 {
+                if tile_index < bank.tiles.count() as i16 {
                     self.mouse_over_text =
                         Text::format_display(frame_arena, "Tile {}", &[tile_index], "").unwrap();
                 }

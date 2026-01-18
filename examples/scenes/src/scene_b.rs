@@ -23,10 +23,10 @@ impl SceneB {
 
         // Colors
         banks[0].reset();
-        banks[0].load_default_colors();
+        banks[0].colors.load_default();
 
         banks[1].reset();
-        banks[1].load_default_colors();
+        banks[1].colors.load_default();
 
         t.video.bg_color = RGBA12::BLACK;
         t.video.crop_color = RGBA12::DARK_GREEN;
@@ -38,12 +38,12 @@ impl SceneB {
         {
             let mut mapping: [u8; COLORS_PER_PALETTE as usize] = Default::default();
             mapping[2] = 8;
-            banks[0].color_mapping[2] = mapping;
+            banks[0].colors.mapping[2] = mapping;
         }
         for n in 0..3 {
             let mut mapping: [u8; COLORS_PER_PALETTE as usize] = Default::default();
             mapping[2] = 9 + n;
-            banks[1].push_color_mapping(mapping);
+            banks[1].colors.push_mapping(mapping);
         }
 
         // Set BG cells to use mappings
@@ -90,7 +90,7 @@ impl SceneB {
 
         // Draw!
         {
-            let cycle_color = &mut banks[0].color_mapping[COLORMAP_CYCLE as usize][2];
+            let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
             *cycle_color = ((*cycle_color + 1) % 12) + 4;
         }
 

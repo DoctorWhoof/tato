@@ -19,6 +19,7 @@ pub struct SpriteBundle {
     pub y: i16,
     pub flip_x: bool,
     pub flip_y: bool,
+    pub tile_offset: u8,
 }
 
 /// Main drawing context that manages the screen, tiles, and palette.
