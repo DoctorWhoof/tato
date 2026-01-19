@@ -1,8 +1,5 @@
 ### Priority List
 
-- [ ] Bank.append should get the offset, apply to tilemap indices. Somehow.
-- [?] Init anim should still exist, so that we can create animations from strip frames - Maybe as part of the build phase, instead of runtime init?
-
 ### General Engine
 
 - [.] Implement command-agnostic console
@@ -107,6 +104,17 @@
 - [ ] Dual chip setup for multiple video layers
 
 ### Pipeline:
+
+- [ ] Bank::new_from always generates a 256 tile bank in memory, even if the tile count is smaller. I need to generate a tile array instead, and append(tiles, colors, mappings)?
+    - Sounds too complicated, using a Bank neatly wraps all that
+    - Maybe a BankRef struct that marely refers to colors, tiles and mappings? That could be handy when a size-erased Bank becomes necessary?
+    - Skipping for now since
+        - a: It works already
+        - b: I want to avoid adding more types.
+
+- [x] Bank.append should get the offset, apply to tilemap indices. Somehow.
+
+- [x] Init anim should still exist, so that we can create animations from strip frames - Maybe as part of the build phase, instead of runtime init?
 
 - [x] Load individual named tiles into a tileset, each will be exported as a const
       . On the other end, insert single tiles into TileBank (returns TileID)

@@ -14,10 +14,7 @@ pub const COLORS_FONT_ARCADE: ColorBank = ColorBank::new_from(
         RGBA12::with_transparency(7, 7, 7, 7),
         RGBA12::with_transparency(0, 0, 0, 0),
     ],
-    &[
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    ],
+    &[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], [2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
 );
 
 pub const TILES_FONT_ARCADE: TileBank = TileBank::new_from(&[

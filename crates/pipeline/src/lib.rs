@@ -3,7 +3,7 @@ mod builders;
 use std::collections::HashMap;
 use std::fs::{File, read_to_string};
 use std::io::Write;
-use std::sync::OnceLock;
+use std::sync::{OnceLock, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::UNIX_EPOCH;
 
@@ -18,17 +18,28 @@ pub(crate) use palette_image::*;
 
 pub use {BankBuilder, GroupBuilder, PaletteBuilder};
 
+/// Build pipeline configuration.
 #[derive(Clone)]
 pub struct BuildSettings {
+    /// Directory containing input asset files.
     pub asset_import_path: String,
+
+    /// Directory where generated Rust files will be written. If set to "src", mod.rs generation is skipped.
+    pub asset_export_path: String,
+
+    /// Clears the export directory before generating files. Dangerous paths are blocked.
+    pub clear_export_path: bool,
+
+    /// Forces regeneration of all files regardless of timestamps.
     pub force_reprocess: bool,
 }
 
 // Initialization tracking
 static INIT_BUILD_CALLED: AtomicBool = AtomicBool::new(false);
 static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
+static GENERATED_FILES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-/// Initializes build script integration with cargo
+/// Initializes the build pipeline. Call this first in your `build.rs`.
 pub fn init_build(settings: BuildSettings) {
     // Store build settings globally
     let _ = BUILD_SETTINGS.set(settings.clone());
@@ -36,10 +47,20 @@ pub fn init_build(settings: BuildSettings) {
     // Mark initialization as complete
     INIT_BUILD_CALLED.store(true, Ordering::Relaxed);
 
+    // Clear generated files list from any previous runs
+    GENERATED_FILES.lock().unwrap().clear();
+
     // Cargo build setup
     println!("cargo:warning=Working Dir:{:?}", std::env::current_dir().ok().unwrap());
     println!("cargo:warning=Asset import path: {}", settings.asset_import_path);
+    println!("cargo:warning=Asset export path: {}", settings.asset_export_path);
+    println!("cargo:warning=Clear export path: {}", settings.clear_export_path);
     println!("cargo:warning=Force reprocess: {}", settings.force_reprocess);
+
+    // Clear export path if requested
+    if settings.clear_export_path {
+        clear_export_path_safely(&settings.asset_export_path);
+    }
 
     // Watch build.rs
     println!("cargo:rerun-if-changed=build.rs");
@@ -48,7 +69,147 @@ pub fn init_build(settings: BuildSettings) {
     watch_asset_files(&settings.asset_import_path);
 }
 
-fn get_build_settings() -> BuildSettings {
+/// Safely clears the export path with multiple safeguards
+fn clear_export_path_safely(export_path: &str) {
+    use std::path::Path;
+
+    // Safeguard: Don't allow empty paths
+    if export_path.is_empty() {
+        panic!("ERROR: Export path cannot be empty");
+    }
+
+    // Safeguard: Don't allow parent directory traversal
+    if export_path.contains("..") {
+        panic!("ERROR: Export path cannot contain '..' (parent directory traversal): {}", export_path);
+    }
+
+    // Safeguard: Don't allow absolute paths (must be relative to working dir)
+    let path = Path::new(export_path);
+    if path.is_absolute() {
+        panic!("ERROR: Export path must be relative, not absolute: {}", export_path);
+    }
+
+    // Normalize the path for checking
+    let normalized = export_path.trim_start_matches("./").trim_end_matches("/");
+
+    // These top-level paths should never be cleared (but can be used as export paths)
+    let no_clear_paths = [".", "src", "/", "target", "cargo", ".git", ".cargo"];
+    if no_clear_paths.contains(&normalized) {
+        println!(
+            "cargo:warning=Skipping clear for '{}' (top-level directory). Files will be overwritten in place.",
+            export_path
+        );
+        // Still ensure the directory exists
+        if !path.exists() {
+            if let Err(e) = std::fs::create_dir_all(path) {
+                println!("cargo:warning=Failed to create export directory: {}", e);
+            }
+        }
+        return;
+    }
+
+    // If all checks pass, proceed with clearing
+    if path.exists() {
+        match std::fs::remove_dir_all(path) {
+            Ok(_) => {
+                println!("cargo:warning=Cleared export directory: {}", export_path);
+                // Recreate the directory
+                if let Err(e) = std::fs::create_dir_all(path) {
+                    println!("cargo:warning=Failed to recreate export directory: {}", e);
+                }
+            }
+            Err(e) => {
+                println!("cargo:warning=Failed to clear export directory {}: {}", export_path, e);
+            }
+        }
+    } else {
+        // Directory doesn't exist, create it
+        if let Err(e) = std::fs::create_dir_all(path) {
+            println!("cargo:warning=Failed to create export directory: {}", e);
+        } else {
+            println!("cargo:warning=Created export directory: {}", export_path);
+        }
+    }
+}
+
+/// Registers a generated file for inclusion in mod.rs
+pub(crate) fn register_generated_file(file_path: &str) {
+    use std::path::Path;
+
+    let settings = get_build_settings();
+    let export_path = &settings.asset_export_path;
+
+    // Normalize paths by removing leading "./" and trailing "/"
+    let normalized_export = export_path.trim_start_matches("./").trim_end_matches("/");
+    let normalized_file = file_path.trim_start_matches("./");
+
+    // Extract the module name from the file path
+    let path = Path::new(normalized_file);
+
+    // Try to get the file stem (filename without extension)
+    if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
+        // Check if the file is in the export directory
+        if normalized_file.starts_with(normalized_export) {
+            // Don't add if it's already in the list
+            let mut files = GENERATED_FILES.lock().unwrap();
+            if !files.contains(&file_stem.to_string()) {
+                files.push(file_stem.to_string());
+            }
+        }
+    }
+}
+
+/// Writes a mod.rs file that exports all generated modules
+fn write_mod_file(export_path: &str) {
+    use std::path::Path;
+
+    // Don't create mod.rs if exporting directly to "src"
+    let normalized = export_path.trim_start_matches("./").trim_end_matches("/");
+    if normalized == "src" {
+        return;
+    }
+
+    let files = GENERATED_FILES.lock().unwrap();
+    if files.is_empty() {
+        return;
+    }
+
+    let mod_path = Path::new(export_path).join("mod.rs");
+
+    match File::create(&mod_path) {
+        Ok(mut file) => {
+            // Write header
+            let _ = writeln!(file, "// Auto-generated mod.rs - exports all generated modules");
+            let _ = writeln!(file, "");
+
+            // Write pub mod declarations for each generated file
+            for module_name in files.iter() {
+                let _ = writeln!(file, "pub mod {};", module_name);
+            }
+
+            let _ = writeln!(file, "");
+
+            // Write pub use statements to re-export all module contents
+            for module_name in files.iter() {
+                let _ = writeln!(file, "pub use {}::*;", module_name);
+            }
+
+            println!("cargo:warning=Created mod.rs with {} modules", files.len());
+        }
+        Err(e) => {
+            println!("cargo:warning=Failed to create mod.rs: {}", e);
+        }
+    }
+}
+
+/// Generates a `mod.rs` file that declares and re-exports all non-empty generated modules.
+/// Call this at the end of your `build.rs` after all `write()` calls.
+pub fn finalize_build() {
+    let settings = get_build_settings();
+    write_mod_file(&settings.asset_export_path);
+}
+
+pub(crate) fn get_build_settings() -> BuildSettings {
     BUILD_SETTINGS.get()
         .expect("init_build must be called before using build settings")
         .clone()

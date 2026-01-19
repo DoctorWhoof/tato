@@ -11,22 +11,23 @@ pub struct MapOp {}
 #[inline]
 /// Obtains the frame index on a given Animation based on the video chip's
 /// internal frame counter.
-pub fn anim_get_frame<const LEN: usize>(current_video_frame: usize, anim: &Anim<LEN>) -> usize {
+pub fn anim_get_frame(current_video_frame: usize, anim: &Anim) -> usize {
     if anim.frames.is_empty() {
         return 0;
     }
 
+    let len = anim.frames.len();
     let fps = anim.fps.max(1) as usize;
     let frame_duration = 60 / fps; // Assuming 60fps base
-    let total_duration = frame_duration * LEN;
+    let total_duration = frame_duration * len;
 
     if anim.repeat {
         let cycle = current_video_frame % total_duration;
         let frame_idx = cycle / frame_duration;
-        frame_idx.min(LEN - 1)
+        frame_idx.min(len - 1)
     } else {
         let frame_idx = current_video_frame / frame_duration;
-        frame_idx.min(LEN - 1)
+        frame_idx.min(len - 1)
     }
 }
 
@@ -47,17 +48,17 @@ pub fn tilemap_fill<const LEN: usize>(bg: &mut Tilemap<LEN>, cell: Cell) {
 
 /// Draws a sprite as a tilemap to the foreground layer.
 /// The tilemap can be from a const strip or any other source.
-pub fn draw_sprite_to_fg(video: &mut VideoChip, tilemap: &dyn DynTilemap, bundle: SpriteBundle) {
-    video.draw_sprite(bundle, tilemap);
+pub fn draw_sprite_to_fg(video: &mut VideoChip, anim: &Anim, bundle: SpriteBundle) {
+    let frame_number = anim_get_frame(video.frame_number, &anim);
+    let strip_frame = anim.frames[frame_number] as usize;
+    let tilemap = anim.strip[strip_frame];
+    video.draw_sprite(bundle, &tilemap);
 }
 
+// TODO: Draw from Anim, just like draw_sprite_to_fg, but to the BG
 /// Draws a tilemap to a background tilemap.
 /// Positions the sprite at tile coordinates (not pixel coordinates).
-pub fn draw_sprite_to_tilemap<const LEN: usize>(
-    dest: &mut Tilemap<LEN>,
-    src: &dyn DynTilemap,
-    bundle: SpriteBundle,
-) {
+pub fn draw_sprite_to_tilemap<const LEN: usize>(dest: &mut Tilemap<LEN>, src: &dyn DynTilemap, bundle: SpriteBundle) {
     let col = (bundle.x / TILE_SIZE as i16) as u16;
     let row = (bundle.y / TILE_SIZE as i16) as u16;
     let dst_rect = Rect { x: col, y: row, w: src.columns(), h: src.rows() };

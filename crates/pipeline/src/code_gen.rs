@@ -66,7 +66,7 @@ impl CodeWriter {
         writeln!(self.output_file, "{}{}", indent, line).expect("Failed to write to output file");
     }
 
-    pub fn write_header(&mut self, allow_unused: bool, use_crate_assets: bool) {
+    pub fn write_header(&mut self, allow_unused: bool, use_crate_assets: bool, default_imports: bool) {
         // Removed timestamp to prevent too many unnecessary git changes
         // let timestamp = generate_timestamp();
         // self.write_line(&format!(
@@ -79,10 +79,12 @@ impl CodeWriter {
             self.write_line("#![allow(unused)]");
         }
 
-        if use_crate_assets {
-            self.write_line("use crate::prelude::*;");
-        } else {
-            self.write_line("use tato::prelude::*;");
+        if default_imports {
+            if use_crate_assets {
+                self.write_line("use crate::prelude::*;");
+            } else {
+                self.write_line("use tato::prelude::*;");
+            }
         }
 
         self.write_line("");

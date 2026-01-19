@@ -30,6 +30,9 @@ pub struct BankBuilder<'a> {
     pub allow_tile_transforms: bool,
     pub allow_unused: bool,
     pub use_crate_assets: bool,
+    pub write_colors: bool,
+    pub write_tiles: bool,
+    pub write_animations: bool,
     name: String,
     pixels: Vec<u8>,
     tiles_to_cells: HashMap<Pixels, Cell>,
@@ -54,6 +57,9 @@ impl<'a> BankBuilder<'a> {
             allow_tile_transforms: true,
             allow_unused: false,
             use_crate_assets: false,
+            write_colors: true,
+            write_tiles: true,
+            write_animations: true,
             name: String::from(name),
             pixels: vec![],
             tiles_to_cells: HashMap::new(),
@@ -122,8 +128,16 @@ impl<'a> BankBuilder<'a> {
         });
     }
 
-    /// Writes the bank constants to a file
+    /// Writes the bank constants to a file relative to export path. Skipped if empty.
     pub fn write(&mut self, file_path: &str) {
+        // Make file_path relative to export path
+        let settings = crate::get_build_settings();
+        let full_path = std::path::Path::new(&settings.asset_export_path)
+            .join(file_path)
+            .to_str()
+            .expect("Could not convert path to string")
+            .to_string();
+        
         // Check if any input files have changed
         let mut should_regenerate = false;
         for command in &self.deferred_commands {
@@ -144,7 +158,7 @@ impl<'a> BankBuilder<'a> {
             return;
         }
 
-        println!("cargo:warning=Regenerating bank: {}", file_path);
+        println!("cargo:warning=Regenerating bank: {}", full_path);
         // Execute all deferred commands now
         {
             let commands = self.deferred_commands.clone();
@@ -245,11 +259,12 @@ impl<'a> BankBuilder<'a> {
             }
         }
 
-        println!("cargo:warning=Creating output file: {}", file_path);
-        let mut code = CodeWriter::new(file_path);
+        println!("cargo:warning=Creating output file: {}", full_path);
+        let mut code = CodeWriter::new(&full_path);
 
         // Write header
-        code.write_header(self.allow_unused, self.use_crate_assets);
+        let default_imports = self.write_animations | self.write_colors | self.write_tiles;
+        code.write_header(self.allow_unused, self.use_crate_assets, default_imports);
 
         // Write private mod statements for tilemaps at the top
         for map in &self.maps {
@@ -273,7 +288,7 @@ impl<'a> BankBuilder<'a> {
             use std::path::Path;
 
             // Get the directory of the main file and the module name
-            let main_path = Path::new(file_path);
+            let main_path = Path::new(&full_path);
             let output_dir =
                 main_path.parent().expect("Could not get parent directory of output file");
             let module_name = main_path
@@ -299,7 +314,7 @@ impl<'a> BankBuilder<'a> {
                 let mut code = CodeWriter::new(map_file_path_str);
 
                 // Write header
-                code.write_header(self.allow_unused, self.use_crate_assets);
+                code.write_header(self.allow_unused, self.use_crate_assets, true);
 
                 // Write the tilemap
                 code.write_line(&format!(
@@ -330,68 +345,70 @@ impl<'a> BankBuilder<'a> {
 
         // Write Bank struct constant
         let bank_name = self.name.to_uppercase();
-        code.write_line(&format!("pub const BANK_{}: Bank = Bank {{", bank_name));
+        if self.write_colors && self.write_tiles {
+            code.write_line(&format!("pub const BANK_{}: Bank = Bank {{", bank_name));
 
-        code.write_line(&format!("  colors: COLORS_{}, ", bank_name,));
-        code.write_line(&format!("  tiles: TILES_{}, ", bank_name));
+            code.write_line(&format!("  colors: COLORS_{}, ", bank_name,));
+            code.write_line(&format!("  tiles: TILES_{}, ", bank_name));
 
-        code.write_line("};");
-        code.write_line("");
+            code.write_line("};");
+            code.write_line("");
+        }
 
         // Write bank colors
-        code.write_line(&format!(
-            "pub const COLORS_{}: ColorBank = ColorBank::new_from(",
-            bank_name
-        ));
-        code.write_line("    &[");
-        for color in &self.palette.rgb_colors {
+        if self.write_colors {
             code.write_line(&format!(
-                "        RGBA12::with_transparency({}, {}, {}, {}),",
-                color.r(),
-                color.g(),
-                color.b(),
-                color.a()
+                "pub const COLORS_{}: ColorBank = ColorBank::new_from(",
+                bank_name
             ));
+            code.write_line("    &[");
+            for color in &self.palette.rgb_colors {
+                code.write_line(&format!(
+                    "        RGBA12::with_transparency({}, {}, {}, {}),",
+                    color.r(),
+                    color.g(),
+                    color.b(),
+                    color.a()
+                ));
+            }
+            code.write_line("    ],");
+            code.write_line("    &[");
+            for mapping in &self.color_mappings {
+                let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
+                code.write_line(&format!("        [{}],", values.join(", ")));
+            }
+            code.write_line("    ],");
+            code.write_line(");");
+            code.write_line("");
         }
-        code.write_line("    ],");
-        code.write_line("    &[");
-        for mapping in &self.color_mappings {
-            let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
-            code.write_line(&format!("        [{}],", values.join(", ")));
-        }
-        code.write_line("    ],");
-        code.write_line(");");
-        code.write_line("");
 
-        // Write bank tiles
-        code.write_line(&format!("pub const TILES_{}: TileBank = TileBank::new_from(", bank_name));
-        code.write_line("    &[");
-        for tile_pixels in self.pixels.chunks(TILE_LEN) {
-            code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
+        if self.write_tiles {
+            // Write bank tiles
+            code.write_line(&format!(
+                "pub const TILES_{}: TileBank = TileBank::new_from(",
+                bank_name
+            ));
+            code.write_line("    &[");
+            for tile_pixels in self.pixels.chunks(TILE_LEN) {
+                code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
+            }
+            code.write_line("    ],");
+            code.write_line(");");
+            code.write_line("");
         }
-        code.write_line("    ],");
-        code.write_line(");");
-        code.write_line("");
 
         // Write animation strips if any
-        if !self.strips.is_empty() {
-            for anim in self.strips.values() {
+        if !self.strips.is_empty() && self.write_animations {
+            for strip in self.strips.values() {
                 code.write_line(&format!(
-                    "pub const STRIP_{}: [Tilemap<{}>; {}] = [",
-                    anim.name.to_uppercase(),
-                    anim.frames[0].cells.len(),
-                    anim.frames.len()
+                    "pub const STRIP_{}: [TilemapRef; {}] = [",
+                    strip.name.to_uppercase(),
+                    strip.frames.len()
                 ));
 
-                for frame in &anim.frames {
-                    code.write_line("    Tilemap {");
-                    code.write_line("        cells: [");
-
-                    for cell in &frame.cells {
-                        code.write_cell(cell);
-                    }
-
-                    code.write_line("        ],");
+                for (i, frame) in strip.frames.iter().enumerate() {
+                    code.write_line("    TilemapRef {");
+                    code.write_line(&format!("        cells: &FRAMES_{}[{}],", strip.name, i));
                     code.write_line(&format!("        columns: {},", frame.columns));
                     code.write_line(&format!("        rows: {},", frame.rows));
                     code.write_line("    },");
@@ -400,39 +417,78 @@ impl<'a> BankBuilder<'a> {
                 code.write_line("];");
                 code.write_line("");
             }
+
+            for strip in self.strips.values() {
+                code.write_line(&format!(
+                    "pub const FRAMES_{}: [[Cell; {}]; {}] = [",
+                    strip.name.to_uppercase(),
+                    strip.frames[0].cells.len(),
+                    strip.frames.len()
+                ));
+                for frame in &strip.frames {
+                    code.write_line("           [");
+                    for cell in &frame.cells {
+                        code.write_cell(cell);
+                    }
+                    code.write_line("           ],");
+                }
+                code.write_line("        ];");
+                code.write_line("");
+            }
         }
 
         // Write animations
-        for anim in &self.anims {
-            code.write_line(&format!(
-                "pub const {}: Anim<{}> = Anim {{",
-                anim.name.to_uppercase(),
-                anim.frames.len(),
-            ));
-            code.write_line(&format!("   fps: {},", anim.fps));
-            code.write_line(&format!("   repeat: {},", anim.repeat));
-            code.write_line(&format!("   frames: &{:?},", anim.frames.as_slice()));
-            code.write_line(&format!("   strip: &STRIP_{}", anim.strip_name.to_ascii_uppercase()));
-            code.write_line("        };");
-            code.write_line("");
+        if self.write_animations {
+            for anim in &self.anims {
+                let Some(_strip) = self.strips.get(&anim.strip_name) else {
+                    panic!("Invalid strip name for Anim: {}", anim.name)
+                };
+                code.write_line(&format!(
+                    "pub const ANIM_{}: Anim = Anim {{",
+                    anim.name.to_uppercase(),
+                ));
+                code.write_line(&format!("   fps: {},", anim.fps));
+                code.write_line(&format!("   repeat: {},", anim.repeat));
+                code.write_line(&format!("   frames: &{:?},", anim.frames.as_slice()));
+                code.write_line(&format!(
+                    "   strip: &STRIP_{}",
+                    anim.strip_name.to_ascii_uppercase()
+                ));
+                code.write_line("        };");
+                code.write_line("");
+            }
         }
 
         // Write single tiles
-        for tile in &self.single_tiles {
-            code.write_line(&format!(
-                "pub const {}: Cell = {};",
-                tile.name.to_uppercase(),
-                crate::format_cell_compact(&tile.cell)
-            ));
-        }
-        if !self.single_tiles.is_empty() {
-            code.write_line("");
+        if self.write_tiles {
+            for tile in &self.single_tiles {
+                code.write_line(&format!(
+                    "pub const {}: Cell = {};",
+                    tile.name.to_uppercase(),
+                    crate::format_cell_compact(&tile.cell)
+                ));
+            }
+            if !self.single_tiles.is_empty() {
+                code.write_line("");
+            }
         }
 
         // Format the output
-        println!("cargo:warning=Formatting and writing file: {}", file_path);
-        code.format_output(file_path);
-        println!("cargo:warning=File write completed: {}", file_path);
+        println!("cargo:warning=Formatting and writing file: {}", full_path);
+        code.format_output(&full_path);
+        println!("cargo:warning=File write completed: {}", full_path);
+
+        // Register this file for mod.rs generation only if it has content
+        let has_content = !self.maps.is_empty()
+            || !self.single_tiles.is_empty()
+            || !self.anims.is_empty()
+            || !self.strips.is_empty()
+            || !self.pixels.is_empty()
+            || !self.palette.rgb_colors.is_empty();
+        
+        if has_content {
+            crate::register_generated_file(&full_path);
+        }
 
         // Mark all input files as processed
         for command in &self.deferred_commands {

@@ -28,7 +28,7 @@ pub mod default_assets;
 pub mod prelude {
     pub use crate::backend::*;
     pub use crate::dashboard::*;
-    // pub use crate::default_assets::*;
+    pub use crate::default_assets::*;
     pub use crate::graphics::*;
     pub use crate::*;
     pub use tato_audio::waveform::*;

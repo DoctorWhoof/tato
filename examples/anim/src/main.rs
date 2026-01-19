@@ -13,7 +13,7 @@ struct Entity {
     y: i16,
     vel_x: i8,
     vel_y: i8,
-    anim: &'static Anim<'static, 4>,
+    anim: &'static Anim<'static>,
     flip: bool,
 }
 
@@ -94,24 +94,17 @@ fn main() -> TatoResult<()> {
                 entity.flip = false;
             }
 
-            // Calculate current frame in animation
-            let frame_idx = anim_get_frame(tato.video.frame_number, entity.anim);
-            let strip_frame = entity.anim.frames[frame_idx] as usize;
-
-            // Draw the sprite using the tilemap from the const strip
-            if let Some(tilemap) = STRIP_ASTRO.get(strip_frame) {
-                draw_sprite_to_fg(
-                    &mut tato.video,
-                    tilemap,
-                    SpriteBundle {
-                        x: entity.x,
-                        y: entity.y,
-                        flip_x: entity.flip,
-                        flip_y: false,
-                        tile_offset: 0,
-                    },
-                );
-            }
+            draw_sprite_to_fg(
+                &mut tato.video,
+                entity.anim,
+                SpriteBundle {
+                    x: entity.x,
+                    y: entity.y,
+                    flip_x: entity.flip,
+                    flip_y: false,
+                    tile_offset: 0,
+                },
+            );
         }
 
         tato.frame_finish();

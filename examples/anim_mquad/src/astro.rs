@@ -58,264 +58,75 @@ pub const TILES_ASTRO: TileBank = TileBank::new_from(&[
     Tile::new(0x1111100011111000, 0x1112130011123330, 0x3333300033000000, 0x0000000000000000),
 ]);
 
-pub const STRIP_ASTRO: [Tilemap<4>; 24] = [
-    Tilemap {
-        cells: [
-            Cell::new(1, 0, 0, 0),
-            Cell::new(1, 128, 0, 0),
-            Cell::new(2, 0, 0, 0),
-            Cell::new(2, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(3, 0, 0, 0),
-            Cell::new(3, 128, 0, 0),
-            Cell::new(4, 0, 0, 0),
-            Cell::new(4, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(5, 0, 0, 0),
-            Cell::new(6, 0, 0, 0),
-            Cell::new(7, 0, 0, 0),
-            Cell::new(7, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(1, 0, 0, 0),
-            Cell::new(1, 128, 0, 0),
-            Cell::new(2, 0, 0, 0),
-            Cell::new(2, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(8, 0, 0, 0),
-            Cell::new(8, 128, 0, 0),
-            Cell::new(9, 0, 0, 0),
-            Cell::new(10, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(1, 0, 0, 0),
-            Cell::new(1, 128, 0, 0),
-            Cell::new(2, 0, 0, 0),
-            Cell::new(2, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(8, 0, 0, 0),
-            Cell::new(8, 128, 0, 0),
-            Cell::new(10, 128, 0, 0),
-            Cell::new(9, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(3, 0, 0, 0),
-            Cell::new(3, 128, 0, 0),
-            Cell::new(4, 0, 0, 0),
-            Cell::new(4, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(11, 0, 0, 0),
-            Cell::new(11, 128, 0, 0),
-            Cell::new(12, 0, 0, 0),
-            Cell::new(13, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(3, 0, 0, 0),
-            Cell::new(3, 128, 0, 0),
-            Cell::new(14, 0, 0, 0),
-            Cell::new(14, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(11, 0, 0, 0),
-            Cell::new(11, 128, 0, 0),
-            Cell::new(13, 128, 0, 0),
-            Cell::new(12, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(5, 0, 0, 0),
-            Cell::new(6, 0, 0, 0),
-            Cell::new(7, 0, 0, 0),
-            Cell::new(7, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(11, 0, 0, 0),
-            Cell::new(15, 0, 0, 0),
-            Cell::new(16, 0, 0, 0),
-            Cell::new(17, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(5, 0, 0, 0),
-            Cell::new(6, 0, 0, 0),
-            Cell::new(7, 0, 0, 0),
-            Cell::new(7, 128, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(11, 0, 0, 0),
-            Cell::new(15, 0, 0, 0),
-            Cell::new(18, 0, 0, 0),
-            Cell::new(19, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(20, 0, 0, 0),
-            Cell::new(20, 128, 0, 0),
-            Cell::new(21, 0, 0, 0),
-            Cell::new(22, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(23, 0, 0, 0),
-            Cell::new(23, 128, 0, 0),
-            Cell::new(24, 0, 0, 0),
-            Cell::new(25, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(20, 0, 0, 0),
-            Cell::new(20, 128, 0, 0),
-            Cell::new(26, 0, 0, 0),
-            Cell::new(27, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(20, 0, 0, 0),
-            Cell::new(20, 128, 0, 0),
-            Cell::new(28, 0, 0, 0),
-            Cell::new(29, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(30, 0, 0, 0),
-            Cell::new(30, 128, 0, 0),
-            Cell::new(31, 0, 0, 0),
-            Cell::new(32, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(30, 0, 0, 0),
-            Cell::new(30, 128, 0, 0),
-            Cell::new(33, 0, 0, 0),
-            Cell::new(34, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(23, 0, 0, 0),
-            Cell::new(23, 128, 0, 0),
-            Cell::new(35, 0, 0, 0),
-            Cell::new(36, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(30, 0, 0, 0),
-            Cell::new(30, 128, 0, 0),
-            Cell::new(37, 0, 0, 0),
-            Cell::new(38, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
-    Tilemap {
-        cells: [
-            Cell::new(20, 0, 0, 0),
-            Cell::new(20, 128, 0, 0),
-            Cell::new(39, 0, 0, 0),
-            Cell::new(40, 0, 0, 0),
-        ],
-        columns: 2,
-        rows: 2,
-    },
+pub const STRIP_ASTRO: [TilemapRef; 24] = [
+    TilemapRef { cells: &FRAMES_ASTRO[0], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[1], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[2], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[3], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[4], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[5], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[6], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[7], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[8], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[9], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[10], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[11], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[12], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[13], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[14], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[15], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[16], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[17], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[18], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[19], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[20], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[21], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[22], columns: 2, rows: 2 },
+    TilemapRef { cells: &FRAMES_ASTRO[23], columns: 2, rows: 2 },
 ];
 
-pub const ANIM_DOWN: Anim<4> = Anim {
+pub const FRAMES_ASTRO: [[Cell; 4]; 24] = [
+    [Cell::new(1, 0, 0, 0), Cell::new(1, 128, 0, 0), Cell::new(2, 0, 0, 0), Cell::new(2, 128, 0, 0)],
+    [Cell::new(3, 0, 0, 0), Cell::new(3, 128, 0, 0), Cell::new(4, 0, 0, 0), Cell::new(4, 128, 0, 0)],
+    [Cell::new(5, 0, 0, 0), Cell::new(6, 0, 0, 0), Cell::new(7, 0, 0, 0), Cell::new(7, 128, 0, 0)],
+    [Cell::new(1, 0, 0, 0), Cell::new(1, 128, 0, 0), Cell::new(2, 0, 0, 0), Cell::new(2, 128, 0, 0)],
+    [Cell::new(8, 0, 0, 0), Cell::new(8, 128, 0, 0), Cell::new(9, 0, 0, 0), Cell::new(10, 0, 0, 0)],
+    [Cell::new(1, 0, 0, 0), Cell::new(1, 128, 0, 0), Cell::new(2, 0, 0, 0), Cell::new(2, 128, 0, 0)],
+    [Cell::new(8, 0, 0, 0), Cell::new(8, 128, 0, 0), Cell::new(10, 128, 0, 0), Cell::new(9, 128, 0, 0)],
+    [Cell::new(3, 0, 0, 0), Cell::new(3, 128, 0, 0), Cell::new(4, 0, 0, 0), Cell::new(4, 128, 0, 0)],
+    [Cell::new(11, 0, 0, 0), Cell::new(11, 128, 0, 0), Cell::new(12, 0, 0, 0), Cell::new(13, 0, 0, 0)],
+    [Cell::new(3, 0, 0, 0), Cell::new(3, 128, 0, 0), Cell::new(14, 0, 0, 0), Cell::new(14, 128, 0, 0)],
+    [Cell::new(11, 0, 0, 0), Cell::new(11, 128, 0, 0), Cell::new(13, 128, 0, 0), Cell::new(12, 128, 0, 0)],
+    [Cell::new(5, 0, 0, 0), Cell::new(6, 0, 0, 0), Cell::new(7, 0, 0, 0), Cell::new(7, 128, 0, 0)],
+    [Cell::new(11, 0, 0, 0), Cell::new(15, 0, 0, 0), Cell::new(16, 0, 0, 0), Cell::new(17, 0, 0, 0)],
+    [Cell::new(5, 0, 0, 0), Cell::new(6, 0, 0, 0), Cell::new(7, 0, 0, 0), Cell::new(7, 128, 0, 0)],
+    [Cell::new(11, 0, 0, 0), Cell::new(15, 0, 0, 0), Cell::new(18, 0, 0, 0), Cell::new(19, 0, 0, 0)],
+    [Cell::new(20, 0, 0, 0), Cell::new(20, 128, 0, 0), Cell::new(21, 0, 0, 0), Cell::new(22, 0, 0, 0)],
+    [Cell::new(23, 0, 0, 0), Cell::new(23, 128, 0, 0), Cell::new(24, 0, 0, 0), Cell::new(25, 0, 0, 0)],
+    [Cell::new(20, 0, 0, 0), Cell::new(20, 128, 0, 0), Cell::new(26, 0, 0, 0), Cell::new(27, 0, 0, 0)],
+    [Cell::new(20, 0, 0, 0), Cell::new(20, 128, 0, 0), Cell::new(28, 0, 0, 0), Cell::new(29, 0, 0, 0)],
+    [Cell::new(30, 0, 0, 0), Cell::new(30, 128, 0, 0), Cell::new(31, 0, 0, 0), Cell::new(32, 0, 0, 0)],
+    [Cell::new(30, 0, 0, 0), Cell::new(30, 128, 0, 0), Cell::new(33, 0, 0, 0), Cell::new(34, 0, 0, 0)],
+    [Cell::new(23, 0, 0, 0), Cell::new(23, 128, 0, 0), Cell::new(35, 0, 0, 0), Cell::new(36, 0, 0, 0)],
+    [Cell::new(30, 0, 0, 0), Cell::new(30, 128, 0, 0), Cell::new(37, 0, 0, 0), Cell::new(38, 0, 0, 0)],
+    [Cell::new(20, 0, 0, 0), Cell::new(20, 128, 0, 0), Cell::new(39, 0, 0, 0), Cell::new(40, 0, 0, 0)],
+];
+
+pub const ANIM_DOWN: Anim = Anim {
     fps: 10,
     repeat: true,
     frames: &[4, 5, 6, 5],
     strip: &STRIP_ASTRO,
 };
 
-pub const ANIM_UP: Anim<4> = Anim {
+pub const ANIM_UP: Anim = Anim {
     fps: 10,
     repeat: true,
     frames: &[8, 9, 10, 9],
     strip: &STRIP_ASTRO,
 };
 
-pub const ANIM_RIGHT: Anim<4> = Anim {
+pub const ANIM_RIGHT: Anim = Anim {
     fps: 10,
     repeat: true,
     frames: &[12, 13, 14, 13],

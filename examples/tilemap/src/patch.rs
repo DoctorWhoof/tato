@@ -14,10 +14,7 @@ pub const COLORS_PATCH: ColorBank = ColorBank::new_from(
         RGBA12::with_transparency(3, 3, 3, 7),
         RGBA12::with_transparency(1, 1, 1, 7),
     ],
-    &[
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    ],
+    &[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], [3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
 );
 
 pub const TILES_PATCH: TileBank = TileBank::new_from(&[

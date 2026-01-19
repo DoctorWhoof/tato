@@ -41,21 +41,38 @@ impl GroupBuilder {
         self.hash.insert(canonical_tile, current_groups | group_bit);
     }
 
-    /// Writes the group constants to a file
+    /// Writes group constants to a file relative to export path. Skipped if empty.
     pub fn write(&self, file_path: &str) {
-        let mut code = CodeWriter::new(file_path);
+        // Check if there are any non-empty groups
+        let has_groups = self.names.iter().any(|name| !name.is_empty());
+        
+        if !has_groups {
+            // No groups to write, skip file generation
+            return;
+        }
+
+        // Make file_path relative to export path
+        let settings = crate::get_build_settings();
+        let full_path = std::path::Path::new(&settings.asset_export_path)
+            .join(file_path)
+            .to_str()
+            .expect("Could not convert path to string")
+            .to_string();
+
+        let mut code = CodeWriter::new(&full_path);
 
         // Write group constants
-        if !self.names.is_empty() {
-            for (index, name) in self.names.iter().enumerate() {
-                if !name.is_empty() {
-                    let group_index = (index + 1) as u8; // Convert 0-based back to 1-based
-                    code.write_group_constant(name, group_index);
-                }
+        for (index, name) in self.names.iter().enumerate() {
+            if !name.is_empty() {
+                let group_index = (index + 1) as u8; // Convert 0-based back to 1-based
+                code.write_group_constant(name, group_index);
             }
         }
 
         // Format the output
-        code.format_output(file_path);
+        code.format_output(&full_path);
+
+        // Register this file for mod.rs generation
+        crate::register_generated_file(&full_path);
     }
 }
