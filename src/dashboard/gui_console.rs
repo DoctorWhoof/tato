@@ -33,7 +33,8 @@ impl Dashboard {
 
             // Draw main console line text
             let command_line_bytes = self.console_line_buffer.as_slice(&self.fixed_arena).unwrap();
-            let prompt = if tato.time().fract() < 0.5 { [b' '] } else { [b'_'] };
+            let fract = tato.time() - tato.time().floor();
+            let prompt = if fract < 0.5 { [b' '] } else { [b'_'] };
             let text_result = Text::join_bytes(
                 frame_arena, //
                 &[b"command: ", command_line_bytes, &prompt],

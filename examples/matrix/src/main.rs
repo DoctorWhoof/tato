@@ -5,7 +5,8 @@
 // const COLUMNS: usize = 40;
 // const ROWS: usize = 64;
 
-fn main() -> tato::TatoResult<()> {
+fn main() {
+// fn main() -> tato::TatoResult<()> {
     // // Init
     // let mut tato = Tato::new(320, 240, 60);
     // tato.video.bg_color = RGBA12::BLACK;
@@ -64,7 +65,7 @@ fn main() -> tato::TatoResult<()> {
     //     backend.frame_present(&mut temp, &tato, &[&bg]);
     // }
 
-    Ok(())
+    // Ok(())
 }
 
 // -----------------------------------------------------------------------------

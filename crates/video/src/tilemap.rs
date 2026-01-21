@@ -153,8 +153,8 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
 
         // Calculate effective src positions (accounting for clipping)
-        let effective_src_x = clip_x;
-        let effective_src_y = clip_y;
+        let effective_src_x = src_x + clip_x;
+        let effective_src_y = src_y + clip_y;
 
         // Copy the tiles row by row
         for y in 0..effective_height {

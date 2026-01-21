@@ -76,7 +76,7 @@ impl Bank {
             }
 
             if !exists && color_remap.is_some() {
-                println!("Appending color map {}: {:?}", self.colors.mapping_head, color_remap);
+                // println!("Appending color map {}: {:?}", self.colors.mapping_head, color_remap);
                 if self.colors.mapping_head >= COLOR_MAPPING_COUNT as u8 {
                     return Err("Not enough space in bank for color mappings");
                 }

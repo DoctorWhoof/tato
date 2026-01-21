@@ -5,7 +5,7 @@ use crate::{
     prelude::{DrawOp, Key},
 };
 use tato_arena::{ArenaId, ArenaOps, Buffer};
-use tato_math::{Rect, Vec2};
+use tato_math::{libm::floorf, Rect, Vec2};
 use tato_pad::AnaloguePad;
 use tato_video::{Bank, TilemapRef, RGBA32};
 
@@ -32,7 +32,7 @@ pub fn canvas_rect_and_scale(
     };
 
     if integer {
-        scale = scale.floor()
+        scale = floorf(scale)
     }
     // Generate output
     let w = (video_size.x as f32 * scale) as i16;

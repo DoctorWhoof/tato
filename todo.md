@@ -1,5 +1,7 @@
 ### Priority List
 
+- [ ] Modify import paths so that all paths are relative to the "global" import path, and don't require the full path to be called on every method that takes in import paths.
+
 ### General Engine
 
 - [.] Implement command-agnostic console
