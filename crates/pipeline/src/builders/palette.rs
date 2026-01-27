@@ -2,15 +2,20 @@ use crate::*;
 use std::collections::HashMap;
 use tato_video::*;
 
+/// Collects colors from images and generates palette code.
 #[derive(Debug, Clone)]
 pub struct PaletteBuilder {
+    /// Palette identifier used in generated code.
     pub name: String,
+    /// Collected 12-bit RGBA colors.
     pub rgb_colors: Vec<RGBA12>,
+    /// Maps colors to their palette indices.
     pub rgb_to_index: HashMap<RGBA12, u8>,
     id: u8,
 }
 
 impl PaletteBuilder {
+    /// Creates a new palette builder with the given name.
     pub fn new(name: &str) -> Self {
         crate::ensure_init_build();
         PaletteBuilder {
@@ -21,6 +26,7 @@ impl PaletteBuilder {
         }
     }
 
+    /// Adds a color to the palette. Panics if palette is full.
     pub fn push(&mut self, color: RGBA12) {
         if self.rgb_colors.len() == COLORS_PER_PALETTE as usize {
             panic!("Palette error: capacity of {} exceeded.", COLORS_PER_PALETTE)
@@ -28,6 +34,7 @@ impl PaletteBuilder {
         self.rgb_colors.push(color);
     }
 
+    /// Returns the palette ID.
     pub fn id(&self) -> u8 {
         self.id
     }

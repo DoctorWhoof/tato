@@ -1,14 +1,18 @@
+//! Sub-palette management for tile color optimization.
+
 use std::{array::from_fn, collections::HashMap};
 
 use tato_video::{COLORS_PER_TILE, SUBPALETTE_COUNT};
 
+/// Result of inserting colors into a sub-palette.
 pub(crate) struct SubPaletteInsert {
+    /// Index of the sub-palette used.
     pub position: u8,
+    /// Maps source palette indices to sub-palette indices.
     pub mapping: HashMap<u8, u8>,
-    // key: source color index (main palette)
-    // value: index in the final subpalette
 }
 
+/// A subset of palette colors used by a single tile.
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct SubPalette {
     colors: [u8; COLORS_PER_TILE as usize],
@@ -16,6 +20,7 @@ pub(crate) struct SubPalette {
 }
 
 impl SubPalette {
+    /// Creates a sub-palette from a slice of color indices.
     pub fn from(source: &[u8]) -> Self {
         Self {
             colors: from_fn(|i| if i < source.len() { source[i] } else { 0 }),
@@ -23,6 +28,7 @@ impl SubPalette {
         }
     }
 
+    /// Generates a mapping from palette indices to sub-palette indices.
     pub fn generate_mapping(&self) -> HashMap<u8, u8> {
         let mut result = HashMap::new();
         // populate mapping with existing colors
@@ -32,6 +38,7 @@ impl SubPalette {
         result
     }
 
+    /// Adds a color index if not already present. Panics if full.
     pub fn push(&mut self, value: u8) {
         // Avoid pushing existing values
         if !self.colors().contains(&value) {
@@ -46,11 +53,13 @@ impl SubPalette {
         }
     }
 
+    /// Returns the active color indices.
     pub fn colors(&self) -> &[u8] {
         &self.colors[0..self.count as usize]
     }
 }
 
+/// Packs tile colors into minimal sub-palettes.
 #[derive(Debug, Default)]
 pub(crate) struct SubPaletteBuilder {
     map: HashMap<SubPalette, u8>,
@@ -58,14 +67,17 @@ pub(crate) struct SubPaletteBuilder {
 }
 
 impl SubPaletteBuilder {
+    /// Returns all sub-palettes.
     pub fn data(&self) -> &[SubPalette] {
         &self.data
     }
 
+    /// Returns true if no sub-palettes exist.
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
+    /// Adds colors to an existing sub-palette or creates a new one.
     pub fn add(&mut self, incoming: SubPalette) -> SubPaletteInsert {
         // Early return
         if let Some(i) = self.map.get(&incoming) {
@@ -102,7 +114,7 @@ impl SubPaletteBuilder {
         self.insert(incoming)
     }
 
-    // Force-inserts a new subpalette without checking for matches, returns its position
+    /// Force-inserts a new sub-palette. Panics if limit exceeded.
     fn insert(&mut self, subpalette: SubPalette) -> SubPaletteInsert {
         let position = self.data.len();
         if position >= SUBPALETTE_COUNT as usize {

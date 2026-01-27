@@ -1,3 +1,5 @@
+//! Asset pipeline for converting images to tile-based graphics data.
+
 mod builders;
 
 use std::collections::HashMap;
@@ -11,7 +13,6 @@ pub use builders::*;
 
 mod code_gen;
 pub(crate) use code_gen::*;
-pub use code_gen::{format_cell_compact, format_tile_compact};
 
 mod palette_image;
 pub(crate) use palette_image::*;
@@ -21,16 +22,13 @@ pub use {BankBuilder, GroupBuilder, PaletteBuilder};
 /// Build pipeline configuration.
 #[derive(Clone)]
 pub struct BuildSettings {
-    /// Directory containing input asset files.
+    /// Source directory for input images.
     pub asset_import_path: String,
-
-    /// Directory where generated Rust files will be written. If set to "src", mod.rs generation is skipped.
+    /// Output directory for generated Rust code.
     pub asset_export_path: String,
-
-    /// Clears the export directory before generating files. Dangerous paths are blocked.
+    /// If true, clears output directory before generation.
     pub clear_export_path: bool,
-
-    /// Forces regeneration of all files regardless of timestamps.
+    /// If true, regenerates all files ignoring timestamps.
     pub force_reprocess: bool,
 }
 
@@ -39,7 +37,7 @@ static INIT_BUILD_CALLED: AtomicBool = AtomicBool::new(false);
 static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
 static GENERATED_FILES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-/// Initializes the build pipeline. Call this first in your `build.rs`.
+/// Initializes the pipeline. Must be called before any builders.
 pub fn init_build(settings: BuildSettings) {
     // Validate settings
     if settings.asset_export_path == "src" || settings.asset_export_path == "src/" {
@@ -215,8 +213,7 @@ fn write_mod_file(export_path: &str) {
     }
 }
 
-/// Generates a `mod.rs` file that declares and re-exports all non-empty generated modules.
-/// Call this at the end of your `build.rs` after all `write()` calls.
+/// Writes `mod.rs` with all generated modules. Call after all `write()` calls.
 pub fn finalize_build() {
     let settings = get_build_settings();
     write_mod_file(&settings.asset_export_path);

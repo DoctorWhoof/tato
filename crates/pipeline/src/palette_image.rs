@@ -1,21 +1,28 @@
+//! Image loading and palette conversion utilities.
+
 use tato_video::*;
 
 use super::*;
 
-/// Stores a palettized version of an image as well as layout data (frame count, columns and rows per frame).
-/// Uses an external palette and color map to ensure consistency accross many image sources.
+/// Image converted to palette indices with frame layout metadata.
 #[derive(Debug)]
 pub(crate) struct PalettizedImg {
-    // pub asset_name: String,
+    /// Horizontal frame count.
     pub frames_h: u8,
+    /// Vertical frame count.
     pub frames_v: u8,
+    /// Tile columns per frame.
     pub cols_per_frame: u8,
+    /// Tile rows per frame.
     pub rows_per_frame: u8,
+    /// Image width in pixels.
     pub width: usize,
+    /// Palette-indexed pixel data.
     pub pixels: Vec<u8>,
 }
 
 impl PalettizedImg {
+    /// Creates an empty 8x8 transparent image.
     pub fn empty(palette: &mut PaletteBuilder) -> Self {
         let pixels = vec![0_u8; TILE_PIXEL_COUNT * 4];
         PalettizedImg {
@@ -29,6 +36,7 @@ impl PalettizedImg {
         }
     }
 
+    /// Loads a PNG and converts it to palette indices.
     pub fn from_image(
         file_name: &str,
         frames_h: u8,
@@ -86,8 +94,7 @@ impl PalettizedImg {
         }
     }
 
-    // Creates a palettized image from a source RGBA image, populates the palette.
-    // pub fn palletize(img: ImageData, palette: &mut PaletteBuilder) -> Vec<u8> {
+    /// Converts RGBA pixels to palette indices, adding new colors as needed.
     pub fn palletize(
         img_pixels: &[u8],
         width: u32,

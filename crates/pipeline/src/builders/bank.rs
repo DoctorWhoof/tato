@@ -26,11 +26,17 @@ enum DeferredCommand {
     NewAnim { name: String, fps: u8, repeat: bool, strip_name: String, frames: Vec<u8> },
 }
 
+/// Converts images into deduplicated tiles, maps, and animations.
 pub struct BankBuilder<'a> {
+    /// If true, detects flipped/rotated tile variants to reduce tile count.
     pub allow_tile_transforms: bool,
+    /// If true, allows unused warnings in generated code.
     pub allow_unused: bool,
+    /// If true, writes color palette data.
     pub write_colors: bool,
+    /// If true, writes tile pixel data.
     pub write_tiles: bool,
+    /// If true, writes animation data.
     pub write_animations: bool,
     #[doc(hidden)]
     pub use_crate_assets: bool,
@@ -52,6 +58,7 @@ pub struct BankBuilder<'a> {
 }
 
 impl<'a> BankBuilder<'a> {
+    /// Creates a new bank builder with the given name, palette, and group references.
     pub fn new(name: &str, palette: &'a mut PaletteBuilder, groups: &'a mut GroupBuilder) -> Self {
         crate::ensure_init_build();
         Self {
@@ -78,31 +85,29 @@ impl<'a> BankBuilder<'a> {
         }
     }
 
-    /// Defines a new tile group. Adds the tiles only, does not add Tilemaps or Animations,
-    /// there's a match. To add an "empty" group, with no tiles, simply add it directly to
-    /// the GroupBuilder instead of using the BankBuilder.
+    /// Adds tiles from image to a named group. Use empty path for group without tiles.
     pub fn new_group(&mut self, path: &str, name: &str) {
         self.deferred_commands
             .push(DeferredCommand::NewGroup { path: path.to_string(), name: name.to_string() });
     }
 
-    /// Creates a new single tile from a .png file
+    /// Adds a single 8x8 tile from a PNG file.
     pub fn new_tile(&mut self, path: &str) {
         self.deferred_commands.push(DeferredCommand::NewTile { path: path.to_string() });
     }
 
-    /// Creates a new single tile from a .png file
+    /// Adds an empty (transparent) tile.
     pub fn new_empty_tile(&mut self) {
         self.deferred_commands.push(DeferredCommand::NewEmptyTile);
     }
 
-    /// Creates a new map from a .png file
+    /// Adds a tilemap from a PNG file.
     pub fn new_map(&mut self, path: &str, name: &str) {
         self.deferred_commands
             .push(DeferredCommand::NewMap { path: path.to_string(), name: name.to_string() });
     }
 
-    /// Creates a new animation strip from a .png file
+    /// Adds an animation strip from a PNG file with specified frame layout.
     pub fn new_animation_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
         self.deferred_commands.push(DeferredCommand::NewAnimationStrip {
             path: path.to_string(),
@@ -112,6 +117,7 @@ impl<'a> BankBuilder<'a> {
         });
     }
 
+    /// Defines an animation using frames from a strip.
     pub fn new_anim<const LEN: usize>(
         &mut self,
         anim_name: &str,
@@ -130,6 +136,7 @@ impl<'a> BankBuilder<'a> {
     }
 
     /// Writes the bank constants to a file relative to export path. Skipped if empty.
+    /// Generates Rust code for all registered assets. Skips if sources unchanged.
     pub fn write(&mut self, file_path: &str) {
         // Make file_path relative to export path
         let settings = crate::get_build_settings();
