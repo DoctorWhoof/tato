@@ -29,10 +29,11 @@ enum DeferredCommand {
 pub struct BankBuilder<'a> {
     pub allow_tile_transforms: bool,
     pub allow_unused: bool,
-    pub use_crate_assets: bool,
     pub write_colors: bool,
     pub write_tiles: bool,
     pub write_animations: bool,
+    #[doc(hidden)]
+    pub use_crate_assets: bool,
     name: String,
     pixels: Vec<u8>,
     tiles_to_cells: HashMap<Pixels, Cell>,
@@ -137,7 +138,7 @@ impl<'a> BankBuilder<'a> {
             .to_str()
             .expect("Could not convert path to string")
             .to_string();
-        
+
         // Check if any input files have changed
         let mut should_regenerate = false;
         for command in &self.deferred_commands {
@@ -485,7 +486,7 @@ impl<'a> BankBuilder<'a> {
             || !self.strips.is_empty()
             || !self.pixels.is_empty()
             || !self.palette.rgb_colors.is_empty();
-        
+
         if has_content {
             crate::register_generated_file(&full_path);
         }

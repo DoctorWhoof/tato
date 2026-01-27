@@ -1,6 +1,6 @@
-mod astro;
+mod assets;
+use assets::*;
 
-use crate::astro::*;
 use tato::{
     arena::{Arena, ArenaOps},
     prelude::*,

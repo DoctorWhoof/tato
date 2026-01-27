@@ -3,8 +3,8 @@ mod builders;
 use std::collections::HashMap;
 use std::fs::{File, read_to_string};
 use std::io::Write;
-use std::sync::{OnceLock, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
 pub use builders::*;
@@ -41,6 +41,16 @@ static GENERATED_FILES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 /// Initializes the build pipeline. Call this first in your `build.rs`.
 pub fn init_build(settings: BuildSettings) {
+    // Validate settings
+    if settings.asset_export_path == "src" || settings.asset_export_path == "src/" {
+        panic!(
+            "\x1b[31m
+            Error: Invalid export path. Cannot export directly to 'src' directory.
+            Please pic a different path or a subdirectory under 'src'
+            \x1b[0m"
+        )
+    }
+
     // Store build settings globally
     let _ = BUILD_SETTINGS.set(settings.clone());
 
@@ -80,7 +90,10 @@ fn clear_export_path_safely(export_path: &str) {
 
     // Safeguard: Don't allow parent directory traversal
     if export_path.contains("..") {
-        panic!("ERROR: Export path cannot contain '..' (parent directory traversal): {}", export_path);
+        panic!(
+            "ERROR: Export path cannot contain '..' (parent directory traversal): {}",
+            export_path
+        );
     }
 
     // Safeguard: Don't allow absolute paths (must be relative to working dir)
@@ -117,10 +130,10 @@ fn clear_export_path_safely(export_path: &str) {
                 if let Err(e) = std::fs::create_dir_all(path) {
                     println!("cargo:warning=Failed to recreate export directory: {}", e);
                 }
-            }
+            },
             Err(e) => {
                 println!("cargo:warning=Failed to clear export directory {}: {}", export_path, e);
-            }
+            },
         }
     } else {
         // Directory doesn't exist, create it
@@ -195,10 +208,10 @@ fn write_mod_file(export_path: &str) {
             }
 
             println!("cargo:warning=Created mod.rs with {} modules", files.len());
-        }
+        },
         Err(e) => {
             println!("cargo:warning=Failed to create mod.rs: {}", e);
-        }
+        },
     }
 }
 
@@ -207,12 +220,22 @@ fn write_mod_file(export_path: &str) {
 pub fn finalize_build() {
     let settings = get_build_settings();
     write_mod_file(&settings.asset_export_path);
+    create_nosync_file(&settings.asset_export_path);
+}
+
+/// Creates a `.nosync` file in the export directory to prevent iCloud sync conflicts.
+/// iCloud Drive creates numbered conflict copies (e.g., "file 2.rs") when files change
+/// during sync. The `.nosync` file tells iCloud to skip syncing this directory.
+fn create_nosync_file(export_path: &str) {
+    use std::path::Path;
+    let nosync_path = Path::new(export_path).join(".nosync");
+    if let Err(e) = File::create(&nosync_path) {
+        println!("cargo:warning=Failed to create .nosync file: {}", e);
+    }
 }
 
 pub(crate) fn get_build_settings() -> BuildSettings {
-    BUILD_SETTINGS.get()
-        .expect("init_build must be called before using build settings")
-        .clone()
+    BUILD_SETTINGS.get().expect("init_build must be called before using build settings").clone()
 }
 
 fn ensure_init_build() {
@@ -259,7 +282,10 @@ pub(crate) fn mark_file_processed(file_path: &str) {
     let mut metadata = load_metadata();
 
     if let Some(timestamp) = get_file_timestamp(file_path) {
-        println!("cargo:warning=Marking file as processed: {} with timestamp: {}", file_path, timestamp);
+        println!(
+            "cargo:warning=Marking file as processed: {} with timestamp: {}",
+            file_path, timestamp
+        );
         metadata.insert(file_path.to_string(), timestamp);
         save_metadata(&metadata);
     }
@@ -291,8 +317,12 @@ fn watch_asset_files(asset_import_path: &str) {
 
 fn is_asset_file(file_name: &str) -> bool {
     let lower = file_name.to_lowercase();
-    lower.ends_with(".png") || lower.ends_with(".jpg") || lower.ends_with(".jpeg") ||
-    lower.ends_with(".bmp") || lower.ends_with(".gif") || lower.ends_with(".tga")
+    lower.ends_with(".png")
+        || lower.ends_with(".jpg")
+        || lower.ends_with(".jpeg")
+        || lower.ends_with(".bmp")
+        || lower.ends_with(".gif")
+        || lower.ends_with(".tga")
 }
 
 pub(crate) fn strip_path_name(path: &str) -> String {

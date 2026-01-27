@@ -3,7 +3,7 @@ use tato_pipe::*;
 fn main() {
     init_build(BuildSettings {
         asset_import_path: "import".into(),
-        asset_export_path: "src".into(),
+        asset_export_path: "src/assets".into(),
         clear_export_path: false,
         force_reprocess: true,
     });

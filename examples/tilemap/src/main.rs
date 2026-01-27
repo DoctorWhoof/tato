@@ -4,11 +4,8 @@ use tato::{
 };
 use tato_raylib::*;
 
-mod patch;
-use patch::*;
-
-mod smileys;
-use smileys::*;
+mod assets;
+use assets::*;
 
 const MAP_LEN: usize = 1024;
 
