@@ -31,16 +31,16 @@ impl SceneC {
                     cell: Cell {
                         id: cross.id,
                         flags: TileFlags::default().with_fg(),
-                        color_mapping: 0,
-                        group: 0,
+                        colors: TileColors::default()
                     },
                 });
             }
         }
-        // Color mappings
-        for n in 0..COLOR_MAPPING_COUNT as usize {
-            banks[0].colors.mapping[n][2] = n as u8;
-        }
+
+        // // Color mappings
+        // for n in 0..COLOR_MAPPING_COUNT as usize {
+        //     banks[0].colors.mapping[n][2] = n as u8;
+        // }
 
         // BG color raster effects
         t.video.irq_line = Some(|iter, _chip, _tilemap| {
@@ -77,7 +77,8 @@ impl SceneC {
                 y,
                 id: self.smiley,
                 flags: TileFlags::default(),
-                color_mapping: x as u8,
+                // color_mapping: x as u8,
+                colors: TileColors::default()
             });
         }
 

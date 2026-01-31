@@ -9,8 +9,7 @@ fn main() {
     });
 
     let mut palette = PaletteBuilder::new("main");
-    let mut groups = GroupBuilder::new();
-    let mut bank = BankBuilder::new("ASTRO", &mut palette, &mut groups);
+    let mut bank = BankBuilder::new("ASTRO", &mut palette);
     bank.allow_unused = true;
 
     bank.new_empty_tile();

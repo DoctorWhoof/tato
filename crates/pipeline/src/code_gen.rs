@@ -11,50 +11,43 @@ pub struct CodeWriter {
 
 /// Formats a Cell as a compact constructor call.
 pub(crate) fn format_cell_compact(cell: &tato_video::Cell) -> String {
-    format!("Cell::new({}, {}, {}, {})", cell.id.0, cell.flags.0, cell.color_mapping, cell.group)
+    format!("Cell::new({}, {}, {})", cell.id.0, cell.flags.0, cell.colors.0)
 }
 
-/// Formats a Tile as a compact constructor with packed 4-bit pixels.
+/// Formats a Tile as a compact constructor with packed 2-bit pixels.
 pub(crate) fn format_tile_compact(tile_pixels: &[u8]) -> String {
     assert_eq!(tile_pixels.len(), 64, "Tile must have exactly 64 pixels");
 
-    let mut data = [0u64; 4];
+    let mut data = [0u64; 2];
 
-    // With 4 bits per pixel and 8x8 tile:
-    // - Each row (cluster) has 8 pixels = 32 bits = 4 bytes
-    // - Each u64 can hold 2 clusters (8 bytes)
-    // - data[0] = rows 0-1, data[1] = rows 2-3, data[2] = rows 4-5, data[3] = rows 6-7
+    // With 2 bits per pixel and 8x8 tile:
+    // - Each row (cluster) has 8 pixels = 16 bits = 2 bytes
+    // - Each u64 can hold 4 clusters (8 bytes)
+    // - data[0] = rows 0-3, data[1] = rows 4-7
     for row in 0..8 {
         // Determine which u64 this row belongs to
-        let data_idx = row / 2;
+        let data_idx = row / 4;
 
-        // Determine position within the u64 (first or second cluster)
-        let cluster_in_u64 = row % 2;
+        // Determine position within the u64 (which of 4 clusters)
+        let cluster_in_u64 = row % 4;
 
-        // Pack the 8 pixels of this row into 4 bytes
+        // Pack the 8 pixels of this row into 2 bytes
         for col in 0..8 {
             let pixel_idx = row * 8 + col;
-            let pixel_val = tile_pixels[pixel_idx] & 0x0F; // Ensure 4-bit pixel (0-15)
+            let pixel_val = tile_pixels[pixel_idx] & 0x03; // Ensure 2-bit pixel (0-3)
 
             // Calculate bit position within the u64
-            // First cluster uses bits 63-32, second cluster uses bits 31-0
-            let byte_offset = if cluster_in_u64 == 0 {
-                // First cluster: bytes 7,6,5,4 (bits 63-32)
-                7 - (col / 2)
-            } else {
-                // Second cluster: bytes 3,2,1,0 (bits 31-0)
-                3 - (col / 2)
-            };
-
-            let bit_offset = byte_offset * 8 + (1 - (col % 2)) * 4;
+            // Clusters are stored from high to low: cluster 0 at bits 63-48, cluster 3 at bits 15-0
+            let byte_offset = 7 - (cluster_in_u64 * 2) - (col / 4);
+            let bit_offset = byte_offset * 8 + (3 - (col % 4)) * 2;
 
             data[data_idx] |= (pixel_val as u64) << bit_offset;
         }
     }
 
     format!(
-        "Tile::new(0x{:016X}, 0x{:016X}, 0x{:016X}, 0x{:016X})",
-        data[0], data[1], data[2], data[3]
+        "Tile::<2>::new(0x{:016X}, 0x{:016X})",
+        data[0], data[1]
     )
 }
 

@@ -12,7 +12,6 @@ const TILE_LEN: usize = TILE_SIZE as usize * TILE_SIZE as usize;
 #[derive(Debug, Clone)]
 pub(crate) struct CanonicalTile {
     pub pixels: [u8; TILE_LEN],
-    pub mapping: Vec<u8>,
 }
 
 // Allows a single pass executing commands when writing
@@ -20,7 +19,6 @@ pub(crate) struct CanonicalTile {
 enum DeferredCommand {
     NewEmptyTile,
     NewTile { path: String },
-    NewGroup { path: String, name: String },
     NewMap { path: String, name: String },
     NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
     NewAnim { name: String, fps: u8, repeat: bool, strip_name: String, frames: Vec<u8> },
@@ -45,10 +43,9 @@ pub struct BankBuilder<'a> {
     tiles_to_cells: HashMap<Pixels, Cell>,
     // Store canonical tile info for each pattern
     canonical_tiles: HashMap<Pixels, CanonicalTile>,
-    // Store all unique color mappings (index 0 is always identity mapping)
-    color_mappings: Vec<[u8; COLORS_PER_PALETTE as usize]>,
+    // Store original source pixels by tile ID (for color remapping with transforms)
+    original_source_pixels: HashMap<u8, Pixels>,
     palette: &'a mut PaletteBuilder,
-    groups: &'a mut GroupBuilder,
     strips: HashMap<String, StripBuilder>,
     anims: Vec<Anim>,
     maps: Vec<MapBuilder>,
@@ -59,7 +56,7 @@ pub struct BankBuilder<'a> {
 
 impl<'a> BankBuilder<'a> {
     /// Creates a new bank builder with the given name, palette, and group references.
-    pub fn new(name: &str, palette: &'a mut PaletteBuilder, groups: &'a mut GroupBuilder) -> Self {
+    pub fn new(name: &str, palette: &'a mut PaletteBuilder) -> Self {
         crate::ensure_init_build();
         Self {
             allow_tile_transforms: true,
@@ -72,10 +69,8 @@ impl<'a> BankBuilder<'a> {
             pixels: vec![],
             tiles_to_cells: HashMap::new(),
             canonical_tiles: HashMap::new(),
-            // Initialize with identity mapping at index 0
-            color_mappings: vec![core::array::from_fn(|i| i as u8)],
+            original_source_pixels: HashMap::new(),
             palette,
-            groups,
             strips: HashMap::new(),
             anims: vec![],
             maps: vec![],
@@ -83,12 +78,6 @@ impl<'a> BankBuilder<'a> {
             next_tile: 0,
             deferred_commands: vec![],
         }
-    }
-
-    /// Adds tiles from image to a named group. Use empty path for group without tiles.
-    pub fn new_group(&mut self, path: &str, name: &str) {
-        self.deferred_commands
-            .push(DeferredCommand::NewGroup { path: path.to_string(), name: name.to_string() });
     }
 
     /// Adds a single 8x8 tile from a PNG file.
@@ -151,7 +140,6 @@ impl<'a> BankBuilder<'a> {
         for command in &self.deferred_commands {
             let file_path = match command {
                 DeferredCommand::NewEmptyTile | DeferredCommand::NewAnim { .. } => "",
-                DeferredCommand::NewGroup { path, .. } => path,
                 DeferredCommand::NewTile { path } => path,
                 DeferredCommand::NewMap { path, .. } => path,
                 DeferredCommand::NewAnimationStrip { path, .. } => path,
@@ -174,7 +162,7 @@ impl<'a> BankBuilder<'a> {
                 match command {
                     DeferredCommand::NewEmptyTile => {
                         let img = PalettizedImg::empty(self.palette);
-                        let cells = self.add_tiles(&img, None);
+                        let cells = self.add_tiles(&img);
                         assert!(cells.len() == 1 && cells[0].len() == 1);
                         let tile_name = "EMPTY".to_string();
                         let single_tile =
@@ -192,23 +180,16 @@ impl<'a> BankBuilder<'a> {
                             img.cols_per_frame == 1 && img.rows_per_frame == 1,
                             "Single tile must be 1x1 tile (8x8 pixels)"
                         );
-                        let cells = self.add_tiles(&img, None);
+                        let cells = self.add_tiles(&img);
                         assert!(cells.len() == 1 && cells[0].len() == 1);
                         let tile_name = crate::strip_path_name(&path);
                         let single_tile =
                             SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
                         self.single_tiles.push(single_tile);
                     },
-                    DeferredCommand::NewGroup { path, name } => {
-                        let group_index = self.groups.add_group(&name);
-                        if !path.is_empty() {
-                            let img = self.load_valid_image(&path, 1, 1);
-                            let _ = self.add_tiles(&img, Some(group_index));
-                        }
-                    },
                     DeferredCommand::NewMap { path, name } => {
                         let img = self.load_valid_image(&path, 1, 1);
-                        let frames = self.add_tiles(&img, None);
+                        let frames = self.add_tiles(&img);
                         assert!(frames.len() == 1);
                         let map = MapBuilder {
                             name,
@@ -220,7 +201,7 @@ impl<'a> BankBuilder<'a> {
                     },
                     DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
                         let img = self.load_valid_image(&path, frames_h, frames_v);
-                        let cells = self.add_tiles(&img, None);
+                        let cells = self.add_tiles(&img);
                         let frame_count = img.frames_h as usize * img.frames_v as usize;
                         assert!(frame_count > 0);
                         let strip = StripBuilder {
@@ -380,12 +361,10 @@ impl<'a> BankBuilder<'a> {
                 ));
             }
             code.write_line("    ],");
-            code.write_line("    &[");
-            for mapping in &self.color_mappings {
-                let values: Vec<String> = mapping.iter().map(|v| v.to_string()).collect();
-                code.write_line(&format!("        [{}],", values.join(", ")));
-            }
-            code.write_line("    ],");
+            // code.write_line("    &[");
+            // Color mappings are no longer used - colors are now per-cell via TileColors
+            // code.write_line("        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],");
+            // code.write_line("    ],");
             code.write_line(");");
             code.write_line("");
         }
@@ -503,7 +482,6 @@ impl<'a> BankBuilder<'a> {
             let file_path = match command {
                 DeferredCommand::NewEmptyTile | DeferredCommand::NewAnim { .. } => "",
                 DeferredCommand::NewTile { path } => path,
-                DeferredCommand::NewGroup { path, .. } => path,
                 DeferredCommand::NewMap { path, .. } => path,
                 DeferredCommand::NewAnimationStrip { path, .. } => path,
             };
@@ -528,36 +506,8 @@ impl<'a> BankBuilder<'a> {
         tile_data
     }
 
-    fn handle_groups(&mut self, canonical_tile: &CanonicalTile, group: Option<u8>) {
-        if let Some(group_idx) = group {
-            self.groups.register_tile(canonical_tile.pixels, group_idx);
-
-            // Also register all transformations if enabled
-            if self.allow_tile_transforms {
-                for flip_x in [false, true] {
-                    for flip_y in [false, true] {
-                        for rotation in [false, true] {
-                            if !flip_x && !flip_y && !rotation {
-                                continue; // Skip identity transform
-                            }
-
-                            let transformed_tile = Self::transform_tile(
-                                &canonical_tile.pixels,
-                                flip_x,
-                                flip_y,
-                                rotation,
-                            );
-
-                            self.groups.register_tile(transformed_tile, group_idx);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /// Main workhorse. Creates a tile map while storing tile pixels and subpalettes
-    fn add_tiles(&mut self, img: &PalettizedImg, group: Option<u8>) -> Vec<Vec<Cell>> {
+    fn add_tiles(&mut self, img: &PalettizedImg) -> Vec<Vec<Cell>> {
         let mut frames = vec![];
 
         // Iterate animation frames, then tiles within frames.
@@ -574,15 +524,17 @@ impl<'a> BankBuilder<'a> {
                         // Extract pixels mapped to main palette (no mapping)
                         let source_pixels = Self::extract_tile_pixels(img, abs_col, abs_row);
 
-                        // Redefine pixels as canonical pixels from this point on
-                        let canonical_tile = self.create_canonical_tile(&source_pixels);
+                        // Create canonical tile and get normalized indices (0-3) and the mapping
+                        let (canonical_tile, canonical_indices, palette_mapping) = self.create_canonical_tile(&source_pixels);
 
                         // Check if this tile (or any transformation) is already
                         // associated with a pre-generated Cell. Does not store tiles yet.
-                        let mut found_cell = None;
+                        // Track the found cell and the transformation used to find the match
+                        let mut found_cell: Option<(Cell, Option<(bool, bool, bool)>)> = None; // (cell, transform_used)
+
                         if let Some(existing) = self.tiles_to_cells.get(&canonical_tile.pixels) {
-                            // Define cell for this tile
-                            found_cell = Some(*existing);
+                            // Direct match - no transformation needed
+                            found_cell = Some((*existing, None));
                         // If not, store canonical tile + associated cell
                         } else if self.allow_tile_transforms {
                             // Try all 7 other transformations using remapped data
@@ -594,19 +546,20 @@ impl<'a> BankBuilder<'a> {
                                         }
 
                                         let transformed_pixels = Self::transform_tile(
-                                            &canonical_tile.pixels,
+                                            &source_pixels,
                                             flip_x,
                                             flip_y,
                                             rotation,
                                         );
 
-                                        let transformed =
+                                        let (transformed, _, _) =
                                             self.create_canonical_tile(&transformed_pixels);
 
                                         if let Some(existing) =
                                             self.tiles_to_cells.get(&transformed.pixels)
                                         {
-                                            found_cell = Some(*existing);
+                                            // Found via transformation - track which transform was used
+                                            found_cell = Some((*existing, Some((flip_x, flip_y, rotation))));
                                             break 'outer;
                                         }
                                     }
@@ -614,77 +567,63 @@ impl<'a> BankBuilder<'a> {
                             }
                         }
 
-                        // If we're registering a group, store this canonical pattern (but skip empty tiles)
-                        self.handle_groups(&canonical_tile, group);
-
-                        // Look up group membership for this tile pattern
-                        let group_bits =
-                            self.groups.hash.get(&canonical_tile.pixels).copied().unwrap_or(0);
-
                         // Insert or reuse cell
                         let cell = match found_cell {
-                            Some(existing_cell) => {
-                                // Found existing tile with same pattern
-                                // Get the canonical tile info for the existing tile
-                                let color_mapping_idx = if let Some(existing_canonical) =
-                                    self.canonical_tiles.get(&canonical_tile.pixels)
-                                {
-                                    // Clone the mapping to avoid borrow issues
-                                    let existing_mapping = existing_canonical.mapping.clone();
+                            Some((existing_cell, transform_used)) => {
+                                // Found existing tile with same pattern (possibly transformed)
+                                // We need to compute TileColors that maps the stored tile's canonical indices
+                                // to the new tile's palette colors, accounting for the transformation
+                                let tile_colors = if let Some((flip_x, flip_y, rotation)) = transform_used {
+                                    // Get the stored tile's canonical representation
+                                    let stored_pixels = self.original_source_pixels.get(&existing_cell.id.0).cloned().unwrap();
+                                    let (_, stored_canonical, _stored_mapping) = self.create_canonical_tile(&stored_pixels);
 
-                                    // Create remapping from current tile's colors to existing tile's colors
-                                    self.create_color_remapping(
-                                        &canonical_tile.mapping,
-                                        &existing_mapping,
-                                    )
-                                } else {
-                                    0 // Default identity mapping
-                                };
-
-                                // Safety check with useful error.
-                                if color_mapping_idx > COLOR_MAPPING_COUNT {
-                                    panic!(
-                                        "\x1b[31mVideochip Error: \x1b[33mTile exceeds {} color mappings limit!\n\
-                                        \tFrame: ({}, {})\n\
-                                        \tTile within frame: row {}, col {}\n\
-                                        \tAbsolute tile position: row {}, col {}\n\
-                                        \tAttempted mapping {}\x1b[0m",
-                                        COLOR_MAPPING_COUNT,
+                                    // Map stored canonical indices to new palette colors through the transformation
+                                    self.compute_tile_colors_with_transform(
+                                        &source_pixels,
+                                        &stored_canonical,
+                                        flip_x,
+                                        flip_y,
+                                        rotation,
                                         frame_h,
                                         frame_v,
                                         row,
                                         col,
                                         abs_row,
                                         abs_col,
-                                        color_mapping_idx
-                                    );
-                                }
+                                    )
+                                } else {
+                                    // Direct match - stored and new tiles use same color positions
+                                    self.create_tile_colors_from_mapping(&palette_mapping, frame_h, frame_v, row, col, abs_row, abs_col)
+                                };
 
-                                // Define cell
+                                // Reuse the tile ID and flags, with correctly computed colors
                                 Cell {
                                     id: existing_cell.id,
                                     flags: existing_cell.flags,
-                                    group: group_bits,
-                                    color_mapping: color_mapping_idx,
+                                    colors: tile_colors,
                                 }
                             },
                             None => {
-                                // Create new cell - new tiles always use identity mapping
+                                // Create new cell - compute colors from canonical mapping
+                                let tile_colors = self.create_tile_colors_from_mapping(&palette_mapping, frame_h, frame_v, row, col, abs_row, abs_col);
+
                                 let new_cell = Cell {
                                     id: TileID(self.next_tile),
                                     flags: TileFlags::default(),
-                                    group: group_bits,
-                                    color_mapping: 0, // Identity mapping for new tiles
+                                    colors: tile_colors,
                                 };
 
                                 // Store the canonical tile info
                                 self.canonical_tiles
-                                    .insert(canonical_tile.pixels.clone(), canonical_tile.clone());
+                                    .insert(canonical_tile.pixels.clone(), canonical_tile);
 
-                                // Store the actual pixel data
-                                self.pixels.extend_from_slice(&source_pixels);
+                                // Store original source pixels by tile ID
+                                self.original_source_pixels.insert(self.next_tile, source_pixels);
 
-                                // Store remapped tile in hash (after remapping is complete)
+                                // Store the canonical indices (0-3) as pixel data, not palette indices
+                                self.pixels.extend_from_slice(&canonical_indices);
+
                                 // Store all transformations using remapped data
                                 if self.allow_tile_transforms {
                                     for flip_x in [false, true] {
@@ -697,13 +636,13 @@ impl<'a> BankBuilder<'a> {
                                                     rotation,
                                                 );
 
-                                                let transformed =
+                                                let (transformed_canonical, _, _) =
                                                     self.create_canonical_tile(&transformed_pixels);
 
                                                 // Only store if this transformation produces different data
                                                 if !self
                                                     .tiles_to_cells
-                                                    .contains_key(&transformed.pixels)
+                                                    .contains_key(&transformed_canonical.pixels)
                                                 {
                                                     let mut cell_with_flags = new_cell;
                                                     cell_with_flags.flags.set_flip_x(flip_x);
@@ -711,13 +650,15 @@ impl<'a> BankBuilder<'a> {
                                                     cell_with_flags.flags.set_rotation(rotation);
 
                                                     self.tiles_to_cells.insert(
-                                                        transformed.pixels.clone(),
+                                                        transformed_canonical.pixels.clone(),
                                                         cell_with_flags,
                                                     );
 
                                                     // Also store the canonical tile for the transformed pattern
-                                                    self.canonical_tiles
-                                                        .insert(transformed.pixels, transformed);
+                                                    self.canonical_tiles.insert(
+                                                        transformed_canonical.pixels.clone(),
+                                                        transformed_canonical,
+                                                    );
                                                 }
                                             }
                                         }
@@ -740,6 +681,127 @@ impl<'a> BankBuilder<'a> {
         frames
     }
 
+    /// Creates TileColors from a canonical palette mapping.
+    /// The mapping vector contains palette colors in order of canonical indices:
+    /// mapping[0] = palette color for canonical index 0
+    /// mapping[1] = palette color for canonical index 1, etc.
+    fn create_tile_colors_from_mapping(
+        &self,
+        palette_mapping: &[u8],
+        frame_h: usize,
+        frame_v: usize,
+        row: usize,
+        col: usize,
+        abs_row: usize,
+        abs_col: usize,
+    ) -> TileColors {
+        if palette_mapping.len() > 4 {
+            panic!(
+                "\x1b[31mVideochip Error: \x1b[33mTile exceeds 4 color limit!\n\
+                \tFrame: ({}, {})\n\
+                \tTile within frame: row {}, col {}\n\
+                \tAbsolute tile position: row {}, col {}\n\
+                \tFound {} unique colors (max is 4)\n\
+                \tColors: {:?}\x1b[0m",
+                frame_h,
+                frame_v,
+                row,
+                col,
+                abs_row,
+                abs_col,
+                palette_mapping.len(),
+                palette_mapping
+            );
+        }
+
+        // The mapping already has palette colors in canonical index order
+        let mut slot_colors = [0u8; 4];
+        for (canonical_idx, &palette_color) in palette_mapping.iter().enumerate() {
+            slot_colors[canonical_idx] = palette_color;
+        }
+
+        // Fill unused slots with 0 (transparent/default color)
+        for i in palette_mapping.len()..4 {
+            slot_colors[i] = 0;
+        }
+
+        TileColors::new(slot_colors[0], slot_colors[1], slot_colors[2], slot_colors[3])
+    }
+
+    /// Computes TileColors for a transformed tile reuse by mapping stored canonical indices
+    /// to new palette colors through the transformation that made them match
+    fn compute_tile_colors_with_transform(
+        &self,
+        new_pixels: &Pixels,
+        stored_canonical: &Pixels,
+        flip_x: bool,
+        flip_y: bool,
+        rotation: bool,
+        frame_h: usize,
+        frame_v: usize,
+        row: usize,
+        col: usize,
+        abs_row: usize,
+        abs_col: usize,
+    ) -> TileColors {
+        // Build transform flags
+        let flags = TileFlags::default()
+            .with_horizontal_state(flip_x)
+            .with_vertical_state(flip_y)
+            .with_rotation_state(rotation);
+
+        // For each canonical index in the stored tile, find which new palette color it should map to
+        let mut canonical_to_palette = [0u8; 4];
+        let size = TILE_SIZE as usize;
+
+        // We need to build a mapping: stored_canonical_index -> new_palette_color
+        // The stored tile will be read with transformation applied
+        for screen_y in 0..size {
+            for screen_x in 0..size {
+                // When rendering, the transform tells us which tile position to read from
+                let (tile_x, tile_y) = flags.transform_coords(screen_x as u8, screen_y as u8, TILE_SIZE);
+                let tile_idx = tile_y as usize * size + tile_x as usize;
+                let screen_idx = screen_y * size + screen_x;
+
+                // The stored tile has this canonical index at tile_idx
+                let stored_canonical_idx = stored_canonical[tile_idx];
+
+                // The new tile has this palette color at screen_idx
+                let new_palette_color = new_pixels[screen_idx];
+
+                // Map this canonical index to this palette color
+                canonical_to_palette[stored_canonical_idx as usize] = new_palette_color;
+            }
+        }
+
+        // Verify we don't exceed 4 colors
+        let mut unique_colors = std::collections::HashSet::new();
+        for &color in canonical_to_palette.iter() {
+            unique_colors.insert(color);
+        }
+
+        if unique_colors.len() > 4 {
+            panic!(
+                "\x1b[31mVideochip Error: \x1b[33mTile exceeds 4 color limit!\n\
+                \tFrame: ({}, {})\n\
+                \tTile within frame: row {}, col {}\n\
+                \tAbsolute tile position: row {}, col {}\n\
+                \tFound {} unique colors (max is 4)\n\
+                \tColors: {:?}\x1b[0m",
+                frame_h, frame_v, row, col, abs_row, abs_col,
+                unique_colors.len(),
+                unique_colors
+            );
+        }
+
+        TileColors::new(
+            canonical_to_palette[0],
+            canonical_to_palette[1],
+            canonical_to_palette[2],
+            canonical_to_palette[3],
+        )
+    }
+
     fn load_valid_image(&mut self, path: &str, frames_h: u8, frames_v: u8) -> PalettizedImg {
         let img = PalettizedImg::from_image(path, frames_h, frames_v, self.palette);
         assert!(
@@ -754,60 +816,57 @@ impl<'a> BankBuilder<'a> {
     /// the same structure but different colors can still be detected as the same, but with different
     /// palettes.
     /// The mapping is like a mini-palette with each color assigned to a normalized index
-    fn create_canonical_tile(&mut self, tile_pixels: &Pixels) -> CanonicalTile {
-        // Create canonical representation by normalizing color indices
-        let mut unique_colors = HashMap::new();
-        let mut mapping = Vec::<u8>::new();
-        let mut next_index = 0u8;
-
-        // First pass: create canonical pixels with normalized indices
-        let canonical_pixels: Pixels = std::array::from_fn(|i| {
-            let source_color = tile_pixels[i];
-            *unique_colors.entry(source_color).or_insert_with(|| {
-                let canonical_color = next_index;
-                mapping.push(source_color);
-                next_index += 1;
-                canonical_color
-            })
-        });
-
-        // Create neighbor mask based on canonical pixels
-        let mut pixels = [0u8; TILE_LEN];
-        let size = TILE_SIZE as u32;
-        for y in 0..size {
-            for x in 0..size {
-                let index = Self::get_index(x, y, size);
-                pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
-            }
+    fn create_canonical_tile(&mut self, tile_pixels: &Pixels) -> (CanonicalTile, Pixels, Vec<u8>) {
+        // Collect unique colors and sort them so the lowest color gets canonical index 0
+        let mut unique_colors_set = std::collections::HashSet::new();
+        for &color in tile_pixels.iter() {
+            unique_colors_set.insert(color);
         }
 
-        CanonicalTile { pixels, mapping }
+        // Sort colors so assignment is deterministic (lowest color → index 0)
+        let mut sorted_colors: Vec<u8> = unique_colors_set.into_iter().collect();
+        sorted_colors.sort();
+
+        // Create mapping from palette color to canonical index
+        let mut color_to_canonical = HashMap::new();
+        for (canonical_idx, &palette_color) in sorted_colors.iter().enumerate() {
+            color_to_canonical.insert(palette_color, canonical_idx as u8);
+        }
+
+        // Create canonical pixels with normalized indices (0-3)
+        let canonical_pixels: Pixels = std::array::from_fn(|i| {
+            let source_color = tile_pixels[i];
+            color_to_canonical[&source_color]
+        });
+
+        // palette_to_canonical maps: canonical index → palette color
+        let palette_to_canonical = sorted_colors;
+
+        // Use canonical pixels directly for matching instead of neighbor mask
+        // This preserves color role information and prevents incorrect matches
+        // between tiles with different color assignments (e.g., yellow face vs transparent face)
+        (CanonicalTile { pixels: canonical_pixels }, canonical_pixels, palette_to_canonical)
     }
 
-    /// Generates a copy of the tile pixels with some transformation
+    /// Generates a copy of the tile pixels with some transformation.
+    /// Uses TileFlags::transform_coords for consistency with the renderer.
     fn transform_tile(tile: &Pixels, flip_x: bool, flip_y: bool, rotation: bool) -> Pixels {
         let mut result = [0u8; TILE_LEN];
         let size = TILE_SIZE as usize;
+        let flags = TileFlags::default()
+            .with_horizontal_state(flip_x)
+            .with_vertical_state(flip_y)
+            .with_rotation_state(rotation);
 
-        for y in 0..size {
-            for x in 0..size {
-                let src_idx = y * size + x;
-                let mut dst_x = x;
-                let mut dst_y = y;
-
-                if rotation {
-                    let temp = dst_x;
-                    dst_x = dst_y;
-                    dst_y = size - 1 - temp;
-                }
-                if flip_x {
-                    dst_x = size - 1 - dst_x;
-                }
-                if flip_y {
-                    dst_y = size - 1 - dst_y;
-                }
-
-                result[dst_y * size + dst_x] = tile[src_idx];
+        // For each destination position, find the source position using the same
+        // transform the renderer uses
+        for dst_y in 0..size {
+            for dst_x in 0..size {
+                let (src_x, src_y) =
+                    flags.transform_coords(dst_x as u8, dst_y as u8, TILE_SIZE as u8);
+                let src_idx = src_y as usize * size + src_x as usize;
+                let dst_idx = dst_y * size + dst_x;
+                result[dst_idx] = tile[src_idx];
             }
         }
         result
@@ -864,43 +923,4 @@ impl<'a> BankBuilder<'a> {
         (y as usize * map_width as usize) + x as usize
     }
 
-    /// Create a color remapping from source tile colors to target tile colors
-    fn create_color_remapping(&mut self, source_mapping: &[u8], target_mapping: &[u8]) -> u8 {
-        let mut remapping = [0u8; COLORS_PER_PALETTE as usize];
-
-        // Initialize with identity mapping
-        for i in 0..COLORS_PER_PALETTE as usize {
-            remapping[i] = i as u8;
-        }
-
-        // Build the actual remapping
-        // We need to map target colors to source colors
-        // (because we're using the target/stored tile's pixels but want source's colors)
-        for (canonical_idx, &source_color) in source_mapping.iter().enumerate() {
-            if canonical_idx < target_mapping.len() {
-                let target_color = target_mapping[canonical_idx];
-                // Map from stored tile's color to desired color
-                remapping[target_color as usize] = source_color;
-            }
-        }
-
-        // Check if this is the identity mapping
-        let is_identity = remapping.iter().enumerate().all(|(i, &v)| i == v as usize);
-        if is_identity {
-            return 0; // Always use index 0 for identity mapping
-        }
-
-        // Check if this mapping already exists
-        for (idx, existing_mapping) in self.color_mappings.iter().enumerate() {
-            if *existing_mapping == remapping {
-                return idx as u8;
-            }
-        }
-
-        // Add new mapping
-        let mapping_idx = self.color_mappings.len();
-        println!("cargo:warning=Adding color mapping #{}: {:?}", mapping_idx, remapping);
-        self.color_mappings.push(remapping);
-        mapping_idx as u8
-    }
 }

@@ -99,9 +99,9 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    pub fn set_color_mapping(&mut self, col: i16, row: i16, color_mapping:u8) {
+    pub fn set_colors(&mut self, col: i16, row: i16, colors:TileColors) {
         if let Some(index) = self.get_index(col, row) {
-            self.cells[index].color_mapping = color_mapping;
+            self.cells[index].colors = colors;
         }
     }
     /// Copies a rectangular region from a cells array to this tilemap.

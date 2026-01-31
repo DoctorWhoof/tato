@@ -267,10 +267,9 @@ impl<'a> PixelIter<'a> {
                     (tx, ty)
                 };
 
-                let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
-                let map_index = sprite.color_mapping as usize;
-                let mapped_pixel = bank.colors.mapping[map_index][pixel] as usize;
-                let color = bank.colors.palette[mapped_pixel];
+                let pixel = tile.get_pixel(tx as u8, ty as u8);
+                let color_index = sprite.colors.get(pixel);
+                let color = bank.colors.palette[color_index];
 
                 if color.a() > 0 {
                     self.sprite_buffer[x] = color.with_z(Z_SPRITE);
@@ -400,15 +399,17 @@ impl<'a> PixelIter<'a> {
                 let chunks = pixels_to_process / 4;
                 let remainder = pixels_to_process % 4;
 
-                let remap_id = bg_cell.color_mapping as usize;
+                // let remap_id = bg_cell.color_mapping as usize;
 
                 for chunk in 0..chunks {
                     let base_idx = chunk * 4;
                     for i in 0..4 {
                         let tile_x = tile_x_start + (base_idx + i) as u8;
                         let color_idx =
-                            bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                        let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
+                            bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
+                        let mapped_idx = bg_cell.colors.get(color_idx);
+                        // let mapped_idx = bank.colors[remap_id][color_idx] as usize;
+                        // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
                         let color = palette[mapped_idx];
 
                         let final_color = if color.a() > 0 {
@@ -426,8 +427,9 @@ impl<'a> PixelIter<'a> {
                 for i in 0..remainder {
                     let idx = chunks * 4 + i;
                     let tile_x = tile_x_start + idx as u8;
-                    let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                    let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
+                    let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
+                    let mapped_idx = bg_cell.colors.get(color_idx);
+                    // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
                     let color = palette[mapped_idx];
 
                     let final_color = if color.a() > 0 {

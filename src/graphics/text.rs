@@ -1,10 +1,10 @@
-use tato_video::DynTilemap;
+use tato_video::{DynTilemap, TileColors};
 
 #[derive(Debug, Clone)]
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
     pub width: Option<i16>,
-    pub color_mapping: u8,
+    pub colors: TileColors,
     pub tile_offset: u8,
     pub character_set: CharacterSet
 }

@@ -9,6 +9,8 @@ pub struct SceneA {
     pub player: Entity,
     smileys: [Entity; SMILEY_COUNT],
     movement_start: f32, // will be used to store the time when the player starts moving
+    colors_shadow: TileColors,
+    colors_cycle: TileColors,
 }
 
 impl SceneA {
@@ -52,44 +54,14 @@ impl SceneA {
             RGBA12::new(7, 7, 5),
         ];
 
-        for (i, mapping) in banks[0].colors.mapping[COLORMAP_CYCLE as usize].iter().enumerate() {
-            let color = banks[0].colors.palette[*mapping as usize];
-            println!("{}: {} ({})", i, mapping, color);
-        }
-
-        // Color mappings.
-        {
-            // mapping 0 is for the shadow
-            let mapping = &mut banks[0].colors.mapping[COLORMAP_SHADOW as usize];
-            mapping[0] = 0; // 0 stays transparent
-            mapping[1] = 1;
-            mapping[2] = 1;
-            mapping[3] = 1
-        }
-
-        {
-            // mappings 2 to 15 replace color 2 with a color from the palette
-            for i in 2..COLORS_PER_PALETTE as usize {
-                let mapping = &mut banks[0].colors.mapping[i];
-                mapping[2] = (i as u8 % 12) + 4;
-            }
-        }
-
-        {
-            // And now the BG palette
-            for i in 0..COLORS_PER_PALETTE as usize {
-                let bg_color = (i % 16) as u8;
-                let mapping = &mut banks[1].colors.mapping[i];
-                mapping[0] = 0; // 0 stays transparent
-                mapping[1] = bg_color;
-                mapping[2] = bg_color;
-                mapping[3] = bg_color;
-            }
-        }
-
-        // Define new tiles
-        // let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
-        // let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET)?;
+        // Color mappings
+        let colors_shadow = TileColors::new(0, 1, 1, 1);
+        let colors_cycle = TileColors::new(0, 1, 1, 1);
+        let colors_unique: [TileColors; 16] = core::array::from_fn(|i| TileColors::new(0, 1, (i as u8 % 12) + 4, 3));
+        let colors_bg: [TileColors; 16] = core::array::from_fn(|i| {
+            let bg_color = (i % 16) as u8;
+            TileColors::new(0, bg_color, bg_color, bg_color)
+        });
 
         // Set BG tiles, acquire width and height of bg map
         let (w, h) = {
@@ -101,10 +73,9 @@ impl SceneA {
                         cell: Cell {
                             id: TILE_ARROW.id,
                             flags: TileFlags::default().with_rotation(),
-                            group: 0,
                             // Calculate palette ID based on coordinates, limits to 14
                             // indices, adds 2 to avoid colors 0 and 1 in the BG
-                            color_mapping: ((col + row) % 14) as u8 + 2,
+                            colors: colors_bg[((col + row) % 14) as usize + 2],
                         },
                     });
                 }
@@ -118,7 +89,7 @@ impl SceneA {
             y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
             tile: TILE_SMILEY.id,
             flags: TileFlags::default(),
-            color_mapping: (i as u8 % 14) + 2,
+            colors: colors_unique[(i % 14) + 2],
         });
         // Sort smileys by y position only
         smileys.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
@@ -130,20 +101,17 @@ impl SceneA {
                 y: (t.video.height() / 2) as f32,
                 tile: TILE_ARROW.id,
                 flags: TileFlags::default(),
-                color_mapping: COLORMAP_CYCLE,
+                colors: colors_cycle,
             },
             smileys,
             movement_start: 0.0,
+            colors_cycle,
+            colors_shadow
         })
     }
 
     // Process the scene on each frame
-    pub fn update(
-        &mut self,
-        t: &mut Tato,
-        banks: &mut [Bank],
-        state: &mut State,
-    ) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
         // ------------------------------ Input ------------------------------
 
         if t.pad.is_just_pressed(Button::Start) {
@@ -157,11 +125,7 @@ impl SceneA {
 
         // Increase speed if any "face" button (A,B,X,Y) is down
         // let speed = if t.pad.is_any_down(AnyButton::Face) {
-        let speed = if t.pad.is_down(Button::A) {
-            30.0 * state.elapsed as f32
-        } else {
-            120.0 * state.elapsed as f32
-        };
+        let speed = if t.pad.is_down(Button::A) { 30.0 * state.elapsed as f32 } else { 120.0 * state.elapsed as f32 };
 
         // Ensures animation always starts from phase = 0.0;
         if t.pad.is_any_just_pressed(AnyButton::Direction) {
@@ -203,10 +167,10 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        {
-            let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
-            *cycle_color = ((*cycle_color + 1) % 12) + 4;
-        }
+        // {
+        //     let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
+        //     *cycle_color = ((*cycle_color + 1) % 12) + 4;
+        // }
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
@@ -227,7 +191,7 @@ impl SceneA {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: COLORMAP_SHADOW,
+                colors: self.colors_shadow,
             });
         };
         for entity in &self.smileys {
@@ -243,7 +207,7 @@ impl SceneA {
                 y: (entity.y - 1.0 - hover) as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: entity.color_mapping,
+                colors: entity.colors,
             });
         };
 
@@ -265,7 +229,7 @@ impl SceneA {
             y: 0,
             id: TILE_SMILEY.id,
             flags: TileFlags::default(),
-            color_mapping: COLORMAP_CYCLE,
+            colors: self.colors_cycle,
         });
 
         // ------------------- Return mode switch request -------------------

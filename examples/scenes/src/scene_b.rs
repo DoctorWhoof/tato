@@ -38,20 +38,20 @@ impl SceneB {
         {
             let mut mapping: [u8; COLORS_PER_PALETTE as usize] = Default::default();
             mapping[2] = 8;
-            banks[0].colors.mapping[2] = mapping;
+            // banks[0].colors.mapping[2] = mapping;
         }
         for n in 0..3 {
             let mut mapping: [u8; COLORS_PER_PALETTE as usize] = Default::default();
             mapping[2] = 9 + n;
-            banks[1].colors.push_mapping(mapping);
+            // banks[1].colors.push_mapping(mapping);
         }
 
         // Set BG cells to use mappings
-        for (i, cell) in state.bg.cells.iter_mut().enumerate() {
-            cell.id = tile;
-            cell.flags = TileFlags::default();
-            cell.color_mapping = (i % 3) as u8 + 1;
-        }
+        // for (i, cell) in state.bg.cells.iter_mut().enumerate() {
+        //     cell.id = tile;
+        //     cell.flags = TileFlags::default();
+        //     cell.color_mapping = (i % 3) as u8 + 1;
+        // }
 
         Ok(Self {
             player: Entity {
@@ -59,7 +59,7 @@ impl SceneB {
                 y: y as f32,
                 tile,
                 flags: TileFlags::default(),
-                color_mapping: COLORMAP_CYCLE,
+                colors: TileColors::default(),
             },
             smileys: core::array::from_fn(|_| Entity {
                 // Will test wrapping of large f32 value into i16
@@ -68,12 +68,12 @@ impl SceneB {
                 y: rand::random_range(0.0..255.0), // + 32_000.0,
                 tile,
                 flags: TileFlags::default(),
-                color_mapping: 2,
+                colors: TileColors::default(),
             }),
         })
     }
 
-    pub fn update(&mut self, t: &mut Tato, banks: &mut [Bank]) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato) -> Option<SceneChange> {
         let speed = 1.0;
 
         // Input
@@ -88,11 +88,11 @@ impl SceneB {
             self.player.y += speed;
         }
 
-        // Draw!
-        {
-            let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
-            *cycle_color = ((*cycle_color + 1) % 12) + 4;
-        }
+        // // Draw!
+        // {
+        //     let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
+        //     *cycle_color = ((*cycle_color + 1) % 12) + 4;
+        // }
 
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
@@ -103,7 +103,7 @@ impl SceneB {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: entity.color_mapping,
+                colors: entity.colors,
             });
         }
 
@@ -112,7 +112,7 @@ impl SceneB {
             y: self.player.y as i16,
             id: self.player.tile,
             flags: self.player.flags,
-            color_mapping: COLORMAP_CYCLE,
+            colors: TileColors::default(),
         });
 
         if t.pad.is_just_pressed(Button::Start) {

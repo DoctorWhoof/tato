@@ -2,18 +2,18 @@ use crate::*;
 
 #[derive(Debug, Clone)]
 pub struct TileBank {
-    pub tiles: [Tile<4>; TILE_COUNT],
+    pub tiles: [Tile<2>; TILE_COUNT],
     pub(crate) head: u8,
 }
 
 impl TileBank {
     pub const fn new() -> Self {
-        Self { tiles: [Tile::new(0, 0, 0, 0); TILE_COUNT], head: 0 }
+        Self { tiles: [Tile::<2>::new(0, 0); TILE_COUNT], head: 0 }
     }
 
-    pub const fn new_from(tiles: &[Tile<4>]) -> Self {
+    pub const fn new_from(tiles: &[Tile<2>]) -> Self {
         // Create tiles array
-        let mut tiles_array = [Tile::new(0, 0, 0, 0); TILE_COUNT];
+        let mut tiles_array = [Tile::<2>::new(0, 0); TILE_COUNT];
         let mut i = 0;
         while i < TILE_COUNT {
             if i < tiles.len() {
@@ -46,7 +46,7 @@ impl TileBank {
     }
 
     /// Adds a single tile, returns a TileID
-    pub fn add(&mut self, tile: &Tile<4>) -> TileID {
+    pub fn add(&mut self, tile: &Tile<2>) -> TileID {
         assert!((self.head as usize) < TILE_COUNT, err!("Tileset capacity reached"));
         let result = TileID(self.head);
         // Copy tile data to bank

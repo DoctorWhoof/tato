@@ -200,4 +200,27 @@ impl TileFlags {
     pub const fn toggle_fg(self) -> Self {
         Self(self.0 ^ FLAG_FG)
     }
+
+    /// Transform screen coordinates to tile coordinates based on flip/rotation flags.
+    /// This is the canonical transformation used by the renderer.
+    /// Given a screen position (x, y), returns which tile pixel (tx, ty) to read.
+    #[inline]
+    pub const fn transform_coords(self, x: u8, y: u8, size: u8) -> (u8, u8) {
+        let high = size - 1;
+        if self.is_rotated() {
+            let rotated_x = high - y;
+            let rotated_y = x;
+            if self.is_flipped_x() {
+                (rotated_x, high - rotated_y)
+            } else if self.is_flipped_y() {
+                (high - rotated_x, rotated_y)
+            } else {
+                (rotated_x, rotated_y)
+            }
+        } else {
+            let tx = if self.is_flipped_x() { high - x } else { x };
+            let ty = if self.is_flipped_y() { high - y } else { y };
+            (tx, ty)
+        }
+    }
 }

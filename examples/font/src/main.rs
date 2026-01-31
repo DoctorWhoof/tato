@@ -19,18 +19,10 @@ fn main() -> TatoResult<()> {
     banks[0].tiles.add(&Tile::default());
     let text_offset = banks[0].append(&BANK_FONT_LONG).unwrap();
 
-    banks[0].colors.mapping[1][1] = 0;
-    banks[0].colors.mapping[1][3] = 14;
-
-    banks[0].colors.mapping[2][1] = 0;
-    banks[0].colors.mapping[2][3] = 3;
-
-    banks[0].colors.mapping[3][1] = 0;
-
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
-        color_mapping: 2,
+        colors: TileColors::new(0, 3, 3, 3),
         tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
@@ -38,7 +30,7 @@ fn main() -> TatoResult<()> {
     let text_blue = &TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
-        color_mapping: 1,
+        colors: TileColors::new(0, 14, 14, 14),
         tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
@@ -46,7 +38,7 @@ fn main() -> TatoResult<()> {
     let text_animated = &TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
-        color_mapping: 3,
+        colors: TileColors::new(0, 1, 1, 1),
         tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
@@ -81,7 +73,7 @@ fn main() -> TatoResult<()> {
     draw_text(&mut bg_map, col, line, text_animated, "Animated palette");
 
     // Main Loop
-    let mut cycle = 1.0;
+    // let mut cycle = 1.0;
     tato.video.wrap_bg = true;
     let mut backend = RayBackend::new(&tato);
     while !backend.ray.window_should_close() {
@@ -104,12 +96,12 @@ fn main() -> TatoResult<()> {
         }
 
         // Draw
-        let color = &mut banks[0].colors.mapping[3][3];
-        *color = cycle as u8;
-        cycle += backend.ray.get_frame_time() * 4.0;
-        if cycle >= 16.0 {
-            cycle = 1.0
-        }
+        // let color = &mut banks[0].colors.mapping[3][3];
+        // *color = cycle as u8;
+        // cycle += backend.ray.get_frame_time() * 4.0;
+        // if cycle >= 16.0 {
+        //     cycle = 1.0
+        // }
 
         // Update backends
         tato.frame_finish();

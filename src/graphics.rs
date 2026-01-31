@@ -100,8 +100,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         cell: Cell {
             id: TileID(top_left.id.0 + tile_offset),
             flags: top_left.flags,
-            color_mapping: top_left.color_mapping,
-            group: 0,
+            colors: top_left.colors,
         },
     });
 
@@ -114,8 +113,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
             cell: Cell {
                 id: TileID(top.id.0 + tile_offset),
                 flags: top.flags,
-                color_mapping: top.color_mapping,
-                group: 0,
+                colors: top.colors,
             },
         });
     }
@@ -127,8 +125,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         cell: Cell {
             id: TileID(top_right.id.0 + tile_offset),
             flags: top_right.flags,
-            color_mapping: top_right.color_mapping,
-            group: 0,
+            colors: top_right.colors,
         },
     });
 
@@ -141,8 +138,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
             cell: Cell {
                 id: TileID(left.id.0 + tile_offset),
                 flags: left.flags,
-                color_mapping: left.color_mapping,
-                group: 0,
+                colors: left.colors,
             },
         });
     }
@@ -156,8 +152,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
                 cell: Cell {
                     id: TileID(center.id.0 + tile_offset),
                     flags: center.flags,
-                    color_mapping: center.color_mapping,
-                    group: 0,
+                    colors: center.colors,
                 },
             });
         }
@@ -171,8 +166,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
             cell: Cell {
                 id: TileID(right.id.0 + tile_offset),
                 flags: right.flags,
-                color_mapping: right.color_mapping,
-                group: 0,
+                colors: right.colors,
             },
         });
     }
@@ -184,8 +178,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         cell: Cell {
             id: TileID(bottom_left.id.0 + tile_offset),
             flags: bottom_left.flags,
-            color_mapping: bottom_left.color_mapping,
-            group: 0,
+            colors: bottom_left.colors,
         },
     });
 
@@ -197,8 +190,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
             cell: Cell {
                 id: TileID(bottom.id.0 + tile_offset),
                 flags: bottom.flags,
-                color_mapping: bottom.color_mapping,
-                group: 0,
+                colors: bottom.colors,
             },
         });
     }
@@ -210,8 +202,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         cell: Cell {
             id: TileID(bottom_right.id.0 + tile_offset),
             flags: bottom_right.flags,
-            color_mapping: bottom_right.color_mapping,
-            group: 0,
+            colors: bottom_right.colors,
         },
     });
 }
@@ -246,8 +237,7 @@ pub fn draw_text<const LEN: usize>(
                 cell: Cell {
                     id: TileID(cell.id.0 + op.tile_offset), // TODO: This may overflow...
                     flags: cell.flags,
-                    color_mapping: op.color_mapping,
-                    group: 0,
+                    colors: op.colors,
                 },
             });
         }

@@ -13,24 +13,21 @@ fn main() {
         force_reprocess: true,
     });
 
-    // Shared groups for default assets
-    let mut groups = GroupBuilder::new();
-
     // Default fonts
     let mut palette_font = PaletteBuilder::new("fonts");
-    let mut bank_font_long = BankBuilder::new("FONT_LONG", &mut palette_font, &mut groups);
+    let mut bank_font_long = BankBuilder::new("FONT_LONG", &mut palette_font);
     bank_font_long.allow_unused = true;
     bank_font_long.use_crate_assets = true; // Only true when used by this crate
     bank_font_long.new_map("import/font_long.png", "FONT_LONG");
     bank_font_long.write("font_long.rs");
 
-    let mut bank_font_short = BankBuilder::new("FONT_SHORT", &mut palette_font, &mut groups);
+    let mut bank_font_short = BankBuilder::new("FONT_SHORT", &mut palette_font);
     bank_font_short.allow_unused = true;
     bank_font_short.use_crate_assets = true;
     bank_font_short.new_map("import/font_short.png", "FONT_SHORT");
     bank_font_short.write("font_short.rs");
 
-    let mut bank_font_arcade = BankBuilder::new("FONT_ARCADE", &mut palette_font, &mut groups);
+    let mut bank_font_arcade = BankBuilder::new("FONT_ARCADE", &mut palette_font);
     bank_font_arcade.allow_unused = true;
     bank_font_arcade.use_crate_assets = true;
     bank_font_arcade.new_map("import/font_arcade.png", "FONT_ARCADE");
@@ -38,7 +35,7 @@ fn main() {
 
     // Default basic tiles
     let mut palette_default = PaletteBuilder::new("default");
-    let mut bank_default = BankBuilder::new("DEFAULT", &mut palette_default, &mut groups);
+    let mut bank_default = BankBuilder::new("DEFAULT", &mut palette_default);
     bank_default.allow_unused = true;
     bank_default.use_crate_assets = true;
     // Add single tiles for default assets
@@ -49,9 +46,6 @@ fn main() {
     bank_default.new_tile("import/tile_arrow.png");
     bank_default.new_tile("import/tile_smiley.png");
     bank_default.write("default_tiles.rs");
-
-    // Write groups to their own file (if any)
-    groups.write("groups.rs");
 
     finalize_build();
 }

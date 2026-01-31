@@ -27,25 +27,19 @@ pub const DEFAULT_MAPPING: [u8; COLORS_PER_PALETTE as usize] =
 #[derive(Debug, Clone)]
 pub struct ColorBank {
     pub palette: [RGBA12; COLORS_PER_PALETTE as usize],
-    pub mapping: [PaletteRemap; COLOR_MAPPING_COUNT as usize],
     pub(crate) palette_head: u8,
-    pub(crate) mapping_head: u8,
 }
 
 impl ColorBank {
     pub const fn new() -> Self {
         Self {
             palette: DEFAULT_PALETTE,
-            mapping: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-                COLOR_MAPPING_COUNT as usize],
             palette_head: 0,
-            mapping_head: 0,
         }
     }
 
     pub const fn new_from(
         palette: &[RGBA12],
-        color_mapping: &[[u8; COLORS_PER_PALETTE as usize]],
     ) -> Self {
         // Create palette array
         let mut palette_array = [RGBA12::new(0, 0, 0); COLORS_PER_PALETTE as usize];
@@ -57,22 +51,9 @@ impl ColorBank {
             i += 1;
         }
 
-        // Create color mapping array
-        let mut color_mapping_array =
-            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]; COLOR_MAPPING_COUNT as usize];
-        let mut i = 0;
-        while i < COLOR_MAPPING_COUNT as usize {
-            if i < color_mapping.len() {
-                color_mapping_array[i] = color_mapping[i];
-            }
-            i += 1;
-        }
-
         Self {
             palette: palette_array,
-            mapping: color_mapping_array,
             palette_head: palette.len() as u8,
-            mapping_head: color_mapping.len() as u8,
         }
     }
 
@@ -80,19 +61,9 @@ impl ColorBank {
         self.palette_head
     }
 
-    pub fn mappings_count(&self) -> u8 {
-        self.mapping_head
-    }
-
     pub fn reset_palettes(&mut self) {
         self.palette = PALETTE_DEFAULT;
         self.palette_head = 0;
-    }
-
-    pub fn reset_color_mappings(&mut self) {
-        // Reset all mappings to identity
-        self.mapping = from_fn(|_| from_fn(|i| i as u8));
-        self.mapping_head = 1; // 0 is always identity
     }
 
     /// Restore palette counters to previous state (for checkpoint/restore)
@@ -101,7 +72,6 @@ impl ColorBank {
         assert!(color_count <= COLORS_PER_PALETTE as u8, "Invalid color count");
         assert!(color_mapping_count <= 16, "Invalid color mapping count");
         self.palette_head = color_count;
-        self.mapping_head = color_mapping_count;
     }
 
     pub fn push_color(&mut self, color: RGBA12) -> ColorID {
@@ -110,31 +80,6 @@ impl ColorBank {
         self.palette[self.palette_head as usize] = color;
         self.palette_head += 1;
         id
-    }
-
-    /// Push a single color mapping to the bank
-    /// Returns the index where the mapping was stored
-    pub fn push_mapping(&mut self, mapping: [u8; COLORS_PER_PALETTE as usize]) -> u8 {
-        assert!(self.mapping_head < 16, "Color mapping capacity reached");
-
-        // Check if this is the identity mapping
-        let is_identity = mapping.iter().enumerate().all(|(i, &v)| i == v as usize);
-        if is_identity {
-            return 0; // Always use index 0 for identity
-        }
-
-        // Check if this mapping already exists
-        for i in 1..self.mapping_head {
-            if self.mapping[i as usize] == mapping {
-                return i; // Reuse existing mapping
-            }
-        }
-
-        // Add new mapping
-        let index = self.mapping_head;
-        self.mapping[index as usize] = mapping;
-        self.mapping_head += 1;
-        index
     }
 
     pub fn load_default(&mut self) {
@@ -164,24 +109,24 @@ impl ColorBank {
         self.palette[id.0 as usize] = color;
     }
 
-    pub fn palette_cycle(&mut self, color_mapping: u8, start_index: u8, end_index: u8, delta: i8) {
-        let original_colors = self.mapping[color_mapping as usize];
+    // pub fn palette_cycle(&mut self, color_mapping: u8, start_index: u8, end_index: u8, delta: i8) {
+    //     let original_colors = self.mapping[color_mapping as usize];
 
-        for index in start_index as isize..=end_index as isize {
-            let mut new_index = index + delta as isize;
-            if delta > 0 {
-                if new_index > end_index as isize {
-                    new_index = start_index as isize;
-                }
-            } else {
-                if new_index < start_index as isize {
-                    new_index = end_index as isize;
-                }
-            }
-            let color = &mut self.mapping[color_mapping as usize][index as usize];
-            *color = original_colors[new_index as usize];
-        }
-    }
+    //     for index in start_index as isize..=end_index as isize {
+    //         let mut new_index = index + delta as isize;
+    //         if delta > 0 {
+    //             if new_index > end_index as isize {
+    //                 new_index = start_index as isize;
+    //             }
+    //         } else {
+    //             if new_index < start_index as isize {
+    //                 new_index = end_index as isize;
+    //             }
+    //         }
+    //         let color = &mut self.mapping[color_mapping as usize][index as usize];
+    //         *color = original_colors[new_index as usize];
+    //     }
+    // }
 
     /// Adds unique colors to the bank, and returns a palette remap, if any
     pub fn append(&mut self, colors: &[RGBA12]) -> Result<PaletteRemap, &'static str> {

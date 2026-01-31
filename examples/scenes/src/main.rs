@@ -12,10 +12,6 @@ use tato::{
 
 use tato_raylib::*;
 
-// Color mappings. Mappings 2 to 15 map default colors to index 2 (gray)
-const COLORMAP_SHADOW: u8 = 0;
-const COLORMAP_CYCLE: u8 = 1;
-
 #[derive(Debug, Clone)]
 pub struct State {
     pub time: f32,
@@ -30,7 +26,7 @@ pub struct Entity {
     pub y: f32,
     tile: TileID,
     flags: TileFlags,
-    color_mapping: u8,
+    colors: TileColors,
 }
 
 // Selects a scene to change into
@@ -87,8 +83,8 @@ fn main() -> TatoResult<()> {
         // If scene_change is None, immediately switch to A, otherwise process it.
         let scene_change = match &mut scene {
             Scene::None => Some(SceneChange::A),
-            Scene::A(scn) => scn.update(tato, banks, &mut state),
-            Scene::B(scn) => scn.update(tato, banks),
+            Scene::A(scn) => scn.update(tato, &mut state),
+            Scene::B(scn) => scn.update(tato),
             Scene::C(scn) => scn.update(tato, banks),
         };
 

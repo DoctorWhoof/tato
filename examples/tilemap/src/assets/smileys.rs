@@ -7,42 +7,31 @@ pub use smileys::*;
 
 pub const BANK_SMILEYS: Bank = Bank { colors: COLORS_SMILEYS, tiles: TILES_SMILEYS };
 
-pub const COLORS_SMILEYS: ColorBank = ColorBank::new_from(
-    &[
-        RGBA12::with_transparency(0, 0, 0, 0),
-        RGBA12::with_transparency(4, 5, 5, 7),
-        RGBA12::with_transparency(3, 3, 3, 7),
-        RGBA12::with_transparency(1, 1, 1, 7),
-        RGBA12::with_transparency(7, 7, 7, 7),
-        RGBA12::with_transparency(4, 4, 4, 7),
-        RGBA12::with_transparency(7, 6, 3, 7),
-        RGBA12::with_transparency(0, 2, 1, 7),
-        RGBA12::with_transparency(0, 1, 3, 7),
-        RGBA12::with_transparency(0, 0, 0, 7),
-        RGBA12::with_transparency(6, 4, 1, 7),
-        RGBA12::with_transparency(2, 4, 2, 7),
-        RGBA12::with_transparency(1, 2, 6, 7),
-        RGBA12::with_transparency(6, 3, 6, 7),
-        RGBA12::with_transparency(4, 6, 3, 7),
-        RGBA12::with_transparency(4, 6, 7, 7),
-    ],
-    &[
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 8, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 10, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 11, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 12, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 13, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 14, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 1, 2, 3, 4, 5, 15, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    ],
-);
+pub const COLORS_SMILEYS: ColorBank = ColorBank::new_from(&[
+    RGBA12::with_transparency(0, 0, 0, 0),
+    RGBA12::with_transparency(4, 5, 5, 7),
+    RGBA12::with_transparency(3, 3, 3, 7),
+    RGBA12::with_transparency(1, 1, 1, 7),
+    RGBA12::with_transparency(7, 7, 7, 7),
+    RGBA12::with_transparency(4, 4, 4, 7),
+    RGBA12::with_transparency(7, 6, 3, 7),
+    RGBA12::with_transparency(0, 2, 1, 7),
+    RGBA12::with_transparency(0, 1, 3, 7),
+    RGBA12::with_transparency(0, 0, 0, 7),
+    RGBA12::with_transparency(6, 4, 1, 7),
+    RGBA12::with_transparency(2, 4, 2, 7),
+    RGBA12::with_transparency(1, 2, 6, 7),
+    RGBA12::with_transparency(6, 3, 6, 7),
+    RGBA12::with_transparency(4, 6, 3, 7),
+    RGBA12::with_transparency(4, 6, 7, 7),
+]);
 
 pub const TILES_SMILEYS: TileBank = TileBank::new_from(&[
-    Tile::new(0x4444444444444444, 0x4444444444444445, 0x4444455544445555, 0x4444555544455555),
-    Tile::new(0x4444444444444444, 0x4444444455555555, 0x5555555555555555, 0x5555555555555555),
-    Tile::new(0x5555555555555566, 0x5555666655566666, 0x5566666655666966, 0x5666696656666966),
-    Tile::new(0x5555555555555555, 0x5555555555555555, 0x5555555555555555, 0x5555555555555555),
-    Tile::new(0x5666666656669999, 0x5566999955666999, 0x5556669955556666, 0x5555556655555555),
+    Tile::<2>::new(0x0000000000000001, 0x0015005500550155),
+    Tile::<2>::new(0x0000000000005555, 0x5555555555555555),
+    Tile::<2>::new(0x0000000500550155, 0x0555056515651565),
+    Tile::<2>::new(0x0000000000000000, 0x0000000000000000),
+    Tile::<2>::new(0x155515AA05AA056A, 0x015A005500050000),
+    Tile::<2>::new(0x0000000A00AA02AA, 0x0AAA0A9A2A9A2A9A),
+    Tile::<2>::new(0x2AAA2A550A550A95, 0x02A500AA000A0000),
 ]);

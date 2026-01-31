@@ -21,14 +21,11 @@ fn main() -> TatoResult<()> {
     banks[0].colors.load_default();
     banks[0].tiles.add(&Tile::default());
     let offset_text = banks[0].append(&BANK_FONT_LONG).unwrap();
-    banks[0].colors.mapping[1][1] = 0; //mapping 1, color 1 -> 3
-    banks[0].colors.mapping[2][1] = 0; //mapping 2, color 1 -> 3
-    banks[0].colors.mapping[2][3] = 14; //mapping 2, color 3 -> 14
 
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,
         width: None,
-        color_mapping: 1,
+        colors: TileColors::new(0, 3, 3, 3),
         tile_offset: offset_text,
         character_set: CharacterSet::Long,
     };
@@ -36,7 +33,7 @@ fn main() -> TatoResult<()> {
     let text_blue = &TextOp {
         font: &MAP_FONT_LONG,
         width: None,
-        color_mapping: 2,
+        colors: TileColors::new(0, 14, 14, 14),
         tile_offset: offset_text,
         character_set: CharacterSet::Long,
     };
