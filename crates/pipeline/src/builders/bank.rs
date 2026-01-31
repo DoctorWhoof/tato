@@ -631,6 +631,7 @@ impl<'a> BankBuilder<'a> {
                                 {
                                     // Clone the mapping to avoid borrow issues
                                     let existing_mapping = existing_canonical.mapping.clone();
+
                                     // Create remapping from current tile's colors to existing tile's colors
                                     self.create_color_remapping(
                                         &canonical_tile.mapping,
@@ -873,8 +874,6 @@ impl<'a> BankBuilder<'a> {
         }
 
         // Build the actual remapping
-        // source_mapping maps canonical indices to source colors
-        // target_mapping maps canonical indices to target colors
         // We need to map target colors to source colors
         // (because we're using the target/stored tile's pixels but want source's colors)
         for (canonical_idx, &source_color) in source_mapping.iter().enumerate() {

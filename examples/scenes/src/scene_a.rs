@@ -29,7 +29,7 @@ impl SceneA {
 
         banks[0].reset();
         banks[0].colors.load_default();
-        banks[0].append_tiles(&BANK_DEFAULT, None).unwrap();
+        banks[0].append_tiles_from_bank(&BANK_DEFAULT, None).unwrap();
         // Palette test - defines BG palette with a golden tint!
         banks[1].reset();
         banks[1].append(&BANK_DEFAULT).unwrap();

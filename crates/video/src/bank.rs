@@ -8,7 +8,7 @@ pub struct Bank {
 
 impl Bank {
     pub const fn new() -> Self {
-        Self { tiles:TileBank::new(), colors:ColorBank::new() }
+        Self { tiles: TileBank::new(), colors: ColorBank::new() }
     }
 
     pub fn reset(&mut self) {
@@ -17,9 +17,28 @@ impl Bank {
         self.colors.reset_color_mappings();
     }
 
-    /// Appends just the tiles from a different bank, remapping their colors
+    /// Appends just the tiles from a tilebank. Colors are not processed.
+    pub fn append_tiles(&mut self, source: &TileBank) -> Result<u8, &'static str> {
+        let tile_offset = self.tiles.head;
+        let source_tile_count = source.head;
+
+        // Check if we have space for tiles
+        if (self.tiles.head as usize + source_tile_count as usize) > TILE_COUNT {
+            return Err("Not enough space in bank for tiles");
+        }
+
+        // Copy tiles while remapping pixel indices
+        for tile_idx in 0..source_tile_count as usize {
+            let tile = source.tiles[tile_idx];
+            self.tiles.tiles[self.tiles.head as usize + tile_idx] = tile;
+        }
+        self.tiles.head += source_tile_count;
+        Ok(tile_offset)
+    }
+
+    /// Appends the tiles from a different bank, remapping their colors
     /// if a color_remap is provided.
-    pub fn append_tiles(
+    pub fn append_tiles_from_bank(
         &mut self,
         source: &Bank,
         color_remap: Option<PaletteRemap>,
@@ -98,6 +117,6 @@ impl Bank {
         }
         let src_len = source.colors.palette_head as usize;
         let color_remap = self.colors.append(&source.colors.palette[..src_len])?;
-        self.append_tiles(source, Some(color_remap))
+        self.append_tiles_from_bank(source, Some(color_remap))
     }
 }
