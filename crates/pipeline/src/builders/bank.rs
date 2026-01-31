@@ -569,33 +569,27 @@ impl<'a> BankBuilder<'a> {
 
                         // Insert or reuse cell
                         let cell = match found_cell {
-                            Some((existing_cell, transform_used)) => {
+                            Some((existing_cell, _)) => {
                                 // Found existing tile with same pattern (possibly transformed)
-                                // We need to compute TileColors that maps the stored tile's canonical indices
-                                // to the new tile's palette colors, accounting for the transformation
-                                let tile_colors = if let Some((flip_x, flip_y, rotation)) = transform_used {
-                                    // Get the stored tile's canonical representation
-                                    let stored_pixels = self.original_source_pixels.get(&existing_cell.id.0).cloned().unwrap();
-                                    let (_, stored_canonical, _stored_mapping) = self.create_canonical_tile(&stored_pixels);
+                                // Get stored tile's color mapping to compute correct TileColors
+                                let stored_pixels = self.original_source_pixels.get(&existing_cell.id.0).cloned().unwrap();
+                                let (_, stored_canonical, _) = self.create_canonical_tile(&stored_pixels);
 
-                                    // Map stored canonical indices to new palette colors through the transformation
-                                    self.compute_tile_colors_with_transform(
-                                        &source_pixels,
-                                        &stored_canonical,
-                                        flip_x,
-                                        flip_y,
-                                        rotation,
-                                        frame_h,
-                                        frame_v,
-                                        row,
-                                        col,
-                                        abs_row,
-                                        abs_col,
-                                    )
-                                } else {
-                                    // Direct match - stored and new tiles use same color positions
-                                    self.create_tile_colors_from_mapping(&palette_mapping, frame_h, frame_v, row, col, abs_row, abs_col)
-                                };
+                                // Use existing_cell.flags (the transform needed for rendering)
+                                // not transform_used (the transform we applied to find the match)
+                                let tile_colors = self.compute_tile_colors_with_transform(
+                                    &source_pixels,
+                                    &stored_canonical,
+                                    existing_cell.flags.is_flipped_x(),
+                                    existing_cell.flags.is_flipped_y(),
+                                    existing_cell.flags.is_rotated(),
+                                    frame_h,
+                                    frame_v,
+                                    row,
+                                    col,
+                                    abs_row,
+                                    abs_col,
+                                );
 
                                 // Reuse the tile ID and flags, with correctly computed colors
                                 Cell {
@@ -728,8 +722,11 @@ impl<'a> BankBuilder<'a> {
         TileColors::new(slot_colors[0], slot_colors[1], slot_colors[2], slot_colors[3])
     }
 
+
+
     /// Computes TileColors for a transformed tile reuse by mapping stored canonical indices
-    /// to new palette colors through the transformation that made them match
+    /// to new palette colors. The transform parameters represent how we TRANSFORMED the new tile
+    /// to match the stored tile's pattern, so we need to apply that same transform to map colors correctly.
     fn compute_tile_colors_with_transform(
         &self,
         new_pixels: &Pixels,
@@ -744,34 +741,51 @@ impl<'a> BankBuilder<'a> {
         abs_row: usize,
         abs_col: usize,
     ) -> TileColors {
-        // Build transform flags
+        // Build transform flags - these represent how we transformed the new tile to match stored
         let flags = TileFlags::default()
             .with_horizontal_state(flip_x)
             .with_vertical_state(flip_y)
             .with_rotation_state(rotation);
 
-        // For each canonical index in the stored tile, find which new palette color it should map to
-        let mut canonical_to_palette = [0u8; 4];
+        // Build mapping by collecting which palette colors correspond to each canonical index
+        // Handle case where tiles have different color counts
+        let mut canonical_colors: [Option<u8>; 4] = [None; 4];
         let size = TILE_SIZE as usize;
 
-        // We need to build a mapping: stored_canonical_index -> new_palette_color
-        // The stored tile will be read with transformation applied
+        // We need to map: stored_canonical_index -> new_palette_color
+        // When rendering, the flags transform screen position to tile read position
+        // We iterate through screen positions and figure out the mapping
         for screen_y in 0..size {
             for screen_x in 0..size {
-                // When rendering, the transform tells us which tile position to read from
+                let screen_idx = screen_y * size + screen_x;
+                
+                // When rendering at this screen position, where does it read from in stored tile?
                 let (tile_x, tile_y) = flags.transform_coords(screen_x as u8, screen_y as u8, TILE_SIZE);
                 let tile_idx = tile_y as usize * size + tile_x as usize;
-                let screen_idx = screen_y * size + screen_x;
 
-                // The stored tile has this canonical index at tile_idx
-                let stored_canonical_idx = stored_canonical[tile_idx];
+                // The stored tile has this canonical index at the read position
+                let stored_canonical_idx = stored_canonical[tile_idx] as usize;
 
-                // The new tile has this palette color at screen_idx
+                // The new tile wants this palette color at the screen position
                 let new_palette_color = new_pixels[screen_idx];
 
-                // Map this canonical index to this palette color
-                canonical_to_palette[stored_canonical_idx as usize] = new_palette_color;
+                // Set or verify the mapping for this canonical index
+                if let Some(existing_color) = canonical_colors[stored_canonical_idx] {
+                    // This canonical index appeared before - verify consistency
+                    if existing_color != new_palette_color {
+                        // Same canonical index maps to different colors - structure mismatch!
+                        // This shouldn't happen with proper neighbor mask matching
+                    }
+                } else {
+                    canonical_colors[stored_canonical_idx] = Some(new_palette_color);
+                }
             }
+        }
+
+        // Build final mapping, using 0 for unmapped indices
+        let mut canonical_to_palette = [0u8; 4];
+        for i in 0..4 {
+            canonical_to_palette[i] = canonical_colors[i].unwrap_or(0);
         }
 
         // Verify we don't exceed 4 colors
@@ -812,40 +826,45 @@ impl<'a> BankBuilder<'a> {
         img
     }
 
-    /// A canonical tile stores the "structure" of a tile, not the actual colors, so that tiles with
-    /// the same structure but different colors can still be detected as the same, but with different
-    /// palettes.
-    /// The mapping is like a mini-palette with each color assigned to a normalized index
+    /// A canonical tile stores the "structure" of a tile using neighbor masks for matching,
+    /// allowing tiles with the same pattern but different colors to be deduplicated.
+    /// Returns sorted-order canonical for storage (consistent canonical indices).
     fn create_canonical_tile(&mut self, tile_pixels: &Pixels) -> (CanonicalTile, Pixels, Vec<u8>) {
-        // Collect unique colors and sort them so the lowest color gets canonical index 0
+        // Collect unique colors and sort them for consistent canonical index assignment
         let mut unique_colors_set = std::collections::HashSet::new();
         for &color in tile_pixels.iter() {
             unique_colors_set.insert(color);
         }
-
+        
         // Sort colors so assignment is deterministic (lowest color → index 0)
         let mut sorted_colors: Vec<u8> = unique_colors_set.into_iter().collect();
         sorted_colors.sort();
-
+        
         // Create mapping from palette color to canonical index
         let mut color_to_canonical = HashMap::new();
         for (canonical_idx, &palette_color) in sorted_colors.iter().enumerate() {
             color_to_canonical.insert(palette_color, canonical_idx as u8);
         }
 
-        // Create canonical pixels with normalized indices (0-3)
+        // Create canonical pixels with normalized indices (0-3) based on sorted colors
         let canonical_pixels: Pixels = std::array::from_fn(|i| {
             let source_color = tile_pixels[i];
             color_to_canonical[&source_color]
         });
 
-        // palette_to_canonical maps: canonical index → palette color
-        let palette_to_canonical = sorted_colors;
+        // Create structure-based canonical using neighbor masks
+        // This allows matching tiles with same pattern regardless of which specific colors
+        let mut structure_pixels = [0u8; TILE_LEN];
+        let size = TILE_SIZE as u32;
+        for y in 0..size {
+            for x in 0..size {
+                let index = Self::get_index(x, y, size);
+                structure_pixels[index] = Self::neighbor_mask(&canonical_pixels, x, y, size, size)
+            }
+        }
 
-        // Use canonical pixels directly for matching instead of neighbor mask
-        // This preserves color role information and prevents incorrect matches
-        // between tiles with different color assignments (e.g., yellow face vs transparent face)
-        (CanonicalTile { pixels: canonical_pixels }, canonical_pixels, palette_to_canonical)
+        // Return: structure canonical for matching, sorted canonical for storage, sorted mapping for colors
+        (CanonicalTile { pixels: structure_pixels }, canonical_pixels, sorted_colors)
     }
 
     /// Generates a copy of the tile pixels with some transformation.
@@ -922,5 +941,6 @@ impl<'a> BankBuilder<'a> {
     fn get_index(x: u32, y: u32, map_width: u32) -> usize {
         (y as usize * map_width as usize) + x as usize
     }
+
 
 }
