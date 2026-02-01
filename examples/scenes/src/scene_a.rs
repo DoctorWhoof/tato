@@ -9,8 +9,8 @@ pub struct SceneA {
     pub player: Entity,
     smileys: [Entity; SMILEY_COUNT],
     movement_start: f32, // will be used to store the time when the player starts moving
-    colors_shadow: TileColors,
-    colors_cycle: TileColors,
+    colors_shadow: Palette,
+    colors_cycle: Palette,
 }
 
 impl SceneA {
@@ -55,12 +55,12 @@ impl SceneA {
         ];
 
         // Color mappings
-        let colors_shadow = TileColors::new(0, 1, 1, 1);
-        let colors_cycle = TileColors::new(0, 1, 1, 1);
-        let colors_unique: [TileColors; 16] = core::array::from_fn(|i| TileColors::new(0, 1, (i as u8 % 12) + 4, 3));
-        let colors_bg: [TileColors; 16] = core::array::from_fn(|i| {
+        let colors_shadow = Palette::new(0, 1, 1, 1);
+        let colors_cycle = Palette::new(0, 1, 2, 3);
+        let colors_unique: [Palette; 16] = core::array::from_fn(|i| Palette::new(0, 1, (i as u8 % 12) + 4, 3));
+        let colors_bg: [Palette; 16] = core::array::from_fn(|i| {
             let bg_color = (i % 16) as u8;
-            TileColors::new(0, bg_color, bg_color, bg_color)
+            Palette::new(0, bg_color, bg_color, bg_color)
         });
 
         // Set BG tiles, acquire width and height of bg map
@@ -106,7 +106,7 @@ impl SceneA {
             smileys,
             movement_start: 0.0,
             colors_cycle,
-            colors_shadow
+            colors_shadow,
         })
     }
 
@@ -167,10 +167,12 @@ impl SceneA {
         t.video.scroll_x = target_x;
         t.video.scroll_y = target_y;
 
-        // {
-        //     let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
-        //     *cycle_color = ((*cycle_color + 1) % 12) + 4;
-        // }
+        {
+            let mut cycle_color = self.colors_cycle.get(2);
+            cycle_color = ((cycle_color + 1) % 12) + 4;
+            self.colors_cycle.set(2, cycle_color);
+            self.player.colors.set(1, cycle_color);
+        }
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
@@ -200,7 +202,7 @@ impl SceneA {
         sprite_shadow(&self.player);
 
         // Draw Sprites with hover animation
-        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
+        let mut draw_hovering_sprite = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = ((phase * speed).sin() + 1.0) * height;
             t.video.draw_fg_tile(DrawBundle {
                 x: (entity.x - 1.0) as i16,
@@ -214,14 +216,14 @@ impl SceneA {
         for entity in &self.smileys {
             // passing x as phase gives us out-of-sync motion
             let hover_phase = entity.x + state.time as f32;
-            sprite_hover(entity, hover_phase, 6.0, 1.5);
+            draw_hovering_sprite(entity, hover_phase, 6.0, 1.5);
         }
 
         // Player goes in front. Drawing a sprite last means it has highest priority!
         let hover_phase = state.time as f32 - self.movement_start;
         let hover_speed = if is_walking { 24.0 } else { 4.0 };
         let hover_height = if is_walking { 2.0 } else { 1.5 };
-        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
+        draw_hovering_sprite(&self.player, hover_phase, hover_speed, hover_height);
 
         // Flashing Smiley at the origin
         t.video.draw_fg_tile(DrawBundle {

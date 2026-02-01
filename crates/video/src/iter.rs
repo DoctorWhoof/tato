@@ -269,7 +269,7 @@ impl<'a> PixelIter<'a> {
 
                 let pixel = tile.get_pixel(tx as u8, ty as u8);
                 let color_index = sprite.colors.get(pixel);
-                let color = bank.colors.palette[color_index];
+                let color = bank.colors.palette[color_index as usize];
 
                 if color.a() > 0 {
                     self.sprite_buffer[x] = color.with_z(Z_SPRITE);
@@ -410,7 +410,7 @@ impl<'a> PixelIter<'a> {
                         let mapped_idx = bg_cell.colors.get(color_idx);
                         // let mapped_idx = bank.colors[remap_id][color_idx] as usize;
                         // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
-                        let color = palette[mapped_idx];
+                        let color = palette[mapped_idx as usize];
 
                         let final_color = if color.a() > 0 {
                             let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
@@ -430,7 +430,7 @@ impl<'a> PixelIter<'a> {
                     let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
                     let mapped_idx = bg_cell.colors.get(color_idx);
                     // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
-                    let color = palette[mapped_idx];
+                    let color = palette[mapped_idx as usize];
 
                     let final_color = if color.a() > 0 {
                         let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };

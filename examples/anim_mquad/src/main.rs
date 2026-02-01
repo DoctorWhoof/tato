@@ -111,6 +111,7 @@ async fn main() -> TatoResult<()> {
                     flip_x: entity.flip,
                     flip_y: false,
                     tile_offset: 0,
+                    palette_override: None
                 },
             );
         }

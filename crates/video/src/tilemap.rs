@@ -99,7 +99,7 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    pub fn set_colors(&mut self, col: i16, row: i16, colors:TileColors) {
+    pub fn set_colors(&mut self, col: i16, row: i16, colors:Palette) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].colors = colors;
         }

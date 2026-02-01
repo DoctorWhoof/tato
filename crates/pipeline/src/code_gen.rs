@@ -116,12 +116,6 @@ impl CodeWriter {
         self.write_line("");
     }
 
-    /// Writes a group constant as a bit flag value.
-    pub fn write_group_constant(&mut self, name: &str, group_index: u8) {
-        let group_value = 1u16 << (group_index - 1); // Convert 1-based index to bit value
-        self.write_line(&format!("pub const {}: u8 = {};", name.to_uppercase(), group_value));
-    }
-
     /// Writes a single Cell entry.
     pub fn write_cell(&mut self, cell: &tato_video::Cell) {
         self.write_line(&format!("        {},", format_cell_compact(cell)));

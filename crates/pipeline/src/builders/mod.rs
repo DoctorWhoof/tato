@@ -13,9 +13,6 @@ pub(crate) use anim::*;
 mod bank;
 pub use bank::*;
 
-mod group;
-pub use group::*;
-
 mod map;
 pub(crate) use map::*;
 

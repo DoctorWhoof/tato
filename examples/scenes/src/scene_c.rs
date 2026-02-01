@@ -13,7 +13,6 @@ static mut LINE: u16 = 0;
 impl SceneC {
     pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
-        // let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let _solid = TILE_SOLID;
         let cross = TILE_CROSSHAIRS;
         let smiley = TILE_SMILEY;
@@ -31,16 +30,11 @@ impl SceneC {
                     cell: Cell {
                         id: cross.id,
                         flags: TileFlags::default().with_fg(),
-                        colors: TileColors::default()
+                        colors: [0, 1, 2, 3].into(),
                     },
                 });
             }
         }
-
-        // // Color mappings
-        // for n in 0..COLOR_MAPPING_COUNT as usize {
-        //     banks[0].colors.mapping[n][2] = n as u8;
-        // }
 
         // BG color raster effects
         t.video.irq_line = Some(|iter, _chip, _tilemap| {
@@ -77,8 +71,7 @@ impl SceneC {
                 y,
                 id: self.smiley,
                 flags: TileFlags::default(),
-                // color_mapping: x as u8,
-                colors: TileColors::default()
+                colors: [0, 1, x as u8, 3].into(),
             });
         }
 

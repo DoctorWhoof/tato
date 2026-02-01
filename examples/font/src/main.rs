@@ -22,7 +22,7 @@ fn main() -> TatoResult<()> {
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
-        colors: TileColors::new(0, 3, 3, 3),
+        colors: Palette::new(0, 3, 3, 3),
         tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
@@ -30,7 +30,7 @@ fn main() -> TatoResult<()> {
     let text_blue = &TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
-        colors: TileColors::new(0, 14, 14, 14),
+        colors: Palette::new(0, 14, 14, 14),
         tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
@@ -38,7 +38,7 @@ fn main() -> TatoResult<()> {
     let text_animated = &TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
-        colors: TileColors::new(0, 1, 1, 1),
+        colors: Palette::new(0, 1, 1, 1),
         tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };

@@ -17,7 +17,7 @@ pub(crate) use code_gen::*;
 mod palette_image;
 pub(crate) use palette_image::*;
 
-pub use {BankBuilder, GroupBuilder, PaletteBuilder};
+pub use {BankBuilder, PaletteBuilder};
 
 /// Build pipeline configuration.
 #[derive(Clone)]

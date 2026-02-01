@@ -10,7 +10,7 @@ pub struct SpriteEntry {
     pub x: i16,
     pub id: TileID,
     pub flags: TileFlags,
-    pub colors: TileColors,
+    pub colors: Palette,
 }
 
 /// Holds a "presence" mask that helps the iterator figure out if any given slot
@@ -66,7 +66,7 @@ impl SpriteGenerator {
         screen_height: u16,
         flags: TileFlags,
         id: TileID,
-        colors: TileColors,
+        colors: Palette,
     ) {
         let w = TILE_SIZE as i16;
         let h = TILE_SIZE as i16;

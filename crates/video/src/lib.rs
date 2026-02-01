@@ -23,6 +23,9 @@ mod error;
 mod iter;
 pub use iter::*;
 
+mod palette;
+pub use palette::*;
+
 mod sprite;
 use sprite::*;
 

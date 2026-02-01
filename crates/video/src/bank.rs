@@ -36,7 +36,7 @@ impl Bank {
     }
 
     /// Appends the tiles from a different bank without modifying them.
-    /// With TileColors per-cell, color mapping is handled by each Cell's colors field,
+    /// With Palette per-cell, color mapping is handled by each Cell's colors field,
     /// not by modifying the tile data itself.
     pub fn append_tiles_from_bank(
         &mut self,
@@ -52,7 +52,7 @@ impl Bank {
         }
 
         // Copy tiles as-is without remapping pixel indices
-        // The TileColors in each Cell will handle color mapping at render time
+        // The Palette in each Cell will handle color mapping at render time
         for tile_idx in 0..source_tile_count as usize {
             let tile = source.tiles.tiles[tile_idx];
             self.tiles.tiles[self.tiles.head as usize + tile_idx] = tile;

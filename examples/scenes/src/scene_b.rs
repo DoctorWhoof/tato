@@ -34,24 +34,13 @@ impl SceneB {
         // let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
         let tile = TILE_SMILEY.id;
 
-        // Define color mappings
-        {
-            let mut mapping: [u8; COLORS_PER_PALETTE as usize] = Default::default();
-            mapping[2] = 8;
-            // banks[0].colors.mapping[2] = mapping;
-        }
-        for n in 0..3 {
-            let mut mapping: [u8; COLORS_PER_PALETTE as usize] = Default::default();
-            mapping[2] = 9 + n;
-            // banks[1].colors.push_mapping(mapping);
-        }
-
         // Set BG cells to use mappings
-        // for (i, cell) in state.bg.cells.iter_mut().enumerate() {
-        //     cell.id = tile;
-        //     cell.flags = TileFlags::default();
-        //     cell.color_mapping = (i % 3) as u8 + 1;
-        // }
+        for (i, cell) in state.bg.cells.iter_mut().enumerate() {
+            let color = (i % 3) as u8 + 9;
+            cell.id = tile;
+            cell.flags = TileFlags::default();
+            cell.colors = [0, 1, color, 0].into()
+        }
 
         Ok(Self {
             player: Entity {
@@ -59,16 +48,14 @@ impl SceneB {
                 y: y as f32,
                 tile,
                 flags: TileFlags::default(),
-                colors: TileColors::default(),
+                colors: [0, 1, 8, 3].into(),
             },
             smileys: core::array::from_fn(|_| Entity {
-                // Will test wrapping of large f32 value into i16
-                // using "wrap_width" and "wrap_height"
-                x: rand::random_range(0.0..255.0), // - 32_000.0,
-                y: rand::random_range(0.0..255.0), // + 32_000.0,
+                x: rand::random_range(0.0..255.0),
+                y: rand::random_range(0.0..255.0),
                 tile,
                 flags: TileFlags::default(),
-                colors: TileColors::default(),
+                colors: [0, 9, 10, 11].into(),
             }),
         })
     }
@@ -88,12 +75,6 @@ impl SceneB {
             self.player.y += speed;
         }
 
-        // // Draw!
-        // {
-        //     let cycle_color = &mut banks[0].colors.mapping[COLORMAP_CYCLE as usize][2];
-        //     *cycle_color = ((*cycle_color + 1) % 12) + 4;
-        // }
-
         // TODO: center_on(sprite) function
         for (_i, entity) in self.smileys.iter_mut().enumerate() {
             entity.x -= speed;
@@ -112,7 +93,7 @@ impl SceneB {
             y: self.player.y as i16,
             id: self.player.tile,
             flags: self.player.flags,
-            colors: TileColors::default(),
+            colors: self.player.colors,
         });
 
         if t.pad.is_just_pressed(Button::Start) {
