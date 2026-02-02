@@ -13,12 +13,12 @@ fn main() {
 
     // 9 Patch
     let mut bank_patch = BankBuilder::new("PATCH", &mut palette);
-    bank_patch.new_map("import/patch.png", "PATCH");
+    bank_patch.new_map("patch.png", "PATCH");
     bank_patch.write("patch.rs");
 
     // // Smileys
     let mut bank_smileys = BankBuilder::new("SMILEYS", &mut palette);
-    bank_smileys.new_map("import/smileys.png", "SMILEYS");
+    bank_smileys.new_map("smileys.png", "SMILEYS");
     bank_smileys.write("smileys.rs");
 
     finalize_build();

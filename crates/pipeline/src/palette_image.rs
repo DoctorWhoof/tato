@@ -43,12 +43,13 @@ impl PalettizedImg {
         frames_v: u8,
         palette: &mut PaletteBuilder,
     ) -> PalettizedImg {
+
         let split = file_name.split('/');
         let last = split.last().unwrap().to_string();
         let mut last_split = last.split('.');
         let asset_name = last_split.next().unwrap().to_string();
 
-        println!("cargo:warning=Converting image {}", asset_name);
+        println!("cargo:warning=Converting image '{}' at path: {}", asset_name, file_name);
         let img_bytes = std::fs::read(file_name).unwrap();
         let img_header =
             minipng::decode_png_header(img_bytes.as_slice()).expect("Invalid PNG file");
@@ -75,8 +76,8 @@ impl PalettizedImg {
         let rows_per_frame = (img_rgba.height() / frames_v as u32) / TILE_SIZE as u32;
 
         println!("cargo:warning= Tilifying '{}'", asset_name);
-        println!("cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
-        println!("frames_h: {}, frames_v: {}", frames_h, frames_v);
+        println!("cargo:warning=cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
+        println!("cargo:warning=frames_h: {}, frames_v: {}", frames_h, frames_v);
 
         PalettizedImg {
             // asset_name,

@@ -17,20 +17,20 @@ fn main() {
     let mut palette_font = PaletteBuilder::new("fonts");
     let mut bank_font_long = BankBuilder::new("FONT_LONG", &mut palette_font);
     bank_font_long.allow_unused = true;
-    bank_font_long.use_crate_assets = true; // Only true when used by this crate
-    bank_font_long.new_map("import/font_long.png", "FONT_LONG");
+    bank_font_long.use_crate_assets = true; // Only true when used by the main tato crate
+    bank_font_long.new_map("font_long.png", "FONT_LONG");
     bank_font_long.write("font_long.rs");
 
     let mut bank_font_short = BankBuilder::new("FONT_SHORT", &mut palette_font);
     bank_font_short.allow_unused = true;
     bank_font_short.use_crate_assets = true;
-    bank_font_short.new_map("import/font_short.png", "FONT_SHORT");
+    bank_font_short.new_map("font_short.png", "FONT_SHORT");
     bank_font_short.write("font_short.rs");
 
     let mut bank_font_arcade = BankBuilder::new("FONT_ARCADE", &mut palette_font);
     bank_font_arcade.allow_unused = true;
     bank_font_arcade.use_crate_assets = true;
-    bank_font_arcade.new_map("import/font_arcade.png", "FONT_ARCADE");
+    bank_font_arcade.new_map("font_arcade.png", "FONT_ARCADE");
     bank_font_arcade.write("font_arcade.rs");
 
     // Default basic tiles
@@ -39,12 +39,12 @@ fn main() {
     bank_default.allow_unused = true;
     bank_default.use_crate_assets = true;
     // Add single tiles for default assets
-    bank_default.new_tile("import/tile_empty.png");
-    bank_default.new_tile("import/tile_checkers.png");
-    bank_default.new_tile("import/tile_solid.png");
-    bank_default.new_tile("import/tile_crosshairs.png");
-    bank_default.new_tile("import/tile_arrow.png");
-    bank_default.new_tile("import/tile_smiley.png");
+    bank_default.new_tile("tile_empty.png");
+    bank_default.new_tile("tile_checkers.png");
+    bank_default.new_tile("tile_solid.png");
+    bank_default.new_tile("tile_crosshairs.png");
+    bank_default.new_tile("tile_arrow.png");
+    bank_default.new_tile("tile_smiley.png");
     bank_default.write("default_tiles.rs");
 
     finalize_build();

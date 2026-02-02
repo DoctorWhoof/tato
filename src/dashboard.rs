@@ -4,7 +4,7 @@
 use crate::arena::{Arena, ArenaId, ArenaOps, ArenaRes, Buffer, Text};
 use crate::layout::Fitting;
 use crate::prelude::*;
-use crate::video::{COLORS_PER_PALETTE, RGBA32, BANK_COUNT, TILE_COUNT, TILE_SIZE, Bank};
+use crate::video::{BANK_COUNT, Bank, COLORS_PER_PALETTE, RGBA32, TILE_COUNT, TILE_SIZE};
 
 mod command;
 pub use command::*;
@@ -38,12 +38,13 @@ const COMMAND_MAX_ARGS: usize = 8;
 const CONSOLE_HISTORY: u32 = 10;
 const OP_COUNT: u32 = 500;
 const DEBUG_STR_COUNT: u32 = 100;
-const DEBUG_POLY_COUNT: u32 = 100;
+const DEBUG_POLY_COUNT: u32 = 300;
 
 #[derive(Debug, Clone, Copy)]
 struct Polygon {
     points: Slice<Vec2<i16>>,
     color: RGBA12,
+    clip_to_view: bool,
 }
 
 /// Backend-agnostic debug UI system that generates drawing ops
@@ -196,7 +197,7 @@ impl Dashboard {
     }
 
     /// Allows basic text formatting when sending text to the dashboard
-    pub fn debug<A, T>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
+    pub fn debug_txt<A, T>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
     where
         T: core::fmt::Debug,
         A: ArenaOps<u32, ()>,
@@ -207,7 +208,7 @@ impl Dashboard {
     }
 
     /// Allows basic text formatting when sending text to the dashboard
-    pub fn display<T, A>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
+    pub fn display_txt<T, A>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
     where
         T: core::fmt::Display,
         A: ArenaOps<u32, ()>,
@@ -221,15 +222,21 @@ impl Dashboard {
     /// point matches the first). If "world_space" is true, poly will be resized
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
-    pub fn poly<A>(&mut self, arena: &mut A, points: &[Vec2<i16>], color: RGBA12, world_space: bool)
-    where
+    pub fn poly<A>(
+        &mut self,
+        arena: &mut A,
+        points: &[Vec2<i16>],
+        color: RGBA12,
+        world_space: bool,
+        clip_to_view: bool,
+    ) where
         A: ArenaOps<u32, ()>,
     {
         let handle = arena.alloc_slice::<Vec2<i16>>(points).unwrap();
         // let color = arena.alloc(color).unwrap();
         let slice = arena.get_slice_mut(handle).unwrap();
         slice.copy_from_slice(points);
-        let poly = Polygon { points: handle, color };
+        let poly = Polygon { points: handle, color, clip_to_view };
         if world_space {
             self.debug_polys_world.push(arena, poly).unwrap();
         } else {
@@ -238,8 +245,14 @@ impl Dashboard {
     }
 
     /// Convenient way to send a rect as a poly to the dashboard.
-    pub fn rect<A>(&mut self, arena: &mut A, rect: Rect<i16>, color: RGBA12, world_space: bool)
-    where
+    pub fn rect<A>(
+        &mut self,
+        arena: &mut A,
+        rect: Rect<i16>,
+        color: RGBA12,
+        world_space: bool,
+        clip_to_view: bool,
+    ) where
         A: ArenaOps<u32, ()>,
     {
         let points = [
@@ -249,7 +262,7 @@ impl Dashboard {
             rect.bottom_left(),
             rect.top_left(),
         ];
-        self.poly(arena, &points, color, world_space);
+        self.poly(arena, &points, color, world_space, clip_to_view);
     }
 
     /// Convenient way to send a point as an "x" to the dashboard.
@@ -261,6 +274,7 @@ impl Dashboard {
         size: i16,
         color: RGBA12,
         world_space: bool,
+        clip_to_view: bool,
     ) where
         A: ArenaOps<u32, ()>,
     {
@@ -270,12 +284,14 @@ impl Dashboard {
             &[Vec2 { x: x - half, y: y - half }, Vec2 { x: x + half, y: y + half }],
             color,
             world_space,
+            clip_to_view,
         );
         self.poly(
             arena,
             &[Vec2 { x: x - half, y: y + half }, Vec2 { x: x + half, y: y - half }],
             color,
             world_space,
+            clip_to_view,
         );
     }
 
@@ -305,8 +321,13 @@ impl Dashboard {
     }
 
     /// Generate debug UI Draw Ops before presenting them via the Backend.
-    pub fn frame_present<A>(&mut self, frame_arena: &mut A, banks:&[Bank], tato: &Tato, backend: &mut impl Backend)
-    where
+    pub fn frame_present<A>(
+        &mut self,
+        frame_arena: &mut A,
+        banks: &[Bank],
+        tato: &Tato,
+        backend: &mut impl Backend,
+    ) where
         A: ArenaOps<u32, ()>,
     {
         if !self.display_debug_info {
@@ -332,24 +353,96 @@ impl Dashboard {
             // The canvas texture can then be drawn by the backend using this rectangle.
             let (rect, _scale) = canvas_rect_and_scale(canvas.rect(), tato.video.size(), false);
             self.canvas_rect = Some(rect);
-            let color = RGBA12::with_transparency(7, 7, 7, 1);
             backend.set_canvas_rect(Some(rect));
+            struct _CenterLines;
             {
+                let color_origin = RGBA12::with_transparency(7, 5, 3, 3);
                 let mid_x = screen_size.x / 2;
                 let mid_y = screen_size.y / 2;
                 self.poly(
                     frame_arena,
                     &[Vec2::new(rect.left(), mid_y), Vec2::new(rect.right(), mid_y)],
-                    color,
+                    color_origin,
                     false,
+                    true,
                 );
                 self.poly(
                     frame_arena,
                     &[Vec2::new(mid_x, rect.top()), Vec2::new(mid_x, rect.bottom())],
-                    color,
+                    color_origin,
                     false,
+                    true,
                 );
             }
+
+            struct _GridLines;
+            {
+                let color_grid = RGBA12::with_transparency(4, 3, 2, 2);
+                let tile_size = TILE_SIZE as i16;
+
+                let view_left = ((tato.video.scroll_x / tile_size) * tile_size) - tile_size;
+                let view_top = ((tato.video.scroll_y / tile_size) * tile_size) - tile_size;
+                let view_right = (view_left + tato.video.width() as i16) + (tile_size * 2);
+                let view_bottom = (view_top + tato.video.height() as i16) + (tile_size * 2);
+                {
+                    let mut x = view_left;
+                    while x <= view_right {
+                        self.poly(
+                            frame_arena,
+                            &[Vec2::new(x, view_top), Vec2::new(x, view_bottom)],
+                            color_grid,
+                            true,
+                            true,
+                        );
+                        x += tile_size;
+                    }
+                }
+
+                {
+                    let mut y = view_top;
+                    while y <= view_bottom {
+                        self.poly(
+                            frame_arena,
+                            &[Vec2::new(view_left, y), Vec2::new(view_right, y)],
+                            color_grid,
+                            true,
+                            true,
+                        );
+                        y += tile_size;
+                    }
+                }
+            }
+
+            // struct _GridLines;
+            // {
+            //     let color_grid = RGBA12::with_transparency(7, 7, 7, 1);
+
+            //     let mut x = rect.left();
+            //     while x <= rect.right() {
+            //         let scroll = ((tato.video.scroll_x % 8) as f32 * scale).floor() as i16;
+            //         let offset_x = x - scroll;
+            //         self.poly(
+            //             frame_arena,
+            //             &[Vec2::new(offset_x, rect.top()), Vec2::new(offset_x, rect.bottom())],
+            //             color_grid,
+            //             false,
+            //         );
+            //         x += (TILE_SIZE as f32 * scale) as i16;
+            //     }
+
+            //     let mut y = rect.top();
+            //     while y <= rect.bottom() {
+            //         let scroll = ((tato.video.scroll_y % 8) as f32 * scale).floor() as i16;
+            //         let offset_y = y - scroll;
+            //         self.poly(
+            //             frame_arena,
+            //             &[Vec2::new(rect.left(), offset_y), Vec2::new(rect.right(), offset_y)],
+            //             color_grid,
+            //             false,
+            //         );
+            //         y += (TILE_SIZE as f32 * scale) as i16;
+            //     }
+            // }
         });
 
         // Copy tile pixels from dashboard to GPU textures

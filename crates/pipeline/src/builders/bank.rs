@@ -156,6 +156,7 @@ impl<'a> BankBuilder<'a> {
 
         println!("cargo:warning=Regenerating bank: {}", full_path);
         // Execute all deferred commands now
+        struct _DeferredCommands;
         {
             let commands = self.deferred_commands.clone();
             for command in commands {
@@ -170,7 +171,12 @@ impl<'a> BankBuilder<'a> {
                         self.single_tiles.push(single_tile);
                     },
                     DeferredCommand::NewTile { path } => {
-                        let img = self.load_valid_image(&path, 1, 1);
+                        let full_path = std::path::Path::new(&settings.asset_import_path)
+                            .join(path)
+                            .to_str()
+                            .expect("Could not convert path to string")
+                            .to_string();
+                        let img = self.load_valid_image(&full_path, 1, 1);
                         assert!(
                             img.width == TILE_SIZE as usize,
                             "Single tile width must be {}",
@@ -182,13 +188,18 @@ impl<'a> BankBuilder<'a> {
                         );
                         let cells = self.add_tiles(&img);
                         assert!(cells.len() == 1 && cells[0].len() == 1);
-                        let tile_name = crate::strip_path_name(&path);
+                        let tile_name = crate::strip_path_name(&full_path);
                         let single_tile =
                             SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
                         self.single_tiles.push(single_tile);
                     },
                     DeferredCommand::NewMap { path, name } => {
-                        let img = self.load_valid_image(&path, 1, 1);
+                        let full_path = std::path::Path::new(&settings.asset_import_path)
+                            .join(path)
+                            .to_str()
+                            .expect("Could not convert path to string")
+                            .to_string();
+                        let img = self.load_valid_image(&full_path, 1, 1);
                         let frames = self.add_tiles(&img);
                         assert!(frames.len() == 1);
                         let map = MapBuilder {
@@ -200,7 +211,12 @@ impl<'a> BankBuilder<'a> {
                         self.maps.push(map);
                     },
                     DeferredCommand::NewAnimationStrip { path, name, frames_h, frames_v } => {
-                        let img = self.load_valid_image(&path, frames_h, frames_v);
+                        let full_path = std::path::Path::new(&settings.asset_import_path)
+                            .join(path)
+                            .to_str()
+                            .expect("Could not convert path to string")
+                            .to_string();
+                        let img = self.load_valid_image(&full_path, frames_h, frames_v);
                         let cells = self.add_tiles(&img);
                         let frame_count = img.frames_h as usize * img.frames_v as usize;
                         assert!(frame_count > 0);
@@ -297,7 +313,7 @@ impl<'a> BankBuilder<'a> {
                 let map_filename = format!("{}.rs", map.name.to_lowercase());
                 let map_file_path = module_subdir.join(&map_filename);
                 let map_file_path_str =
-                    map_file_path.to_str().expect("Could not convert path to string");
+                    map_file_path.to_str().expect("cargo:warning=Could not convert path to string");
 
                 println!("cargo:warning=Creating tilemap file: {}", map_file_path_str);
                 let mut code = CodeWriter::new(map_file_path_str);
