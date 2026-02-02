@@ -1,14 +1,12 @@
-use crate::TilesetID;
-use tato_video::DynTilemap;
+use tato_video::{DynTilemap, Palette};
 
 #[derive(Debug, Clone)]
 pub struct TextOp<'a> {
     pub font: &'a dyn DynTilemap, // Can be &Tilemap or TilemapRef!
-    pub tileset: TilesetID,
-    pub col: i16,
-    pub row: i16,
     pub width: Option<i16>,
-    pub color_mapping: u8,
+    pub colors: Palette,
+    pub tile_offset: u8,
+    pub character_set: CharacterSet
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

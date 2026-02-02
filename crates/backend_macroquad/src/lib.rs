@@ -1,11 +1,6 @@
-//! Macroquad backend for Tato game development framework
-//!
-//! This crate provides a Macroquad-based implementation of the Tato Backend trait,
-//! enabling cross-platform rendering with hardware acceleration.
-
 pub use macroquad;
 use macroquad::prelude::*;
-use std::{time::Instant, vec};
+use std::{thread::sleep, time::{Duration, Instant}, vec};
 use tato::{arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*, prelude::*, Tato};
 
 pub use tato;
@@ -13,34 +8,6 @@ pub use tato;
 const TILES_PER_ROW: i16 = 16;
 
 /// Create a window configuration with VSync enabled and proper settings for Tato games
-///
-/// This function provides a pre-configured `Conf` struct optimized for pixel art games,
-/// with VSync enabled to prevent screen tearing and proper scaling settings.
-///
-/// # Arguments
-///
-/// * `title` - Window title
-/// * `width` - Window width in pixels
-/// * `height` - Window height in pixels
-///
-/// # Returns
-///
-/// A `Conf` struct ready to use with `#[macroquad::main(window_conf)]`
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use tato_macroquad::*;
-///
-/// fn window_conf() -> Conf {
-///     tato_window_conf("My Game", 900, 540)
-/// }
-///
-/// #[macroquad::main(window_conf)]
-/// async fn main() {
-///     // Your game code here
-/// }
-/// ```
 pub fn tato_window_conf(title: &str, width: i32, height: i32) -> Conf {
     Conf {
         window_title: title.to_owned(),
@@ -66,27 +33,6 @@ fn rgba32_to_mq_color(color: RGBA32) -> Color {
 }
 
 /// Macroquad-based backend for Tato games
-///
-/// This backend provides cross-platform rendering using Macroquad's graphics capabilities.
-/// It supports desktop platforms (Windows, macOS, Linux), web (WebAssembly), and mobile
-/// platforms (Android, iOS).
-///
-/// # Usage
-///
-/// ```rust,no_run
-/// use tato::prelude::*;
-/// use tato_macroquad::*;
-/// use macroquad::prelude::*;
-///
-/// #[macroquad::main("My Game")]
-/// async fn main() -> TatoResult<()> {
-///     let tato = Tato::new(240, 180, 60);
-///     let mut backend = MquadBackend::new(&tato).await;
-///
-///     // Game loop here...
-///     Ok(())
-/// }
-/// ```
 pub struct MquadBackend {
     /// Background clear color
     pub bg_color: Color,
@@ -110,18 +56,6 @@ pub struct MquadBackend {
 }
 
 impl MquadBackend {
-    /// Create a new Macroquad backend
-    ///
-    /// This is an async function that initializes the backend with the given Tato instance.
-    /// The backend will create textures for tile banks and load the embedded font.
-    ///
-    /// # Arguments
-    ///
-    /// * `tato` - The Tato instance to create the backend for
-    ///
-    /// # Returns
-    ///
-    /// A new `MquadBackend` ready for rendering
     pub async fn new(tato: &Tato) -> Self {
         // Sizing
         let multiplier = 3;
@@ -130,7 +64,6 @@ impl MquadBackend {
         let total_panel_width = (PANEL_WIDTH * 4) + (MARGIN * 2);
         let adjusted_w = total_panel_width as i32 + (w * multiplier);
 
-        // Configure window with VSync enabled
         request_new_screen_size(adjusted_w as f32, (h * multiplier) as f32);
 
         // Load embedded font
@@ -157,7 +90,7 @@ impl MquadBackend {
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
-        for _ in 0..TILE_BANK_COUNT {
+        for _ in 0..BANK_COUNT {
             // Each texture ID is the same as the bank
             result.create_texture(size, size);
         }
@@ -399,7 +332,8 @@ impl Backend for MquadBackend {
         &mut self,
         frame_arena: &'a mut A,
         tato: &'a Tato,
-        bg_banks: &[&'a T],
+        banks: &'a [Bank],
+        tilemaps: &'a [&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
         A: ArenaOps<u32, ()>,
@@ -415,7 +349,7 @@ impl Backend for MquadBackend {
         );
 
         // Copy pixels from video chip
-        for (i, color) in tato.iter_pixels(bg_banks).enumerate() {
+        for (i, color) in tato.iter_pixels(banks, tilemaps).enumerate() {
             let index = i * 4;
             self.pixels[index] = color.r;
             self.pixels[index + 1] = color.g;
@@ -546,6 +480,21 @@ impl Backend for MquadBackend {
                 time * 1000.0,
                 (1.0 / time).floor()
             );
+        }
+
+        // Frame limiter with safety margin
+        let target_frame_time = 1.0 / self.target_fps as f32;
+        let elapsed = get_frame_time();
+        let idle_time = target_frame_time - elapsed;
+
+        // Use a small safety margin (0.5ms) to avoid oversleeping
+        let safety_margin = 0.0005;
+        let adjusted_idle_time = idle_time - safety_margin;
+
+        // Only sleep if we have meaningful time left and it's worth sleeping
+        let min_sleep_threshold = 1.0 / 1000.0; // 1ms minimum
+        if adjusted_idle_time > min_sleep_threshold {
+            sleep(Duration::from_secs_f32(adjusted_idle_time));
         }
     }
 

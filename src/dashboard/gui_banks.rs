@@ -6,8 +6,9 @@ impl Dashboard {
         &mut self,
         layout: &mut Frame<i16>,
         frame_arena: &mut A,
+        banks: &[Bank],
         backend: &impl Backend,
-        tato: &Tato,
+        // tato: &Tato,
     ) where
         A: ArenaOps<u32, ()>,
     {
@@ -22,9 +23,11 @@ impl Dashboard {
             self.ops.push(frame_arena, rect_handle.unwrap()).unwrap();
 
             // Process each video memory bank
-            for bank_index in 0..TILE_BANK_COUNT {
+            for bank_index in 0..BANK_COUNT {
                 // Draw each bank debug data
-                self.process_bank(frame_arena, backend, panel, bank_index, tato);
+                // self.process_bank(frame_arena, backend, panel, bank_index, tato);
+                let Some(bank) = banks.get(bank_index) else { continue };
+                self.process_bank(frame_arena, backend, panel, bank_index, bank);
                 // Small separator
                 panel.push_edge(Edge::Top, 5, |_separator| {});
             }
@@ -34,17 +37,17 @@ impl Dashboard {
     fn update_tile_texture(
         &mut self,
         bank_index: usize,
-        bank: &VideoBank<{ TILE_COUNT }>,
+        bank: &Bank,
         tiles_per_row: u16,
     ) {
         // Early return for empty banks
-        if bank.tile_count() == 0 {
+        if bank.tiles.count() == 0 {
             // self.tile_pixels[bank_index].clear();
             return;
         }
 
         // Calculate actual dimensions based on tile layout
-        let tile_count = bank.tile_count() as u16;
+        let tile_count = bank.tiles.count() as u16;
         let num_rows = (tile_count + tiles_per_row - 1) / tiles_per_row; // Ceiling division
 
         let w = tiles_per_row as usize * TILE_SIZE as usize;
@@ -72,18 +75,18 @@ impl Dashboard {
                     for x in 0..TILE_SIZE as usize {
                         // get color
                         let color_index =
-                            bank.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
+                            bank.tiles.tiles[tile_index as usize].get_pixel(x as u8, y as u8);
                         // get coordinates
                         let pixel_x = tile_x as usize * TILE_SIZE as usize + x;
                         let pixel_y = tile_y as usize * TILE_SIZE as usize + y;
                         let i = ((pixel_y * w as usize) + pixel_x) * 4;
                         // Seems safe for now, may need to insert a check for i < pixels.len()
                         // if I get out-of-bounds errors.
-                        let color: RGBA32 = bank.palette[color_index as usize].into();
-                        pixels[i] = color.r;
-                        pixels[i + 1] = color.g;
-                        pixels[i + 2] = color.b;
-                        pixels[i + 3] = color.a;
+                        // let color: RGBA32 = bank.colors.palette[color_index as usize].into();
+                        pixels[i] = color_index * 85;
+                        pixels[i + 1] = color_index * 85;
+                        pixels[i + 2] = color_index * 85;
+                        pixels[i + 3] = 255;
                     }
                 }
             }
@@ -96,7 +99,8 @@ impl Dashboard {
         backend: &impl Backend,
         panel: &mut Frame<i16>,
         bank_index: usize,
-        tato: &Tato,
+        bank: &Bank,
+        // tato: &Tato,
     ) where
         A: ArenaOps<u32, ()>,
     {
@@ -104,7 +108,7 @@ impl Dashboard {
         let tile_size = panel.rect().w as f32 / tiles_per_row as f32;
 
         let gap = self.gui_scale as i16;
-        let bank = &tato.banks[bank_index];
+        // let Some(bank) = banks[bank_index] else { return; };
 
         let mouse = backend.get_mouse();
 
@@ -129,12 +133,11 @@ impl Dashboard {
         panel.push_edge(Edge::Top, h, |frame| {
             let rect = frame.rect();
             let values = [
-                bank.tile_count(),
-                bank.color_count() as usize,
-                bank.color_mapping_count() as usize,
+                bank.tiles.count(),
+                bank.colors.color_count() as usize,
             ];
             let text =
-                Text::format_display(frame_arena, "{} tiles, {} colors, {} mappings", &values, "")
+                Text::format_display(frame_arena, "{} tiles, {} colors", &values, "")
                     .unwrap();
 
             let handle = frame_arena
@@ -149,7 +152,7 @@ impl Dashboard {
             self.ops.push(frame_arena, handle).unwrap();
         });
 
-        if bank.tile_count() == 0 && bank.color_count() == 0 {
+        if bank.tiles.count() == 0 && bank.colors.color_count() == 0 {
             return;
         }
 
@@ -164,7 +167,7 @@ impl Dashboard {
             for c in 0..COLORS_PER_PALETTE as usize {
                 frame.push_edge(Edge::Left, swatch_w, |swatch| {
                     let rect = swatch.rect();
-                    let color = bank.palette[c];
+                    let color = bank.colors.palette[c];
                     let rgba32 = RGBA32::from(color);
 
                     let handle = frame_arena.alloc(DrawOp::Rect { rect, color: rgba32 }).unwrap();
@@ -184,88 +187,9 @@ impl Dashboard {
             }
         });
 
-        // // Sub-palette swatches
-        // {
-        //     let columns = 6;
-        //     let rows = (bank.sub_palette_count() as f32 / columns as f32).ceil() as u32;
-        //     let frame_h = (rows as i16 * 4) + 4;
-
-        //     panel.push_edge(Edge::Top, frame_h, |frame| {
-        //         frame.set_margin(1);
-        //         frame.set_gap(1);
-        //         let column_w = frame.divide_width(columns);
-        //         for column in 0..columns {
-        //             frame.push_edge(Edge::Left, column_w, |frame_column| {
-        //                 frame_column.set_gap(0);
-        //                 frame_column.set_margin(1);
-
-        //                 let rect = frame_column.rect();
-        //                 let rect_handle =
-        //                     frame_arena.alloc(DrawOp::Rect { rect, color: DARKEST_GRAY }).unwrap();
-        //                 self.ops.push(frame_arena, rect_handle).unwrap();
-
-        //                 let row_h = frame_column.divide_height(rows);
-        //                 for row in 0..rows {
-        //                     frame_column.push_edge(Edge::Top, row_h, |frame_row| {
-        //                         // frame_row.set_gap(1);
-        //                         frame_row.set_margin(1);
-        //                         let subp_index = ((row * COLORS_PER_TILE as u32) + column) as usize;
-        //                         let current_item = (row * columns) + column;
-
-        //                         if current_item < bank.sub_palette_count() as u32
-        //                             && subp_index < bank.sub_palettes.len()
-        //                         {
-        //                             let subp = &bank.sub_palettes[subp_index];
-        //                             let swatch_w = frame_row.divide_width(COLORS_PER_TILE as u32);
-
-        //                             for n in 0..COLORS_PER_TILE as usize {
-        //                                 frame_row.push_edge(Edge::Left, swatch_w, |swatch| {
-        //                                     let swatch_rect = swatch.rect();
-        //                                     let color_index = subp[n].0 as usize;
-        //                                     if color_index < bank.palette.len() {
-        //                                         let sub_rect_handle = frame_arena
-        //                                             .alloc(DrawOp::Rect {
-        //                                                 rect: swatch_rect,
-        //                                                 color: RGBA32::from(
-        //                                                     bank.palette[color_index],
-        //                                                 ),
-        //                                             })
-        //                                             .unwrap();
-        //                                         self.ops
-        //                                             .push(frame_arena, sub_rect_handle)
-        //                                             .unwrap();
-        //                                     }
-        //                                 });
-        //                             }
-
-        //                             // Mouse hover detection
-        //                             if frame_row.rect().contains(mouse.x as i16, mouse.y as i16) {
-        //                                 let colors = [
-        //                                     subp_index as u8,
-        //                                     subp[0].0,
-        //                                     subp[1].0,
-        //                                     subp[2].0,
-        //                                     subp[3].0,
-        //                                 ];
-        //                                 self.mouse_over_text = Text::format_dbg(
-        //                                     frame_arena,
-        //                                     "Sub Palette {} = [{},{},{},{}]",
-        //                                     &colors,
-        //                                     "",
-        //                                 )
-        //                                 .unwrap();
-        //                             }
-        //                         }
-        //                     });
-        //                 }
-        //             });
-        //         }
-        //     });
-        // }
-
         // Tile visualization
         self.update_tile_texture(bank_index, bank, tiles_per_row);
-        let max_row = (bank.tile_count() / tiles_per_row as usize) + 1;
+        let max_row = (bank.tiles.count() / tiles_per_row as usize) + 1;
         // tile_size is already in screen coordinates,
         // so I need to divide by the GUI scale.
         let tiles_height = max_row as f32 * (tile_size / self.gui_scale);
@@ -290,7 +214,7 @@ impl Dashboard {
                 let col = ((mouse.x - rect.x) as f32 / tile_size) as i16;
                 let row = ((mouse.y - rect.y) as f32 / tile_size) as i16;
                 let tile_index = (row * tiles_per_row as i16) + col;
-                if tile_index < bank.tile_count() as i16 {
+                if tile_index < bank.tiles.count() as i16 {
                     self.mouse_over_text =
                         Text::format_display(frame_arena, "Tile {}", &[tile_index], "").unwrap();
                 }

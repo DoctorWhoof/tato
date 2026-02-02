@@ -1,12 +1,11 @@
-use tato::{arena::{Arena, ArenaOps}, prelude::*};
+use tato::{
+    arena::{Arena, ArenaOps},
+    prelude::*,
+};
 use tato_raylib::*;
-use tato::default_assets::*;
 
-mod patch;
-use patch::*;
-
-mod smileys;
-use smileys::*;
+mod assets;
+use assets::*;
 
 const MAP_LEN: usize = 1024;
 
@@ -16,28 +15,29 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
     let mut dash = Dashboard::new().unwrap();
     let mut tato = Tato::new(240, 180, 60);
+    let mut banks = [Bank::new()];
 
-    tato.video.bg_color = RGBA12::new(1, 2, 3);
+    tato.video.bg_color = RGBA12::with_transparency(2,3,4,7);
     tato.video.wrap_bg = true;
 
-    // Populate tilesets
-    let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]);
-    let _transparent = tato.banks[0].push_color(RGBA12::TRANSPARENT);
+    // Combine multiple banks into bank 0
+    banks[0].tiles.add(&Tile::default());
+    let patch_offset = banks[0].append(&BANK_PATCH).unwrap();
+    let smileys_offset = banks[0].append(&BANK_SMILEYS).unwrap();
 
+    // Draw using the new direct tilemap API
+    draw_patch_to_tilemap(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, &MAP_PATCH, patch_offset);
+    draw_tilemap_to_tilemap(
+        &mut bg_map,
+        Some(Rect { x: 3, y: 5, w: 16, h: 10 }),
+        &MAP_SMILEYS,
+        None,
+        smileys_offset,
+    );
 
-    let tileset_patch = tato.push_tileset(0, PATCH_TILESET)?;
-    let map_patch = tato.load_tilemap(tileset_patch, &PATCH_MAP)?;
-    tato.draw_patch_3x3(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, map_patch);
-
-    let tileset_smileys = tato.push_tileset(0, SMILEYS_TILESET)?;
-    let map_smileys = tato.load_tilemap(tileset_smileys, &SMILEYS_MAP)?;
-    tato.draw_tilemap(&mut bg_map, Some(Rect { x: 3, y: 5, w: 16, h: 10 }), map_smileys, None);
-
-
-    println!("Asset arena: {} Bytes", tato.assets.used_memory());
     // Backend
     let mut backend = RayBackend::new(&tato);
-    backend.set_bg_color(RGBA32::BLACK);
+    // backend.set_bg_color(RGBA32::BLACK);
 
     while !backend.ray.window_should_close() {
         frame_arena.clear();
@@ -58,8 +58,8 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &mut backend, &tato);
-        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
+        dash.frame_present(&mut frame_arena, &banks, &tato, &mut backend);
+        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
     }
     Ok(())
 }

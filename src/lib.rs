@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 
 pub use avgbuffer;
 pub use tato_arena as arena;
@@ -9,9 +9,6 @@ pub use tato_math as math;
 pub use tato_pad as pad;
 pub use tato_rng as rng;
 pub use tato_video as video;
-
-pub mod assets;
-pub use assets::*;
 pub mod dashboard;
 
 mod error;
@@ -31,7 +28,7 @@ pub mod default_assets;
 pub mod prelude {
     pub use crate::backend::*;
     pub use crate::dashboard::*;
-    // pub use crate::default_assets::*;
+    pub use crate::default_assets::*;
     pub use crate::graphics::*;
     pub use crate::*;
     pub use tato_audio::waveform::*;

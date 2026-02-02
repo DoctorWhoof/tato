@@ -1,6 +1,5 @@
 use crate::*;
 use core::array::from_fn;
-use tato::default_assets::*;
 use tato::prelude::*;
 
 const SMILEY_COUNT: usize = 32;
@@ -10,11 +9,13 @@ pub struct SceneA {
     pub player: Entity,
     smileys: [Entity; SMILEY_COUNT],
     movement_start: f32, // will be used to store the time when the player starts moving
+    colors_shadow: Palette,
+    colors_cycle: Palette,
 }
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(t: &mut Tato, state: &mut State) -> TatoResult<Self> {
+    pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(2, 1, 0);
@@ -28,9 +29,13 @@ impl SceneA {
             iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
         });
 
-        t.banks[0].load_default_colors();
+        banks[0].reset();
+        banks[0].colors.load_default();
+        banks[0].append_tiles_from_bank(&BANK_DEFAULT, None).unwrap();
         // Palette test - defines BG palette with a golden tint!
-        t.banks[1].palette = [
+        banks[1].reset();
+        banks[1].append(&BANK_DEFAULT).unwrap();
+        banks[1].colors.palette = [
             RGBA12::TRANSPARENT,
             RGBA12::new(2, 1, 1),
             RGBA12::new(3, 1, 1),
@@ -49,44 +54,14 @@ impl SceneA {
             RGBA12::new(7, 7, 5),
         ];
 
-        for (i, mapping) in t.banks[0].color_mapping[MAP_CYCLE as usize].iter().enumerate() {
-            let color = t.banks[0].palette[*mapping as usize];
-            println!("{}: {} ({})", i, mapping, color);
-        }
-
-        // Color mappings.
-        {
-            // mapping 0 is for the shadow
-            let mapping = &mut t.banks[0].color_mapping[MAP_SHADOW as usize];
-            mapping[0] = 0; // 0 stays transparent
-            mapping[1] = 1;
-            mapping[2] = 1;
-            mapping[3] = 1
-        }
-
-        {
-            // mappings 2 to 15 replace color 2 with a color from the palette
-            for i in 2..COLORS_PER_PALETTE as usize {
-                let mapping = &mut t.banks[0].color_mapping[i];
-                mapping[2] = (i as u8 % 12) + 4;
-            }
-        }
-
-        {
-            // And now the BG palette
-            for i in 0..COLORS_PER_PALETTE as usize {
-                let bg_color = (i % 16) as u8;
-                let mapping = &mut t.banks[1].color_mapping[i];
-                mapping[0] = 0; // 0 stays transparent
-                mapping[1] = bg_color;
-                mapping[2] = bg_color;
-                mapping[3] = bg_color;
-            }
-        }
-
-        // Define new tiles
-        let _tileset_fg = t.push_tileset(0, DEFAULT_TILESET)?;
-        let _tileset_bg = t.push_tileset(1, DEFAULT_TILESET)?;
+        // Color mappings
+        let colors_shadow = Palette::new(0, 1, 1, 1);
+        let colors_cycle = Palette::new(0, 1, 2, 3);
+        let colors_unique: [Palette; 16] = core::array::from_fn(|i| Palette::new(0, 1, (i as u8 % 12) + 4, 3));
+        let colors_bg: [Palette; 16] = core::array::from_fn(|i| {
+            let bg_color = (i % 16) as u8;
+            Palette::new(0, bg_color, bg_color, bg_color)
+        });
 
         // Set BG tiles, acquire width and height of bg map
         let (w, h) = {
@@ -95,11 +70,13 @@ impl SceneA {
                     state.bg.set_op(BgOp {
                         col,
                         row,
-                        tile_id: TILE_ARROW,
-                        flags: TileFlags::default().with_rotation(),
-                        // Calculate palette ID based on coordinates, limits to 14
-                        // indices, adds 2 to avoid colors 0 and 1 in the BG
-                        color_mapping: ((col + row) % 14) as u8 + 2,
+                        cell: Cell {
+                            id: TILE_ARROW.id,
+                            flags: TileFlags::default().with_rotation(),
+                            // Calculate palette ID based on coordinates, limits to 14
+                            // indices, adds 2 to avoid colors 0 and 1 in the BG
+                            colors: colors_bg[((col + row) % 14) as usize + 2],
+                        },
                     });
                 }
             }
@@ -110,9 +87,9 @@ impl SceneA {
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| Entity {
             x: rand::random_range(0..w - TILE_SIZE as i16) as f32,
             y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
-            tile: TILE_SMILEY,
+            tile: TILE_SMILEY.id,
             flags: TileFlags::default(),
-            color_mapping: (i as u8 % 14) + 2,
+            colors: colors_unique[(i % 14) + 2],
         });
         // Sort smileys by y position only
         smileys.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
@@ -122,18 +99,19 @@ impl SceneA {
             player: Entity {
                 x: (t.video.width() / 2) as f32,
                 y: (t.video.height() / 2) as f32,
-                tile: TILE_ARROW,
+                tile: TILE_ARROW.id,
                 flags: TileFlags::default(),
-                color_mapping: MAP_CYCLE,
+                colors: colors_cycle,
             },
             smileys,
             movement_start: 0.0,
+            colors_cycle,
+            colors_shadow,
         })
     }
 
     // Process the scene on each frame
     pub fn update(&mut self, t: &mut Tato, state: &mut State) -> Option<SceneChange> {
-
         // ------------------------------ Input ------------------------------
 
         if t.pad.is_just_pressed(Button::Start) {
@@ -141,15 +119,13 @@ impl SceneA {
             t.video.wrap_bg = !t.video.wrap_bg;
         }
 
-        if t.paused { return None }
+        if t.paused {
+            return None;
+        }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
         // let speed = if t.pad.is_any_down(AnyButton::Face) {
-        let speed = if t.pad.is_down(Button::A) {
-            30.0 * state.elapsed as f32
-        } else {
-            120.0 * state.elapsed as f32
-        };
+        let speed = if t.pad.is_down(Button::A) { 30.0 * state.elapsed as f32 } else { 120.0 * state.elapsed as f32 };
 
         // Ensures animation always starts from phase = 0.0;
         if t.pad.is_any_just_pressed(AnyButton::Direction) {
@@ -192,8 +168,10 @@ impl SceneA {
         t.video.scroll_y = target_y;
 
         {
-            let cycle_color = &mut t.banks[0].color_mapping[MAP_CYCLE as usize][2];
-            *cycle_color = ((*cycle_color + 1) % 12) + 4;
+            let mut cycle_color = self.colors_cycle.get(2);
+            cycle_color = ((cycle_color + 1) % 12) + 4;
+            self.colors_cycle.set(2, cycle_color);
+            self.player.colors.set(1, cycle_color);
         }
 
         for col in 0..state.bg.columns() as i16 {
@@ -215,7 +193,7 @@ impl SceneA {
                 y: entity.y as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: MAP_SHADOW,
+                colors: self.colors_shadow,
             });
         };
         for entity in &self.smileys {
@@ -224,36 +202,36 @@ impl SceneA {
         sprite_shadow(&self.player);
 
         // Draw Sprites with hover animation
-        let mut sprite_hover = |entity: &Entity, phase: f32, speed: f32, height: f32| {
+        let mut draw_hovering_sprite = |entity: &Entity, phase: f32, speed: f32, height: f32| {
             let hover = ((phase * speed).sin() + 1.0) * height;
             t.video.draw_fg_tile(DrawBundle {
                 x: (entity.x - 1.0) as i16,
                 y: (entity.y - 1.0 - hover) as i16,
                 id: entity.tile,
                 flags: entity.flags,
-                color_mapping: entity.color_mapping,
+                colors: entity.colors,
             });
         };
 
         for entity in &self.smileys {
             // passing x as phase gives us out-of-sync motion
             let hover_phase = entity.x + state.time as f32;
-            sprite_hover(entity, hover_phase, 6.0, 1.5);
+            draw_hovering_sprite(entity, hover_phase, 6.0, 1.5);
         }
 
         // Player goes in front. Drawing a sprite last means it has highest priority!
         let hover_phase = state.time as f32 - self.movement_start;
         let hover_speed = if is_walking { 24.0 } else { 4.0 };
         let hover_height = if is_walking { 2.0 } else { 1.5 };
-        sprite_hover(&self.player, hover_phase, hover_speed, hover_height);
+        draw_hovering_sprite(&self.player, hover_phase, hover_speed, hover_height);
 
         // Flashing Smiley at the origin
         t.video.draw_fg_tile(DrawBundle {
             x: 0,
             y: 0,
-            id: TILE_SMILEY,
+            id: TILE_SMILEY.id,
             flags: TileFlags::default(),
-            color_mapping: MAP_CYCLE,
+            colors: self.colors_cycle,
         });
 
         // ------------------- Return mode switch request -------------------

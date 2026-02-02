@@ -14,43 +14,33 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(240, 180, 60);
     let mut dash = Dashboard::new().unwrap();
+    let mut banks = [Bank::new()];
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
-    tato.banks[0].load_default_colors();
-    tato.banks[0].color_mapping[1][1] = 3; //mapping 1, color 1 -> 3
+    banks[0].colors.load_default();
+    banks[0].tiles.add(&Tile::default());
+    let offset_text = banks[0].append(&BANK_FONT_LONG).unwrap();
 
-    let _empty = tato.push_tile(0, &DEFAULT_TILES[TILE_EMPTY]); // TODO: Return Option
-    let font = tato.push_tileset(0, FONT_LONG_TILESET)?;
+    let text_white = &TextOp {
+        font: &MAP_FONT_LONG,
+        width: None,
+        colors: Palette::new(0, 3, 3, 3),
+        tile_offset: offset_text,
+        character_set: CharacterSet::Long,
+    };
+
+    let text_blue = &TextOp {
+        font: &MAP_FONT_LONG,
+        width: None,
+        colors: Palette::new(0, 14, 14, 14),
+        tile_offset: offset_text,
+        character_set: CharacterSet::Long,
+    };
 
     // Pre-draw fixed text (writes to BG Map)
-    tato.draw_text(
-        &mut bg_map,
-        "SOUND TEST",
-        TextOp {
-            font: &FONT_LONG_MAP,
-            tileset: font,
-            col: 2,
-            row: 2,
-            width: None,
-            // palette_override: Some(palette_default),
-            color_mapping: 1
-        },
-    );
-
-    tato.draw_text(
-        &mut bg_map,
-        "Currently playing:",
-        TextOp {
-            font: &FONT_LONG_MAP,
-            tileset: font,
-            col: 2,
-            row: 6,
-            width: None,
-            // palette_override: Some(palette_light),
-            color_mapping: 1
-        },
-    );
+    draw_text(&mut bg_map, 2, 2, text_blue, "SOUND TEST");
+    draw_text(&mut bg_map, 2, 6, text_white, "Currently playing:");
 
     // Audio setup
     let mut audio = AudioChip::default();
@@ -97,59 +87,35 @@ fn main() -> TatoResult<()> {
         }
 
         // Text info
-        tato.draw_text(
-            &mut bg_map,
-            &{
-                if audio.channels[0].noise_mix() == 0 {
-                    format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
-                } else {
-                    format!("Wave Type: White Noise        ")
-                }
-            },
-            TextOp {
-                font: &FONT_LONG_MAP,
-                tileset: font,
-                col: 2,
-                row: 8,
-                width: None,
-                // palette_override: Some(palette_light),
-                color_mapping: 1
-            },
-        );
+        draw_text(&mut bg_map, 2, 8, text_white, &{
+            if audio.channels[0].noise_mix() == 0 {
+                format!("Wave Type: {:?}        ", audio.channels[0].wave_mode)
+            } else {
+                format!("Wave Type: White Noise        ")
+            }
+        });
 
-        tato.draw_text(
+        draw_text(
             &mut bg_map,
+            2,
+            10,
+            text_white,
             &format!("Volume: {}    ", audio.channels[0].volume()),
-            TextOp {
-                font: &FONT_LONG_MAP,
-                tileset: font,
-                col: 2,
-                row: 10,
-                width: None,
-                // palette_override: Some(palette_light),
-                color_mapping: 1
-            },
         );
 
-        tato.draw_text(
+        draw_text(
             &mut bg_map,
+            2,
+            12,
+            text_white,
             &format!("MIDI Note: {:.0}          ", audio.channels[0].midi_note()),
-            TextOp {
-                font: &FONT_LONG_MAP,
-                tileset: font,
-                col: 2,
-                row: 12,
-                width: None,
-                // palette_override: Some(palette_light),
-                color_mapping: 1
-            },
         );
 
         // Update backends
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &mut backend, &tato);
+        dash.frame_present(&mut frame_arena, &banks, &tato, &mut backend);
         audio_backend.process_frame(&mut audio);
-        backend.frame_present(&mut frame_arena, &tato, &[&bg_map]);
+        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

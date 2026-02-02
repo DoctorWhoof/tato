@@ -6,7 +6,7 @@ pub const PIXELS_PER_CLUSTER: u8 = 8;
 /// A Cluster always stores 8 pixels, and simply gets larger the more colors you store in it.
 /// At 2 bits per pixel (4 colors) it is 2 bytes.
 /// Since we always have 8 bits per pixel, BITS_PER_PIXEL is also the number of bytes!
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq)]
 pub struct Cluster<const BITS_PER_PIXEL: usize> {
     pub data: [u8; BITS_PER_PIXEL],
 }

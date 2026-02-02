@@ -1,306 +1,267 @@
+mod anim;
+pub use anim::*;
+
 mod text;
 pub use text::*;
 
 use crate::prelude::*;
 
-use arena::ArenaOps;
+pub struct MapOp {}
 
-/// Drawing functions and graphics helpers.
-impl Tato {
-    /// Obtains the frame index on a given Animation based on the video chip's
-    /// internal frame counter.
-    #[inline(always)]
-    pub fn get_anim_frame(&self, anim: AnimID) -> usize {
-        // AnimID(0) means no animation - return 0 as default frame
-        if anim.0 == 0 {
-            return 0;
+#[inline]
+/// Obtains the frame index on a given Animation based on the video chip's
+/// internal frame counter.
+pub fn anim_get_frame(current_video_frame: usize, anim: &Anim) -> usize {
+    if anim.frames.is_empty() {
+        return 0;
+    }
+
+    let len = anim.frames.len();
+    let fps = anim.fps.max(1) as usize;
+    let frame_duration = 60 / fps; // Assuming 60fps base
+    let total_duration = frame_duration * len;
+
+    if anim.repeat {
+        let cycle = current_video_frame % total_duration;
+        let frame_idx = cycle / frame_duration;
+        frame_idx.min(len - 1)
+    } else {
+        let frame_idx = current_video_frame / frame_duration;
+        frame_idx.min(len - 1)
+    }
+}
+
+/// Clears a rectangular area in a tilemap with a specific cell.
+pub fn tilemap_clear_rect<const LEN: usize>(bg: &mut Tilemap<LEN>, rect: Rect<i16>, cell: Cell) {
+    for row in rect.y..rect.y + rect.h {
+        for col in rect.x..rect.x + rect.w {
+            bg.set_op(BgOp { col, row, cell });
         }
-        let Some(anim_entry) = self.assets.anim_entries.get(anim.0 as usize) else {
-            return 0;
-        };
-        self.get_frame_from_anim_entry(anim_entry)
     }
+}
 
-    /// Copies a rectangular area from a tilemap into another.
-    /// If any rect is "None" the entire map is used.
-    pub fn draw_tilemap<const LEN: usize>(
-        &self,
-        dest: &mut Tilemap<LEN>,
-        dest_rect: Option<Rect<u16>>,
-        src: MapID,
-        src_rect: Option<Rect<u16>>,
-    ) {
-        let Ok(src) = self.get_tilemap(src) else { return };
-        dest.copy_from(&src, src_rect, dest_rect);
-    }
+/// Fills the entire tilemap with a specific tile.
+pub fn tilemap_fill<const LEN: usize>(bg: &mut Tilemap<LEN>, cell: Cell) {
+    let rect = Rect { x: 0, y: 0, w: bg.columns as i16, h: bg.rows as i16 };
+    tilemap_clear_rect(bg, rect, cell);
+}
 
-    /// Draws a sprite's current frame (calculated using the video chip's
-    /// internal time counter).
-    pub fn draw_anim_to_fg(&mut self, anim: AnimID, bundle: SpriteBundle) {
-        if let Some(map_entry) = self.get_sprite_tilemap_entry(anim) {
-            if let Ok(cells) = self.assets.arena.get_slice(map_entry.cells) {
-                self.video.draw_sprite(
-                    bundle,
-                    &TilemapRef { cells, columns: map_entry.columns, rows: map_entry.rows },
-                );
-            };
-        };
-    }
+/// Draws a sprite as a tilemap to the foreground layer.
+/// The tilemap can be from a const strip or any other source.
+pub fn draw_sprite_to_fg(video: &mut VideoChip, anim: &Anim, bundle: SpriteBundle) {
+    let frame_number = anim_get_frame(video.frame_number, &anim);
+    let strip_frame = anim.frames[frame_number] as usize;
+    let tilemap = anim.strip[strip_frame];
+    video.draw_sprite(bundle, &tilemap);
+}
 
-    // TODO: Implement flipping
-    pub fn draw_anim_to_bg<const LEN: usize>(
-        &self,
-        dest: &mut Tilemap<LEN>,
-        anim: AnimID,
-        bundle: SpriteBundle,
-    ) {
-        if let Some(map_entry) = self.get_sprite_tilemap_entry(anim) {
-            let Some(src) = map_entry.to_ref(&self.assets.arena) else {
-                println!("Invalid map entry from {:?}", anim);
-                return;
-            };
-            let col = (bundle.x / TILE_SIZE as i16) as u16;
-            let row = (bundle.y / TILE_SIZE as i16) as u16;
-            let dst_rect = Rect { x: col, y: row, w: src.columns, h: src.rows };
-            dest.copy_from(&src, None, Some(dst_rect));
-        };
-    }
+// TODO: Draw from Anim, just like draw_sprite_to_fg, but to the BG
+/// Draws a tilemap to a background tilemap.
+/// Positions the sprite at tile coordinates (not pixel coordinates).
+pub fn draw_sprite_to_tilemap<const LEN: usize>(dest: &mut Tilemap<LEN>, src: &dyn DynTilemap, bundle: SpriteBundle) {
+    let col = (bundle.x / TILE_SIZE as i16) as u16;
+    let row = (bundle.y / TILE_SIZE as i16) as u16;
+    let dst_rect = Rect { x: col, y: row, w: src.columns(), h: src.rows() };
+    dest.copy_from(src, None, Some(dst_rect), bundle.tile_offset);
+}
 
-    /// Draws a "3x3 patch" (sometimes called "9-Patch") into a tilemap.
-    /// Each cell can represent a corner, an edge or the center tile.
-    /// The pattern is:
-    /// top_left,    top,        top_right,
-    /// left,        center,     right,
-    /// bottom_left, bottom,     bottom_right
-    pub fn draw_patch_3x3<const LEN: usize>(
-        &mut self,
-        bg: &mut Tilemap<LEN>,
-        rect: Rect<i16>,
-        patch_id: MapID,
-    ) {
-        let Ok(map) = self.get_tilemap(patch_id) else { return };
+/// Copies a rectangular area from a tilemap into another.
+/// If any rect is "None" the entire map is used.
+pub fn draw_tilemap_to_tilemap<const LEN: usize>(
+    dest: &mut Tilemap<LEN>,
+    dest_rect: Option<Rect<u16>>,
+    src: &dyn DynTilemap,
+    src_rect: Option<Rect<u16>>,
+    tile_offset: u8,
+) {
+    dest.copy_from(src, src_rect, dest_rect, tile_offset);
+}
 
-        debug_assert!(map.columns == 3 && map.rows == 3, "invalid patch dimensions");
+/// Draws a "3x3 patch" (sometimes called "9-Patch") into a tilemap.
+/// Each cell represents a corner, an edge, or the center tile.
+/// The pattern is:
+/// ```text
+/// top_left,    top,        top_right,
+/// left,        center,     right,
+/// bottom_left, bottom,     bottom_right
+/// ```
+pub fn draw_patch_to_tilemap<const LEN: usize>(
+    bg: &mut Tilemap<LEN>,
+    rect: Rect<i16>,
+    patch: &dyn DynTilemap,
+    tile_offset: u8,
+) {
+    debug_assert!(patch.columns() == 3 && patch.rows() == 3, "invalid patch dimensions");
 
-        let top_left = map.cells[0];
-        bg.set_op(BgOp {
-            col: rect.x,
-            row: rect.y,
-            tile_id: top_left.id,
+    let Some(top_left) = patch.get_cell(0, 0) else { return };
+    bg.set_op(BgOp {
+        col: rect.x,
+        row: rect.y,
+        cell: Cell {
+            id: TileID(top_left.id.0 + tile_offset),
             flags: top_left.flags,
-            color_mapping: top_left.color_mapping,
-        });
+            colors: top_left.colors,
+        },
+    });
 
-        let high_x = (rect.x + rect.w).min(i16::MAX); // Prevent overflow
-        let top = map.cells[1];
-        for col in rect.x + 1..high_x {
-            bg.set_op(BgOp {
-                col,
-                row: rect.y,
-                tile_id: top.id,
-                flags: top.flags,
-                color_mapping: top.color_mapping,
-            });
-        }
-
-        let top_right = map.cells[2];
+    let high_x = (rect.x + rect.w).min(i16::MAX);
+    let Some(top) = patch.get_cell(1, 0) else { return };
+    for col in rect.x + 1..high_x {
         bg.set_op(BgOp {
-            col: rect.x + rect.w,
+            col,
             row: rect.y,
-            tile_id: top_right.id,
-            flags: top_right.flags,
-            color_mapping: top_right.color_mapping,
+            cell: Cell {
+                id: TileID(top.id.0 + tile_offset),
+                flags: top.flags,
+                colors: top.colors,
+            },
         });
+    }
 
-        let left = map.cells[3];
+    let Some(top_right) = patch.get_cell(2, 0) else { return };
+    bg.set_op(BgOp {
+        col: high_x,
+        row: rect.y,
+        cell: Cell {
+            id: TileID(top_right.id.0 + tile_offset),
+            flags: top_right.flags,
+            colors: top_right.colors,
+        },
+    });
 
-        for row in rect.y + 1..rect.y + rect.h {
-            bg.set_op(BgOp {
-                col: rect.x,
-                row,
-                tile_id: left.id,
-                flags: left.flags,
-                color_mapping: left.color_mapping,
-            });
-        }
-
-        let high_y = (rect.y + rect.h).min(i16::MAX); // Prevent overflow
-        let center = map.cells[4];
-        for row in rect.y + 1..high_y {
-            for col in rect.x + 1..high_x {
-                bg.set_op(BgOp {
-                    col,
-                    row,
-                    tile_id: center.id,
-                    flags: center.flags,
-                    color_mapping: center.color_mapping,
-                });
-            }
-        }
-
-        let right = map.cells[5];
-        for row in rect.y + 1..high_y {
-            bg.set_op(BgOp {
-                col: high_x,
-                row,
-                tile_id: right.id,
-                flags: right.flags,
-                color_mapping: right.color_mapping,
-            });
-        }
-
-        let bottom_left = map.cells[6];
+    let high_y = (rect.y + rect.h).min(i16::MAX);
+    let Some(left) = patch.get_cell(0, 1) else { return };
+    for row in rect.y + 1..high_y {
         bg.set_op(BgOp {
             col: rect.x,
-            row: high_y,
-            tile_id: bottom_left.id,
-            flags: bottom_left.flags,
-            color_mapping: bottom_left.color_mapping,
+            row,
+            cell: Cell {
+                id: TileID(left.id.0 + tile_offset),
+                flags: left.flags,
+                colors: left.colors,
+            },
         });
+    }
 
-        let bottom = map.cells[7];
+    let Some(center) = patch.get_cell(1, 1) else { return };
+    for row in rect.y + 1..high_y {
         for col in rect.x + 1..high_x {
             bg.set_op(BgOp {
                 col,
-                row: high_y,
-                tile_id: bottom.id,
-                flags: bottom.flags,
-                color_mapping: bottom.color_mapping,
+                row,
+                cell: Cell {
+                    id: TileID(center.id.0 + tile_offset),
+                    flags: center.flags,
+                    colors: center.colors,
+                },
             });
         }
+    }
 
-        let bottom_right = map.cells[8];
+    let Some(right) = patch.get_cell(2, 1) else { return };
+    for row in rect.y + 1..high_y {
         bg.set_op(BgOp {
             col: high_x,
-            row: high_y,
-            tile_id: bottom_right.id,
-            flags: bottom_right.flags,
-            color_mapping: bottom.color_mapping,
+            row,
+            cell: Cell {
+                id: TileID(right.id.0 + tile_offset),
+                flags: right.flags,
+                colors: right.colors,
+            },
         });
     }
 
-    // // UNTESTED
-    // /// Draws a "patch" with a single row of tiles into a tilemap.
-    // /// The pattern is:
-    // /// [top, bottom],
-    // /// where middle is optional
-    // pub fn draw_patch_1x2<const LEN: usize>(
-    //     &mut self,
-    //     bg: &mut Tilemap<LEN>,
-    //     rect: Rect<i16>,
-    //     patch_id: MapID,
-    // ) {
-    //     let Ok(map) = self.get_tilemap(patch_id) else { return };
+    let Some(bottom_left) = patch.get_cell(0, 2) else { return };
+    bg.set_op(BgOp {
+        col: rect.x,
+        row: high_y,
+        cell: Cell {
+            id: TileID(bottom_left.id.0 + tile_offset),
+            flags: bottom_left.flags,
+            colors: bottom_left.colors,
+        },
+    });
 
-    //     debug_assert!(map.columns == 1 && map.rows == 2, "invalid patch dimensions");
+    let Some(bottom) = patch.get_cell(1, 2) else { return };
+    for col in rect.x + 1..high_x {
+        bg.set_op(BgOp {
+            col,
+            row: high_y,
+            cell: Cell {
+                id: TileID(bottom.id.0 + tile_offset),
+                flags: bottom.flags,
+                colors: bottom.colors,
+            },
+        });
+    }
 
-    //     let high_x = (rect.x + rect.w).min(i16::MAX); // Prevent overflow
-    //     let high_y = (rect.y + rect.h).min(i16::MAX); // Prevent overflow
+    let Some(bottom_right) = patch.get_cell(2, 2) else { return };
+    bg.set_op(BgOp {
+        col: high_x,
+        row: high_y,
+        cell: Cell {
+            id: TileID(bottom_right.id.0 + tile_offset),
+            flags: bottom_right.flags,
+            colors: bottom_right.colors,
+        },
+    });
+}
 
-    //     let top = map.cells[0];
-    //     for col in rect.x + 1..high_x {
-    //         bg.set_op(BgOp {
-    //             col,
-    //             row: rect.y,
-    //             tile_id: top.id,
-    //             flags: top.flags,
-    //             color_mapping: top.color_mapping,
-    //         });
-    //     }
+/// Draws a text string to a target Tilemap, using a tilemap as a character font.
+/// Returns the resulting height (in rows), if any.
+pub fn draw_text<const LEN: usize>(
+    target: &mut Tilemap<LEN>,
+    target_col: i16,
+    target_row: i16,
+    op: &TextOp,
+    text: &str,
+) -> Option<i16> {
+    debug_assert!(text.is_ascii());
+    let mut cursor_x = 0;
+    let mut cursor_y = 0;
 
-    //     let bottom = map.cells[1];
-    //     for col in rect.x + 1..high_x {
-    //         bg.set_op(BgOp {
-    //             col,
-    //             row: high_y,
-    //             tile_id: bottom.id,
-    //             flags: bottom.flags,
-    //             color_mapping: bottom.color_mapping,
-    //         });
-    //     }
-    // }
-
-    /// Draws a text string to a target Tilemap, using a tilemap as a character font.
-    /// Returns the resulting height (in rows), if any.
-    pub fn draw_text<const LEN: usize>(
-        &mut self,
-        target: &mut Tilemap<LEN>,
-        text: &str,
-        op: TextOp,
-    ) -> Option<i16> {
-        debug_assert!(text.is_ascii());
-        let tileset = self.assets.tilesets.get(op.tileset.0 as usize)?;
-        let tile_start = tileset.tile_start;
-        let mut cursor_x = 0;
-        let mut cursor_y = 0;
-
-        // Helper to draw a single character
-        let mut draw_char = |ch: char, cursor_x: i16, cursor_y: i16| {
-            let char_index = match self.character_set {
-                CharacterSet::Long => char_set_long(ch) as usize,
-                CharacterSet::Short => char_set_short(ch) as usize,
-                CharacterSet::Arcade => char_set_arcade(ch) as usize,
-            };
-            let font_cols = op.font.columns() as usize;
-            let col = char_index % font_cols;
-            let row = char_index / font_cols;
-            if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
-                target.set_op(BgOp {
-                    col: op.col + cursor_x,
-                    row: op.row + cursor_y,
-                    tile_id: TileID(cell.id.0 + tile_start),
-                    flags: cell.flags,
-                    color_mapping: op.color_mapping,
-                });
-            }
+    // Helper to draw a single character
+    let mut draw_char = |ch: char, cursor_x: i16, cursor_y: i16| {
+        let char_index = match op.character_set {
+            CharacterSet::Long => char_set_long(ch) as usize,
+            CharacterSet::Short => char_set_short(ch) as usize,
+            CharacterSet::Arcade => char_set_arcade(ch) as usize,
         };
-
-        let width = op.width.unwrap_or(255);
-        for word in text.split(' ') {
-            if cursor_x + (word.len() as i16) > width {
-                cursor_x = 0;
-                cursor_y += 1;
-            }
-            for ch in word.chars() {
-                draw_char(ch, cursor_x, cursor_y);
-                cursor_x += 1;
-            }
-            if cursor_x >= width {
-                cursor_x = 0;
-                cursor_y += 1;
-            } else {
-                draw_char(' ', cursor_x, cursor_y);
-                cursor_x += 1;
-            }
+        let font_cols = op.font.columns() as usize;
+        let col = char_index % font_cols;
+        let row = char_index / font_cols;
+        if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
+            target.set_op(BgOp {
+                col: target_col + cursor_x,
+                row: target_row + cursor_y,
+                cell: Cell {
+                    id: TileID(cell.id.0 + op.tile_offset), // TODO: This may overflow...
+                    flags: cell.flags,
+                    colors: op.colors,
+                },
+            });
         }
+    };
 
-        // If successful, return number of lines written
-        Some(cursor_y + 1)
-    }
-
-    #[inline(always)]
-    fn get_sprite_tilemap_entry(&self, anim: AnimID) -> Option<TilemapEntry> {
-        if anim.0 == 0 {
-            // AnimID(0) means no animation
-            return None;
+    let width = op.width.unwrap_or(255);
+    for word in text.split(' ') {
+        if cursor_x + (word.len() as i16) > width {
+            cursor_x = 0;
+            cursor_y += 1;
         }
-        let anim_entry = self.assets.anim_entries.get(anim.0 as usize)?;
-        let strip_entry = self.assets.strip_entries.get(anim_entry.strip.0 as usize)?;
-
-        let base_index = self.get_frame_from_anim_entry(anim_entry);
-        let frames = self.assets.arena.get_slice(anim_entry.frames).ok()?;
-        let anim_index = frames.get(base_index)?;
-        let start_index = strip_entry.start_index;
-        let index = start_index + anim_index;
-        let map_entry = self.assets.map_entries.get(index as usize)?;
-        Some(*map_entry)
+        for ch in word.chars() {
+            draw_char(ch, cursor_x, cursor_y);
+            cursor_x += 1;
+        }
+        if cursor_x >= width {
+            cursor_x = 0;
+            cursor_y += 1;
+        } else {
+            draw_char(' ', cursor_x, cursor_y);
+            cursor_x += 1;
+        }
     }
 
-    // Internal way to get the current frame from an already obtained AnimEntry
-    #[inline(always)]
-    fn get_frame_from_anim_entry(&self, anim: &AnimEntry) -> usize {
-        assert!(anim.fps > 0, "Animation FPS must be higher than zero");
-        let frame_duration = 1.0 / anim.fps as f32;
-        ((self.time() as f32 / frame_duration) % anim.frames.len() as f32) as usize
-    }
+    // If successful, return number of lines written
+    Some(cursor_y + 1)
 }

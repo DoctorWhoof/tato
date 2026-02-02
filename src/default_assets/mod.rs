@@ -1,11 +1,11 @@
-mod font_arcade;
-pub use font_arcade::*;
+// Auto-generated mod.rs - exports all generated modules
 
-mod font_long;
+pub mod font_long;
+pub mod font_short;
+pub mod font_arcade;
+pub mod default_tiles;
+
 pub use font_long::*;
-
-mod font_short;
 pub use font_short::*;
-
-mod default_tiles;
+pub use font_arcade::*;
 pub use default_tiles::*;

@@ -2,23 +2,26 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-pub const DEFAULT_TILESET: TilesetData = TilesetData {
-    tiles: Some(&DEFAULT_TILES),
-    colors: None,
-    color_mappings: None,
-};
+pub const BANK_DEFAULT: Bank = Bank { colors: COLORS_DEFAULT, tiles: TILES_DEFAULT };
 
-pub const TILE_EMPTY: TileID = TileID(0);
-pub const TILE_CHECKERS: TileID = TileID(1);
-pub const TILE_SOLID: TileID = TileID(0);
-pub const TILE_CROSSHAIRS: TileID = TileID(2);
-pub const TILE_ARROW: TileID = TileID(3);
-pub const TILE_SMILEY: TileID = TileID(4);
+pub const COLORS_DEFAULT: ColorBank = ColorBank::new_from(&[
+    RGBA12::with_transparency(0, 0, 0, 0),
+    RGBA12::with_transparency(0, 0, 0, 7),
+    RGBA12::with_transparency(3, 3, 3, 7),
+    RGBA12::with_transparency(7, 7, 7, 7),
+]);
 
-pub const DEFAULT_TILES: [Tile<4>; 5] = [
-    Tile::new(0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000),
-    Tile::new(0x0000111100001111, 0x0000111100001111, 0x2222333322223333, 0x2222333322223331),
-    Tile::new(0x0000000100000000, 0x0000000000000000, 0x0000000000000000, 0x0000000110000011),
-    Tile::new(0x0002000000222000, 0x0222220022222220, 0x0022200000222000, 0x0022200000222000),
-    Tile::new(0x0022220002222220, 0x2232232222322322, 0x2222222222111122, 0x0221122000222200),
-];
+pub const TILES_DEFAULT: TileBank = TileBank::new_from(&[
+    Tile::<2>::new(0x0000000000000000, 0x0000000000000000),
+    Tile::<2>::new(0x0055005500550055, 0xAAFFAAFFAAFFAAFD),
+    Tile::<2>::new(0x0001000000000000, 0x0000000000014005),
+    Tile::<2>::new(0x0100054015505554, 0x0540054005400540),
+    Tile::<2>::new(0x0AA02AA8AEBAAEBA, 0xAAAAA55A29680AA0),
+]);
+
+pub const TILE_EMPTY: Cell = Cell::new(0, 0, 0);
+pub const TILE_CHECKERS: Cell = Cell::new(1, 0, 291);
+pub const TILE_SOLID: Cell = Cell::new(0, 0, 4096);
+pub const TILE_CROSSHAIRS: Cell = Cell::new(2, 0, 256);
+pub const TILE_ARROW: Cell = Cell::new(3, 0, 512);
+pub const TILE_SMILEY: Cell = Cell::new(4, 0, 291);

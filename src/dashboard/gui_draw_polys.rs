@@ -61,15 +61,24 @@ impl Dashboard {
                         let current = points[j];
                         let next = points[j + 1];
 
-                        let handle = frame_arena
-                            .alloc(DrawOp::Line {
-                                x1: ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
-                                y1: ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
-                                x2: ((next.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x,
-                                y2: ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y,
-                                color: poly.color.into(),
-                            })
-                            .unwrap();
+                        let x1 = ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x + 1;
+                        let y1 = ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y + 1;
+                        let x2 = ((next.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x + 1;
+                        let y2 = ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y + 1;
+
+                        let handle = if poly.clip_to_view {
+                            let x1 = x1.clamp(canvas_rect.left(), canvas_rect.right());
+                            let y1 = y1.clamp(canvas_rect.top(), canvas_rect.bottom());
+                            let x2 = x2.clamp(canvas_rect.left(), canvas_rect.right());
+                            let y2 = y2.clamp(canvas_rect.top(), canvas_rect.bottom());
+                            frame_arena
+                                .alloc(DrawOp::Line { x1, y1, x2, y2, color: poly.color.into() })
+                                .unwrap()
+                        } else {
+                            frame_arena
+                                .alloc(DrawOp::Line { x1, y1, x2, y2, color: poly.color.into() })
+                                .unwrap()
+                        };
                         self.ops
                             .push(frame_arena, handle)
                             .expect("Dashboard: Can't insert World poly");

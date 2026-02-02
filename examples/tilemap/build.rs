@@ -2,24 +2,24 @@ use tato_pipe::*;
 
 fn main() {
     init_build(BuildSettings {
-        asset_import_path: "import".into(), //
+        asset_import_path: "import".into(),
+        asset_export_path: "src/assets".into(),
+        clear_export_path: false,
         force_reprocess: true,
     });
 
-    // Shared groups across tilesets
-    let mut groups = GroupBuilder::new();
+    // Shared across banks
     let mut palette = PaletteBuilder::new("patch");
 
     // 9 Patch
-    let mut tileset_patch = TilesetBuilder::new("patch", &mut palette, &mut groups);
-    tileset_patch.new_map("import/patch.png", "PATCH_MAP");
-    tileset_patch.write("src/patch.rs");
+    let mut bank_patch = BankBuilder::new("PATCH", &mut palette);
+    bank_patch.new_map("patch.png", "PATCH");
+    bank_patch.write("patch.rs");
 
-    // Smileys
-    let mut tileset_smileys = TilesetBuilder::new("smileys", &mut palette, &mut groups);
-    tileset_smileys.new_map("import/smileys.png", "SMILEYS_MAP");
-    tileset_smileys.write("src/smileys.rs");
+    // // Smileys
+    let mut bank_smileys = BankBuilder::new("SMILEYS", &mut palette);
+    bank_smileys.new_map("smileys.png", "SMILEYS");
+    bank_smileys.write("smileys.rs");
 
-    // Write groups to their own file
-    groups.write("src/groups.rs");
+    finalize_build();
 }

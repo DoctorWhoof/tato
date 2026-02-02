@@ -1,3 +1,4 @@
+#![no_std]
 use tato_video::DynTilemap;
 
 #[derive(Debug, Clone)]

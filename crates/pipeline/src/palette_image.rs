@@ -1,35 +1,55 @@
-use minipng::ImageData;
-// use image::{DynamicImage, ImageReader};
+//! Image loading and palette conversion utilities.
+
 use tato_video::*;
 
 use super::*;
 
-/// Stores a palettized version of an image as well as layout data (frame count, columns and rows per frame).
-/// Uses an external palette and color map to ensure consistency accross many image sources.
+/// Image converted to palette indices with frame layout metadata.
 #[derive(Debug)]
 pub(crate) struct PalettizedImg {
-    // pub asset_name: String,
+    /// Horizontal frame count.
     pub frames_h: u8,
+    /// Vertical frame count.
     pub frames_v: u8,
+    /// Tile columns per frame.
     pub cols_per_frame: u8,
+    /// Tile rows per frame.
     pub rows_per_frame: u8,
+    /// Image width in pixels.
     pub width: usize,
+    /// Palette-indexed pixel data.
     pub pixels: Vec<u8>,
 }
 
 impl PalettizedImg {
+    /// Creates an empty 8x8 transparent image.
+    pub fn empty(palette: &mut PaletteBuilder) -> Self {
+        let pixels = vec![0_u8; TILE_PIXEL_COUNT * 4];
+        PalettizedImg {
+            // asset_name,
+            frames_h: 1,
+            frames_v: 1,
+            cols_per_frame: 1,
+            rows_per_frame: 1,
+            width: 8,
+            pixels: Self::palletize(pixels.as_slice(), 8, 8, palette),
+        }
+    }
+
+    /// Loads a PNG and converts it to palette indices.
     pub fn from_image(
         file_name: &str,
         frames_h: u8,
         frames_v: u8,
         palette: &mut PaletteBuilder,
     ) -> PalettizedImg {
+
         let split = file_name.split('/');
         let last = split.last().unwrap().to_string();
         let mut last_split = last.split('.');
         let asset_name = last_split.next().unwrap().to_string();
 
-        println!("cargo:warning=Converting image {}", asset_name);
+        println!("cargo:warning=Converting image '{}' at path: {}", asset_name, file_name);
         let img_bytes = std::fs::read(file_name).unwrap();
         let img_header =
             minipng::decode_png_header(img_bytes.as_slice()).expect("Invalid PNG file");
@@ -56,8 +76,8 @@ impl PalettizedImg {
         let rows_per_frame = (img_rgba.height() / frames_v as u32) / TILE_SIZE as u32;
 
         println!("cargo:warning= Tilifying '{}'", asset_name);
-        println!("cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
-        println!("frames_h: {}, frames_v: {}", frames_h, frames_v);
+        println!("cargo:warning=cols per frame: {}, rows per frame: {}", cols_per_frame, rows_per_frame);
+        println!("cargo:warning=frames_h: {}, frames_v: {}", frames_h, frames_v);
 
         PalettizedImg {
             // asset_name,
@@ -66,24 +86,32 @@ impl PalettizedImg {
             cols_per_frame: u8::try_from(cols_per_frame).unwrap(),
             rows_per_frame: u8::try_from(rows_per_frame).unwrap(),
             width,
-            pixels: Self::palletize(img_rgba, palette),
+            pixels: Self::palletize(
+                img_rgba.pixels(),
+                img_rgba.width(),
+                img_rgba.height(),
+                palette,
+            ),
         }
     }
 
-    // Creates a palettized image from a source RGBA image, populates the palette.
-    pub fn palletize(img: ImageData, palette: &mut PaletteBuilder) -> Vec<u8> {
+    /// Converts RGBA pixels to palette indices, adding new colors as needed.
+    pub fn palletize(
+        img_pixels: &[u8],
+        width: u32,
+        height: u32,
+        palette: &mut PaletteBuilder,
+    ) -> Vec<u8> {
         let mut pixels = vec![];
-        for y in 0..img.height() as usize {
-            for x in 0..img.width() as usize {
+        for y in 0..height as usize {
+            for x in 0..width as usize {
                 let color_index = {
-                    let buf = img.pixels();
-                    // let buf = img.as_bytes();
-                    let index = x + (y * img.width() as usize);
+                    let index = x + (y * width as usize);
                     let buf_index = index * 4;
-                    let r = buf[buf_index];
-                    let g = buf[buf_index + 1];
-                    let b = buf[buf_index + 2];
-                    let a = buf[buf_index + 3];
+                    let r = img_pixels[buf_index];
+                    let g = img_pixels[buf_index + 1];
+                    let b = img_pixels[buf_index + 2];
+                    let a = img_pixels[buf_index + 3];
 
                     let rgb_color = if a < 255 {
                         // Ensures all transp. color_map are always the same in the hashmap.

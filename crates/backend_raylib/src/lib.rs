@@ -85,7 +85,7 @@ impl RayBackend {
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
-        for _ in 0..TILE_BANK_COUNT {
+        for _ in 0..BANK_COUNT {
             // Each texture ID is the same as the bank
             result.create_texture(size, size);
         }
@@ -273,7 +273,8 @@ impl Backend for RayBackend {
         &mut self,
         frame_arena: &'a mut A,
         tato: &'a Tato,
-        bg_banks: &[&'a T],
+        banks: &'a [Bank],
+        tilemaps: &'a [&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,
         A: ArenaOps<u32, ()>,
@@ -290,7 +291,7 @@ impl Backend for RayBackend {
         );
 
         // Copy pixels from video chip
-        for (i, color) in tato.iter_pixels(bg_banks).enumerate() {
+        for (i, color) in tato.video.iter_pixels(banks, tilemaps).enumerate() {
             let index = i * 4;
             self.pixels[index] = color.r;
             self.pixels[index + 1] = color.g;
@@ -400,7 +401,7 @@ impl Backend for RayBackend {
             }
         }
 
-        // Time to queue all backed drawing, does not include actual render time,
+        // Time to queue all backend drawing, does not include actual render time,
         // which will happen when this function returns
         self.buffer_canvas_time.push(time_queue.elapsed().as_secs_f32());
 

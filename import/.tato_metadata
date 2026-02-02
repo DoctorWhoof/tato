@@ -1,9 +1,9 @@
-import/tile_smiley.png=1766123782
-import/tile_empty.png=1758486760
-import/font_arcade.png=1757219830
-import/font_short.png=1757220318
-import/tile_checkers.png=1750298717
 import/font_long.png=1747281934
-import/tile_crosshairs.png=1754369462
-import/tile_arrow.png=1766123782
+import/font_short.png=1757220318
 import/tile_solid.png=1750298676
+import/tile_checkers.png=1750298717
+import/font_arcade.png=1757219830
+import/tile_arrow.png=1766123782
+import/tile_empty.png=1758486760
+import/tile_smiley.png=1766123782
+import/tile_crosshairs.png=1754369462

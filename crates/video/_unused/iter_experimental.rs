@@ -29,8 +29,8 @@ pub struct PixelIter<'a> {
     pub fg_tile_bank: u8,
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
-    pub tile_banks: [&'a VideoBank<TILE_COUNT>; TILE_BANK_COUNT],
-    pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
+    pub tile_banks: [&'a VideoBank<TILE_COUNT>; BANK_COUNT],
+    pub tilemaps: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
     pub bg_color: RGBA12, // Background color
@@ -49,10 +49,10 @@ impl<'a> PixelIter<'a> {
     {
         assert!(!video_mem.is_empty(), err!("Video Memory bank can't be empty"));
         assert!(
-            video_mem.len() <= TILE_BANK_COUNT,
+            video_mem.len() <= BANK_COUNT,
             err!("Video Memory bank count ({}) exceeds maximum ({})"),
             video_mem.len(),
-            TILE_BANK_COUNT
+            BANK_COUNT
         );
         assert!(!bg_maps.is_empty(), err!("BG Maps can't be empty"));
         assert!(
@@ -65,7 +65,7 @@ impl<'a> PixelIter<'a> {
         let mut result = Self {
             vid,
             tile_banks: from_fn(|i| if i < video_mem.len() { video_mem[i] } else { video_mem[0] }),
-            bg_banks: from_fn(|i| {
+            tilemaps: from_fn(|i| {
                 if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }
             }),
             fg_tile_bank: vid.fg_tile_bank,
@@ -112,7 +112,7 @@ impl<'a> PixelIter<'a> {
     #[inline(always)]
     fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
-            let bg_map = self.bg_banks[self.bg_map_bank as usize];
+            let bg_map = self.tilemaps[self.bg_map_bank as usize];
             func(self, self.vid, &bg_map);
         }
     }
@@ -232,7 +232,7 @@ impl<'a> PixelIter<'a> {
 
     #[inline(always)]
     fn pre_render_background(&mut self, y: usize, view_left: usize, view_right: usize, width: u16) {
-        let bg = self.bg_banks[self.bg_map_bank as usize];
+        let bg = self.tilemaps[self.bg_map_bank as usize];
         let bank = self.tile_banks[self.bg_tile_bank as usize];
 
         // Pre-calculate Y coordinates once

@@ -31,9 +31,7 @@ pub struct Tilemap<const CELL_COUNT: usize> {
 pub struct BgOp {
     pub col: i16,
     pub row: i16,
-    pub tile_id: TileID,
-    pub flags: TileFlags,
-    pub color_mapping: u8
+    pub cell: Cell
 }
 
 impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
@@ -77,9 +75,7 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
 
     pub fn set_op(&mut self, op: BgOp) {
         if let Some(index) = self.get_index(op.col, op.row) {
-            self.cells[index].id = op.tile_id;
-            self.cells[index].flags = op.flags;
-            self.cells[index].color_mapping = op.color_mapping;
+            self.cells[index] = op.cell;
         }
     }
 
@@ -103,12 +99,11 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    pub fn set_color_mapping(&mut self, col: i16, row: i16, color_mapping:u8) {
+    pub fn set_colors(&mut self, col: i16, row: i16, colors:Palette) {
         if let Some(index) = self.get_index(col, row) {
-            self.cells[index].color_mapping = color_mapping;
+            self.cells[index].colors = colors;
         }
     }
-
     /// Copies a rectangular region from a cells array to this tilemap.
     /// - If `src_rect` is None, attempts to copy the entire source tilemap.
     /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
@@ -120,6 +115,7 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         rows: u16,
         src_rect: Option<Rect<u16>>,
         dst_rect: Option<Rect<u16>>,
+        tile_offset: u8,
     ) {
         // Determine source rectangle
         let src_x = src_rect.map_or(0, |r| r.x) as i16;
@@ -134,6 +130,8 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         // Determine destination rectangle
         let dst_x = dst_rect.map_or(0, |r| r.x) as i16;
         let dst_y = dst_rect.map_or(0, |r| r.y) as i16;
+        let dst_w = dst_rect.map_or(self.columns, |r| r.w) as i16;
+        let dst_h = dst_rect.map_or(self.rows, |r| r.h) as i16;
 
         // Calculate clipping for negative coordinates
         let clip_x = if dst_x < 0 { -dst_x } else { 0 };
@@ -145,9 +143,9 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
 
         // Calculate effective width and height after clipping
         let effective_width =
-            i16::max(0, i16::min(src_w - clip_x, self.columns as i16 - effective_dst_x));
+            i16::max(0, i16::min(i16::min(src_w - clip_x, dst_w - clip_x), self.columns as i16 - effective_dst_x));
         let effective_height =
-            i16::max(0, i16::min(src_h - clip_y, self.rows as i16 - effective_dst_y));
+            i16::max(0, i16::min(i16::min(src_h - clip_y, dst_h - clip_y), self.rows as i16 - effective_dst_y));
 
         // If there's nothing to copy (zero width or height), return early
         if effective_width <= 0 || effective_height <= 0 {
@@ -155,8 +153,8 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
 
         // Calculate effective src positions (accounting for clipping)
-        let effective_src_x = clip_x;
-        let effective_src_y = clip_y;
+        let effective_src_x = src_x + clip_x;
+        let effective_src_y = src_y + clip_y;
 
         // Copy the tiles row by row
         for y in 0..effective_height {
@@ -165,7 +163,9 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
                     + (effective_src_x + x) as usize;
                 let dst_index = (effective_dst_y + y) as usize * self.columns as usize
                     + (effective_dst_x + x) as usize;
-                self.cells[dst_index] = cells[src_index];
+                let mut cell = cells[src_index];
+                cell.id = TileID(cell.id.0 + tile_offset);
+                self.cells[dst_index] = cell;
             }
         }
     }
@@ -179,8 +179,9 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         src: &dyn DynTilemap,
         src_rect: Option<Rect<u16>>,
         dst_rect: Option<Rect<u16>>,
+        tile_offset: u8
     ) {
-        self.copy_from_cells(src.cells(), src.columns(), src.rows(), src_rect, dst_rect);
+        self.copy_from_cells(src.cells(), src.columns(), src.rows(), src_rect, dst_rect, tile_offset);
     }
 }
 

@@ -1,3 +1,5 @@
+#![no_std]
+
 //! A simple LFSR with configurable bit count.
 #[derive(Debug)]
 pub struct Rng {

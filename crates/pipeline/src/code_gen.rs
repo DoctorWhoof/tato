@@ -1,72 +1,71 @@
+//! Code generation utilities for writing Rust source files.
+
 use std::fs::File;
 use std::io::Write;
 
+/// Writes formatted Rust code to output files.
 pub struct CodeWriter {
     output_file: File,
     indentation: usize,
 }
 
-/// Formats a Cell using the compact Cell::new() constructor syntax
-pub fn format_cell_compact(cell: &tato_video::Cell) -> String {
-    format!("Cell::new({}, {}, {}, {})", cell.id.0, cell.flags.0, cell.color_mapping, cell.group)
+/// Formats a Cell as a compact constructor call.
+pub(crate) fn format_cell_compact(cell: &tato_video::Cell) -> String {
+    format!("Cell::new({}, {}, {})", cell.id.0, cell.flags.0, cell.colors.0)
 }
 
-/// Formats a Tile using the compact Tile::new() constructor syntax for 4-bit pixels
-pub fn format_tile_compact(tile_pixels: &[u8]) -> String {
+/// Formats a Tile as a compact constructor with packed 2-bit pixels.
+pub(crate) fn format_tile_compact(tile_pixels: &[u8]) -> String {
     assert_eq!(tile_pixels.len(), 64, "Tile must have exactly 64 pixels");
 
-    let mut data = [0u64; 4];
+    let mut data = [0u64; 2];
 
-    // With 4 bits per pixel and 8x8 tile:
-    // - Each row (cluster) has 8 pixels = 32 bits = 4 bytes
-    // - Each u64 can hold 2 clusters (8 bytes)
-    // - data[0] = rows 0-1, data[1] = rows 2-3, data[2] = rows 4-5, data[3] = rows 6-7
+    // With 2 bits per pixel and 8x8 tile:
+    // - Each row (cluster) has 8 pixels = 16 bits = 2 bytes
+    // - Each u64 can hold 4 clusters (8 bytes)
+    // - data[0] = rows 0-3, data[1] = rows 4-7
     for row in 0..8 {
         // Determine which u64 this row belongs to
-        let data_idx = row / 2;
+        let data_idx = row / 4;
 
-        // Determine position within the u64 (first or second cluster)
-        let cluster_in_u64 = row % 2;
+        // Determine position within the u64 (which of 4 clusters)
+        let cluster_in_u64 = row % 4;
 
-        // Pack the 8 pixels of this row into 4 bytes
+        // Pack the 8 pixels of this row into 2 bytes
         for col in 0..8 {
             let pixel_idx = row * 8 + col;
-            let pixel_val = tile_pixels[pixel_idx] & 0x0F; // Ensure 4-bit pixel (0-15)
+            let pixel_val = tile_pixels[pixel_idx] & 0x03; // Ensure 2-bit pixel (0-3)
 
             // Calculate bit position within the u64
-            // First cluster uses bits 63-32, second cluster uses bits 31-0
-            let byte_offset = if cluster_in_u64 == 0 {
-                // First cluster: bytes 7,6,5,4 (bits 63-32)
-                7 - (col / 2)
-            } else {
-                // Second cluster: bytes 3,2,1,0 (bits 31-0)
-                3 - (col / 2)
-            };
-
-            let bit_offset = byte_offset * 8 + (1 - (col % 2)) * 4;
+            // Clusters are stored from high to low: cluster 0 at bits 63-48, cluster 3 at bits 15-0
+            let byte_offset = 7 - (cluster_in_u64 * 2) - (col / 4);
+            let bit_offset = byte_offset * 8 + (3 - (col % 4)) * 2;
 
             data[data_idx] |= (pixel_val as u64) << bit_offset;
         }
     }
 
     format!(
-        "Tile::new(0x{:016X}, 0x{:016X}, 0x{:016X}, 0x{:016X})",
-        data[0], data[1], data[2], data[3]
+        "Tile::<2>::new(0x{:016X}, 0x{:016X})",
+        data[0], data[1]
     )
 }
 
 impl CodeWriter {
+    /// Creates a new writer for the given file path.
     pub fn new(path: &str) -> Self {
         let file = File::create(path).expect("Could not create output file");
         Self { output_file: file, indentation: 0 }
     }
 
+    /// Writes a line with current indentation.
     pub fn write_line(&mut self, line: &str) {
         let indent = " ".repeat(self.indentation);
         writeln!(self.output_file, "{}{}", indent, line).expect("Failed to write to output file");
     }
 
-    pub fn write_header(&mut self, allow_unused: bool, use_crate_assets: bool) {
+    /// Writes the file header with optional attributes and imports.
+    pub fn write_header(&mut self, allow_unused: bool, use_crate_assets: bool, default_imports: bool) {
         // Removed timestamp to prevent too many unnecessary git changes
         // let timestamp = generate_timestamp();
         // self.write_line(&format!(
@@ -79,16 +78,19 @@ impl CodeWriter {
             self.write_line("#![allow(unused)]");
         }
 
-        if use_crate_assets {
-            self.write_line("use crate::prelude::*;");
-        } else {
-            self.write_line("use tato::prelude::*;");
+        if default_imports {
+            if use_crate_assets {
+                self.write_line("use crate::prelude::*;");
+            } else {
+                self.write_line("use tato::prelude::*;");
+            }
         }
 
         self.write_line("");
         self.write_line("");
     }
 
+    /// Writes a const array of RGBA12 colors.
     pub fn write_color_array(&mut self, name: &str, colors: &[tato_video::RGBA12]) {
         if colors.is_empty() {
             return;
@@ -114,15 +116,12 @@ impl CodeWriter {
         self.write_line("");
     }
 
-    pub fn write_group_constant(&mut self, name: &str, group_index: u8) {
-        let group_value = 1u16 << (group_index - 1); // Convert 1-based index to bit value
-        self.write_line(&format!("pub const {}: u8 = {};", name.to_uppercase(), group_value));
-    }
-
+    /// Writes a single Cell entry.
     pub fn write_cell(&mut self, cell: &tato_video::Cell) {
         self.write_line(&format!("        {},", format_cell_compact(cell)));
     }
 
+    /// Runs rustfmt on the output file.
     pub fn format_output(&self, file_path: &str) {
         use std::process::Command;
         let output = Command::new("rustfmt").arg(file_path).output();

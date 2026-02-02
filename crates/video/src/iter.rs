@@ -26,11 +26,11 @@ pub struct PixelIter<'a> {
     pub fg_tile_bank: u8,
     pub bg_tile_bank: u8,
     pub bg_map_bank: u8,
-    pub tile_banks: [&'a VideoBank<TILE_COUNT>; TILE_BANK_COUNT],
-    pub bg_banks: [TilemapRef<'a>; BG_BANK_COUNT],
+    pub tile_banks: [&'a Bank; BANK_COUNT],
+    pub tilemaps: [TilemapRef<'a>; BG_BANK_COUNT],
     pub scroll_x: i16,
     pub scroll_y: i16,
-    pub bg_color: RGBA12, // Background color
+    pub bg_color: RGBA12,   // Background color
     pub crop_color: RGBA12, // Crop color (outside viewport)
 
     // Dual buffers for parallel processing
@@ -39,20 +39,16 @@ pub struct PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new<T>(
-        vid: &'a VideoChip,
-        video_mem: &[&'a VideoBank<TILE_COUNT>],
-        bg_maps: &[&'a T],
-    ) -> Self
+    pub fn new<T>(vid: &'a VideoChip, video_mem: &'a [Bank], bg_maps: &'a [&'a T]) -> Self
     where
         &'a T: Into<TilemapRef<'a>>,
     {
         assert!(!video_mem.is_empty(), err!("Video Memory bank can't be empty"));
         assert!(
-            video_mem.len() <= TILE_BANK_COUNT,
+            video_mem.len() <= BANK_COUNT,
             err!("Video Memory bank count ({}) exceeds maximum ({})"),
             video_mem.len(),
-            TILE_BANK_COUNT
+            BANK_COUNT
         );
         assert!(!bg_maps.is_empty(), err!("BG Maps can't be empty"));
         assert!(
@@ -63,8 +59,8 @@ impl<'a> PixelIter<'a> {
         );
         let mut result = Self {
             vid,
-            tile_banks: from_fn(|i| if i < video_mem.len() { video_mem[i] } else { video_mem[0] }),
-            bg_banks: from_fn(|i| {
+            tile_banks: from_fn(|i| if i < video_mem.len() { &video_mem[i] } else { &video_mem[0] }),
+            tilemaps: from_fn(|i| {
                 if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }
             }),
             fg_tile_bank: vid.fg_tile_bank,
@@ -103,13 +99,13 @@ impl<'a> PixelIter<'a> {
     #[inline]
     fn call_line_irq(&mut self) {
         if let Some(func) = self.irq_y {
-            let bg_map = self.bg_banks[self.bg_map_bank as usize];
+            let bg_map = self.tilemaps[self.bg_map_bank as usize];
             func(self, self.vid, &bg_map);
         }
     }
 
     #[inline]
-    fn generate_bg_color(y:u16, vid:&VideoChip) -> [RGBA12;MAX_RESOLUTION_X]  {
+    fn generate_bg_color(y: u16, vid: &VideoChip) -> [RGBA12; MAX_RESOLUTION_X] {
         if y < vid.view_top || y > vid.view_bottom {
             [vid.crop_color.with_z(Z_BG); MAX_RESOLUTION_X]
         } else {
@@ -236,7 +232,7 @@ impl<'a> PixelIter<'a> {
             let flip_x = sprite.flags.is_flipped_x();
             let flip_y = sprite.flags.is_flipped_y();
             let rotated = sprite.flags.is_rotated();
-            let tile = &bank.tiles[sprite.id.0 as usize];
+            let tile = &bank.tiles.tiles[sprite.id.0 as usize];
             // let color_mapping = sprite.color_mapping;
 
             // Render sprite pixels - only in active slots!
@@ -271,10 +267,9 @@ impl<'a> PixelIter<'a> {
                     (tx, ty)
                 };
 
-                let pixel = tile.get_pixel(tx as u8, ty as u8) as usize;
-                let map_index = sprite.color_mapping as usize;
-                let mapped_pixel = bank.color_mapping[map_index][pixel] as usize;
-                let color = bank.palette[mapped_pixel];
+                let pixel = tile.get_pixel(tx as u8, ty as u8);
+                let color_index = sprite.colors.get(pixel);
+                let color = bank.colors.palette[color_index as usize];
 
                 if color.a() > 0 {
                     self.sprite_buffer[x] = color.with_z(Z_SPRITE);
@@ -287,7 +282,7 @@ impl<'a> PixelIter<'a> {
     fn pre_render_background(&mut self, width: u16) {
         // Reset x position for iteration
         self.x = 0;
-        let bg = self.bg_banks[self.bg_map_bank as usize];
+        let bg = self.tilemaps[self.bg_map_bank as usize];
         let line_y = self.y as i16;
         let bank = self.tile_banks[self.bg_tile_bank as usize];
 
@@ -375,11 +370,11 @@ impl<'a> PixelIter<'a> {
             }
 
             // Get the tile cluster for this row
-            let tile = &bank.tiles[bg_tile_id];
+            let tile = &bank.tiles.tiles[bg_tile_id];
             let bg_cluster = Cluster::from_tile(&tile.clusters, bg_flags, tile_y, TILE_SIZE);
 
             // Pre-fetch palette data
-            let palette = &bank.palette;
+            let palette = &bank.colors.palette;
             let is_fg = bg_flags.is_fg();
             let bg_color = self.bg_color;
 
@@ -404,16 +399,18 @@ impl<'a> PixelIter<'a> {
                 let chunks = pixels_to_process / 4;
                 let remainder = pixels_to_process % 4;
 
-                let remap_id = bg_cell.color_mapping as usize;
+                // let remap_id = bg_cell.color_mapping as usize;
 
                 for chunk in 0..chunks {
                     let base_idx = chunk * 4;
                     for i in 0..4 {
                         let tile_x = tile_x_start + (base_idx + i) as u8;
                         let color_idx =
-                            bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                        let mapped_idx = bank.color_mapping[remap_id][color_idx] as usize;
-                        let color = palette[mapped_idx];
+                            bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
+                        let mapped_idx = bg_cell.colors.get(color_idx);
+                        // let mapped_idx = bank.colors[remap_id][color_idx] as usize;
+                        // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
+                        let color = palette[mapped_idx as usize];
 
                         let final_color = if color.a() > 0 {
                             let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };
@@ -430,9 +427,10 @@ impl<'a> PixelIter<'a> {
                 for i in 0..remainder {
                     let idx = chunks * 4 + i;
                     let tile_x = tile_x_start + idx as u8;
-                    let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER) as usize;
-                    let mapped_idx = bank.color_mapping[remap_id][color_idx] as usize;
-                    let color = palette[mapped_idx];
+                    let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
+                    let mapped_idx = bg_cell.colors.get(color_idx);
+                    // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;
+                    let color = palette[mapped_idx as usize];
 
                     let final_color = if color.a() > 0 {
                         let z_value = if is_fg { Z_BG_FOREGROUND } else { Z_BG_TILE };

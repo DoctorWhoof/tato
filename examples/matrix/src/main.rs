@@ -5,13 +5,14 @@
 // const COLUMNS: usize = 40;
 // const ROWS: usize = 64;
 
-fn main() -> tato::TatoResult<()> {
+fn main() {
+// fn main() -> tato::TatoResult<()> {
     // // Init
     // let mut tato = Tato::new(320, 240, 60);
     // tato.video.bg_color = RGBA12::BLACK;
-    // let color_bg = tato.banks[0].push_color(RGBA12::with_transparency(0, 0, 0, 0));
-    // let color_green_dark = tato.banks[0].push_color(RGBA12::new(0, 3, 1));
-    // let color_green_light = tato.banks[0].push_color(RGBA12::new(1, 7, 3));
+    // let color_bg = banks[0].push_color(RGBA12::with_transparency(0, 0, 0, 0));
+    // let color_green_dark = banks[0].push_color(RGBA12::new(0, 3, 1));
+    // let color_green_light = banks[0].push_color(RGBA12::new(1, 7, 3));
 
     // let mut bg = Tilemap::<2560>::new(COLUMNS as u16, ROWS as u16);
     // let tileset = tato.push_tileset(0, FONT_LONG_TILESET).unwrap();
@@ -64,7 +65,7 @@ fn main() -> tato::TatoResult<()> {
     //     backend.frame_present(&mut temp, &tato, &[&bg]);
     // }
 
-    Ok(())
+    // Ok(())
 }
 
 // -----------------------------------------------------------------------------
