@@ -35,6 +35,8 @@ fn main() -> TatoResult<()> {
     tato.video.bg_tile_bank = BANK_BG;
     tato.video.fg_tile_bank = BANK_FG;
 
+    dash.color_grid = RGBA12::with_transparency(5, 5, 5, 3);
+
     // Entities - sprite info
     let sprite_w = 16;
     let sprite_h = 16;
@@ -103,7 +105,7 @@ fn main() -> TatoResult<()> {
                     flip_x: entity.flip,
                     flip_y: false,
                     tile_offset: 0,
-                    palette_override: None
+                    palette_override: None,
                 },
             );
         }

@@ -23,15 +23,37 @@ impl Dashboard {
                     let current = points[j];
                     let next = points[j + 1];
 
-                    let handle = frame_arena
-                        .alloc(DrawOp::Line {
-                            x1: current.x,
-                            y1: current.y,
-                            x2: next.x,
-                            y2: next.y,
-                            color: poly.color.into(),
-                        })
-                        .unwrap();
+                    let handle = if poly.clip_to_view && self.canvas_rect.is_some() {
+                        // TODO: Intersect line with rect to find where it starts inside
+                        // view, instead of clamping
+                        let Some(rect) = self.canvas_rect else {
+                            continue;
+                        };
+                        if (current.x < rect.left() && next.x < rect.left())
+                            || (current.x > rect.right() && next.x > rect.right())
+                            || (current.y < rect.top() && next.y < rect.top())
+                            || (current.y > rect.bottom() && next.y > rect.bottom())
+                        {
+                            continue;
+                        }
+                        let x1 = current.x.clamp(rect.left(), rect.right() - 2);
+                        let y1 = current.y.clamp(rect.top(), rect.bottom() - 2);
+                        let x2 = next.x.clamp(rect.left(), rect.right() - 2);
+                        let y2 = next.y.clamp(rect.top(), rect.bottom() - 2);
+                        frame_arena
+                            .alloc(DrawOp::Line { x1, y1, x2, y2, color: poly.color.into() })
+                            .unwrap()
+                    } else {
+                        frame_arena
+                            .alloc(DrawOp::Line {
+                                x1: current.x,
+                                y1: current.y,
+                                x2: next.x,
+                                y2: next.y,
+                                color: poly.color.into(),
+                            })
+                            .unwrap()
+                    };
                     self.ops.push(frame_arena, handle).expect("Dashboard: Can't insert GUI poly");
                 }
             }
@@ -67,10 +89,19 @@ impl Dashboard {
                         let y2 = ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y + 1;
 
                         let handle = if poly.clip_to_view {
-                            let x1 = x1.clamp(canvas_rect.left(), canvas_rect.right());
-                            let y1 = y1.clamp(canvas_rect.top(), canvas_rect.bottom());
-                            let x2 = x2.clamp(canvas_rect.left(), canvas_rect.right());
-                            let y2 = y2.clamp(canvas_rect.top(), canvas_rect.bottom());
+                            if (x1 < canvas_rect.left() && x2 < canvas_rect.left())
+                                || (x1 > canvas_rect.right() && x2 > canvas_rect.right())
+                                || (y1 < canvas_rect.top() && y2 < canvas_rect.top())
+                                || (y1 > canvas_rect.bottom() && y2 > canvas_rect.bottom())
+                            {
+                                continue;
+                            }
+                            // TODO: Intersect line with rect to find where it starts inside
+                            // view, instead of clamping
+                            let x1 = x1.clamp(canvas_rect.left(), canvas_rect.right() - 2);
+                            let y1 = y1.clamp(canvas_rect.top(), canvas_rect.bottom() - 2);
+                            let x2 = x2.clamp(canvas_rect.left(), canvas_rect.right() - 2);
+                            let y2 = y2.clamp(canvas_rect.top(), canvas_rect.bottom() - 2);
                             frame_arena
                                 .alloc(DrawOp::Line { x1, y1, x2, y2, color: poly.color.into() })
                                 .unwrap()

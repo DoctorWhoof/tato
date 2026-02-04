@@ -8,8 +8,10 @@ pub use font_short::*;
 
 pub const BANK_FONT_SHORT: Bank = Bank { colors: COLORS_FONT_SHORT, tiles: TILES_FONT_SHORT };
 
-pub const COLORS_FONT_SHORT: ColorBank =
-    ColorBank::new_from(&[RGBA12::with_transparency(0, 0, 0, 7), RGBA12::with_transparency(7, 7, 7, 7)]);
+pub const COLORS_FONT_SHORT: ColorBank = ColorBank::new_from(&[
+    RGBA12::with_transparency(0, 0, 0, 7),
+    RGBA12::with_transparency(7, 7, 7, 7),
+]);
 
 pub const TILES_FONT_SHORT: TileBank = TileBank::new_from(&[
     Tile::<2>::new(0x1550541454145454, 0x5514541415500000),

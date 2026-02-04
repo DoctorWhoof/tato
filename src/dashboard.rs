@@ -52,6 +52,8 @@ struct Polygon {
 pub struct Dashboard {
     pub font_size: f32,
     pub gui_scale: f32,
+    pub color_origin: RGBA12,
+    pub color_grid: RGBA12,
     // Storage
     fixed_arena: Arena<FIXED_ARENA_LEN, u32>, //  Not cleared per frame
     // State
@@ -105,6 +107,8 @@ impl Dashboard {
         Ok(Self {
             font_size: 8.0,
             gui_scale: 2.0,
+            color_origin: RGBA12::with_transparency(7, 5, 3, 3),
+            color_grid: RGBA12::with_transparency(4, 3, 2, 2),
             // frame_arena,
             fixed_arena,
             tile_pixels,
@@ -356,20 +360,19 @@ impl Dashboard {
             backend.set_canvas_rect(Some(rect));
             struct _CenterLines;
             {
-                let color_origin = RGBA12::with_transparency(7, 5, 3, 3);
                 let mid_x = screen_size.x / 2;
                 let mid_y = screen_size.y / 2;
                 self.poly(
                     frame_arena,
                     &[Vec2::new(rect.left(), mid_y), Vec2::new(rect.right(), mid_y)],
-                    color_origin,
+                    self.color_origin,
                     false,
                     true,
                 );
                 self.poly(
                     frame_arena,
                     &[Vec2::new(mid_x, rect.top()), Vec2::new(mid_x, rect.bottom())],
-                    color_origin,
+                    self.color_origin,
                     false,
                     true,
                 );
@@ -377,7 +380,6 @@ impl Dashboard {
 
             struct _GridLines;
             {
-                let color_grid = RGBA12::with_transparency(4, 3, 2, 2);
                 let tile_size = TILE_SIZE as i16;
 
                 let view_left = ((tato.video.scroll_x / tile_size) * tile_size) - tile_size;
@@ -390,7 +392,7 @@ impl Dashboard {
                         self.poly(
                             frame_arena,
                             &[Vec2::new(x, view_top), Vec2::new(x, view_bottom)],
-                            color_grid,
+                            self.color_grid,
                             true,
                             true,
                         );
@@ -404,7 +406,7 @@ impl Dashboard {
                         self.poly(
                             frame_arena,
                             &[Vec2::new(view_left, y), Vec2::new(view_right, y)],
-                            color_grid,
+                            self.color_grid,
                             true,
                             true,
                         );

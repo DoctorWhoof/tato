@@ -16,7 +16,7 @@ pub struct Tato {
     // Internals
     pub target_fps: u8,
     time: u64,
-    time_cache: f32, // will be pre-divided per frame
+    time_cache: f32, // will be pre-divided per frame to avoid divisions on every time() call
     delta: f32,
     elapsed_time: f32,
     frame_started: bool,

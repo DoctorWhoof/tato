@@ -93,7 +93,12 @@ pub const FRAMES_ASTRO: [[Cell; 4]; 24] = [
     [Cell::new(3, 0, 256), Cell::new(3, 128, 256), Cell::new(4, 0, 256), Cell::new(4, 128, 256)],
     [Cell::new(11, 0, 256), Cell::new(11, 128, 256), Cell::new(12, 0, 256), Cell::new(13, 0, 256)],
     [Cell::new(3, 0, 256), Cell::new(3, 128, 256), Cell::new(14, 0, 256), Cell::new(14, 128, 256)],
-    [Cell::new(11, 0, 256), Cell::new(11, 128, 256), Cell::new(13, 128, 256), Cell::new(12, 128, 256)],
+    [
+        Cell::new(11, 0, 256),
+        Cell::new(11, 128, 256),
+        Cell::new(13, 128, 256),
+        Cell::new(12, 128, 256),
+    ],
     [Cell::new(5, 0, 256), Cell::new(6, 0, 288), Cell::new(7, 0, 256), Cell::new(7, 128, 256)],
     [Cell::new(11, 0, 256), Cell::new(15, 0, 288), Cell::new(16, 0, 256), Cell::new(17, 0, 256)],
     [Cell::new(5, 0, 256), Cell::new(6, 0, 288), Cell::new(7, 0, 256), Cell::new(7, 128, 256)],

@@ -48,7 +48,7 @@ pub enum Scene {
 
 fn main() -> TatoResult<()> {
     // Tato setup + initial scene
-    let mut frame_arena = Arena::<32_768, u32>::new();
+    let mut frame_arena = Arena::<65_536, u32>::new();
     let mut scene = Scene::None;
     let tato = &mut Tato::new(240, 180, 60);
     let dash = &mut Dashboard::new().unwrap();
