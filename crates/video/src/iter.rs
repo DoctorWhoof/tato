@@ -74,8 +74,8 @@ impl<'a> PixelIter<'a> {
             wrap_bg: vid.wrap_bg,
             slot_width: vid.width() as f32 / SLOTS_PER_LINE as f32,
 
-            scroll_x: vid.scroll_x,
-            scroll_y: vid.scroll_y,
+            scroll_x: vid.scroll.x,
+            scroll_y: vid.scroll.y,
             bg_color: vid.bg_color,
             crop_color: vid.crop_color,
             // scanline: vid.sprite_gen.scanlines[0].clone(),

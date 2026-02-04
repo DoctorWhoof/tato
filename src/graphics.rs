@@ -6,9 +6,28 @@ pub use text::*;
 
 use crate::prelude::*;
 
-pub struct MapOp {}
+pub fn world_to_view(
+    pos: Vec2<i16>,
+    scroll: Vec2<i16>,
+    canvas_rect: Rect<i16>,
+    canvas_scale: f32,
+) -> Vec2<i16> {
+    let x = ((pos.x as f32 - scroll.x as f32) * canvas_scale) as i16 + canvas_rect.x + 1;
+    let y = ((pos.y as f32 - scroll.y as f32) * canvas_scale) as i16 + canvas_rect.y + 1;
+    Vec2 { x, y }
+}
 
-#[inline]
+pub fn view_to_world(
+    pos: Vec2<i16>,
+    scroll: Vec2<i16>,
+    canvas_rect: Rect<i16>,
+    canvas_scale: f32,
+) -> Vec2<i16> {
+    let x = ((pos.x - canvas_rect.x - 1) as f32 / canvas_scale) as i16 + scroll.x;
+    let y = ((pos.y - canvas_rect.y - 1) as f32 / canvas_scale) as i16 + scroll.y;
+    Vec2 { x, y }
+}
+
 /// Obtains the frame index on a given Animation based on the video chip's
 /// internal frame counter.
 pub fn anim_get_frame(current_video_frame: usize, anim: &Anim) -> usize {
@@ -58,7 +77,11 @@ pub fn draw_sprite_to_fg(video: &mut VideoChip, anim: &Anim, bundle: SpriteBundl
 // TODO: Draw from Anim, just like draw_sprite_to_fg, but to the BG
 /// Draws a tilemap to a background tilemap.
 /// Positions the sprite at tile coordinates (not pixel coordinates).
-pub fn draw_sprite_to_tilemap<const LEN: usize>(dest: &mut Tilemap<LEN>, src: &dyn DynTilemap, bundle: SpriteBundle) {
+pub fn draw_sprite_to_tilemap<const LEN: usize>(
+    dest: &mut Tilemap<LEN>,
+    src: &dyn DynTilemap,
+    bundle: SpriteBundle,
+) {
     let col = (bundle.x / TILE_SIZE as i16) as u16;
     let row = (bundle.y / TILE_SIZE as i16) as u16;
     let dst_rect = Rect { x: col, y: row, w: src.columns(), h: src.rows() };

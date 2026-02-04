@@ -145,6 +145,26 @@ impl Dashboard {
         pixel_buffer.as_slice(&self.fixed_arena).ok()
     }
 
+    /// The rect, in screen coordinates, occupied by the canvas after
+    /// all layout operations are applied
+    pub fn canvas_rect(&self) -> Rect<i16> {
+        self.canvas_rect.unwrap_or(Rect::default())
+    }
+
+    pub fn world_mouse(&self, mouse:Vec2<i16>, tato:&Tato) -> Option<Vec2<i16>> {
+        let canvas_rect = self.canvas_rect?;
+        if !canvas_rect.contains(mouse.x,mouse. y){
+            return None
+        }
+        let canvas_scale = canvas_rect.h as f32 / tato.video.height() as f32;
+        Some(view_to_world(
+            mouse,
+            tato.video.scroll,
+            canvas_rect,
+            canvas_scale,
+        ))
+    }
+
     /// An iterator with every DrawOp processed so far. DrawOps must be stored
     /// in a external frame arena, since they are shared with the Backend.
     pub fn draw_ops<'a, A>(&self, frame_arena: &'a A) -> ArenaRes<impl Iterator<Item = &'a DrawOp>>
@@ -382,8 +402,8 @@ impl Dashboard {
             {
                 let tile_size = TILE_SIZE as i16;
 
-                let view_left = ((tato.video.scroll_x / tile_size) * tile_size) - tile_size;
-                let view_top = ((tato.video.scroll_y / tile_size) * tile_size) - tile_size;
+                let view_left = ((tato.video.scroll.x / tile_size) * tile_size) - tile_size;
+                let view_top = ((tato.video.scroll.y / tile_size) * tile_size) - tile_size;
                 let view_right = (view_left + tato.video.width() as i16) + (tile_size * 2);
                 let view_bottom = (view_top + tato.video.height() as i16) + (tile_size * 2);
                 {
@@ -414,37 +434,6 @@ impl Dashboard {
                     }
                 }
             }
-
-            // struct _GridLines;
-            // {
-            //     let color_grid = RGBA12::with_transparency(7, 7, 7, 1);
-
-            //     let mut x = rect.left();
-            //     while x <= rect.right() {
-            //         let scroll = ((tato.video.scroll_x % 8) as f32 * scale).floor() as i16;
-            //         let offset_x = x - scroll;
-            //         self.poly(
-            //             frame_arena,
-            //             &[Vec2::new(offset_x, rect.top()), Vec2::new(offset_x, rect.bottom())],
-            //             color_grid,
-            //             false,
-            //         );
-            //         x += (TILE_SIZE as f32 * scale) as i16;
-            //     }
-
-            //     let mut y = rect.top();
-            //     while y <= rect.bottom() {
-            //         let scroll = ((tato.video.scroll_y % 8) as f32 * scale).floor() as i16;
-            //         let offset_y = y - scroll;
-            //         self.poly(
-            //             frame_arena,
-            //             &[Vec2::new(rect.left(), offset_y), Vec2::new(rect.right(), offset_y)],
-            //             color_grid,
-            //             false,
-            //         );
-            //         y += (TILE_SIZE as f32 * scale) as i16;
-            //     }
-            // }
         });
 
         // Copy tile pixels from dashboard to GPU textures

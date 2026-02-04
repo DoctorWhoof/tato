@@ -46,15 +46,15 @@ fn main() -> TatoResult<()> {
         tato.frame_start(backend.ray.get_frame_time());
 
         if tato.pad.is_down(Button::Right) {
-            tato.video.scroll_x += 1;
+            tato.video.scroll.x += 1;
         } else if tato.pad.is_down(Button::Left) {
-            tato.video.scroll_x -= 1;
+            tato.video.scroll.x -= 1;
         }
 
         if tato.pad.is_down(Button::Down) {
-            tato.video.scroll_y += 1;
+            tato.video.scroll.y += 1;
         } else if tato.pad.is_down(Button::Up) {
-            tato.video.scroll_y -= 1;
+            tato.video.scroll.y -= 1;
         }
 
         tato.frame_finish();

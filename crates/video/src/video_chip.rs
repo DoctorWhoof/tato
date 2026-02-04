@@ -34,10 +34,10 @@ pub struct VideoChip {
     pub wrap_sprites: bool,
     /// Repeats the BG Map outside its borders
     pub wrap_bg: bool,
-    /// Offsets the BG Map and Sprite tiles horizontally
-    pub scroll_x: i16,
-    /// Offsets the BG Map and Sprite tiles vertically
-    pub scroll_y: i16,
+    /// Offsets the BG Map and Sprite tiles
+    pub scroll: Vec2<i16>,
+    // pub scroll.x: i16,
+    // pub scroll.y: i16,
     // ---------------------- Iterator control ----------------------
     /// A callback that can modify the iterator, called once per line.
     /// It is automatically passed to the PixelIterator.
@@ -76,8 +76,7 @@ impl VideoChip {
             view_bottom: h - 1,
             w,
             h,
-            scroll_x: 0,
-            scroll_y: 0,
+            scroll: Vec2::zero(),
             frame_number: 0,
             // Video IRQs
             // irq_x_callback: None,
@@ -153,8 +152,8 @@ impl VideoChip {
     }
 
     pub fn reset_scroll(&mut self) {
-        self.scroll_x = 0;
-        self.scroll_y = 0;
+        self.scroll.x = 0;
+        self.scroll.y = 0;
     }
 
     pub fn reset_viewport(&mut self) {
@@ -215,8 +214,8 @@ impl VideoChip {
         let wrapped_x: i16;
         let wrapped_y: i16;
         if self.wrap_sprites {
-            let screen_x = data.x - self.scroll_x;
-            let screen_y = data.y - self.scroll_y;
+            let screen_x = data.x - self.scroll.x;
+            let screen_y = data.y - self.scroll.y;
 
             let w = self.w as i16;
             let h = self.h as i16;
@@ -233,17 +232,17 @@ impl VideoChip {
             wrapped_x = wrapped_adjusted_x - size;
             wrapped_y = wrapped_adjusted_y - size;
         } else {
-            let max_x = self.scroll_x + self.max_x() as i16;
-            if data.x + size < self.scroll_x || data.x > max_x {
+            let max_x = self.scroll.x + self.max_x() as i16;
+            if data.x + size < self.scroll.x || data.x > max_x {
                 return;
             } else {
-                wrapped_x = data.x - self.scroll_x;
+                wrapped_x = data.x - self.scroll.x;
             }
-            let max_y = self.scroll_y + self.max_y() as i16;
-            if data.y + size < self.scroll_y || data.y > max_y {
+            let max_y = self.scroll.y + self.max_y() as i16;
+            if data.y + size < self.scroll.y || data.y > max_y {
                 return;
             } else {
-                wrapped_y = data.y - self.scroll_y;
+                wrapped_y = data.y - self.scroll.y;
             }
         }
 

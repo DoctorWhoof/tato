@@ -63,8 +63,6 @@ impl Dashboard {
         if let Some(canvas_rect) = self.canvas_rect {
             let video_size = tato.video.size();
             let scale = canvas_rect.h as f32 / video_size.y as f32;
-            let scroll_x = tato.video.scroll_x as f32;
-            let scroll_y = tato.video.scroll_y as f32;
 
             // Using index-based iteration to avoid holding the arena borrow
             let world_polys_len = self.debug_polys_world.len();
@@ -83,31 +81,35 @@ impl Dashboard {
                         let current = points[j];
                         let next = points[j + 1];
 
-                        let x1 = ((current.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x + 1;
-                        let y1 = ((current.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y + 1;
-                        let x2 = ((next.x as f32 - scroll_x) * scale) as i16 + canvas_rect.x + 1;
-                        let y2 = ((next.y as f32 - scroll_y) * scale) as i16 + canvas_rect.y + 1;
+                        let a = world_to_view(current, tato.video.scroll, canvas_rect, scale);
+                        let b = world_to_view(next, tato.video.scroll, canvas_rect, scale);
 
                         let handle = if poly.clip_to_view {
-                            if (x1 < canvas_rect.left() && x2 < canvas_rect.left())
-                                || (x1 > canvas_rect.right() && x2 > canvas_rect.right())
-                                || (y1 < canvas_rect.top() && y2 < canvas_rect.top())
-                                || (y1 > canvas_rect.bottom() && y2 > canvas_rect.bottom())
+                            if (a.x < canvas_rect.left() && b.x < canvas_rect.left())
+                                || (a.x > canvas_rect.right() && b.x > canvas_rect.right())
+                                || (a.y < canvas_rect.top() && b.y < canvas_rect.top())
+                                || (a.y > canvas_rect.bottom() && b.y > canvas_rect.bottom())
                             {
                                 continue;
                             }
                             // TODO: Intersect line with rect to find where it starts inside
                             // view, instead of clamping
-                            let x1 = x1.clamp(canvas_rect.left(), canvas_rect.right() - 2);
-                            let y1 = y1.clamp(canvas_rect.top(), canvas_rect.bottom() - 2);
-                            let x2 = x2.clamp(canvas_rect.left(), canvas_rect.right() - 2);
-                            let y2 = y2.clamp(canvas_rect.top(), canvas_rect.bottom() - 2);
+                            let x1 = a.x.clamp(canvas_rect.left(), canvas_rect.right() - 2);
+                            let y1 = a.y.clamp(canvas_rect.top(), canvas_rect.bottom() - 2);
+                            let x2 = b.x.clamp(canvas_rect.left(), canvas_rect.right() - 2);
+                            let y2 = b.y.clamp(canvas_rect.top(), canvas_rect.bottom() - 2);
                             frame_arena
                                 .alloc(DrawOp::Line { x1, y1, x2, y2, color: poly.color.into() })
                                 .unwrap()
                         } else {
                             frame_arena
-                                .alloc(DrawOp::Line { x1, y1, x2, y2, color: poly.color.into() })
+                                .alloc(DrawOp::Line {
+                                    x1: a.x,
+                                    y1: a.y,
+                                    x2: b.x,
+                                    y2: b.y,
+                                    color: poly.color.into(),
+                                })
                                 .unwrap()
                         };
                         self.ops

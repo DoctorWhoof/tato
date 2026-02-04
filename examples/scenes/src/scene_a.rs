@@ -24,9 +24,9 @@ impl SceneA {
 
         // Line scrolling effect, adjusts on every line
         t.video.irq_line = Some(|iter, video, _bg| {
-            let line_offset = (iter.y() as f32 + video.scroll_y as f32) / 16.0;
+            let line_offset = (iter.y() as f32 + video.scroll.y as f32) / 16.0;
             let phase = ((video.frame_number() as f32 / 30.0) + line_offset).sin();
-            iter.scroll_x = (video.scroll_x as f32 - (phase * 8.0)) as i16;
+            iter.scroll_x = (video.scroll.x as f32 - (phase * 8.0)) as i16;
         });
 
         banks[0].reset();
@@ -164,8 +164,8 @@ impl SceneA {
         // Adjust scroll and palette before drawing characters! (immediate mode)
         let target_x = (self.player.x - (t.video.width() as f32 / 2.0)).floor() as i16;
         let target_y = (self.player.y - (t.video.height() as f32 / 2.0)).floor() as i16;
-        t.video.scroll_x = target_x;
-        t.video.scroll_y = target_y;
+        t.video.scroll.x = target_x;
+        t.video.scroll.y = target_y;
 
         {
             let mut cycle_color = self.colors_cycle.get(2);
