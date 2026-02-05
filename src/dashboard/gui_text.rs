@@ -16,24 +16,34 @@ impl Dashboard {
         }
 
         // Add debug info
-        self.str(frame_arena, "");
-        self.str(frame_arena, "----------- Engine info -----------");
+        self.push_str(frame_arena, "");
+        self.push_str(frame_arena, "----------- Engine info -----------");
 
         let draw_time = backend.get_drawing_elapsed_time();
         let iter_time = backend.get_pixel_iter_elapsed_time();
 
-        self.display_txt(
+        self.push_display_txt(
             frame_arena,
             "fps: {:.1} / {:.0}",
             &[1.0 / tato.elapsed_time(), (1.0 / (iter_time + draw_time))],
             "",
         );
-        self.display_txt(frame_arena, "elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
-        self.display_txt(frame_arena, "Backend pixel iter time: {:.1} ms", &[iter_time * 1000.0], "");
-        self.display_txt(frame_arena, "Backend draw time: {:.1} ms", &[draw_time * 1000.0], "");
+        self.push_display_txt(frame_arena, "elapsed: {:.1}", &[tato.elapsed_time() * 1000.0], "");
+        self.push_display_txt(
+            frame_arena,
+            "Backend pixel iter time: {:.1} ms",
+            &[iter_time * 1000.0],
+            "",
+        );
+        self.push_display_txt(
+            frame_arena,
+            "Backend draw time: {:.1} ms",
+            &[draw_time * 1000.0],
+            "",
+        );
 
         let arena_cap = frame_arena.capacity();
-        self.display_txt(
+        self.push_display_txt(
             frame_arena,
             "Shared Frame Mem.: {:.1} / {:.1}",
             &[self.last_frame_arena_use as f32 / 1024.0, arena_cap as f32 / 1024.0],
@@ -41,14 +51,14 @@ impl Dashboard {
         );
 
         let fixed_arena_cap = self.fixed_arena.capacity();
-        self.display_txt(
+        self.push_display_txt(
             frame_arena,
             "Dash Mem. (fixed): {:.1} / {:.1}",
             &[self.fixed_arena.used() as f32 / 1024.0, fixed_arena_cap as f32 / 1024.0],
             " Kb",
         );
 
-        self.display_txt(
+        self.push_display_txt(
             frame_arena,
             "Dash DrawOps: {} / {}",
             &[self.last_frame_draw_op_count as u32, self.ops.capacity()],

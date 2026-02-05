@@ -203,7 +203,7 @@ impl Dashboard {
 
     /// Creates an internal temp_arena-allocated Text object, stores its ID
     /// in a list so it can be drawn when "render" is called.
-    pub fn str<A>(&mut self, arena: &mut A, text: &str)
+    pub fn push_str<A>(&mut self, arena: &mut A, text: &str)
     where
         A: ArenaOps<u32, ()>,
     {
@@ -212,7 +212,7 @@ impl Dashboard {
     }
 
     /// Presents a pre-formatted, arena allocated text
-    pub fn text<A>(&mut self, arena: &mut A, text: Text)
+    pub fn push_text<A>(&mut self, arena: &mut A, text: Text)
     where
         A: ArenaOps<u32, ()>,
     {
@@ -221,7 +221,7 @@ impl Dashboard {
     }
 
     /// Allows basic text formatting when sending text to the dashboard
-    pub fn debug_txt<A, T>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
+    pub fn push_debug_txt<A, T>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
     where
         T: core::fmt::Debug,
         A: ArenaOps<u32, ()>,
@@ -232,7 +232,7 @@ impl Dashboard {
     }
 
     /// Allows basic text formatting when sending text to the dashboard
-    pub fn display_txt<T, A>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
+    pub fn push_display_txt<T, A>(&mut self, arena: &mut A, message: &str, values: &[T], tail: &str)
     where
         T: core::fmt::Display,
         A: ArenaOps<u32, ()>,
@@ -246,7 +246,7 @@ impl Dashboard {
     /// point matches the first). If "world_space" is true, poly will be resized
     /// and translated to match canvas size and scroll values. If not, it will
     /// be drawn like a gui.
-    pub fn poly<A>(
+    pub fn draw_poly<A>(
         &mut self,
         arena: &mut A,
         points: &[Vec2<i16>],
@@ -269,7 +269,7 @@ impl Dashboard {
     }
 
     /// Convenient way to send a rect as a poly to the dashboard.
-    pub fn rect<A>(
+    pub fn draw_rect<A>(
         &mut self,
         arena: &mut A,
         rect: Rect<i16>,
@@ -286,11 +286,11 @@ impl Dashboard {
             rect.bottom_left(),
             rect.top_left(),
         ];
-        self.poly(arena, &points, color, world_space, clip_to_view);
+        self.draw_poly(arena, &points, color, world_space, clip_to_view);
     }
 
     /// Convenient way to send a point as an "x" to the dashboard.
-    pub fn pivot<A>(
+    pub fn draw_pivot<A>(
         &mut self,
         arena: &mut A,
         x: i16,
@@ -303,14 +303,14 @@ impl Dashboard {
         A: ArenaOps<u32, ()>,
     {
         let half = size / 2;
-        self.poly(
+        self.draw_poly(
             arena,
             &[Vec2 { x: x - half, y: y - half }, Vec2 { x: x + half, y: y + half }],
             color,
             world_space,
             clip_to_view,
         );
-        self.poly(
+        self.draw_poly(
             arena,
             &[Vec2 { x: x - half, y: y + half }, Vec2 { x: x + half, y: y - half }],
             color,
@@ -382,14 +382,14 @@ impl Dashboard {
             {
                 let mid_x = screen_size.x / 2;
                 let mid_y = screen_size.y / 2;
-                self.poly(
+                self.draw_poly(
                     frame_arena,
                     &[Vec2::new(rect.left(), mid_y), Vec2::new(rect.right(), mid_y)],
                     self.color_origin,
                     false,
                     true,
                 );
-                self.poly(
+                self.draw_poly(
                     frame_arena,
                     &[Vec2::new(mid_x, rect.top()), Vec2::new(mid_x, rect.bottom())],
                     self.color_origin,
@@ -409,7 +409,7 @@ impl Dashboard {
                 {
                     let mut x = view_left;
                     while x <= view_right {
-                        self.poly(
+                        self.draw_poly(
                             frame_arena,
                             &[Vec2::new(x, view_top), Vec2::new(x, view_bottom)],
                             self.color_grid,
@@ -423,7 +423,7 @@ impl Dashboard {
                 {
                     let mut y = view_top;
                     while y <= view_bottom {
-                        self.poly(
+                        self.draw_poly(
                             frame_arena,
                             &[Vec2::new(view_left, y), Vec2::new(view_right, y)],
                             self.color_grid,
