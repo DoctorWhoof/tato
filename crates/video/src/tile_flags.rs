@@ -115,19 +115,20 @@ impl TileFlags {
         self.0 &= 0b_0001_1111; // clear flags
     }
 
-    pub fn rotate_left(&mut self) {
+    pub fn rotate_right(&mut self) {
         self.0 &= 0b_0001_1111; // clear flags
-        self.0 |= FLAG_ROTATED; // set flags
+        self.set_rotation(true);
     }
 
     pub fn rotate_down(&mut self) {
         self.0 &= 0b_0001_1111; // clear flags
-        self.0 |= FLAG_FLIP_V; // set flags
+        self.set_flip_y(true);
     }
 
-    pub fn rotate_right(&mut self) {
+    pub fn rotate_left(&mut self) {
         self.0 &= 0b_0001_1111; // clear flags
-        self.0 |= 0b_1010_0000; // set flags
+        self.set_rotation(true);
+        self.set_flip_x(true);
     }
 
     /// Current horizontal flip state.

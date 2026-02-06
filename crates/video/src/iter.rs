@@ -228,10 +228,6 @@ impl<'a> PixelIter<'a> {
                 continue;
             }
 
-            // Pre-calculate transformation flags
-            let flip_x = sprite.flags.is_flipped_x();
-            let flip_y = sprite.flags.is_flipped_y();
-            let rotated = sprite.flags.is_rotated();
             let tile = &bank.tiles.tiles[sprite.id.0 as usize];
             // let color_mapping = sprite.color_mapping;
 
@@ -250,22 +246,12 @@ impl<'a> PixelIter<'a> {
 
                 let sprite_x = x as i16 - sprite.x;
 
-                // Inline transform
-                let (tx, ty) = if rotated {
-                    let rotated_x = TILE_SIZE as i16 - 1 - sprite_y;
-                    let rotated_y = sprite_x;
-                    if flip_x {
-                        (rotated_x, TILE_SIZE as i16 - 1 - rotated_y)
-                    } else if flip_y {
-                        (TILE_SIZE as i16 - 1 - rotated_x, rotated_y)
-                    } else {
-                        (rotated_x, rotated_y)
-                    }
-                } else {
-                    let tx = if flip_x { TILE_SIZE as i16 - 1 - sprite_x } else { sprite_x };
-                    let ty = if flip_y { TILE_SIZE as i16 - 1 - sprite_y } else { sprite_y };
-                    (tx, ty)
-                };
+                // Using standard transform_coords. Consistency!
+                let (tx, ty) = sprite.flags.transform_coords(
+                    sprite_x as u8,
+                    sprite_y as u8,
+                    TILE_SIZE,
+                );
 
                 let pixel = tile.get_pixel(tx as u8, ty as u8);
                 let color_index = sprite.colors.get(pixel);

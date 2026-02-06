@@ -176,13 +176,14 @@ impl SceneA {
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
-                let Some(mut flags) = state.bg.get_flags(col, row) else {
-                    continue;
-                };
-                flags.set_rotation(self.player.flags.is_rotated());
-                flags.set_flip_x(self.player.flags.is_flipped_x());
-                flags.set_flip_y(self.player.flags.is_flipped_y());
-                state.bg.set_flags(col, row, flags);
+                // let Some(mut flags) = state.bg.get_flags(col, row) else {
+                //     continue;
+                // };
+                // flags = self.player.flags;
+                // flags.set_rotation(self.player.flags.is_rotated());
+                // flags.set_flip_x(self.player.flags.is_flipped_x());
+                // flags.set_flip_y(self.player.flags.is_flipped_y());
+                state.bg.set_flags(col, row, self.player.flags);
             }
         }
 
