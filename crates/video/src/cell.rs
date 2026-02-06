@@ -33,23 +33,23 @@ impl Cell {
         Self { colors, ..self }
     }
 
-    pub const fn with_fg_flag(self) -> Self {
-        Self { flags: self.flags.with_fg(), ..self }
+    pub const fn with_fg_flag(self, state: bool) -> Self {
+        Self { flags: self.flags.with_fg(state), ..self }
     }
 
-    pub const fn with_collision_flag(self) -> Self {
-        Self { flags: self.flags.with_collision(), ..self }
+    pub const fn with_collision_flag(self, state: bool) -> Self {
+        Self { flags: self.flags.with_collision(state), ..self }
     }
 
-    pub const fn with_rotation_flag(self) -> Self {
-        Self { flags: self.flags.with_rotation(), ..self }
+    pub const fn with_rotation_flag(self, state: bool) -> Self {
+        Self { flags: self.flags.with_rotation(state), ..self }
     }
 
-    pub const fn with_flip_x_flag(self) -> Self {
-        Self { flags: self.flags.with_flip_x(), ..self }
+    pub const fn with_flip_x_flag(self, state: bool) -> Self {
+        Self { flags: self.flags.with_flip_x(state), ..self }
     }
 
-    pub const fn with_flip_y_flag(self) -> Self {
-        Self { flags: self.flags.with_flip_y(), ..self }
+    pub const fn with_flip_y_flag(self, state: bool) -> Self {
+        Self { flags: self.flags.with_flip_y(state), ..self }
     }
 }

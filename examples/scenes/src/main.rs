@@ -93,7 +93,7 @@ fn main() -> TatoResult<()> {
 
         // Update backend
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, banks, &tato, &mut backend);
+        dash.frame_present(&mut frame_arena, &state.bg, banks, &tato, &mut backend);
         backend.frame_present(&mut frame_arena, &tato, banks, &[&state.bg]);
 
         // Prepare next frame if scene change was requested

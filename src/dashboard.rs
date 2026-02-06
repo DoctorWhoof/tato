@@ -19,6 +19,7 @@ use tato_arena::{RingBuffer, Slice};
 mod gui_banks;
 mod gui_console;
 mod gui_draw_polys;
+mod gui_draw_tile_info;
 mod gui_draw_tooltip;
 mod gui_input;
 mod gui_text;
@@ -151,18 +152,13 @@ impl Dashboard {
         self.canvas_rect.unwrap_or(Rect::default())
     }
 
-    pub fn world_mouse(&self, mouse:Vec2<i16>, tato:&Tato) -> Option<Vec2<i16>> {
+    pub fn world_mouse(&self, mouse: Vec2<i16>, tato: &Tato) -> Option<Vec2<i16>> {
         let canvas_rect = self.canvas_rect?;
-        if !canvas_rect.contains(mouse.x,mouse. y){
-            return None
+        if !canvas_rect.contains(mouse.x, mouse.y) {
+            return None;
         }
         let canvas_scale = canvas_rect.h as f32 / tato.video.height() as f32;
-        Some(view_to_world(
-            mouse,
-            tato.video.scroll,
-            canvas_rect,
-            canvas_scale,
-        ))
+        Some(view_to_world(mouse, tato.video.scroll, canvas_rect, canvas_scale))
     }
 
     /// An iterator with every DrawOp processed so far. DrawOps must be stored
@@ -348,6 +344,7 @@ impl Dashboard {
     pub fn frame_present<A>(
         &mut self,
         frame_arena: &mut A,
+        bg: &dyn DynTilemap,
         banks: &[Bank],
         tato: &Tato,
         backend: &mut impl Backend,
@@ -367,9 +364,12 @@ impl Dashboard {
         layout.set_gap(3);
 
         // Panels have their own modules, for organization
+        let bg_bank = &banks[tato.video.bg_tile_bank as usize];
+        self.draw_tile_info(bg, bg_bank, frame_arena, tato, backend);
         self.process_text_panel(&mut layout, frame_arena, backend, tato);
         self.process_video_banks_panel(&mut layout, frame_arena, banks, backend);
         self.process_console(tato, &mut layout, frame_arena);
+
 
         // Canvas
         layout.fill(|canvas| {
@@ -437,6 +437,7 @@ impl Dashboard {
         });
 
         // Copy tile pixels from dashboard to GPU textures
+        struct _CopyTilePixels;
         for bank_index in 0..BANK_COUNT {
             // texture ID = bank_index
             if let Some(pixels) = self.tile_pixels(bank_index) {
@@ -447,9 +448,12 @@ impl Dashboard {
         }
 
         // Draw additional items over everything
-        self.draw_polys(frame_arena, &tato);
-        self.draw_tooltip(frame_arena, backend);
-        backend.set_additional_draw_ops(self.ops.clone());
+        struct _DrawAdditionalItems;
+        {
+            self.draw_polys(frame_arena, &tato);
+            self.draw_tooltip(frame_arena, backend);
+            backend.set_additional_draw_ops(self.ops.clone());
+        }
 
         // Acquire arena usage info at the very end
         // so it's accurate (although with a 1 frame delay)

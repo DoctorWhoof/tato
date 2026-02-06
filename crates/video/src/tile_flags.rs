@@ -33,49 +33,34 @@ impl TileFlags {
     }
 
     /// Consumes the original flag and ensures flip_x matches state
-    pub const fn with_horizontal_state(self, state: bool) -> Self {
+    pub const fn with_flip_x(self, state: bool) -> Self {
         if state { Self(self.0 | FLAG_FLIP_H) } else { Self(self.0 & !FLAG_FLIP_H) }
     }
 
     /// Consumes the original flag and ensures flip_y matches state
-    pub const fn with_vertical_state(self, state: bool) -> Self {
+    pub const fn with_flip_y(self, state: bool) -> Self {
         if state { Self(self.0 | FLAG_FLIP_V) } else { Self(self.0 & !FLAG_FLIP_V) }
     }
 
     /// Consumes the original flag and ensures rotation matches state
-    pub const fn with_rotation_state(self, state: bool) -> Self {
+    pub const fn with_rotation(self, state: bool) -> Self {
         if state { Self(self.0 | FLAG_ROTATED) } else { Self(self.0 & !FLAG_ROTATED) }
     }
 
 
-    /// Consumes the original flag and ensures x is flipped
-    pub const fn with_flip_x(self) -> Self {
-        Self(self.0 | FLAG_FLIP_H)
-    }
-
-    /// Consumes the original flag and ensures y is flipped
-    pub const fn with_flip_y(self) -> Self {
-        Self(self.0 | FLAG_FLIP_V)
-    }
-
-    /// Consumes the original flag and ensures it's rotated 90 degrees
-    pub const fn with_rotation(self) -> Self {
-        Self(self.0 | FLAG_ROTATED)
-    }
-
     /// Consumes the original flag and ensures a BG tile is rendered in front of sprites.
-    pub const fn with_fg(self) -> Self {
-        Self(self.0 | FLAG_FG)
+    pub const fn with_fg(self, state:bool) -> Self {
+        if state { Self(self.0 | FLAG_FG) } else { Self(self.0 & !FLAG_FG) }
     }
 
     /// Consumes the original flag and ensures tile is a collider.
-    pub const fn with_collision(self) -> Self {
-        Self(self.0 | FLAG_COLLIDER)
+    pub const fn with_collision(self, state:bool) -> Self {
+        if state { Self(self.0 | FLAG_COLLIDER) } else { Self(self.0 & !FLAG_COLLIDER) }
     }
 
     /// Consumes the original flag and ensures tile is a trigger.
-    pub const fn with_trigger(self) -> Self {
-        Self(self.0 | FLAG_TRIGGER)
+    pub const fn with_trigger(self, state:bool) -> Self {
+        if state { Self(self.0 | FLAG_TRIGGER) } else { Self(self.0 & !FLAG_TRIGGER) }
     }
 
     /// Consumes original, sets desired transformations

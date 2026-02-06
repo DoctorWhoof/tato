@@ -72,7 +72,7 @@ impl SceneA {
                         row,
                         cell: Cell {
                             id: TILE_ARROW.id,
-                            flags: TileFlags::default().with_rotation(),
+                            flags: TileFlags::default().with_rotation(true),
                             // Calculate palette ID based on coordinates, limits to 14
                             // indices, adds 2 to avoid colors 0 and 1 in the BG
                             colors: colors_bg[((col + row) % 14) as usize + 2],

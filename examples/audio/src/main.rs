@@ -113,7 +113,7 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &banks, &tato, &mut backend);
+        dash.frame_present(&mut frame_arena, &bg_map, &banks, &tato, &mut backend);
         audio_backend.process_frame(&mut audio);
         backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
     }

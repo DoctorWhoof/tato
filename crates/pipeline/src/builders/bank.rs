@@ -788,9 +788,9 @@ impl<'a> BankBuilder<'a> {
         abs_col: usize,
     ) -> Palette {
         let flags = TileFlags::default()
-            .with_horizontal_state(flip_x)
-            .with_vertical_state(flip_y)
-            .with_rotation_state(rotation);
+            .with_flip_x(flip_x)
+            .with_flip_y(flip_y)
+            .with_rotation(rotation);
 
         let mut canonical_colors: [Option<u8>; 4] = [None; 4];
         let size = TILE_SIZE as usize;
@@ -918,9 +918,9 @@ impl<'a> BankBuilder<'a> {
         let mut result = [0u8; TILE_LEN];
         let size = TILE_SIZE as usize;
         let flags = TileFlags::default()
-            .with_horizontal_state(flip_x)
-            .with_vertical_state(flip_y)
-            .with_rotation_state(rotation);
+            .with_flip_x(flip_x)
+            .with_flip_y(flip_y)
+            .with_rotation(rotation);
 
         // For each destination position, find the source position using the same
         // transform the renderer uses

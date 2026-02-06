@@ -17,7 +17,7 @@ fn main() -> TatoResult<()> {
     let mut tato = Tato::new(240, 180, 60);
     let mut banks = [Bank::new()];
 
-    tato.video.bg_color = RGBA12::with_transparency(2,3,4,7);
+    tato.video.bg_color = RGBA12::with_transparency(2, 3, 4, 7);
     tato.video.wrap_bg = true;
 
     // Combine multiple banks into bank 0
@@ -58,7 +58,7 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &banks, &tato, &mut backend);
+        dash.frame_present(&mut frame_arena, &bg_map, &banks, &tato, &mut backend);
         backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
     }
     Ok(())

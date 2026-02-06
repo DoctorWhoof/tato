@@ -29,7 +29,7 @@ impl SceneC {
                     row,
                     cell: Cell {
                         id: cross.id,
-                        flags: TileFlags::default().with_fg(),
+                        flags: TileFlags::default().with_fg(true),
                         colors: [0, 1, 2, 3].into(),
                     },
                 });
