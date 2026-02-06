@@ -193,15 +193,15 @@ impl TileFlags {
     pub const fn transform_coords(self, x: u8, y: u8, size: u8) -> (u8, u8) {
         let high = size - 1;
         if self.is_rotated() {
-            let rotated_x = high - y;
-            let rotated_y = x;
+            let mut rotated_x = y;
+            let mut rotated_y = high - x;
             if self.is_flipped_x() {
-                (rotated_x, high - rotated_y)
-            } else if self.is_flipped_y() {
-                (high - rotated_x, rotated_y)
-            } else {
-                (rotated_x, rotated_y)
+                rotated_y = high - rotated_y;
             }
+            if self.is_flipped_y() {
+                rotated_x = high - rotated_x;
+            }
+            (rotated_x, rotated_y)
         } else {
             let tx = if self.is_flipped_x() { high - x } else { x };
             let ty = if self.is_flipped_y() { high - y } else { y };

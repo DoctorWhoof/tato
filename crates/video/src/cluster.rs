@@ -108,57 +108,24 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
         row: u8,
         tile_size: u8,
     ) -> Self {
-        debug_assert!(row < 8, "Row index out of bounds");
+        debug_assert!(row < tile_size, "Row index out of bounds");
 
-        if flags.is_rotated() {
-            // For 90° clockwise rotation
-            let mut rotated = Self::default();
-            let high = tile_size - 1;
+        let mut result = Self::default();
 
-            // First, determine which column we need
-            let col = if flags.is_flipped_y() {
-                // If flipped_y is set after rotation, it flips the columns
-                row
-            } else {
-                // Normal rotation makes column = 7 - row
-                high - row
-            };
+        // For each pixel position in the output row
+        for col in 0..tile_size {
+            // Use transform_coords to find which source pixel to read
+            let (src_col, src_row) = flags.transform_coords(col, row, tile_size);
 
-            // Now, determine the reading direction for the column
-            let start_row = if flags.is_flipped_x() {
-                // If flipped_x is set after rotation, read column from bottom to top
-                high
-            } else {
-                // Otherwise, read column from top to bottom
-                0
-            };
+            // Get the pixel from the source tile
+            let src_cluster = &tile_pixels[src_row as usize];
+            let pixel_value = src_cluster.get_subpixel(src_col);
 
-            let row_step = if flags.is_flipped_x() { -1_i8 } else { 1_i8 };
-
-            // Fill the destination cluster with pixels from the column
-            for i in 0..tile_size {
-                // Calculate the source row
-                let src_row = (start_row as i8 + (i as i8 * row_step)) as u8 & 7;
-
-                // Get the pixel from the column in the source tile
-                let src_cluster = &tile_pixels[src_row as usize];
-                let pixel_value = src_cluster.get_subpixel(col);
-
-                // Set in our output cluster
-                rotated.set_subpixel(pixel_value, i);
-            }
-
-            rotated
-        } else {
-            // No transformations - return the source cluster directly
-            if !flags.is_flipped_x() && !flags.is_flipped_y() {
-                return tile_pixels[row as usize].clone();
-            }
-            // No rotation, just handle flipping
-            let source_row = if flags.is_flipped_y() { 7 - row } else { row };
-            let source_cluster = &tile_pixels[source_row as usize];
-            if flags.is_flipped_x() { source_cluster.flip() } else { source_cluster.clone() }
+            // Set in output cluster
+            result.set_subpixel(pixel_value, col);
         }
+
+        result
     }
 
     pub fn from_pixels(pixels: &[u8]) -> Self {
