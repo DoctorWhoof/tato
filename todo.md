@@ -1,6 +1,6 @@
 ### Priority List
 
-- [ ] Modify import paths so that all paths are relative to the "global" import path, and don't require the full path to be called on every method that takes in import paths.
+- [ ] Pipeline: Ensure names for assets are always unique, to avoid accidentally overwriting silently.
 
 ### General Engine
 
@@ -113,6 +113,8 @@
     - Skipping for now since
         - a: It works already
         - b: I want to avoid adding more types.
+
+- [x] Modify import paths so that all paths are relative to the "global" import path, and don't require the full path to be called on every method that takes in import paths.
 
 - [x] Bank.append should get the offset, apply to tilemap indices. Somehow.
 

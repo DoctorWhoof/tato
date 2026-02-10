@@ -35,7 +35,7 @@ fn main() -> TatoResult<()> {
         character_set: CharacterSet::Long,
     };
 
-    let text_animated = &TextOp {
+    let mut text_animated = TextOp {
         font: &MAP_FONT_LONG,
         width: Some(26),
         colors: Palette::new(0, 1, 1, 1),
@@ -70,10 +70,9 @@ fn main() -> TatoResult<()> {
 
     // Animated text
     line += 2;
-    draw_text(&mut bg_map, col, line, text_animated, "Animated palette");
 
     // Main Loop
-    // let mut cycle = 1.0;
+    let mut cycle = 1.0;
     tato.video.wrap_bg = true;
     let mut backend = RayBackend::new(&tato);
     while !backend.ray.window_should_close() {
@@ -95,13 +94,13 @@ fn main() -> TatoResult<()> {
             tato.video.scroll.y -= 1;
         }
 
-        // Draw
-        // let color = &mut banks[0].colors.mapping[3][3];
-        // *color = cycle as u8;
-        // cycle += backend.ray.get_frame_time() * 4.0;
-        // if cycle >= 16.0 {
-        //     cycle = 1.0
-        // }
+        // Draw text with animated colors
+        cycle += backend.ray.get_frame_time() * 4.0;
+        if cycle >= 16.0 {
+            cycle = 1.0
+        }
+        text_animated.colors.set(1, cycle as u8);
+        draw_text(&mut bg_map, col, line, &text_animated, "Animated palette");
 
         // Update backends
         tato.frame_finish();

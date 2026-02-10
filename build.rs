@@ -10,7 +10,7 @@ fn main() {
         asset_import_path: "import".into(),
         asset_export_path: "src/default_assets".into(),
         clear_export_path: true,
-        force_reprocess: true,
+        force_reprocess: false,
     });
 
     // Default fonts
