@@ -19,6 +19,7 @@ fn main() -> TatoResult<()> {
 
     tato.video.bg_color = RGBA12::with_transparency(2, 3, 4, 7);
     tato.video.wrap_bg = true;
+    dash.color_grid = RGBA12::with_transparency(1, 1, 1, 2);
 
     // Combine multiple banks into bank 0
     banks[0].tiles.add(&Tile::default());

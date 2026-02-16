@@ -19,7 +19,7 @@ use tato_arena::{RingBuffer, Slice};
 mod gui_banks;
 mod gui_console;
 mod gui_draw_polys;
-mod gui_draw_tile_info;
+// mod gui_draw_tile_info;
 mod gui_draw_tooltip;
 mod gui_input;
 mod gui_text;
@@ -364,12 +364,10 @@ impl Dashboard {
         layout.set_gap(3);
 
         // Panels have their own modules, for organization
-        let bg_bank = &banks[tato.video.bg_tile_bank as usize];
-        self.draw_tile_info(bg, bg_bank, frame_arena, tato, backend);
+        // self.draw_tile_info(bg, frame_arena, tato, backend);
         self.process_text_panel(&mut layout, frame_arena, backend, tato);
-        self.process_video_banks_panel(&mut layout, frame_arena, banks, backend);
+        self.process_video_banks_panel(&mut layout, frame_arena, banks, bg, backend, tato);
         self.process_console(tato, &mut layout, frame_arena);
-
 
         // Canvas
         layout.fill(|canvas| {
@@ -458,5 +456,23 @@ impl Dashboard {
         // Acquire arena usage info at the very end
         // so it's accurate (although with a 1 frame delay)
         self.last_frame_arena_use = frame_arena.used();
+    }
+
+    pub(crate) fn draw_text<A>(
+        &mut self,
+        arena: &mut A,
+        frame: &mut Frame<i16>,
+        text: Text,
+        size: f32,
+    ) where
+        A: ArenaOps<u32, ()>,
+    {
+        frame.push_edge(Edge::Top, (size * 0.75) as i16, |label| {
+            let rect = label.rect();
+            let handle = arena
+                .alloc(DrawOp::Text { text, x: rect.x, y: rect.y, size, color: RGBA32::WHITE })
+                .unwrap();
+            self.ops.push(arena, handle).unwrap();
+        });
     }
 }
