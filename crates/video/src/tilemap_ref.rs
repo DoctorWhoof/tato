@@ -1,17 +1,17 @@
 use crate::*;
 
-/// A fast (no "dyn" required), read-only reference of a Tilemap with any size
-/// that allows erasing the "CELL_COUNT" const generic from a Tilemap.
-/// You can easily convert from a Tilemap to a TilemapRef using ".into()"
-/// in any field that requires a TilemapRef.
+/// A read-only view of a tilemap that erases the CELL_COUNT const generic.
 #[derive(Debug, Clone, Copy)]
 pub struct TilemapRef<'a> {
+    /// Reference to the cell data.
     pub cells: &'a [Cell],
+    /// The number of columns.
     pub columns: u16,
+    /// The number of rows.
     pub rows: u16,
 }
 
-// Conversion from Tilemap reference to TilemapRef
+/// Converts a Tilemap reference to a TilemapRef.
 impl<'a, const CELL_COUNT: usize> From<&'a Tilemap<CELL_COUNT>> for TilemapRef<'a> {
     fn from(tilemap: &'a Tilemap<CELL_COUNT>) -> Self {
         Self {
@@ -23,7 +23,7 @@ impl<'a, const CELL_COUNT: usize> From<&'a Tilemap<CELL_COUNT>> for TilemapRef<'
 }
 
 impl<'a> TilemapRef<'a> {
-
+    /// Creates a TilemapRef from a static Tilemap in a const context.
     pub const fn from_const_tilemap<const CELL_COUNT: usize>(tilemap: &'static Tilemap<CELL_COUNT>) -> Self {
         Self {
             cells: &tilemap.cells,

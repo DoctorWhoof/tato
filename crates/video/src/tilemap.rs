@@ -1,40 +1,58 @@
 use crate::*;
 use tato_math::rect::Rect;
 
-/// This trait allows read-only references to BGMaps of different sizes.
-/// Also allows functions to take either "Tilemap" or "TilemapRef"
+/// Trait for read-only tilemap operations, abstracting over different sizes.
 pub trait DynTilemap: core::fmt::Debug {
+    /// Returns a slice of all cells in the tilemap.
     fn cells(&self) -> &[Cell];
+    /// Returns the number of columns.
     fn columns(&self) -> u16;
+    /// Returns the number of rows.
     fn rows(&self) -> u16;
+    /// Returns the width in pixels.
     fn width(&self) -> i16;
+    /// Returns the height in pixels.
     fn height(&self) -> i16;
+    /// Returns the total capacity of the tilemap.
     fn len(&self) -> usize;
+    /// Converts column and row coordinates to a linear index.
     fn get_index(&self, col: i16, row: i16) -> Option<usize>;
+    /// Converts a linear index to column and row coordinates.
     fn get_coords(&self, index: usize) -> Option<(u16, u16)>;
+    /// Returns the cell at the given coordinates.
     fn get_cell(&self, col: i16, row: i16) -> Option<Cell>;
+    /// Returns the tile ID at the given coordinates.
     fn get_id(&self, col: i16, row: i16) -> Option<TileID>;
+    /// Returns the tile flags at the given coordinates.
     fn get_flags(&self, col: i16, row: i16) -> Option<TileFlags>;
 }
 
-/// A simple collection of Cells, split into a number of columns and rows that can never exceed the
-/// constant CELL_COUNT capacity.
+/// A fixed-capacity grid of cells with a maximum size of CELL_COUNT.
 #[derive(Debug, Clone)]
 pub struct Tilemap<const CELL_COUNT: usize> {
+    /// The cell storage array.
     pub cells: [Cell; CELL_COUNT],
+    /// The number of active columns.
     pub columns: u16,
+    /// The number of active rows.
     pub rows: u16,
 }
 
-/// A simple packet of required cells to fully set the attributes on a BG tile.
+/// An operation to set a cell at specific coordinates.
 #[derive(Debug, Clone, Copy)]
 pub struct BgOp {
+    /// The target column.
     pub col: i16,
+    /// The target row.
     pub row: i16,
+    /// The cell data to set.
     pub cell: Cell
 }
 
 impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
+    /// Creates a new tilemap with the specified dimensions.
+    /// 
+    /// Panics if dimensions are zero or exceed CELL_COUNT.
     pub fn new(columns: u16, rows: u16) -> Self {
         assert!(
             CELL_COUNT < u16::MAX as usize,
@@ -57,28 +75,40 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
+    /// Returns a read-only "view" of the tilemap, which can be passed around
+    /// without knowledge of the CELL_COUNT const generic.
+    pub fn as_ref(&self) -> TilemapRef<'_> {
+        self.into()
+    }
+
+    /// Changes the active dimensions of the tilemap.
+    /// 
+    /// Panics if dimensions are zero or exceed capacity.
     pub fn set_size(&mut self, columns: u16, rows: u16) {
         assert!(
             columns as usize * rows as usize <= self.cells().len(),
-            err!("Invalid column count")
+            err!("Invalid dimensions (exceeds capacity)")
         );
         assert!(columns > 0 && rows > 0, err!("Tilemap dimensions can't be zero"));
         self.columns = columns;
         self.rows = rows;
     }
 
+    /// Sets the cell at the given coordinates. Does nothing if out of bounds.
     pub fn set_cell(&mut self, col:i16, row:i16, cell:Cell) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index] = cell
         }
     }
 
+    /// Applies a BgOp operation. Does nothing if out of bounds.
     pub fn set_op(&mut self, op: BgOp) {
         if let Some(index) = self.get_index(op.col, op.row) {
             self.cells[index] = op.cell;
         }
     }
 
+    /// Returns a mutable reference to the cell at the given coordinates.
     pub fn cell_mut(&mut self, col: i16, row: i16) -> Option<&mut Cell> {
         if let Some(index) = self.get_index(col, row) {
             Some(&mut self.cells[index]) //
@@ -87,27 +117,30 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
+    /// Sets the tile ID at the given coordinates. Does nothing if out of bounds.
     pub fn set_id(&mut self, col: i16, row: i16, tile_id: TileID) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].id = tile_id;
         }
     }
 
+    /// Sets the tile flags at the given coordinates. Does nothing if out of bounds.
     pub fn set_flags(&mut self, col: i16, row: i16, flags: TileFlags) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].flags = flags;
         }
     }
 
+    /// Sets the palette colors at the given coordinates. Does nothing if out of bounds.
     pub fn set_colors(&mut self, col: i16, row: i16, colors:Palette) {
         if let Some(index) = self.get_index(col, row) {
             self.cells[index].colors = colors;
         }
     }
     /// Copies a rectangular region from a cells array to this tilemap.
-    /// - If `src_rect` is None, attempts to copy the entire source tilemap.
-    /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
-    /// - Negative destination coordinates are handled by clipping the source region.
+    /// 
+    /// If `src_rect` is None, copies the entire source. If `dst_rect` is None, pastes at (0,0).
+    /// Negative destination coordinates are clipped automatically.
     pub fn copy_from_cells(
         &mut self,
         cells: &[Cell],
@@ -170,10 +203,10 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
         }
     }
 
-    /// Copies a rectangular region from a src tilemap to this tilemap.
-    /// - If `src_rect` is None, attempts to copy the entire source tilemap.
-    /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
-    /// - Negative destination coordinates are handled by clipping the source region.
+    /// Copies a rectangular region from a source tilemap to this tilemap.
+    /// 
+    /// If `src_rect` is None, copies the entire source. If `dst_rect` is None, pastes at (0,0).
+    /// Negative destination coordinates are clipped automatically.
     pub fn copy_from(
         &mut self,
         src: &dyn DynTilemap,
@@ -243,121 +276,3 @@ impl<const CELL_COUNT: usize> DynTilemap for Tilemap<CELL_COUNT> {
         CELL_COUNT
     }
 }
-
-// // Standalone functions. Unfortunately I ran into borrow checker issues when
-// // using trait object methods!
-
-// #[inline(always)]
-// pub fn bg_get_index(map: &dyn DynTilemap, col: u16, row: u16) -> Option<usize> {
-//     if col as usize >= map.columns() as usize || row as usize >= map.rows() as usize {
-//         return None;
-//     }
-//     Some((row as usize * map.columns() as usize) + col as usize)
-// }
-
-// #[inline(always)]
-// pub fn bg_get_coords(map: &dyn DynTilemap, index: usize) -> Option<(u16, u16)> {
-//     if index >= (map.columns() as usize * map.rows() as usize) {
-//         return None;
-//     }
-//     let col = (index % map.columns() as usize) as u16;
-//     let row = (index / map.columns() as usize) as u16;
-//     Some((col, row))
-// }
-
-// pub fn bg_set_cell(map: &mut dyn DynTilemap, op: BgOp) {
-//     if let Some(index) = bg_get_index(map, op.col, op.row) {
-//         map.cells_mut()[index].id = op.tile_id;
-//         map.cells_mut()[index].flags = op.flags;
-//     }
-// }
-
-// pub fn bg_set_id(map: &mut dyn DynTilemap, col: u16, row: u16, tile_id: TileID) {
-//     if let Some(index) = bg_get_index(map, col, row) {
-//         map.cells_mut()[index].id = tile_id;
-//     }
-// }
-
-// pub fn bg_set_flags(map: &mut dyn DynTilemap, col: u16, row: u16, flags: TileFlags) {
-//     if let Some(index) = bg_get_index(map, col, row) {
-//         map.cells_mut()[index].flags = flags;
-//     }
-// }
-
-// pub fn bg_get_cell(map: &dyn DynTilemap, col: u16, row: u16) -> Option<Cell> {
-//     let index = bg_get_index(map, col, row)?;
-//     Some(map.cells()[index])
-// }
-
-// pub fn bg_get_id(map: &dyn DynTilemap, col: u16, row: u16) -> Option<TileID> {
-//     let index = bg_get_index(map, col, row)?;
-//     Some(map.cells()[index].id)
-// }
-
-// pub fn bg_get_flags(map: &dyn DynTilemap, col: u16, row: u16) -> Option<TileFlags> {
-//     let index = bg_get_index(map, col, row)?;
-//     Some(map.cells()[index].flags)
-// }
-
-// /// Copies a rectangular region from a src tilemap to this tilemap.
-// /// - If `src_rect` is None, attempts to copy the entire source tilemap.
-// /// - If `dst_rect` is None, pastes at (0,0) and fills as many tiles as possible.
-// /// - Negative destination coordinates are handled by clipping the source region.
-// pub fn bg_copy(
-//     src: &dyn DynTilemap,
-//     src_rect: Option<Rect<u16>>,
-//     dst: &mut dyn DynTilemap,
-//     dst_rect: Option<Rect<u16>>,
-// ) {
-//     // Determine source rectangle
-//     let src_x = src_rect.map_or(0, |r| r.x) as i16;
-//     let src_y = src_rect.map_or(0, |r| r.y) as i16;
-//     let src_w = src_rect.map_or(src.columns(), |r| r.w) as i16;
-//     let src_h = src_rect.map_or(src.rows(), |r| r.h) as i16;
-
-//     // Make sure source rectangle is within bounds
-//     let src_w = i16::min(src_w, src.columns() as i16 - src_x);
-//     let src_h = i16::min(src_h, src.rows() as i16 - src_y);
-
-//     // Determine destination rectangle
-//     let dst_x = dst_rect.map_or(0, |r| r.x) as i16;
-//     let dst_y = dst_rect.map_or(0, |r| r.y) as i16;
-
-//     // Calculate clipping for negative coordinates
-//     let clip_x = if dst_x < 0 { -dst_x } else { 0 };
-//     let clip_y = if dst_y < 0 { -dst_y } else { 0 };
-
-//     // Adjust source and destination starting points
-//     let effective_dst_x = i16::max(0, dst_x);
-//     let effective_dst_y = i16::max(0, dst_y);
-
-//     // Calculate effective width and height after clipping
-//     let effective_width = i16::max(
-//         0,
-//         i16::min(src_w - clip_x, dst.columns() as i16 - effective_dst_x),
-//     );
-//     let effective_height = i16::max(
-//         0,
-//         i16::min(src_h - clip_y, dst.rows() as i16 - effective_dst_y),
-//     );
-
-//     // If there's nothing to copy (zero width or height), return early
-//     if effective_width <= 0 || effective_height <= 0 {
-//         return;
-//     }
-
-//     // Calculate effective src positions (accounting for clipping)
-//     let effective_src_x = clip_x;
-//     let effective_src_y = clip_y;
-
-//     // Copy the tiles row by row
-//     for y in 0..effective_height {
-//         for x in 0..effective_width {
-//             let src_index = (effective_src_y + y) as usize * src.columns() as usize
-//                 + (effective_src_x + x) as usize;
-//             let dst_index = (effective_dst_y + y) as usize * dst.columns() as usize
-//                 + (effective_dst_x + x) as usize;
-//             dst.cells_mut()[dst_index] = src.cells()[src_index];
-//         }
-//     }
-// }
