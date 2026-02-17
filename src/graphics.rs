@@ -82,9 +82,14 @@ pub fn draw_sprite_to_tilemap<const LEN: usize>(
     src: &dyn DynTilemap,
     bundle: SpriteBundle,
 ) {
-    let col = (bundle.x / TILE_SIZE as i16) as u16;
-    let row = (bundle.y / TILE_SIZE as i16) as u16;
-    let dst_rect = Rect { x: col, y: row, w: src.columns(), h: src.rows() };
+    let col = bundle.x / TILE_SIZE as i16;
+    let row = bundle.y / TILE_SIZE as i16;
+    let dst_rect = Rect {
+        x: col,
+        y: row,
+        w: src.columns() as i16,
+        h: src.rows() as i16,
+    };
     dest.copy_from(src, None, Some(dst_rect), bundle.tile_offset);
 }
 
@@ -92,9 +97,9 @@ pub fn draw_sprite_to_tilemap<const LEN: usize>(
 /// If any rect is "None" the entire map is used.
 pub fn draw_tilemap_to_tilemap<const LEN: usize>(
     dest: &mut Tilemap<LEN>,
-    dest_rect: Option<Rect<u16>>,
+    dest_rect: Option<Rect<i16>>,
     src: &dyn DynTilemap,
-    src_rect: Option<Rect<u16>>,
+    src_rect: Option<Rect<i16>>,
     tile_offset: u8,
 ) {
     dest.copy_from(src, src_rect, dest_rect, tile_offset);
@@ -127,7 +132,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         },
     });
 
-    let high_x = (rect.x + rect.w).min(i16::MAX);
+    let high_x = (rect.x + rect.w - 1).min(i16::MAX);
     let Some(top) = patch.get_cell(1, 0) else { return };
     for col in rect.x + 1..high_x {
         bg.set_op(BgOp {
@@ -152,7 +157,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         },
     });
 
-    let high_y = (rect.y + rect.h).min(i16::MAX);
+    let high_y = (rect.y + rect.h - 1).min(i16::MAX);
     let Some(left) = patch.get_cell(0, 1) else { return };
     for row in rect.y + 1..high_y {
         bg.set_op(BgOp {
