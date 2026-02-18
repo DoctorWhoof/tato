@@ -1,5 +1,7 @@
 ### Priority List
 
+- [ ] Better strategy to update the Dashboard bank texture, to prevent the stale data bug I just ran into...
+
 - [ ] Pipeline: Ensure names for assets are always unique, to avoid accidentally overwriting silently.
 
 ### General Engine

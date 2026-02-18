@@ -55,6 +55,7 @@ pub struct Dashboard {
     pub gui_scale: f32,
     pub color_origin: RGBA12,
     pub color_grid: RGBA12,
+
     // Storage
     fixed_arena: Arena<FIXED_ARENA_LEN, u32>, //  Not cleared per frame
     // State
@@ -74,6 +75,7 @@ pub struct Dashboard {
     debug_polys_world: Buffer<Polygon>,
     debug_polys_gui: Buffer<Polygon>,
     tile_pixels: [Buffer<u8, u32>; BANK_COUNT], // one vec per bank
+    re_init_bank_texture: bool,                 // WIll self-reset to false after generating texture
 }
 
 pub const PANEL_WIDTH: i16 = 150;
@@ -110,6 +112,7 @@ impl Dashboard {
             gui_scale: 2.0,
             color_origin: RGBA12::with_transparency(7, 5, 3, 3),
             color_grid: RGBA12::with_transparency(4, 3, 2, 2),
+            re_init_bank_texture: true,
             // frame_arena,
             fixed_arena,
             tile_pixels,
@@ -132,6 +135,12 @@ impl Dashboard {
             debug_polys_world: Buffer::default(),
             debug_polys_gui: Buffer::default(),
         })
+    }
+
+    /// Call whenever bank changes have been performed.
+    pub fn update_bank_texture(&mut self) {
+        // Once the texture is updated, this self-resets to false.
+        self.re_init_bank_texture = true;
     }
 
     /// The visibility state of the console.

@@ -2,10 +2,12 @@
 use tato::prelude::*;
 
 mod patch;
-
 pub use patch::*;
 
-pub const BANK_PATCH: Bank = Bank { colors: COLORS_PATCH, tiles: TILES_PATCH };
+pub const BANK_PATCH: Bank = Bank {
+    colors: COLORS_PATCH,
+    tiles: TileBank::from_tiles(&TILES_PATCH),
+};
 
 pub const COLORS_PATCH: ColorBank = ColorBank::new_from(&[
     RGBA12::with_transparency(0, 0, 0, 0),
@@ -14,10 +16,10 @@ pub const COLORS_PATCH: ColorBank = ColorBank::new_from(&[
     RGBA12::with_transparency(1, 1, 1, 7),
 ]);
 
-pub const TILES_PATCH: TileBank = TileBank::new_from(&[
+pub const TILES_PATCH: [Tile<2>; 5] = [
     Tile::<2>::new(0x00000000005501AA, 0x06AA06AA06AA06AA),
     Tile::<2>::new(0x000000005555AAAA, 0xAAAAAAAAAAAAAAAA),
     Tile::<2>::new(0x000000005500AA40, 0xAA90AA9CAA9FAA9F),
     Tile::<2>::new(0x0000000000000000, 0x0000000000000000),
     Tile::<2>::new(0xAA9FAA9FAA9FAA9F, 0xAA7F55FFFFFCFFF0),
-]);
+];

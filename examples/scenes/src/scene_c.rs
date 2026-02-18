@@ -13,14 +13,15 @@ static mut LINE: u16 = 0;
 impl SceneC {
     pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
-        let _solid = TILE_SOLID;
-        let cross = TILE_CROSSHAIRS;
-        let smiley = TILE_SMILEY;
 
         banks[0].reset();
         banks[1].reset();
         banks[0].colors.load_default();
         t.video.bg_color = RGBA12::GRAY;
+
+        banks[0].append_tiles(&TILES_DITHER).unwrap();
+        let cross = banks[0].append_tile(&TILES_GRIDS[1]).unwrap();
+        let smiley = banks[0].append_tile(&TILES_SYMBOLS[0]).unwrap();
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
@@ -28,7 +29,7 @@ impl SceneC {
                     col,
                     row,
                     cell: Cell {
-                        id: cross.id,
+                        id: cross,
                         flags: TileFlags::default().with_fg(true),
                         colors: [0, 1, 2, 3].into(),
                     },
@@ -49,7 +50,7 @@ impl SceneC {
             color.set_b(((scaled_line.wrapping_add(2)) % 3) as u8 + 4);
         });
 
-        Ok(SceneC { smiley: smiley.id, counter: 0 })
+        Ok(SceneC { smiley: smiley, counter: 0 })
     }
 
     pub fn update(&mut self, t: &mut Tato, _banks: &mut [Bank]) -> Option<SceneChange> {
@@ -71,7 +72,7 @@ impl SceneC {
                 y,
                 id: self.smiley,
                 flags: TileFlags::default(),
-                colors: [0, 1, x as u8, 3].into(),
+                colors: [0, x as u8, 2, 3].into(),
             });
         }
 

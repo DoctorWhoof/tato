@@ -56,13 +56,13 @@ impl ColorBank {
         self.palette_head = 0;
     }
 
-    /// Restore palette counters to previous state (for checkpoint/restore)
-    /// Warning: Caller must ensure these are valid previous states!
-    pub fn restore_state(&mut self, color_count: u8, color_mapping_count: u8) {
-        assert!(color_count <= COLORS_PER_PALETTE as u8, "Invalid color count");
-        assert!(color_mapping_count <= 16, "Invalid color mapping count");
-        self.palette_head = color_count;
-    }
+    // /// Restore palette counters to previous state (for checkpoint/restore)
+    // /// Warning: Caller must ensure these are valid previous states!
+    // pub fn restore_state(&mut self, color_count: u8, color_mapping_count: u8) {
+    //     assert!(color_count <= COLORS_PER_PALETTE as u8, "Invalid color count");
+    //     assert!(color_mapping_count <= 16, "Invalid color mapping count");
+    //     self.palette_head = color_count;
+    // }
 
     pub fn push_color(&mut self, color: RGBA12) -> ColorID {
         assert!(self.palette_head < COLORS_PER_PALETTE as u8, "Palette capacity reached");

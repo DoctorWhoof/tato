@@ -2,10 +2,12 @@
 use tato::prelude::*;
 
 mod smileys;
-
 pub use smileys::*;
 
-pub const BANK_SMILEYS: Bank = Bank { colors: COLORS_SMILEYS, tiles: TILES_SMILEYS };
+pub const BANK_SMILEYS: Bank = Bank {
+    colors: COLORS_SMILEYS,
+    tiles: TileBank::from_tiles(&TILES_SMILEYS),
+};
 
 pub const COLORS_SMILEYS: ColorBank = ColorBank::new_from(&[
     RGBA12::with_transparency(0, 0, 0, 0),
@@ -26,10 +28,10 @@ pub const COLORS_SMILEYS: ColorBank = ColorBank::new_from(&[
     RGBA12::with_transparency(4, 6, 7, 7),
 ]);
 
-pub const TILES_SMILEYS: TileBank = TileBank::new_from(&[
+pub const TILES_SMILEYS: [Tile<2>; 5] = [
     Tile::<2>::new(0x0000000000000001, 0x0015005500550155),
     Tile::<2>::new(0x0000000000005555, 0x5555555555555555),
     Tile::<2>::new(0x0000000500550155, 0x0555056515651565),
     Tile::<2>::new(0x0000000000000000, 0x0000000000000000),
     Tile::<2>::new(0x155515AA05AA056A, 0x015A005500050000),
-]);
+];

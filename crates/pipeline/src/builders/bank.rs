@@ -36,6 +36,8 @@ pub struct BankBuilder<'a> {
     pub write_tiles: bool,
     /// If true, writes animation data.
     pub write_animations: bool,
+    /// If true, writes tilemap data.
+    pub write_maps: bool,
     #[doc(hidden)]
     pub use_crate_assets: bool,
     name: String,
@@ -65,6 +67,7 @@ impl<'a> BankBuilder<'a> {
             write_colors: true,
             write_tiles: true,
             write_animations: true,
+            write_maps: true,
             name: String::from(name),
             pixels: vec![],
             tiles_to_cells: HashMap::new(),
@@ -97,7 +100,7 @@ impl<'a> BankBuilder<'a> {
     }
 
     /// Adds an animation strip from a PNG file with specified frame layout.
-    pub fn new_animation_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
+    pub fn new_strip(&mut self, path: &str, name: &str, frames_h: u8, frames_v: u8) {
         self.deferred_commands.push(DeferredCommand::NewAnimationStrip {
             path: path.to_string(),
             name: name.to_string(),
@@ -272,25 +275,17 @@ impl<'a> BankBuilder<'a> {
         code.write_header(self.allow_unused, self.use_crate_assets, default_imports);
 
         // Write private mod statements for tilemaps at the top
-        for map in &self.maps {
-            code.write_line(&format!("mod {};", map.name.to_lowercase()));
-        }
-        if !self.maps.is_empty() {
-            code.write_line("");
-        }
-
-        // Write re-exports for tilemap constants
-        for map in &self.maps {
-            code.write_line(&format!("pub use {}::*;", map.name.to_lowercase()));
-        }
-        if !self.maps.is_empty() {
-            code.write_line("");
-        }
-
-        // Generate separate files for each tilemap (keeping sub-module structure for LSP performance)
-        {
+        if !self.maps.is_empty() && self.write_maps {
             use std::fs;
             use std::path::Path;
+
+            code.write_line("");
+            // Write re-exports for tilemap constants
+            for map in &self.maps {
+                code.write_line(&format!("mod {};", map.name.to_lowercase()));
+                code.write_line(&format!("pub use {}::*;", map.name.to_lowercase()));
+            }
+            code.write_line("");
 
             // Get the directory of the main file and the module name
             let main_path = Path::new(&full_path);
@@ -354,7 +349,8 @@ impl<'a> BankBuilder<'a> {
             code.write_line(&format!("pub const BANK_{}: Bank = Bank {{", bank_name));
 
             code.write_line(&format!("  colors: COLORS_{}, ", bank_name,));
-            code.write_line(&format!("  tiles: TILES_{}, ", bank_name));
+            // code.write_line(&format!("  tiles: TILES_{}, ", bank_name));
+            code.write_line(&format!("  tiles: TileBank::from_tiles(&TILES_{}), ", bank_name));
 
             code.write_line("};");
             code.write_line("");
@@ -388,15 +384,17 @@ impl<'a> BankBuilder<'a> {
         if self.write_tiles {
             // Write bank tiles
             code.write_line(&format!(
-                "pub const TILES_{}: TileBank = TileBank::new_from(",
-                bank_name
+                "pub const TILES_{}: [Tile<2>; {}] = [",
+                bank_name,
+                self.pixels.len() / TILE_LEN
             ));
-            code.write_line("    &[");
+            // code.write_line("    &[");
             for tile_pixels in self.pixels.chunks(TILE_LEN) {
                 code.write_line(&format!("        {},", crate::format_tile_compact(tile_pixels)));
             }
-            code.write_line("    ],");
-            code.write_line(");");
+            code.write_line("    ];");
+            // code.write_line("    ],");
+            // code.write_line(");");
             code.write_line("");
         }
 
@@ -787,10 +785,8 @@ impl<'a> BankBuilder<'a> {
         abs_row: usize,
         abs_col: usize,
     ) -> Palette {
-        let flags = TileFlags::default()
-            .with_flip_x(flip_x)
-            .with_flip_y(flip_y)
-            .with_rotation(rotation);
+        let flags =
+            TileFlags::default().with_flip_x(flip_x).with_flip_y(flip_y).with_rotation(rotation);
 
         let mut canonical_colors: [Option<u8>; 4] = [None; 4];
         let size = TILE_SIZE as usize;
@@ -917,10 +913,8 @@ impl<'a> BankBuilder<'a> {
     fn transform_tile(tile: &Pixels, flip_x: bool, flip_y: bool, rotation: bool) -> Pixels {
         let mut result = [0u8; TILE_LEN];
         let size = TILE_SIZE as usize;
-        let flags = TileFlags::default()
-            .with_flip_x(flip_x)
-            .with_flip_y(flip_y)
-            .with_rotation(rotation);
+        let flags =
+            TileFlags::default().with_flip_x(flip_x).with_flip_y(flip_y).with_rotation(rotation);
 
         // For each destination position, find the source position using the same
         // transform the renderer uses

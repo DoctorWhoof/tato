@@ -1,11 +1,25 @@
 // Auto-generated mod.rs - exports all generated modules
 
-pub mod font_long;
-pub mod font_short;
-pub mod font_arcade;
-pub mod default_tiles;
+pub mod dither;
+pub mod lines;
+pub mod chars;
+pub mod icons;
+pub mod diagonals;
+pub mod surfaces;
+pub mod symbols;
+pub mod frames;
+pub mod circles;
+pub mod grids;
+pub mod misc;
 
-pub use font_long::*;
-pub use font_short::*;
-pub use font_arcade::*;
-pub use default_tiles::*;
+pub use dither::*;
+pub use lines::*;
+pub use chars::*;
+pub use icons::*;
+pub use diagonals::*;
+pub use surfaces::*;
+pub use symbols::*;
+pub use frames::*;
+pub use circles::*;
+pub use grids::*;
+pub use misc::*;

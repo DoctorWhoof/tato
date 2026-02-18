@@ -11,6 +11,8 @@ pub struct SceneA {
     movement_start: f32, // will be used to store the time when the player starts moving
     colors_shadow: Palette,
     colors_cycle: Palette,
+    smiley: TileID,
+    // arrow: TileID,
 }
 
 impl SceneA {
@@ -31,10 +33,15 @@ impl SceneA {
 
         banks[0].reset();
         banks[0].colors.load_default();
-        banks[0].append_tiles_from_bank(&BANK_DEFAULT, None).unwrap();
+        // TODO: Append single tile function, to avoid passing a slice like this
+        let arrow = banks[0].append_tile(&TILES_ICONS[0]).unwrap();
+        let smiley = banks[0].append_tile(&TILES_SYMBOLS[0]).unwrap();
+
         // Palette test - defines BG palette with a golden tint!
         banks[1].reset();
-        banks[1].append(&BANK_DEFAULT).unwrap();
+        banks[1].append_tile(&TILES_ICONS[0]).unwrap();
+        banks[1].append_tile(&TILES_SYMBOLS[0]).unwrap();
+
         banks[1].colors.palette = [
             RGBA12::TRANSPARENT,
             RGBA12::new(2, 1, 1),
@@ -57,7 +64,7 @@ impl SceneA {
         // Color mappings
         let colors_shadow = Palette::new(0, 1, 1, 1);
         let colors_cycle = Palette::new(0, 1, 2, 3);
-        let colors_unique: [Palette; 16] = core::array::from_fn(|i| Palette::new(0, 1, (i as u8 % 12) + 4, 3));
+        let colors_unique: [Palette; 16] = core::array::from_fn(|i| Palette::new(0, (i as u8 % 12) + 4, 2, 3));
         let colors_bg: [Palette; 16] = core::array::from_fn(|i| {
             let bg_color = (i % 16) as u8;
             Palette::new(0, bg_color, bg_color, bg_color)
@@ -71,7 +78,7 @@ impl SceneA {
                         col,
                         row,
                         cell: Cell {
-                            id: TILE_ARROW.id,
+                            id: arrow,
                             flags: TileFlags::default().with_rotation(true),
                             // Calculate palette ID based on coordinates, limits to 14
                             // indices, adds 2 to avoid colors 0 and 1 in the BG
@@ -87,7 +94,7 @@ impl SceneA {
         let mut smileys: [Entity; SMILEY_COUNT] = from_fn(|i| Entity {
             x: rand::random_range(0..w - TILE_SIZE as i16) as f32,
             y: rand::random_range(0..h - TILE_SIZE as i16) as f32,
-            tile: TILE_SMILEY.id,
+            tile: smiley,
             flags: TileFlags::default(),
             colors: colors_unique[(i % 14) + 2],
         });
@@ -99,7 +106,7 @@ impl SceneA {
             player: Entity {
                 x: (t.video.width() / 2) as f32,
                 y: (t.video.height() / 2) as f32,
-                tile: TILE_ARROW.id,
+                tile: arrow,
                 flags: TileFlags::default(),
                 colors: colors_cycle,
             },
@@ -107,6 +114,8 @@ impl SceneA {
             movement_start: 0.0,
             colors_cycle,
             colors_shadow,
+            // arrow: arrow,
+            smiley
         })
     }
 
@@ -124,7 +133,6 @@ impl SceneA {
         }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
-        // let speed = if t.pad.is_any_down(AnyButton::Face) {
         let speed = if t.pad.is_down(Button::A) { 30.0 * state.elapsed as f32 } else { 120.0 * state.elapsed as f32 };
 
         // Ensures animation always starts from phase = 0.0;
@@ -167,22 +175,16 @@ impl SceneA {
         t.video.scroll.x = target_x;
         t.video.scroll.y = target_y;
 
+        // Palette cycle
         {
-            let mut cycle_color = self.colors_cycle.get(2);
+            let mut cycle_color = self.colors_cycle.get(1);
             cycle_color = ((cycle_color + 1) % 12) + 4;
-            self.colors_cycle.set(2, cycle_color);
+            self.colors_cycle.set(1, cycle_color);
             self.player.colors.set(1, cycle_color);
         }
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
-                // let Some(mut flags) = state.bg.get_flags(col, row) else {
-                //     continue;
-                // };
-                // flags = self.player.flags;
-                // flags.set_rotation(self.player.flags.is_rotated());
-                // flags.set_flip_x(self.player.flags.is_flipped_x());
-                // flags.set_flip_y(self.player.flags.is_flipped_y());
                 state.bg.set_flags(col, row, self.player.flags);
             }
         }
@@ -230,7 +232,7 @@ impl SceneA {
         t.video.draw_fg_tile(DrawBundle {
             x: 0,
             y: 0,
-            id: TILE_SMILEY.id,
+            id: self.smiley,
             flags: TileFlags::default(),
             colors: self.colors_cycle,
         });

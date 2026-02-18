@@ -17,7 +17,7 @@ fn main() -> TatoResult<()> {
     tato.video.bg_tile_bank = 0;
     banks[0].colors.load_default();
     banks[0].tiles.add(&Tile::default());
-    let text_offset = banks[0].append(&BANK_FONT_LONG).unwrap();
+    let text_offset = banks[0].append_tiles(&TILES_CHARS).unwrap();
 
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,

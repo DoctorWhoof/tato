@@ -32,6 +32,9 @@ impl Dashboard {
                 // Small separator
                 right_panel.push_edge(Edge::Top, 5, |_separator| {});
             }
+            // Reset this field after all banks have been processed. Can be requested
+            // again with self.update_bank_texture.
+            self.re_init_bank_texture = false;
 
             // BG Tile Info
             let size_normal = self.font_size * self.gui_scale;
@@ -119,7 +122,7 @@ impl Dashboard {
         // May need to reset entire fixed_arena if a single bank doesn't match.
         // Needs testing, I think I'm not running into a problem simply because the pixel count
         // always matches
-        if expected_size != self.tile_pixels[bank_index].len() {
+        if expected_size != self.tile_pixels[bank_index].len() || self.re_init_bank_texture {
             // Allocate buffer with correct size
             self.tile_pixels[bank_index].resize(&mut self.fixed_arena, expected_size as u32);
 

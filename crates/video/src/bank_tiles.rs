@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Debug, Clone)]
 pub struct TileBank {
     pub tiles: [Tile<2>; TILE_COUNT],
-    pub(crate) head: u8,
+    pub(crate) head: u16,
 }
 
 impl TileBank {
@@ -11,7 +11,7 @@ impl TileBank {
         Self { tiles: [Tile::<2>::new(0, 0); TILE_COUNT], head: 0 }
     }
 
-    pub const fn new_from(tiles: &[Tile<2>]) -> Self {
+    pub const fn from_tiles(tiles: &[Tile<2>]) -> Self {
         // Create tiles array
         let mut tiles_array = [Tile::<2>::new(0, 0); TILE_COUNT];
         let mut i = 0;
@@ -22,7 +22,7 @@ impl TileBank {
             i += 1;
         }
 
-        Self { tiles: tiles_array, head: tiles.len() as u8 }
+        Self { tiles: tiles_array, head: tiles.len() as u16 }
     }
 
     pub fn reset(&mut self) {
@@ -38,17 +38,17 @@ impl TileBank {
         256
     }
 
-    /// Restore tile counter to a previous state (for checkpoint/restore)
-    /// Warning: Caller must ensure this is a valid previous state!
-    pub fn restore_state(&mut self, count: u8) {
-        assert!(count as usize <= TILE_COUNT, "Invalid tile count");
-        self.head = count;
-    }
+    // /// Restore tile counter to a previous state (for checkpoint/restore)
+    // /// Warning: Caller must ensure this is a valid previous state!
+    // pub fn restore_state(&mut self, count: u8) {
+    //     assert!(count as usize <= TILE_COUNT, "Invalid tile count");
+    //     self.head = count;
+    // }
 
     /// Adds a single tile, returns a TileID
     pub fn add(&mut self, tile: &Tile<2>) -> TileID {
-        assert!((self.head as usize) < TILE_COUNT, err!("Tileset capacity reached"));
-        let result = TileID(self.head);
+        let head = u8::try_from(self.head).expect("Tileset capacity exceeded");
+        let result = TileID(head);
         // Copy tile data to bank
         let dest_index = self.head as usize;
         self.tiles[dest_index] = *tile;

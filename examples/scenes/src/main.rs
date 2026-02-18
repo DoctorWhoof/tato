@@ -69,12 +69,6 @@ fn main() -> TatoResult<()> {
         frame_arena.clear();
         backend.frame_start(&mut frame_arena, &mut tato.pad);
 
-        // Pausing must happen BEFORE tato.frame_start if we don't
-        // want to clear the sprites when paused
-        // if backend.get_pressed_key() == Some(Key::Enter) {
-        //     tato.paused = !tato.paused
-        // }
-
         tato.frame_start(backend.ray.get_frame_time());
         dash.frame_start(&mut frame_arena, &mut backend);
         state.time = backend.ray.get_time() as f32;
@@ -99,6 +93,7 @@ fn main() -> TatoResult<()> {
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {
             tato.reset();
+            dash.update_bank_texture();
             match choice {
                 SceneChange::A => scene = Scene::A(SceneA::new(tato, banks, &mut state)?),
                 SceneChange::B => scene = Scene::B(SceneB::new(tato, banks, &mut state)?),

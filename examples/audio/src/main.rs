@@ -20,13 +20,13 @@ fn main() -> TatoResult<()> {
     tato.video.bg_color = RGBA12::DARK_BLUE;
     banks[0].colors.load_default();
     banks[0].tiles.add(&Tile::default());
-    let offset_text = banks[0].append(&BANK_FONT_LONG).unwrap();
+    let text_offset = banks[0].append_tiles(&TILES_CHARS).unwrap();
 
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,
         width: None,
         colors: Palette::new(0, 3, 3, 3),
-        tile_offset: offset_text,
+        tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
 
@@ -34,7 +34,7 @@ fn main() -> TatoResult<()> {
         font: &MAP_FONT_LONG,
         width: None,
         colors: Palette::new(0, 14, 14, 14),
-        tile_offset: offset_text,
+        tile_offset: text_offset,
         character_set: CharacterSet::Long,
     };
 

@@ -2,7 +2,10 @@
 #![allow(unused)]
 use tato::prelude::*;
 
-pub const BANK_ASTRO: Bank = Bank { colors: COLORS_ASTRO, tiles: TILES_ASTRO };
+pub const BANK_ASTRO: Bank = Bank {
+    colors: COLORS_ASTRO,
+    tiles: TileBank::from_tiles(&TILES_ASTRO),
+};
 
 pub const COLORS_ASTRO: ColorBank = ColorBank::new_from(&[
     RGBA12::with_transparency(0, 0, 0, 0),
@@ -11,7 +14,7 @@ pub const COLORS_ASTRO: ColorBank = ColorBank::new_from(&[
     RGBA12::with_transparency(1, 1, 6, 7),
 ]);
 
-pub const TILES_ASTRO: TileBank = TileBank::new_from(&[
+pub const TILES_ASTRO: [Tile<2>; 41] = [
     Tile::<2>::new(0x0000000000000000, 0x0000000000000000),
     Tile::<2>::new(0x0000001500550155, 0x0155015501590059),
     Tile::<2>::new(0x0015004001550145, 0x0045001500140000),
@@ -53,7 +56,7 @@ pub const TILES_ASTRO: TileBank = TileBank::new_from(&[
     Tile::<2>::new(0x55405640567055C0, 0xFF00FC0000000000),
     Tile::<2>::new(0x015501552955AA55, 0x0AAA00AA00000000),
     Tile::<2>::new(0x55405540567056FC, 0xFFC0F00000000000),
-]);
+];
 
 pub const STRIP_ASTRO: [TilemapRef; 24] = [
     TilemapRef { cells: &FRAMES_ASTRO[0], columns: 2, rows: 2 },

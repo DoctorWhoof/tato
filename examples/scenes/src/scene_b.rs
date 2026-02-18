@@ -1,5 +1,4 @@
 use crate::*;
-use tato::default_assets::*;
 use tato::prelude::*;
 
 #[derive(Debug)]
@@ -12,7 +11,7 @@ impl SceneB {
     pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
         t.video.fg_tile_bank = 0;
-        t.video.bg_tile_bank = 1;
+        t.video.bg_tile_bank = 0;
 
         // Center view
         let x = t.video.max_x() / 2;
@@ -25,21 +24,18 @@ impl SceneB {
         banks[0].reset();
         banks[0].colors.load_default();
 
-        banks[1].reset();
-        banks[1].colors.load_default();
-
         t.video.bg_color = RGBA12::BLACK;
         t.video.crop_color = RGBA12::DARK_GREEN;
 
-        // let _tileset = t.push_tileset(0, DEFAULT_TILESET)?;
-        let tile = TILE_SMILEY.id;
+        // Load the same tile into both banks since FG uses bank 0 and BG uses bank 1
+        let tile = banks[0].append_tile(&TILES_SYMBOLS[0]).unwrap();
 
         // Set BG cells to use mappings
         for (i, cell) in state.bg.cells.iter_mut().enumerate() {
             let color = (i % 3) as u8 + 9;
             cell.id = tile;
             cell.flags = TileFlags::default();
-            cell.colors = [0, 1, color, 0].into()
+            cell.colors = [0, color, color, 0].into()
         }
 
         Ok(Self {
@@ -48,14 +44,14 @@ impl SceneB {
                 y: y as f32,
                 tile,
                 flags: TileFlags::default(),
-                colors: [0, 1, 8, 3].into(),
+                colors: [0, 8, 8, 3].into(),
             },
             smileys: core::array::from_fn(|_| Entity {
                 x: rand::random_range(0.0..255.0),
                 y: rand::random_range(0.0..255.0),
                 tile,
                 flags: TileFlags::default(),
-                colors: [0, 9, 10, 11].into(),
+                colors: [0, 11, 10, 11].into(),
             }),
         })
     }
