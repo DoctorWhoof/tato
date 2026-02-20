@@ -35,7 +35,7 @@ pub struct BankBuilder<'a> {
     /// If true, writes tile pixel data.
     pub write_tiles: bool,
     /// If true, writes animation data.
-    pub write_animations: bool,
+    pub write_strips: bool,
     /// If true, writes tilemap data.
     pub write_maps: bool,
     #[doc(hidden)]
@@ -66,7 +66,7 @@ impl<'a> BankBuilder<'a> {
             use_crate_assets: false,
             write_colors: true,
             write_tiles: true,
-            write_animations: true,
+            write_strips: true,
             write_maps: true,
             name: String::from(name),
             pixels: vec![],
@@ -271,7 +271,7 @@ impl<'a> BankBuilder<'a> {
         let mut code = CodeWriter::new(&full_path);
 
         // Write header
-        let default_imports = self.write_animations | self.write_colors | self.write_tiles;
+        let default_imports = self.write_strips | self.write_colors | self.write_tiles;
         code.write_header(self.allow_unused, self.use_crate_assets, default_imports);
 
         // Write private mod statements for tilemaps at the top
@@ -399,7 +399,7 @@ impl<'a> BankBuilder<'a> {
         }
 
         // Write animation strips if any
-        if !self.strips.is_empty() && self.write_animations {
+        if !self.strips.is_empty() && self.write_strips {
             for strip in self.strips.values() {
                 code.write_line(&format!(
                     "pub const STRIP_{}: [TilemapRef; {}] = [",
@@ -439,7 +439,7 @@ impl<'a> BankBuilder<'a> {
         }
 
         // Write animations
-        if self.write_animations {
+        if self.write_strips {
             for anim in &self.anims {
                 let Some(_strip) = self.strips.get(&anim.strip_name) else {
                     panic!("Invalid strip name for Anim: {}", anim.name)

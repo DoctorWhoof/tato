@@ -1,13 +1,15 @@
 // This script converts PNG images into rust source code using
-// Tato's data structs.
-//
+// Tiles, Tilemaps and Animation strips.
 // In this case it generates the default assets, available to any
 // project using Tato. Check out the "src/default_assets" folder
 // to see the output.
-//
-const SKIP: bool = true;
+
+// PROCESS_DEFAULT_ASSETS is set to true by default to avoid
+// re-generating the default assets, since they don't change often.
+const PROCESS_DEFAULT_ASSETS: bool = true;
+
 fn main() {
-    if SKIP {
+    if !PROCESS_DEFAULT_ASSETS {
         return;
     }
 
@@ -26,7 +28,7 @@ fn main() {
     bank_dither.use_crate_assets = true; // Only true when used by the main tato crate
     bank_dither.allow_unused = true;
     bank_dither.write_tiles = true;
-    bank_dither.write_animations = false;
+    bank_dither.write_strips = false;
     bank_dither.write_colors = false;
     bank_dither.write_maps = false;
     bank_dither.new_strip("dither.png", "dither", 9, 1);
@@ -36,7 +38,7 @@ fn main() {
     bank_lines.use_crate_assets = true; // Only true when used by the main tato crate
     bank_lines.allow_unused = true;
     bank_lines.write_tiles = true;
-    bank_lines.write_animations = false;
+    bank_lines.write_strips = false;
     bank_lines.write_colors = false;
     bank_lines.write_maps = false;
     bank_lines.new_strip("lines.png", "lines", 7, 1);
@@ -46,7 +48,7 @@ fn main() {
     bank_chars.use_crate_assets = true; // Only true when used by the main tato crate
     bank_chars.allow_unused = true;
     bank_chars.write_tiles = true;
-    bank_chars.write_animations = false;
+    bank_chars.write_strips = false;
     bank_chars.write_colors = false;
     bank_chars.write_maps = true;
     bank_chars.new_strip("chars.png", "chars", 16, 5);
@@ -57,7 +59,7 @@ fn main() {
     bank_icons.use_crate_assets = true; // Only true when used by the main tato crate
     bank_icons.allow_unused = true;
     bank_icons.write_tiles = true;
-    bank_icons.write_animations = false;
+    bank_icons.write_strips = false;
     bank_icons.write_colors = false;
     bank_icons.write_maps = false;
     bank_icons.new_strip("icons.png", "icons", 12, 1);
@@ -67,7 +69,7 @@ fn main() {
     bank_lines.use_crate_assets = true; // Only true when used by the main tato crate
     bank_lines.allow_unused = true;
     bank_lines.write_tiles = true;
-    bank_lines.write_animations = false;
+    bank_lines.write_strips = false;
     bank_lines.write_colors = false;
     bank_lines.write_maps = false;
     bank_lines.new_strip("lines.png", "lines", 11, 5);
@@ -77,7 +79,7 @@ fn main() {
     bank_diagonals.use_crate_assets = true; // Only true when used by the main tato crate
     bank_diagonals.allow_unused = true;
     bank_diagonals.write_tiles = true;
-    bank_diagonals.write_animations = false;
+    bank_diagonals.write_strips = false;
     bank_diagonals.write_colors = false;
     bank_diagonals.write_maps = false;
     bank_diagonals.new_strip("diagonals.png", "diagonals", 16, 1);
@@ -87,7 +89,7 @@ fn main() {
     bank_surfaces.use_crate_assets = true; // Only true when used by the main tato crate
     bank_surfaces.allow_unused = true;
     bank_surfaces.write_tiles = true;
-    bank_surfaces.write_animations = false;
+    bank_surfaces.write_strips = false;
     bank_surfaces.write_colors = false;
     bank_surfaces.write_maps = false;
     bank_surfaces.new_strip("surfaces.png", "surfaces", 16, 1);
@@ -97,7 +99,7 @@ fn main() {
     bank_symbols.use_crate_assets = true; // Only true when used by the main tato crate
     bank_symbols.allow_unused = true;
     bank_symbols.write_tiles = true;
-    bank_symbols.write_animations = false;
+    bank_symbols.write_strips = false;
     bank_symbols.write_colors = false;
     bank_symbols.write_maps = false;
     bank_symbols.new_strip("symbols.png", "symbols", 16, 1);
@@ -107,7 +109,7 @@ fn main() {
     bank_frames.use_crate_assets = true; // Only true when used by the main tato crate
     bank_frames.allow_unused = true;
     bank_frames.write_tiles = true;
-    bank_frames.write_animations = false;
+    bank_frames.write_strips = false;
     bank_frames.write_colors = false;
     bank_frames.write_maps = false;
     bank_frames.new_strip("frames.png", "frames", 16, 1);
@@ -117,7 +119,7 @@ fn main() {
     bank_circles.use_crate_assets = true; // Only true when used by the main tato crate
     bank_circles.allow_unused = true;
     bank_circles.write_tiles = true;
-    bank_circles.write_animations = false;
+    bank_circles.write_strips = false;
     bank_circles.write_colors = false;
     bank_circles.write_maps = false;
     bank_circles.new_strip("circles.png", "circles", 16, 1);
@@ -127,7 +129,7 @@ fn main() {
     bank_grids.use_crate_assets = true; // Only true when used by the main tato crate
     bank_grids.allow_unused = true;
     bank_grids.write_tiles = true;
-    bank_grids.write_animations = false;
+    bank_grids.write_strips = false;
     bank_grids.write_colors = false;
     bank_grids.write_maps = false;
     bank_grids.new_strip("grids.png", "grids", 16, 1);
@@ -137,7 +139,7 @@ fn main() {
     bank_misc.use_crate_assets = true; // Only true when used by the main tato crate
     bank_misc.allow_unused = true;
     bank_misc.write_tiles = true;
-    bank_misc.write_animations = false;
+    bank_misc.write_strips = false;
     bank_misc.write_colors = false;
     bank_misc.write_maps = false;
     bank_misc.new_strip("misc.png", "misc", 16, 1);
