@@ -53,8 +53,22 @@ impl Dashboard {
                     let row = mouse.y / tile_size;
 
                     if let Some(cell) = bg.get_cell(col, row) {
-                        let text = Text::format_display(arena, "TileID: {}", &[cell.id.0], "") //
-                            .unwrap();
+                        let text = Text::format_display(
+                            arena,
+                            "Coords: {}, {}",
+                            &[col, row],
+                            "",
+                        ) //
+                        .unwrap();
+                        self.draw_text(arena, tile_info, text, size_normal);
+
+                        let text = Text::format_display(
+                            arena,
+                            "TileID: {}",
+                            &[cell.id.0 as i16],
+                            "",
+                        ) //
+                        .unwrap();
                         self.draw_text(arena, tile_info, text, size_normal);
 
                         let text = Text::format_display(
