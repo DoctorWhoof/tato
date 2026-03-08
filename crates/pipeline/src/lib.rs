@@ -322,12 +322,12 @@ fn is_asset_file(file_name: &str) -> bool {
         || lower.ends_with(".tga")
 }
 
-pub(crate) fn strip_path_name(path: &str) -> String {
-    let split = path.split('/');
-    let file_name = split.last().unwrap();
-    let mut file_name_split = file_name.split('.');
-    file_name_split.next().unwrap().to_string()
-}
+// pub(crate) fn strip_path_name(path: &str) -> String {
+//     let split = path.split('/');
+//     let file_name = split.last().unwrap();
+//     let mut file_name_split = file_name.split('.');
+//     file_name_split.next().unwrap().to_string()
+// }
 
 // Metadata file handling
 fn get_asset_import_path() -> String {

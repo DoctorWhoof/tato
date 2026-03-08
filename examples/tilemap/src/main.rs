@@ -27,7 +27,13 @@ fn main() -> TatoResult<()> {
     let smileys_offset = banks[0].append(&BANK_SMILEYS).unwrap();
 
     // Draw using the new direct tilemap API
-    draw_patch_to_tilemap(&mut bg_map, Rect { x: 1, y: 1, w: 20, h: 4 }, &MAP_PATCH, patch_offset);
+    draw_patch_to_tilemap(
+        &mut bg_map,
+        Rect { x: 1, y: 1, w: 20, h: 4 },
+        &MAP_PATCH,
+        patch_offset,
+        true,
+    );
     draw_tilemap_to_tilemap(
         &mut bg_map,
         Some(Rect { x: 3, y: 5, w: 16, h: 10 }),

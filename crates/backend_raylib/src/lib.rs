@@ -51,7 +51,7 @@ impl RayBackend {
             .build();
 
         // Config additional raylib options
-        ray.set_target_fps(tato.target_fps as u32);
+        ray.set_target_fps(tato.video.frame_rate as u32);
         unsafe {
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_VSYNC_HINT as u32);
             raylib::ffi::SetConfigFlags(raylib::ffi::ConfigFlags::FLAG_WINDOW_HIGHDPI as u32);

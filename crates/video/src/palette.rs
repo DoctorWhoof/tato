@@ -1,6 +1,12 @@
 #[derive(Clone, Default, Copy, PartialEq, Hash)]
 pub struct Palette(pub u16);
 
+#[inline(always)]
+pub fn u16_from_palette(colors: impl Into<Palette>) -> u16 {
+    let palette: Palette = colors.into();
+    palette.0
+}
+
 impl Palette {
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Self {
         assert!(a < 16, "Palette: value 'a' exceed maximum of 15");
@@ -48,7 +54,6 @@ impl Palette {
             self.set(i, arr[source_index as usize]);
         }
     }
-
 }
 
 impl From<[u8; 4]> for Palette {

@@ -86,7 +86,7 @@ impl MquadBackend {
             buffer_canvas_time: AvgBuffer::new(),
             pressed_key: None,
             allow_game_input: true,
-            target_fps: tato.target_fps as u32,
+            target_fps: tato.video.frame_rate as u32,
         };
 
         let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;

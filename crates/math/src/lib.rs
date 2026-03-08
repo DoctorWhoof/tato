@@ -1,10 +1,10 @@
 #![no_std]
 
 pub mod num;
-pub use num::{Float, Integer, Num, SignedNum};
+pub use num::{Float, FloatBasic, FloatTrig, Integer, Num, SignedNum};
 
 pub mod prelude {
-    pub use crate::num::{Float, Integer, Num, SignedNum};
+    pub use crate::num::{Float, FloatBasic, FloatTrig, Integer, Num, SignedNum};
     pub use crate::rect::*;
     pub use crate::vec2::*;
 }
@@ -20,7 +20,9 @@ pub use vec2::Vec2;
 /// Linear interpolation.
 /// Pre-multiply "t" by delta time if needed.
 #[inline(always)]
-pub fn lerp(start: f32, end: f32, t: f32) -> f32 {
+pub fn lerp<T>(start: T, end: T, t: T) -> T
+where T:SignedNum
+{
     start + (t * (end - start))
 }
 

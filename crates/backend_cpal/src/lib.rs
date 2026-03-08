@@ -23,7 +23,7 @@ impl AudioBackend {
         let sample_rate = config.sample_rate().0;
 
         // Calculate exact sample count (no +100 buffer)
-        let exact_samples_per_frame = (sample_rate as f32 / tato.target_fps as f32) as usize;
+        let exact_samples_per_frame = (sample_rate as f32 / tato.video.frame_rate as f32) as usize;
 
         println!("Audio sample rate: {}", sample_rate);
         println!("Samples per frame: {}", exact_samples_per_frame);

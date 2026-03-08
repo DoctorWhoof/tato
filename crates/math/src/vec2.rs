@@ -1,4 +1,4 @@
-use crate::{Float, Num, SignedNum};
+use crate::{FloatBasic, FloatTrig, Num, SignedNum};
 
 mod ops;
 
@@ -60,12 +60,8 @@ where
 
 impl<T> Vec2<T>
 where
-    T: Float,
+    T: FloatBasic,
 {
-    pub fn len(&self) -> T {
-        (self.x.powi(2) + self.y.powi(2)).sqrt()
-    }
-
     pub fn is_longer_than_zero(&self) -> bool {
         self.x.abs() > T::zero() || self.y.abs() > T::zero()
     }
@@ -82,25 +78,13 @@ where
         Self { x: self.x.round(), y: self.y.round() }
     }
 
-    pub fn angle_to(&self, other: &Self) -> T {
-        let dx = other.x - self.x;
-        let dy = other.y - self.y;
-        let angle = dy.atan2(dx);
-        if angle < T::zero() { angle + T::two() * T::pi() } else { angle }
+    pub fn len(&self) -> T {
+        (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
     pub fn normalize(&self) -> Self {
         let len = self.len();
         if len > T::epsilon() { Vec2 { x: self.x / len, y: self.y / len } } else { *self }
-    }
-
-    pub fn clamp_to_length(&mut self, max_length: T) {
-        let current_length = self.len();
-        if current_length > max_length && current_length > T::epsilon() {
-            let normalized = self.normalize();
-            self.x = normalized.x * max_length;
-            self.y = normalized.y * max_length;
-        }
     }
 
     pub fn average(&self, other: &Self) -> Self {
@@ -123,6 +107,27 @@ where
         Vec2 {
             x: v.x - T::two() * dot_product * n.x,
             y: v.y - T::two() * dot_product * n.y,
+        }
+    }
+}
+
+impl<T> Vec2<T>
+where
+    T: FloatTrig,
+{
+    pub fn angle_to(&self, other: &Self) -> T {
+        let dx = other.x - self.x;
+        let dy = other.y - self.y;
+        let angle = dy.atan2(dx);
+        if angle < T::zero() { angle + T::two() * T::pi() } else { angle }
+    }
+
+    pub fn clamp_to_length(&mut self, max_length: T) {
+        let current_length = self.len();
+        if current_length > max_length && current_length > T::epsilon() {
+            let normalized = self.normalize();
+            self.x = normalized.x * max_length;
+            self.y = normalized.y * max_length;
         }
     }
 

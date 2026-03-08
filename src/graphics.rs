@@ -6,6 +6,8 @@ pub use text::*;
 
 use crate::prelude::*;
 
+/// Transforms coordinates from world units (i16, compatible with VideoChip coordinates)
+/// to screen coordinates adjusted for the actual viewing rectangle.
 pub fn world_to_view(
     pos: Vec2<i16>,
     scroll: Vec2<i16>,
@@ -17,6 +19,8 @@ pub fn world_to_view(
     Vec2 { x, y }
 }
 
+/// Transforms coordinates from screen units within a viewing rectangle
+/// to world units (i16, compatible with VideoChip coordinates).
 pub fn view_to_world(
     pos: Vec2<i16>,
     scroll: Vec2<i16>,
@@ -30,45 +34,36 @@ pub fn view_to_world(
 
 /// Obtains the frame index on a given Animation based on the video chip's
 /// internal frame counter.
-pub fn anim_get_frame(current_video_frame: usize, anim: &Anim) -> usize {
+pub fn anim_get_frame(video: &VideoChip, anim: &Anim) -> usize {
     if anim.frames.is_empty() {
         return 0;
     }
 
     let len = anim.frames.len();
-    let fps = anim.fps.max(1) as usize;
-    let frame_duration = 60 / fps; // Assuming 60fps base
-    let total_duration = frame_duration * len;
+    let fps = anim.fps.max(1);
+    let frame_duration = video.frame_rate as usize / fps as usize; // Assuming 60fps base
+    let total_duration = frame_duration as usize * len;
 
     if anim.repeat {
-        let cycle = current_video_frame % total_duration;
+        let cycle = video.frame_number() % total_duration;
         let frame_idx = cycle / frame_duration;
         frame_idx.min(len - 1)
     } else {
-        let frame_idx = current_video_frame / frame_duration;
+        let frame_idx = video.frame_number() / frame_duration;
         frame_idx.min(len - 1)
-    }
-}
-
-/// Clears a rectangular area in a tilemap with a specific cell.
-pub fn tilemap_clear_rect<const LEN: usize>(bg: &mut Tilemap<LEN>, rect: Rect<i16>, cell: Cell) {
-    for row in rect.y..rect.y + rect.h {
-        for col in rect.x..rect.x + rect.w {
-            bg.set_op(BgOp { col, row, cell });
-        }
     }
 }
 
 /// Fills the entire tilemap with a specific tile.
-pub fn tilemap_fill<const LEN: usize>(bg: &mut Tilemap<LEN>, cell: Cell) {
+pub fn tilemap_fill<const LEN: usize>(bg: &mut Tilemap<LEN>, cell: Cell, tile_offset: u8) {
     let rect = Rect { x: 0, y: 0, w: bg.columns as i16, h: bg.rows as i16 };
-    tilemap_clear_rect(bg, rect, cell);
+    draw_rect_to_tilemap(bg, rect, cell, tile_offset, true);
 }
 
 /// Draws a sprite as a tilemap to the foreground layer.
 /// The tilemap can be from a const strip or any other source.
 pub fn draw_sprite_to_fg(video: &mut VideoChip, anim: &Anim, bundle: SpriteBundle) {
-    let frame_number = anim_get_frame(video.frame_number, &anim);
+    let frame_number = anim_get_frame(video, &anim);
     let strip_frame = anim.frames[frame_number] as usize;
     let tilemap = anim.strip[strip_frame];
     video.draw_sprite(bundle, &tilemap);
@@ -105,6 +100,39 @@ pub fn draw_tilemap_to_tilemap<const LEN: usize>(
     dest.copy_from(src, src_rect, dest_rect, tile_offset);
 }
 
+/// Draws a rect composed of a single cell into a tilemap.
+pub fn draw_rect_to_tilemap<const LEN: usize>(
+    bg: &mut Tilemap<LEN>,
+    rect: Rect<i16>,
+    cell: Cell,
+    tile_offset: u8,
+    fill: bool,
+) {
+    // bg.set_op(BgOp { col: rect.x, row: rect.y, cell });
+    let cell = Cell { id: TileID(cell.id.0 + tile_offset), ..cell };
+
+    let high_x = (rect.x + rect.w - 1).min(i16::MAX);
+    let high_y = (rect.y + rect.h - 1).min(i16::MAX);
+
+    for col in rect.x..=high_x {
+        bg.set_op(BgOp { col, row: rect.y, cell });
+        bg.set_op(BgOp { col, row: high_y, cell });
+    }
+
+    for row in rect.y + 1..=high_y {
+        bg.set_op(BgOp { col: rect.x, row, cell });
+        bg.set_op(BgOp { col: high_x, row, cell });
+    }
+
+    if fill {
+        for row in rect.y + 1..high_y {
+            for col in rect.x + 1..high_x {
+                bg.set_op(BgOp { col, row, cell });
+            }
+        }
+    }
+}
+
 /// Draws a "3x3 patch" (sometimes called "9-Patch") into a tilemap.
 /// Each cell represents a corner, an edge, or the center tile.
 /// The pattern is:
@@ -118,6 +146,7 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
     rect: Rect<i16>,
     patch: &dyn DynTilemap,
     tile_offset: u8,
+    fill: bool,
 ) {
     debug_assert!(patch.columns() == 3 && patch.rows() == 3, "invalid patch dimensions");
 
@@ -171,21 +200,6 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
         });
     }
 
-    let Some(center) = patch.get_cell(1, 1) else { return };
-    for row in rect.y + 1..high_y {
-        for col in rect.x + 1..high_x {
-            bg.set_op(BgOp {
-                col,
-                row,
-                cell: Cell {
-                    id: TileID(center.id.0 + tile_offset),
-                    flags: center.flags,
-                    colors: center.colors,
-                },
-            });
-        }
-    }
-
     let Some(right) = patch.get_cell(2, 1) else { return };
     for row in rect.y + 1..high_y {
         bg.set_op(BgOp {
@@ -233,6 +247,23 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
             colors: bottom_right.colors,
         },
     });
+
+    if fill {
+        let Some(center) = patch.get_cell(1, 1) else { return };
+        for row in rect.y + 1..high_y {
+            for col in rect.x + 1..high_x {
+                bg.set_op(BgOp {
+                    col,
+                    row,
+                    cell: Cell {
+                        id: TileID(center.id.0 + tile_offset),
+                        flags: center.flags,
+                        colors: center.colors,
+                    },
+                });
+            }
+        }
+    }
 }
 
 /// Draws a text string to a target Tilemap, using a tilemap as a character font.
@@ -292,4 +323,26 @@ pub fn draw_text<const LEN: usize>(
 
     // If successful, return number of lines written
     Some(cursor_y + 1)
+}
+
+/// Replaces a single color in all tiles contained within a rect.
+pub fn tilemap_replace_color<const LEN: usize>(
+    bg: &mut Tilemap<LEN>,
+    rect: Rect<i16>,
+    color_in: u8,
+    color_out: u8,
+) {
+    for row in rect.top()..=rect.bottom() {
+        for col in rect.left()..=rect.right() {
+            // Acquire current cell, modify only color 7 (red)
+            let Some(cell) = bg.get_cell(col, row) else {
+                continue;
+            };
+            let colors: [u8; 4] = core::array::from_fn(|i| {
+                let color = cell.colors.get(i as u8);
+                if color == color_in { color_out } else { color }
+            });
+            bg.set_colors(col, row, colors.into());
+        }
+    }
 }

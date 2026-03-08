@@ -36,6 +36,8 @@ pub struct VideoChip {
     pub wrap_bg: bool,
     /// Offsets the BG Map and Sprite tiles
     pub scroll: Vec2<i16>,
+    ///
+    pub frame_rate: u8,
     // pub scroll.x: i16,
     // pub scroll.y: i16,
     // ---------------------- Iterator control ----------------------
@@ -61,7 +63,7 @@ pub struct VideoChip {
 
 impl VideoChip {
     /// Creates a new drawing context with default settings.
-    pub fn new(w: u16, h: u16) -> Self {
+    pub fn new(w: u16, h: u16, frame_rate:u8) -> Self {
         assert!(h > 7 && h <= MAX_RESOLUTION_Y as u16, err!("Screen height range is 8 to MAX_RESOLUTION_Y"));
 
         let mut result = Self {
@@ -69,6 +71,7 @@ impl VideoChip {
             crop_color: RGBA12::BLACK,
             wrap_sprites: false,
             wrap_bg: false,
+            frame_rate,
             sprite_gen: SpriteGenerator::new(),
             view_left: 0,
             view_top: 0,

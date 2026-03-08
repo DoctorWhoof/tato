@@ -17,8 +17,8 @@ pub(crate) struct CanonicalTile {
 // Allows a single pass executing commands when writing
 #[derive(Clone)]
 enum DeferredCommand {
-    NewEmptyTile,
-    NewTile { path: String },
+    NewEmptyTile { name: String },
+    NewTile { path: String, name: String },
     NewMap { path: String, name: String },
     NewAnimationStrip { path: String, name: String, frames_h: u8, frames_v: u8 },
     NewAnim { name: String, fps: u8, repeat: bool, strip_name: String, frames: Vec<u8> },
@@ -84,13 +84,14 @@ impl<'a> BankBuilder<'a> {
     }
 
     /// Adds a single 8x8 tile from a PNG file.
-    pub fn new_tile(&mut self, path: &str) {
-        self.deferred_commands.push(DeferredCommand::NewTile { path: path.to_string() });
+    pub fn new_tile(&mut self, path: &str, name: &str) {
+        self.deferred_commands
+            .push(DeferredCommand::NewTile { path: path.to_string(), name: name.into() });
     }
 
     /// Adds an empty (transparent) tile.
-    pub fn new_empty_tile(&mut self) {
-        self.deferred_commands.push(DeferredCommand::NewEmptyTile);
+    pub fn new_empty_tile(&mut self, name: &str) {
+        self.deferred_commands.push(DeferredCommand::NewEmptyTile { name: name.into() });
     }
 
     /// Adds a tilemap from a PNG file.
@@ -142,8 +143,8 @@ impl<'a> BankBuilder<'a> {
         let mut should_regenerate = false;
         for command in &self.deferred_commands {
             let file_path = match command {
-                DeferredCommand::NewEmptyTile | DeferredCommand::NewAnim { .. } => "",
-                DeferredCommand::NewTile { path } => path,
+                DeferredCommand::NewEmptyTile { .. } | DeferredCommand::NewAnim { .. } => "",
+                DeferredCommand::NewTile { path, .. } => path,
                 DeferredCommand::NewMap { path, .. } => path,
                 DeferredCommand::NewAnimationStrip { path, .. } => path,
             };
@@ -164,16 +165,14 @@ impl<'a> BankBuilder<'a> {
             let commands = self.deferred_commands.clone();
             for command in commands {
                 match command {
-                    DeferredCommand::NewEmptyTile => {
+                    DeferredCommand::NewEmptyTile { name } => {
                         let img = PalettizedImg::empty(self.palette);
                         let cells = self.add_tiles(&img);
                         assert!(cells.len() == 1 && cells[0].len() == 1);
-                        let tile_name = "EMPTY".to_string();
-                        let single_tile =
-                            SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
+                        let single_tile = SingleTileBuilder { name, cell: cells[0][0].clone() };
                         self.single_tiles.push(single_tile);
                     },
-                    DeferredCommand::NewTile { path } => {
+                    DeferredCommand::NewTile { path, name } => {
                         let full_path = std::path::Path::new(&settings.asset_import_path)
                             .join(path)
                             .to_str()
@@ -191,9 +190,8 @@ impl<'a> BankBuilder<'a> {
                         );
                         let cells = self.add_tiles(&img);
                         assert!(cells.len() == 1 && cells[0].len() == 1);
-                        let tile_name = crate::strip_path_name(&full_path);
-                        let single_tile =
-                            SingleTileBuilder { name: tile_name, cell: cells[0][0].clone() };
+                        // let tile_name = crate::strip_path_name(&full_path);
+                        let single_tile = SingleTileBuilder { name, cell: cells[0][0].clone() };
                         self.single_tiles.push(single_tile);
                     },
                     DeferredCommand::NewMap { path, name } => {
@@ -494,8 +492,8 @@ impl<'a> BankBuilder<'a> {
         // Mark all input files as processed
         for command in &self.deferred_commands {
             let file_path = match command {
-                DeferredCommand::NewEmptyTile | DeferredCommand::NewAnim { .. } => "",
-                DeferredCommand::NewTile { path } => path,
+                DeferredCommand::NewEmptyTile { .. } | DeferredCommand::NewAnim { .. } => "",
+                DeferredCommand::NewTile { path, .. } => path,
                 DeferredCommand::NewMap { path, .. } => path,
                 DeferredCommand::NewAnimationStrip { path, .. } => path,
             };

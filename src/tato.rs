@@ -14,7 +14,6 @@ pub struct Tato {
     // Video
     pub video: VideoChip,
     // Internals
-    pub target_fps: u8,
     time: u64,
     time_cache: f32, // will be pre-divided per frame to avoid divisions on every time() call
     delta: f32,
@@ -24,19 +23,18 @@ pub struct Tato {
 }
 
 impl Tato {
-    pub fn new(w: u16, h: u16, target_fps: u8) -> Self {
+    pub fn new(w: u16, h: u16, frame_rate: u8) -> Self {
         Self {
             paused: false,
             time_scale: 1.0,
             // assets: Assets::new(),
             pad: tato_pad::AnaloguePad::default(),
             audio: tato_audio::AudioChip::default(),
-            video: tato_video::VideoChip::new(w, h),
-            target_fps,
+            video: tato_video::VideoChip::new(w, h, frame_rate),
             time: 0,
             time_cache: 0.0,
             delta: 1.0,
-            elapsed_time: 1.0 / target_fps as f32,
+            elapsed_time: 1.0 / frame_rate as f32,
             frame_finished: true,
             frame_started: false,
         }

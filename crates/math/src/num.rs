@@ -8,7 +8,7 @@ pub mod signed_num;
 pub mod tests;
 
 // Re-export the main traits
-pub use float::Float;
+pub use float::{Float, FloatBasic, FloatTrig};
 pub use integer::Integer;
 pub use num::Num;
 pub use signed_num::SignedNum;
@@ -252,8 +252,8 @@ impl Integer for u32 {}
 impl Integer for u64 {}
 impl Integer for usize {}
 
-// Implement Float trait for floating point types
-impl Float for f32 {
+// Implement FloatBasic trait for floating point types
+impl FloatBasic for f32 {
     #[inline(always)]
     fn floor(self) -> Self {
         libm::floorf(self)
@@ -270,8 +270,8 @@ impl Float for f32 {
     }
 
     #[inline(always)]
-    fn exp(self) -> Self {
-        libm::expf(self)
+    fn abs(self) -> Self {
+        libm::fabsf(self)
     }
 
     #[inline(always)]
@@ -285,37 +285,12 @@ impl Float for f32 {
     }
 
     #[inline(always)]
-    fn abs(self) -> Self {
-        libm::fabsf(self)
-    }
-
-    #[inline(always)]
-    fn sin(self) -> Self {
-        libm::sinf(self)
-    }
-
-    #[inline(always)]
-    fn cos(self) -> Self {
-        libm::cosf(self)
-    }
-
-    #[inline(always)]
-    fn atan2(self, other: Self) -> Self {
-        libm::atan2f(self, other)
-    }
-
-    #[inline(always)]
     fn epsilon() -> Self {
         f32::EPSILON
     }
-
-    #[inline(always)]
-    fn pi() -> Self {
-        core::f32::consts::PI
-    }
 }
 
-impl Float for f64 {
+impl FloatBasic for f64 {
     #[inline(always)]
     fn floor(self) -> Self {
         libm::floor(self)
@@ -332,8 +307,8 @@ impl Float for f64 {
     }
 
     #[inline(always)]
-    fn exp(self) -> Self {
-        libm::exp(self)
+    fn abs(self) -> Self {
+        libm::fabs(self)
     }
 
     #[inline(always)]
@@ -347,10 +322,40 @@ impl Float for f64 {
     }
 
     #[inline(always)]
-    fn abs(self) -> Self {
-        libm::fabs(self)
+    fn epsilon() -> Self {
+        f64::EPSILON
+    }
+}
+
+// Implement FloatTrig trait for floating point types
+impl FloatTrig for f32 {
+    #[inline(always)]
+    fn sin(self) -> Self {
+        libm::sinf(self)
     }
 
+    #[inline(always)]
+    fn cos(self) -> Self {
+        libm::cosf(self)
+    }
+
+    #[inline(always)]
+    fn atan2(self, other: Self) -> Self {
+        libm::atan2f(self, other)
+    }
+
+    #[inline(always)]
+    fn exp(self) -> Self {
+        libm::expf(self)
+    }
+
+    #[inline(always)]
+    fn pi() -> Self {
+        core::f32::consts::PI
+    }
+}
+
+impl FloatTrig for f64 {
     #[inline(always)]
     fn sin(self) -> Self {
         libm::sin(self)
@@ -367,8 +372,8 @@ impl Float for f64 {
     }
 
     #[inline(always)]
-    fn epsilon() -> Self {
-        f64::EPSILON
+    fn exp(self) -> Self {
+        libm::exp(self)
     }
 
     #[inline(always)]
@@ -376,6 +381,10 @@ impl Float for f64 {
         core::f64::consts::PI
     }
 }
+
+// Implement Float trait for floating point types (empty, just combines both traits)
+impl Float for f32 {}
+impl Float for f64 {}
 
 /// Banker's rounding (round half to even)
 #[inline(always)]
