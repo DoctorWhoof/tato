@@ -20,7 +20,8 @@ pub const DEFAULT_PALETTE: [RGBA12; COLORS_PER_PALETTE as usize] = [
     RGBA12::PINK,        // 15
 ];
 
-pub const DEFAULT_MAPPING: [u8; COLORS_PER_PALETTE as usize] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+pub const DEFAULT_MAPPING: [u8; COLORS_PER_PALETTE as usize] =
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
 #[derive(Debug, Clone)]
 pub struct ColorBank {
@@ -30,7 +31,10 @@ pub struct ColorBank {
 
 impl ColorBank {
     pub const fn new() -> Self {
-        Self { palette: DEFAULT_PALETTE, palette_head: 0 }
+        Self {
+            palette: [RGBA12::TRANSPARENT; COLORS_PER_PALETTE as usize],
+            palette_head: 0,
+        }
     }
 
     pub const fn new_from(palette: &[RGBA12]) -> Self {
@@ -52,7 +56,7 @@ impl ColorBank {
     }
 
     pub fn reset_palettes(&mut self) {
-        self.palette = PALETTE_DEFAULT;
+        self.palette = [RGBA12::TRANSPARENT; COLORS_PER_PALETTE as usize];
         self.palette_head = 0;
     }
 
@@ -73,24 +77,7 @@ impl ColorBank {
     }
 
     pub fn load_default(&mut self) {
-        self.palette = [
-            RGBA12::TRANSPARENT, // 0
-            RGBA12::BLACK,       // 1
-            RGBA12::GRAY,        // 2
-            RGBA12::WHITE,       // 3
-            RGBA12::DARK_RED,    // 4
-            RGBA12::RED,         // 5
-            RGBA12::LIGHT_RED,   // 6
-            RGBA12::ORANGE,      // 7
-            RGBA12::YELLOW,      // 8
-            RGBA12::DARK_GREEN,  // 9
-            RGBA12::GREEN,       // 10
-            RGBA12::LIGHT_GREEN, // 11
-            RGBA12::DARK_BLUE,   // 12
-            RGBA12::BLUE,        // 13
-            RGBA12::LIGHT_BLUE,  // 14
-            RGBA12::PINK,        // 15
-        ];
+        self.palette = DEFAULT_PALETTE;
         self.palette_head = 16;
     }
 

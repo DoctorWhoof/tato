@@ -303,7 +303,8 @@ pub fn draw_text<const LEN: usize>(
     };
 
     let width = op.width.unwrap_or(255);
-    for word in text.split(' ') {
+    let mut words = text.split(' ').peekable();
+    while let Some(word) = words.next() {
         if cursor_x + (word.len() as i16) > width {
             cursor_x = 0;
             cursor_y += 1;
@@ -315,7 +316,8 @@ pub fn draw_text<const LEN: usize>(
         if cursor_x >= width {
             cursor_x = 0;
             cursor_y += 1;
-        } else {
+        } else if words.peek().is_some() {
+            // Only draw a space when there's actually a next word
             draw_char(' ', cursor_x, cursor_y);
             cursor_x += 1;
         }
@@ -326,6 +328,8 @@ pub fn draw_text<const LEN: usize>(
 }
 
 /// Replaces a single color in all tiles contained within a rect.
+/// Needs to iterate all colors on each tile, should be fast enough
+/// but use sparingly!
 pub fn tilemap_replace_color<const LEN: usize>(
     bg: &mut Tilemap<LEN>,
     rect: Rect<i16>,
@@ -342,6 +346,7 @@ pub fn tilemap_replace_color<const LEN: usize>(
                 let color = cell.colors.get(i as u8);
                 if color == color_in { color_out } else { color }
             });
+            // println!("Color swap at {},{} -> {:?}", col, row, colors);
             bg.set_colors(col, row, colors.into());
         }
     }

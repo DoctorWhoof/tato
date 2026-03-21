@@ -6,7 +6,7 @@
 
 // PROCESS_DEFAULT_ASSETS is set to true by default to avoid
 // re-generating the default assets, since they don't change often.
-const PROCESS_DEFAULT_ASSETS: bool = true;
+const PROCESS_DEFAULT_ASSETS: bool = false;
 
 fn main() {
     if !PROCESS_DEFAULT_ASSETS {
