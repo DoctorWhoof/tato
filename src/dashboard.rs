@@ -74,8 +74,9 @@ pub struct Dashboard {
     debug_text: Buffer<Text, u32>,
     debug_polys_world: Buffer<Polygon>,
     debug_polys_gui: Buffer<Polygon>,
-    tile_pixels: [Buffer<u8, u32>; BANK_COUNT], // one vec per bank
-    re_init_bank_texture: bool,                 // WIll self-reset to false after generating texture
+    re_init_bank_texture: bool, // Will self-reset to false after generating texture
+    tile_pixels: [Buffer<u8, u32>; BANK_COUNT], // one per bank
+    // current_tile_pixels: [u8; TILE_PIXEL_COUNT], // To visualize the current tile under cursor
 }
 
 pub const PANEL_WIDTH: i16 = 150;
