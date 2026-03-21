@@ -266,12 +266,12 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
     }
 }
 
-/// Draws a text string to a target Tilemap, using a tilemap as a character font.
+/// Draws a text string to a bg Tilemap, using a tilemap as a character font.
 /// Returns the resulting height (in rows), if any.
 pub fn draw_text<const LEN: usize>(
-    target: &mut Tilemap<LEN>,
-    target_col: i16,
-    target_row: i16,
+    bg: &mut Tilemap<LEN>,
+    bg_col: i16,
+    bg_row: i16,
     op: &TextOp,
     text: &str,
 ) -> Option<i16> {
@@ -290,9 +290,9 @@ pub fn draw_text<const LEN: usize>(
         let col = char_index % font_cols;
         let row = char_index / font_cols;
         if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
-            target.set_op(BgOp {
-                col: target_col + cursor_x,
-                row: target_row + cursor_y,
+            bg.set_op(BgOp {
+                col: bg_col + cursor_x,
+                row: bg_row + cursor_y,
                 cell: Cell {
                     id: TileID(cell.id.0 + op.tile_offset), // TODO: This may overflow...
                     flags: cell.flags,

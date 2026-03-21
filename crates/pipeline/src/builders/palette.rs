@@ -26,11 +26,16 @@ impl PaletteBuilder {
         }
     }
 
-    /// Adds a color to the palette. Panics if palette is full.
+    /// Adds a color to the palette. Panics if palette is full. No-op if color already exists.
     pub fn push(&mut self, color: RGBA12) {
+        if self.rgb_to_index.contains_key(&color) {
+            return; // Already present — no duplicate, no wrong index
+        }
         if self.rgb_colors.len() == COLORS_PER_PALETTE as usize {
             panic!("Palette error: capacity of {} exceeded.", COLORS_PER_PALETTE)
         }
+        let index = self.rgb_colors.len() as u8;
+        self.rgb_to_index.insert(color, index);  // ← this was missing!
         self.rgb_colors.push(color);
     }
 

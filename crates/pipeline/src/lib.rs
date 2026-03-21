@@ -19,6 +19,8 @@ pub(crate) use palette_image::*;
 
 pub use {BankBuilder, PaletteBuilder};
 
+pub use tato_video::*;
+
 /// Build pipeline configuration.
 #[derive(Clone)]
 pub struct BuildSettings {

@@ -124,9 +124,9 @@ impl PalettizedImg {
                     // Result
                     if palette.rgb_to_index.contains_key(&rgb_color) {
                         *palette.rgb_to_index.get(&rgb_color).unwrap()
-                    } else {
                         // TODO: Error message here if palette is too large
-                        let color_head = u8::try_from(palette.rgb_to_index.len()).ok().unwrap();
+                    } else {
+                        let color_head = u8::try_from(palette.rgb_colors.len()).ok().unwrap();
                         println!(
                             "cargo:warning= Inserting Palette {:02} -> {:02}: {},{},{}",
                             palette.id(),
@@ -135,8 +135,7 @@ impl PalettizedImg {
                             rgb_color.g(),
                             rgb_color.b()
                         );
-                        palette.rgb_to_index.insert(rgb_color, color_head);
-                        palette.push(rgb_color);
+                        palette.push(rgb_color); // now maintains both rgb_colors + rgb_to_index
                         color_head
                     }
                 };
