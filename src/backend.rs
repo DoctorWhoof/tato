@@ -5,12 +5,13 @@ use crate::{
     prelude::{DrawOp, Key},
 };
 use tato_arena::{ArenaId, ArenaOps, Buffer};
-use tato_math::{libm::floorf, Rect, Vec2};
+use tato_math::{Rect, Vec2, libm::floorf};
 use tato_pad::AnaloguePad;
-use tato_video::{Bank, TilemapRef, RGBA32};
+use tato_video::{Bank, RGBA32, TilemapRef};
 
-/// Texture identifier
-pub type TextureId = usize;
+/// Texture identifier, simply wraps around a usize index
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct TextureId(pub usize);
 
 /// Calculate position and scale for centered integer scaling with correct aspect ratio
 pub fn canvas_rect_and_scale(
@@ -77,8 +78,9 @@ pub trait Backend {
     /// Create a new texture and return its ID
     fn create_texture(&mut self, width: i16, height: i16) -> TextureId;
 
-    /// Update an existing texture with new pixel data
-    fn update_texture(&mut self, id: TextureId, pixels: &[u8]);
+    /// Update an existing texture with new pixel data.
+    /// If width or height differ from the current texture dimensions, the GPU texture is recreated.
+    fn update_texture(&mut self, id: TextureId, width: u16, height: u16, pixels: &[u8]);
 
     // ---------------------- Input ----------------------
 

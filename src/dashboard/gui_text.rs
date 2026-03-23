@@ -66,7 +66,7 @@ impl Dashboard {
         );
 
         // Push Draw Ops to shared frame arena
-        layout.push_edge(Edge::Left, PANEL_WIDTH, |panel| {
+        layout.push_edge(Edge::Left, PANEL_WIDTH_LEFT, |panel| {
             panel.set_margin(5);
             panel.set_gap(0);
             let op =

@@ -1,22 +1,21 @@
 pub use macroquad;
 use macroquad::prelude::*;
-use std::{thread::sleep, time::{Duration, Instant}, vec};
+use std::{
+    thread::sleep,
+    time::{Duration, Instant},
+    vec,
+};
 use tato::{arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*, prelude::*, Tato};
 
 pub use tato;
 
-const TILES_PER_ROW: i16 = 16;
-
-/// Create a window configuration with VSync enabled and proper settings for Tato games
 pub fn tato_window_conf(title: &str, width: i32, height: i32) -> Conf {
     Conf {
         window_title: title.to_owned(),
-        window_width: width,
-        window_height: height,
+        window_width: width / 2,
+        window_height: height / 2,
         window_resizable: true,
         high_dpi: true,
-        // VSync is enabled by default in Macroquad
-        // Additional platform-specific optimizations
         ..Default::default()
     }
 }
@@ -32,15 +31,11 @@ fn rgba32_to_mq_color(color: RGBA32) -> Color {
     )
 }
 
-/// Macroquad-based backend for Tato games
+/// Macroquad-based backend
 pub struct MquadBackend {
-    /// Background clear color
     pub bg_color: Color,
-    /// Whether to use integer scaling for pixel-perfect rendering
     pub integer_scaling: bool,
-    /// Whether to print frame timing information for debugging
     pub print_frame_time: bool,
-    /// Optional canvas rendering rectangle for GUI integration
     pub canvas_rect: Option<tato::prelude::Rect<i16>>,
     textures: Vec<Texture2D>,
     font: Font,
@@ -61,7 +56,7 @@ impl MquadBackend {
         let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
-        let total_panel_width = (PANEL_WIDTH * 4) + (MARGIN * 2);
+        let total_panel_width = ((PANEL_WIDTH_LEFT + PANEL_WIDTH_RIGHT) * 2) + (PANEL_MARGIN * 2);
         let adjusted_w = total_panel_width as i32 + (w * multiplier);
 
         request_new_screen_size(adjusted_w as f32, (h * multiplier) as f32);
@@ -80,7 +75,7 @@ impl MquadBackend {
             font,
             draw_ops: Buffer::default(),
             draw_ops_additional: Buffer::default(),
-            canvas_texture: 0,
+            canvas_texture: TextureId(0),
             pixels: vec![0; w as usize * h as usize * 4],
             buffer_iter_time: AvgBuffer::new(),
             buffer_canvas_time: AvgBuffer::new(),
@@ -89,57 +84,30 @@ impl MquadBackend {
             target_fps: tato.video.frame_rate as u32,
         };
 
-        let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
-        for _ in 0..BANK_COUNT {
-            // Each texture ID is the same as the bank
-            result.create_texture(size, size);
-        }
-
         // Main render texture
         let id = result.create_texture(tato.video.width() as i16, tato.video.height() as i16);
         result.canvas_texture = id;
-
         result
     }
 
-    /// Internal method to update texture data
-    #[inline(always)]
-    fn update_texture_internal(textures: &mut [Texture2D], id: TextureId, pixels: &[u8]) {
-        if id < textures.len() {
-            let texture_pixel_count =
-                textures[id].width() as usize * textures[id].height() as usize * 4;
-
-            // resize texture to match
-            if pixels.len() != texture_pixel_count {
-                println!(
-                    "Resizing texture, Source pixels: {}, dest pixels: {}",
-                    pixels.len(),
-                    texture_pixel_count
-                );
-                // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
-                let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
-                let complete_rows = total_tiles / TILES_PER_ROW as usize;
-                let remaining_tiles = total_tiles % TILES_PER_ROW as usize;
-
-                let new_w = TILES_PER_ROW as u16 * TILE_SIZE as u16;
-                let complete_lines = complete_rows * TILE_SIZE as usize;
-                let incomplete_lines = if remaining_tiles > 0 { TILE_SIZE as usize } else { 0 };
-                let new_h = (complete_lines + incomplete_lines) as u16;
-
-                let image = Image::gen_image_color(new_w, new_h, BLACK);
+    /// Internal method to update texture data, recreating the GPU texture if dimensions changed
+    fn update_texture_internal(
+        textures: &mut [Texture2D],
+        id: TextureId,
+        width: u16,
+        height: u16,
+        pixels: &[u8],
+    ) {
+        if id.0 < textures.len() {
+            if textures[id.0].width() as u16 != width || textures[id.0].height() as u16 != height {
+                let image = Image::gen_image_color(width, height, BLACK);
                 let texture = Texture2D::from_image(&image);
-                // texture.set_filter(FilterMode::Nearest);
-                textures[id] = texture;
-                println!("Backend texture {} resized", id);
+                texture.set_filter(FilterMode::Nearest);
+                textures[id.0] = texture;
             }
-
-            // Convert pixels to Image for update
-            let width = textures[id].width() as u16;
-            let height = textures[id].height() as u16;
-
             let image = Image { width, height, bytes: pixels.to_vec() };
-            textures[id].update(&image);
-            textures[id].set_filter(FilterMode::Nearest);
+            textures[id.0].update(&image);
+            textures[id.0].set_filter(FilterMode::Nearest);
         }
     }
 }
@@ -363,6 +331,8 @@ impl Backend for MquadBackend {
         Self::update_texture_internal(
             &mut self.textures,
             self.canvas_texture,
+            tato.video.width() as u16,
+            tato.video.height() as u16,
             self.pixels.as_slice(),
         );
 
@@ -415,9 +385,9 @@ impl Backend for MquadBackend {
                 );
             },
             DrawOp::Texture { id, rect, tint } => {
-                if *id < self.textures.len() {
+                if id.0 < self.textures.len() {
                     draw_texture_ex(
-                        &self.textures[*id],
+                        &self.textures[id.0],
                         rect.x as f32,
                         rect.y as f32,
                         rgba32_to_mq_color(*tint),
@@ -439,7 +409,7 @@ impl Backend for MquadBackend {
                         *y as f32,
                         TextParams {
                             font: Some(&self.font),
-                            font_size: *size as u16,
+                            font_size: (*size * 0.75) as u16,
                             color: rgba32_to_mq_color(*color),
                             ..Default::default()
                         },
@@ -524,11 +494,11 @@ impl Backend for MquadBackend {
         let texture = Texture2D::from_image(&image);
         texture.set_filter(FilterMode::Nearest);
         self.textures.push(texture);
-        self.textures.len() - 1
+        TextureId(self.textures.len() - 1)
     }
 
-    fn update_texture(&mut self, id: TextureId, pixels: &[u8]) {
-        Self::update_texture_internal(&mut self.textures, id, pixels);
+    fn update_texture(&mut self, id: TextureId, width: u16, height: u16, pixels: &[u8]) {
+        Self::update_texture_internal(&mut self.textures, id, width, height, pixels);
     }
 
     // ---------------------- Input ----------------------

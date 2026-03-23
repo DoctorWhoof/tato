@@ -13,7 +13,7 @@ impl Dashboard {
     ) where
         A: ArenaOps<u32, ()>,
     {
-        layout.push_edge(Edge::Right, PANEL_WIDTH, |right_panel| {
+        layout.push_edge(Edge::Right, PANEL_WIDTH_RIGHT, |right_panel| {
             right_panel.set_margin(5);
             right_panel.set_gap(0);
             right_panel.set_scale(self.gui_scale);
@@ -28,83 +28,16 @@ impl Dashboard {
                 // Draw each bank debug data
                 // self.process_bank(arena, backend, panel, bank_index, tato);
                 let Some(bank) = banks.get(bank_index) else { continue };
-                self.process_bank(arena, backend, right_panel, bank_index, bank);
+                self.draw_bank_info(arena, backend, right_panel, bank_index, bank);
                 // Small separator
                 right_panel.push_edge(Edge::Top, 5, |_separator| {});
             }
             // Reset this field after all banks have been processed. Can be requested
             // again with self.update_bank_texture.
             self.re_init_bank_texture = false;
-
-            // BG Tile Info
-            let size_normal = self.font_size * self.gui_scale;
-            // let size_small = self.font_size * 0.9 * self.gui_scale;
-            let text = Text::from_str(arena, "BG Tile Info").unwrap();
-            self.draw_text(arena, right_panel, text, size_normal);
-
-            right_panel.fill(|tile_info| {
-                tile_info.set_gap(0);
-                tile_info.set_margin(10);
-                self.draw_rect(arena, tile_info.rect(), RGBA12::new(3, 3, 3), false, false);
-
-                if let Some(mouse) = self.world_mouse(backend.get_mouse(), tato) {
-                    let tile_size = TILE_SIZE as i16;
-                    let col = mouse.x / tile_size;
-                    let row = mouse.y / tile_size;
-
-                    if let Some(cell) = bg.get_cell(col, row) {
-                        let text = Text::format_display(arena, "Coords: {}, {}", &[col, row], "") //
-                            .unwrap();
-                        self.draw_text(arena, tile_info, text, size_normal);
-
-                        let text =
-                            Text::format_display(arena, "TileID: {}", &[cell.id.0 as i16], "") //
-                                .unwrap();
-                        self.draw_text(arena, tile_info, text, size_normal);
-
-                        let text = Text::format_display(
-                            arena,
-                            "TileFlags:{},{},{},{},{}",
-                            &[
-                                if cell.flags.is_flipped_x() { "X" } else { "  " },
-                                if cell.flags.is_flipped_y() { "Y" } else { "  " },
-                                if cell.flags.is_rotated() { "R" } else { "  " },
-                                if cell.flags.is_collider() { "C" } else { "  " },
-                                if cell.flags.is_fg() { "FG" } else { "  " },
-                            ],
-                            "",
-                        )
-                        .unwrap();
-                        self.draw_text(arena, tile_info, text, size_normal);
-
-                        let text = Text::format_display(
-                            arena,
-                            "Colors:{},{},{},{}",
-                            &[
-                                cell.colors.get(0),
-                                cell.colors.get(1),
-                                cell.colors.get(2),
-                                cell.colors.get(3),
-                            ],
-                            "",
-                        )
-                        .unwrap();
-                        self.draw_text(arena, tile_info, text, size_normal);
-
-                        // Highlight current BG tile with rect
-                        let rect = Rect {
-                            x: col * tile_size,
-                            y: row * tile_size,
-                            w: tile_size,
-                            h: tile_size,
-                        };
-                        self.draw_rect(arena, rect, RGBA12::WHITE, true, true);
-                    }
-                } else {
-                    let text = Text::from_str(arena, "No tile under mouse").unwrap();
-                    self.draw_text(arena, tile_info, text, size_normal);
-                }
-            });
+            // Draw info for bg tile under mouse
+            let bank = &banks[tato.video.bg_tile_bank as usize];
+            self.draw_bg_tile_info(arena, bg, right_panel, backend, bank, tato);
         });
     }
 
@@ -121,6 +54,7 @@ impl Dashboard {
 
         let w = tiles_per_row as usize * TILE_SIZE as usize;
         let h = num_rows as usize * TILE_SIZE as usize;
+        self.tile_texture_dims[bank_index] = (w as u16, h as u16);
         let expected_size = w * h * 4; // RGBA
 
         // TODO: This may run of of space... we're reallocating within the fixed_arena!
@@ -162,7 +96,7 @@ impl Dashboard {
         }
     }
 
-    fn process_bank<A>(
+    fn draw_bank_info<A>(
         &mut self,
         arena: &mut A,
         backend: &impl Backend,
@@ -259,21 +193,9 @@ impl Dashboard {
 
         panel.push_edge(Edge::Top, tiles_height as i16, |tiles| {
             let rect = tiles.rect();
-            let rect_handle = arena.alloc(DrawOp::Rect {
-                rect, //
-                color: RGBA32 { r: 106, g: 96, b: 128, a: 255 },
-            });
-            self.ops.push(arena, rect_handle.unwrap()).unwrap();
 
             // Draw tiles
-            let texture_handle = arena //
-                .alloc(DrawOp::Texture {
-                    id: bank_index,
-                    rect,
-                    tint: RGBA32::WHITE,
-                })
-                .unwrap();
-            self.ops.push(arena, texture_handle).unwrap();
+            self.draw_texture(arena, rect, self.bank_texture_ids[bank_index]);
 
             // Mouse hover detection for tiles
             if rect.contains(mouse.x, mouse.y) {
@@ -284,6 +206,158 @@ impl Dashboard {
                     self.mouse_over_text =
                         Text::format_display(arena, "Tile {}", &[tile_index], "").unwrap();
                 }
+            }
+        });
+    }
+
+    fn draw_bg_tile_info<A>(
+        &mut self,
+        arena: &mut A,
+        bg: &dyn DynTilemap,
+        frame: &mut Frame<i16>,
+        backend: &impl Backend,
+        bank: &Bank,
+        tato: &Tato,
+    ) where
+        A: ArenaOps<u32, ()>,
+    {
+        // BG Tile Info
+        let size_normal = self.font_size * self.gui_scale;
+        // let size_small = self.font_size * 0.9 * self.gui_scale;
+        let text = Text::from_str(arena, "BG Tile Info").unwrap();
+        self.draw_text_in_frame(arena, frame, text, size_normal);
+
+        frame.fill(|tile_info| {
+            tile_info.set_gap(0);
+            tile_info.set_margin(0);
+
+            self.draw_rect_filled(arena, tile_info.rect(), RGBA32::new(16, 16, 16));
+
+            // Detect bg tile under mouse
+            if let Some(mouse) = self.world_mouse(backend.get_mouse(), tato) {
+                tile_info.push_edge(Edge::Top, 100, |inlet| {
+                    let tile_size = TILE_SIZE as i16;
+                    let col = mouse.x / tile_size;
+                    let row = mouse.y / tile_size;
+
+                    // Acquire tile cell
+                    if let Some(cell) = bg.get_cell(col, row) {
+                        let w = inlet.divide_width(2);
+                        inlet.set_gap(4);
+                        self.current_tile_index = cell.id;
+
+                        // Left inlet
+                        inlet.push_edge(Edge::Left, w, |left| {
+                            left.set_gap(0);
+                            self.draw_bg_tile_text(arena, left, bank, col, row, size_normal, cell);
+
+                            // Highlight current BG tile with rect
+                            let rect = Rect {
+                                x: col * tile_size,
+                                y: row * tile_size,
+                                w: tile_size,
+                                h: tile_size,
+                            };
+                            self.draw_rect(arena, rect, RGBA12::WHITE, true, true);
+                        });
+
+                        // Right inlet
+                        inlet.fill(|right| {
+                            let rect = right.rect();
+                            self.draw_texture(arena, rect, self.current_tile_texture_id);
+                        });
+                    }
+                });
+            } else {
+                tile_info.set_margin(10);
+                let text = Text::from_str(arena, "No tile under mouse").unwrap();
+                self.draw_text_in_frame(arena, tile_info, text, size_normal);
+            }
+        });
+    }
+
+    fn draw_bg_tile_text<A>(
+        &mut self,
+        arena: &mut A,
+        frame: &mut Frame<i16>,
+        bank: &Bank,
+        col: i16,
+        row: i16,
+        size: f32,
+        cell: Cell,
+    ) where
+        A: ArenaOps<u32, ()>,
+    {
+        let text = Text::format_display(arena, "Coords: {}, {}", &[col, row], "") //
+            .unwrap();
+        self.draw_text_in_frame(arena, frame, text, size);
+
+        let text = Text::format_display(arena, "TileID: {}", &[cell.id.0 as i16], "") //
+            .unwrap();
+        self.draw_text_in_frame(arena, frame, text, size);
+
+        let text = Text::format_display(
+            arena,
+            "TileFlags: {},{},{},{},{}",
+            &[
+                if cell.flags.is_flipped_x() { "X" } else { "  " },
+                if cell.flags.is_flipped_y() { "Y" } else { "  " },
+                if cell.flags.is_rotated() { "R" } else { "  " },
+                if cell.flags.is_collider() { "C" } else { "  " },
+                if cell.flags.is_fg() { "FG" } else { "  " },
+            ],
+            "",
+        )
+        .unwrap();
+        self.draw_text_in_frame(arena, frame, text, size);
+
+        let text = Text::format_display(
+            arena,
+            "Colors: {},{},{},{}",
+            &[cell.colors.get(0), cell.colors.get(1), cell.colors.get(2), cell.colors.get(3)],
+            "",
+        )
+        .unwrap();
+        self.draw_text_in_frame(arena, frame, text, size);
+
+        let swatch_size = (self.font_size * 1.5) as i16;
+        frame.push_edge(Edge::Top, swatch_size, |color_swatches| {
+            color_swatches.set_gap(3);
+            let len = color_swatches.divide_width(4);
+            for x in 0..4 {
+                color_swatches.push_edge(Edge::Left, len, |swatch| {
+                    let rect = swatch.rect();
+                    let color_index = cell.colors.get(x) as usize;
+                    let color = bank.colors.palette[color_index];
+
+                    if color.a() == 0 {
+                        // Draw checkerboard if transparent
+                        const COLORS: [RGBA32; 2] = [
+                            RGBA32::new(32, 32, 32), //
+                            RGBA32::new(64, 64, 64),
+                        ];
+                        let size: i16 = (size * 0.36) as i16;
+                        let mut y = rect.top();
+                        let mut row = 0;
+                        while y < rect.bottom() {
+                            let mut x = rect.left();
+                            let mut color = row % 2;
+                            while x < rect.right() {
+                                let w = size.min(rect.right() - x);
+                                let h = size.min(rect.bottom() - y);
+                                let checker_rect = Rect { x, y, w, h };
+                                self.draw_rect_filled(arena, checker_rect, COLORS[color]);
+                                color = 1 - color;
+                                x += size;
+                            }
+                            y += size;
+                            row += 1;
+                        }
+                    } else {
+                        // If not transparent, draw color rect
+                        self.draw_rect_filled(arena, rect, color.into());
+                    }
+                });
             }
         });
     }

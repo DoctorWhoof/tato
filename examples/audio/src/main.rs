@@ -13,7 +13,7 @@ fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<307_200, u32>::new();
     let mut bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(240, 180, 60);
-    let mut dash = Dashboard::new().unwrap();
+
     let mut banks = [Bank::new()];
 
     // Tato Video Setup
@@ -57,6 +57,7 @@ fn main() -> TatoResult<()> {
 
     // Main Loop
     let mut backend = RayBackend::new(&tato);
+    let mut dash = Dashboard::new(&mut backend)?;
     while !backend.ray.window_should_close() {
         frame_arena.clear();
         backend.frame_start(&mut frame_arena, &mut tato.pad);

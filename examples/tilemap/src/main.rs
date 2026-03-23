@@ -13,13 +13,12 @@ const MAP_LEN: usize = 1024;
 fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<65_536, u32>::new();
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
-    let mut dash = Dashboard::new().unwrap();
+
     let mut tato = Tato::new(240, 180, 60);
     let mut banks = [Bank::new()];
 
     tato.video.bg_color = RGBA12::with_transparency(2, 3, 4, 7);
     tato.video.wrap_bg = true;
-    dash.color_grid = RGBA12::with_transparency(1, 1, 1, 2);
 
     // Combine multiple banks into bank 0
     banks[0].tiles.add(&Tile::default());
@@ -45,6 +44,8 @@ fn main() -> TatoResult<()> {
     // Backend
     let mut backend = RayBackend::new(&tato);
     // backend.set_bg_color(RGBA32::BLACK);
+    let mut dash = Dashboard::new(&mut backend).unwrap();
+    dash.color_grid = RGBA12::with_transparency(1, 1, 1, 2);
 
     while !backend.ray.window_should_close() {
         frame_arena.clear();

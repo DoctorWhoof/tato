@@ -21,6 +21,10 @@ impl RGBA32 {
     pub const CYAN: Self = Self { r: 0, g: 255, b: 255, a: 255 };
     pub const MAGENTA: Self = Self { r: 255, g: 0, b: 255, a: 255 };
     pub const TRANSPARENT: Self = Self { r: 0, g: 0, b: 0, a: 0 };
+
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b, a: 255 }
+    }
 }
 
 /// The Default color is "Debug Pink", not intended to be actually seen!

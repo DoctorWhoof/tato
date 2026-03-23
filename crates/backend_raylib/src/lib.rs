@@ -5,7 +5,7 @@ use tato::{Tato, arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*,
 
 pub use tato;
 
-const TILES_PER_ROW: i16 = 16;
+
 
 #[inline]
 fn rgba32_to_rl_color(color: RGBA32) -> Color {
@@ -38,7 +38,7 @@ impl RayBackend {
         let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
-        let total_panel_width = (PANEL_WIDTH * 4) + (MARGIN * 2);
+        let total_panel_width = ((PANEL_WIDTH_LEFT + PANEL_WIDTH_RIGHT) * 2) + (PANEL_MARGIN * 2);
         let adjusted_w = total_panel_width as i32 + (w * multiplier);
 
         // Init Raylib
@@ -76,19 +76,13 @@ impl RayBackend {
             font,
             draw_ops: Buffer::default(),
             draw_ops_additional: Buffer::default(),
-            canvas_texture: 0,
+            canvas_texture: TextureId(0),
             pixels: vec![0; w as usize * h as usize * 4],
             buffer_iter_time: AvgBuffer::new(),
             buffer_canvas_time: AvgBuffer::new(),
             pressed_key: None,
             allow_game_input: true,
         };
-
-        let size = TILES_PER_ROW as i16 * TILE_SIZE as i16;
-        for _ in 0..BANK_COUNT {
-            // Each texture ID is the same as the bank
-            result.create_texture(size, size);
-        }
 
         // Main render texture
         let id = result.create_texture(tato.video.width() as i16, tato.video.height() as i16);
@@ -97,39 +91,22 @@ impl RayBackend {
         result
     }
 
-    #[inline(always)]
     fn update_texture_internal(
         textures: &mut [Texture2D],
         ray: &mut RaylibHandle,
         thread: &RaylibThread,
         id: TextureId,
+        width: u16,
+        height: u16,
         pixels: &[u8],
     ) {
-        if id < textures.len() {
-            let texture_pixel_count =
-                textures[id].width as usize * textures[id].height as usize * 4;
-            // resize texture to match
-            if pixels.len() != texture_pixel_count {
-                println!(
-                    "Resizing texture, Souce pixels: {}, dest pixels: {}",
-                    pixels.len(),
-                    texture_pixel_count
-                );
-                // Calculate number of tiles (each tile is 8x8 with 4 bytes per pixel)
-                let total_tiles = pixels.len() / (TILE_SIZE as usize * TILE_SIZE as usize * 4);
-                let complete_rows = total_tiles / TILES_PER_ROW as usize;
-                let remaining_tiles = total_tiles % TILES_PER_ROW as usize;
-
-                let new_w = TILES_PER_ROW as i32 * TILE_SIZE as i32;
-                let complete_lines = complete_rows * TILE_SIZE as usize;
-                let incomplete_lines = if remaining_tiles > 0 { TILE_SIZE as usize } else { 0 };
-                let new_h = (complete_lines + incomplete_lines) as i32;
-                let image = Image::gen_image_color(new_w, new_h, Color::BLACK);
+        if id.0 < textures.len() {
+            if textures[id.0].width != width as i32 || textures[id.0].height != height as i32 {
+                let image = Image::gen_image_color(width as i32, height as i32, Color::BLACK);
                 let texture = ray.load_texture_from_image(thread, &image).unwrap();
-                textures[id] = texture;
-                println!("Backend texture {} resized", id);
+                textures[id.0] = texture;
             }
-            textures[id].update_texture(&pixels).unwrap();
+            textures[id.0].update_texture(pixels).unwrap();
         }
     }
 }
@@ -307,6 +284,8 @@ impl Backend for RayBackend {
             &mut self.ray,
             &self.thread,
             self.canvas_texture,
+            tato.video.width() as u16,
+            tato.video.height() as u16,
             self.pixels.as_slice(),
         );
 
@@ -358,11 +337,11 @@ impl Backend for RayBackend {
                 );
             },
             DrawOp::Texture { id, rect, tint } => {
-                if *id < self.textures.len() {
-                    let w = self.textures[*id].width() as f32;
+                if id.0 < self.textures.len() {
+                    let w = self.textures[id.0].width() as f32;
                     let scale = rect.w as f32 / w;
                     canvas.draw_texture_ex(
-                        &self.textures[*id],
+                        &self.textures[id.0],
                         Vector2::new(rect.x as f32, rect.y as f32),
                         0.0,
                         scale,
@@ -441,11 +420,19 @@ impl Backend for RayBackend {
         let image = Image::gen_image_color(width as i32, height as i32, Color::BLACK);
         let texture = self.ray.load_texture_from_image(&self.thread, &image).unwrap();
         self.textures.push(texture);
-        self.textures.len() - 1
+        TextureId(self.textures.len() - 1)
     }
 
-    fn update_texture(&mut self, id: TextureId, pixels: &[u8]) {
-        Self::update_texture_internal(&mut self.textures, &mut self.ray, &self.thread, id, pixels);
+    fn update_texture(&mut self, id: TextureId, width: u16, height: u16, pixels: &[u8]) {
+        Self::update_texture_internal(
+            &mut self.textures,
+            &mut self.ray,
+            &self.thread,
+            id,
+            width,
+            height,
+            pixels,
+        );
     }
 
     // ---------------------- Input ----------------------

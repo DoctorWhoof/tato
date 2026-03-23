@@ -1,3 +1,4 @@
+use crate::backend::TextureId;
 use tato_arena::Text;
 use tato_math::Rect;
 use tato_video::RGBA32;
@@ -19,7 +20,7 @@ pub enum DrawOp {
         color: RGBA32,
     },
     Texture {
-        id: usize,
+        id: TextureId,
         rect: Rect<i16>,
         tint: RGBA32,
     },

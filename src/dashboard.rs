@@ -76,37 +76,42 @@ pub struct Dashboard {
     debug_polys_gui: Buffer<Polygon>,
     re_init_bank_texture: bool, // Will self-reset to false after generating texture
     tile_pixels: [Buffer<u8, u32>; BANK_COUNT], // one per bank
-    // current_tile_pixels: [u8; TILE_PIXEL_COUNT], // To visualize the current tile under cursor
+    bank_texture_ids: [TextureId; BANK_COUNT], // GPU texture ID per bank, set by init_textures()
+    tile_texture_dims: [(u16, u16); BANK_COUNT], // (width, height) of each bank's GPU texture
+    current_tile_pixels: [u8; TILE_PIXEL_COUNT * 4], // one per bank
+    current_tile_texture_id: TextureId, // one per bank
+    current_tile_index: TileID,
+    previous_tile_index: TileID,
 }
 
-pub const PANEL_WIDTH: i16 = 150;
-pub const MARGIN: i16 = 10;
+pub const PANEL_WIDTH_LEFT: i16 = 120;
+pub const PANEL_WIDTH_RIGHT: i16 = 150;
+pub const PANEL_MARGIN: i16 = 10;
 const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
 const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
 
 impl Dashboard {
     /// Creates a new Dashboard where LEN is the memory available to its
     /// temporary memory buffer, in bytes.
-    pub fn new() -> TatoResult<Self> {
+    pub fn new(backend: &mut impl Backend) -> TatoResult<Self> {
         let mut fixed_arena = Arena::<FIXED_ARENA_LEN, u32>::new(); // persistent
         let tile_pixels = {
             // 4 bytes per pixel (RGBA)
             const CAP: u32 = TILE_COUNT as u32 * TILE_SIZE as u32 * TILE_SIZE as u32 * 4;
-            // Messy, but allows using '?' per bank
-            let mut result: [core::mem::MaybeUninit<Buffer<u8, u32>>; BANK_COUNT] =
-                unsafe { core::mem::MaybeUninit::uninit().assume_init() };
-
-            for i in 0..BANK_COUNT {
-                result[i] = core::mem::MaybeUninit::new(Buffer::<u8, u32>::from_fn(
-                    &mut fixed_arena,
-                    CAP,
-                    |_| 0,
-                )?);
-            }
-            unsafe { core::mem::transmute(result) }
+            core::array::from_fn(|_| {
+                Buffer::<u8, u32>::from_fn(&mut fixed_arena, CAP, |_| 0).unwrap()
+            })
         };
+
+        let current_tile_texture_id = backend.create_texture(8, 8);
+
         let console_buffer = RingBuffer::new(&mut fixed_arena, CONSOLE_HISTORY)?;
         let console_line_buffer = Buffer::new(&mut fixed_arena, COMMAND_MAX_LEN).unwrap();
+
+        let mut bank_texture_ids = [TextureId(usize::MAX); BANK_COUNT];
+        for i in 0..BANK_COUNT {
+            bank_texture_ids[i] = backend.create_texture(1, 1);
+        }
 
         Ok(Self {
             font_size: 8.0,
@@ -116,7 +121,8 @@ impl Dashboard {
             re_init_bank_texture: true,
             // frame_arena,
             fixed_arena,
-            tile_pixels,
+            bank_texture_ids,
+            tile_texture_dims: [(0, 0); BANK_COUNT],
             last_frame_arena_use: 0,
             last_frame_draw_op_count: 0,
             // console_display: false,
@@ -135,6 +141,11 @@ impl Dashboard {
             debug_text: Buffer::default(),
             debug_polys_world: Buffer::default(),
             debug_polys_gui: Buffer::default(),
+            tile_pixels,
+            current_tile_pixels: core::array::from_fn(|_| 0),
+            current_tile_texture_id,
+            current_tile_index: TileID(0),
+            previous_tile_index: TileID(0),
         })
     }
 
@@ -295,6 +306,15 @@ impl Dashboard {
         self.draw_poly(arena, &points, color, world_space, clip_to_view);
     }
 
+    /// Screen space only for now, will change if needed
+    pub fn draw_rect_filled<A>(&mut self, arena: &mut A, rect: Rect<i16>, color: RGBA32)
+    where
+        A: ArenaOps<u32, ()>,
+    {
+        let rect = arena.alloc(DrawOp::Rect { rect, color }).unwrap();
+        self.ops.push(arena, rect).unwrap();
+    }
+
     /// Convenient way to send a point as an "x" to the dashboard.
     pub fn draw_pivot<A>(
         &mut self,
@@ -323,6 +343,16 @@ impl Dashboard {
             world_space,
             clip_to_view,
         );
+    }
+
+    pub fn draw_texture<A>(&mut self, arena: &mut A, rect: Rect<i16>, id: TextureId)
+    where
+        A: ArenaOps<u32, ()>,
+    {
+        let texture_handle = arena //
+            .alloc(DrawOp::Texture { id, rect, tint: RGBA32::WHITE })
+            .unwrap();
+        self.ops.push(arena, texture_handle).unwrap();
     }
 
     /// Must be called at the beginning of each frame, after the Backend has
@@ -365,16 +395,36 @@ impl Dashboard {
             return;
         }
 
+        // Update current tile texture, if changed
+        if self.previous_tile_index != self.current_tile_index {
+            self.previous_tile_index = self.current_tile_index;
+            let tile_index = self.current_tile_index.0 as usize;
+            let bank = &banks[tato.video.bg_tile_bank as usize];
+            let tile = bank.tiles.tiles[tile_index];
+            let mut i = 0;
+            for y in 0 .. TILE_SIZE {
+                for x in 0 .. TILE_SIZE {
+                    let color = tile.get_pixel(x, y) * 85; // maps 2 bit colors to a max of 255;
+                    // let color:RGBA32 = bank.colors.palette[color_index].into();
+                    self.current_tile_pixels[i] = color;
+                    self.current_tile_pixels[i+1] = color;
+                    self.current_tile_pixels[i+2] = color;
+                    self.current_tile_pixels[i+3] = 255;
+                    i += 4;
+                }
+            }
+            backend.update_texture(self.current_tile_texture_id, 8, 8, &self.current_tile_pixels);
+        }
+
         // Start Layout
         let screen_size = backend.get_screen_size();
         let screen_rect = Rect { x: 0, y: 0, w: screen_size.x, h: screen_size.y };
         let mut layout = Frame::new(screen_rect);
         layout.set_scale(self.gui_scale);
-        layout.set_margin(MARGIN);
+        layout.set_margin(PANEL_MARGIN);
         layout.set_gap(3);
 
         // Panels have their own modules, for organization
-        // self.draw_tile_info(bg, frame_arena, tato, backend);
         self.process_text_panel(&mut layout, frame_arena, backend, tato);
         self.process_video_banks_panel(&mut layout, frame_arena, banks, bg, backend, tato);
         self.process_console(tato, &mut layout, frame_arena);
@@ -447,11 +497,12 @@ impl Dashboard {
         // Copy tile pixels from dashboard to GPU textures
         struct _CopyTilePixels;
         for bank_index in 0..BANK_COUNT {
-            // texture ID = bank_index
+            let (w, h) = self.tile_texture_dims[bank_index];
+            if w == 0 || h == 0 {
+                continue; // bank is empty or not yet initialized
+            }
             if let Some(pixels) = self.tile_pixels(bank_index) {
-                if !pixels.is_empty() {
-                    backend.update_texture(bank_index, pixels);
-                }
+                backend.update_texture(self.bank_texture_ids[bank_index], w, h, pixels);
             }
         }
 
@@ -468,7 +519,7 @@ impl Dashboard {
         self.last_frame_arena_use = frame_arena.used();
     }
 
-    pub(crate) fn draw_text<A>(
+    pub(crate) fn draw_text_in_frame<A>(
         &mut self,
         arena: &mut A,
         frame: &mut Frame<i16>,
@@ -477,7 +528,7 @@ impl Dashboard {
     ) where
         A: ArenaOps<u32, ()>,
     {
-        frame.push_edge(Edge::Top, (size * 0.75) as i16, |label| {
+        frame.push_edge(Edge::Top, (self.font_size * 1.25) as i16, |label| {
             let rect = label.rect();
             let handle = arena
                 .alloc(DrawOp::Text { text, x: rect.x, y: rect.y, size, color: RGBA32::WHITE })

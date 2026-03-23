@@ -51,7 +51,7 @@ fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<65_536, u32>::new();
     let mut scene = Scene::None;
     let tato = &mut Tato::new(240, 180, 60);
-    let dash = &mut Dashboard::new().unwrap();
+
     let banks = &mut [Bank::new(), Bank::new()];
 
     let mut state = State {
@@ -65,6 +65,7 @@ fn main() -> TatoResult<()> {
     let target_fps = 60.0;
     let mut backend = RayBackend::new(&tato);
     backend.print_frame_time = false;
+    let dash = &mut Dashboard::new(&mut backend)?;
     while !backend.ray.window_should_close() {
         frame_arena.clear();
         backend.frame_start(&mut frame_arena, &mut tato.pad);
