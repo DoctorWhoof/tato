@@ -88,6 +88,7 @@ fn main() -> TatoResult<()> {
 
         // Update backend
         tato.frame_finish();
+        dash.update_bank_texture();
         dash.frame_present(&mut frame_arena, &state.bg, banks, &tato, &mut backend);
         backend.frame_present(&mut frame_arena, &tato, banks, &[&state.bg]);
 

@@ -53,10 +53,11 @@ impl SceneC {
         Ok(SceneC { smiley: smiley, counter: 0 })
     }
 
-    pub fn update(&mut self, t: &mut Tato, _banks: &mut [Bank]) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, banks: &mut [Bank]) -> Option<SceneChange> {
         if t.video.frame_number() % 4 == 0 {
             unsafe {
                 LINE = LINE.wrapping_sub(1);
+                banks[0].tiles.tiles[6].scroll(1, 0);
             }
         }
 

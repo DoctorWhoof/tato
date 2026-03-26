@@ -25,7 +25,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
     // Mask for extracting a single pixel value
     pub const MASK: u8 = (1 << BITS_PER_PIXEL) - 1;
 
-    #[inline(always)]
+    #[inline]
     pub fn get_subpixel(&self, index: u8) -> u8 {
         debug_assert!(index < PIXELS_PER_CLUSTER, err!("Pixel index out of bounds"));
 
@@ -40,7 +40,7 @@ impl<const BITS_PER_PIXEL: usize> Cluster<BITS_PER_PIXEL> {
         (self.data[byte_idx] >> shift) & Self::MASK
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_subpixel(&mut self, value: u8, index: u8) {
         debug_assert!(index < PIXELS_PER_CLUSTER, err!("Pixel index out of bounds"));
 

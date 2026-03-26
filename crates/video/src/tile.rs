@@ -17,7 +17,62 @@ impl<const BITS_PER_PIXEL: usize> Tile<BITS_PER_PIXEL> {
     }
 
     pub fn set_pixel(&mut self, x: u8, y: u8, value: u8) {
-        self.clusters[y as usize].set_subpixel(x, value);
+        self.clusters[y as usize].set_subpixel(value, x);
+    }
+
+    /// Scroll tile pixels with wrap-around (positive = right/down)
+    pub fn scroll(&mut self, delta_x: i8, delta_y: i8) {
+        self.scroll_y(delta_y);
+        self.scroll_x(delta_x);
+    }
+
+    /// Scroll columns right with wrap-around (positive = right)
+    pub fn scroll_x(&mut self, delta_x: i8) {
+        // Pre-calculate common values
+        let dx = delta_x.rem_euclid(TILE_SIZE as i8) as u8;
+        let total_bits = (BITS_PER_PIXEL * 8) as u32;
+        let mask = u64::MAX >> (64 - total_bits);
+        // See explanation for l and r shifts in scroll_x_cluster()!
+        let rshift = dx as u32 * BITS_PER_PIXEL as u32;
+        let lshift = total_bits - rshift;
+        // Perform scroll per cluster
+        for cluster in &mut self.clusters {
+            // Arguments passed are pre-computed values, so that
+            // we don't calculate them per-cluster!
+            Self::scroll_x_cluster(cluster, rshift, lshift, mask);
+        }
+    }
+
+    /// Scroll rows down with wrap-around (positive = down)
+    pub fn scroll_y(&mut self, delta_y: i8) {
+        let dy = delta_y.rem_euclid(TILE_SIZE as i8) as usize;
+        // Using this neat little Rust slice function!
+        self.clusters.rotate_right(dy);
+    }
+
+    /// Rotates the pixels of a single cluster row right by `delta_x`.
+    /// Works for any BPP up to 8.
+    fn scroll_x_cluster(
+        cluster: &mut Cluster<BITS_PER_PIXEL>,
+        rshift: u32,
+        lshift: u32,
+        mask: u64,
+    ) {
+        // Pack cluster bytes into a u64 (big-endian)
+        let mut data: u64 = 0;
+        for &byte in &cluster.data {
+            // Pack cluster's array bytes into u64 value,
+            // with zeroes on the left side
+            data = (data << 8) | byte as u64;
+        }
+        // Rotate right within the cluster's bit width
+        // That's why we need l and r shifts, the bit width doesn't always line up
+        // with the 64 bit data, without them we'd scroll "into" unwanted zero values.
+        let rotated = ((data >> rshift) | (data << lshift)) & mask;
+        // Unpack back to bytes (big-endian)
+        for i in 0..BITS_PER_PIXEL {
+            cluster.data[i] = (rotated >> ((BITS_PER_PIXEL - 1 - i) * 8)) as u8;
+        }
     }
 }
 
