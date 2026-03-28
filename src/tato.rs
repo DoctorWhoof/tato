@@ -123,11 +123,11 @@ impl Tato {
 
     /// Returns whether something should happen on this frame with the desired rate.
     /// Assuming the game is running at 60fps, a desired rate of 60 will return always true,
-    /// 30 will toggle true or false per frame, 15 will hold each value for two frames, etc.
+    /// 30 will be true every other frame, 15 will be true every four frames, etc.
     pub fn should_trigger(&self, desired_rate: f32) -> bool {
-        let tick = (self.time() * desired_rate).floor() as i64;
         let game_time_between_frames = (1.0 / self.video.frame_rate as f32) * self.time_scale;
         let prev_tick = ((self.time() - game_time_between_frames) * desired_rate).floor() as i64;
+        let tick = (self.time() * desired_rate).floor() as i64;
         tick != prev_tick
     }
 

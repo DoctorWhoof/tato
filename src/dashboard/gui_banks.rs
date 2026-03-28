@@ -320,7 +320,7 @@ impl Dashboard {
         .unwrap();
         self.draw_text_in_frame(arena, frame, text, size);
 
-        let swatch_size = (self.font_size * 1.5) as i16;
+        let swatch_size = (self.font_size * 1.25) as i16;
         frame.push_edge(Edge::Top, swatch_size, |color_swatches| {
             color_swatches.set_gap(3);
             let len = color_swatches.divide_width(4);

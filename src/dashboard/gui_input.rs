@@ -2,7 +2,7 @@ use super::*;
 
 impl Dashboard {
     pub(super) fn process_input(&mut self, backend: &impl Backend) {
-        let text_input = self.display_console && self.display_debug_info;
+        let text_input = self.display_console && self.visible;
 
         // Receive input
         if let Some(key) = backend.get_pressed_key() {
@@ -18,7 +18,7 @@ impl Dashboard {
                     }
                 },
                 Key::Tab => {
-                    self.display_debug_info = !self.display_debug_info;
+                    self.visible = !self.visible;
                 },
                 Key::Grave => {
                     self.display_console = !self.display_console;

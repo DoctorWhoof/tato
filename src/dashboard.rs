@@ -24,6 +24,13 @@ mod gui_draw_tooltip;
 mod gui_input;
 mod gui_text;
 
+pub const PANEL_WIDTH_LEFT: i16 = 120;
+pub const PANEL_WIDTH_RIGHT: i16 = 120;
+pub const PANEL_MARGIN: i16 = 10;
+
+const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
+const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
+
 // The Fixed arena is never cleared - this may need to changed when
 // I dynamically update the tiles! (i.e. pop() and load())
 const FIXED_ARENA_LEN: usize = MAX_TILE_PIXELS + (64 * 1024);
@@ -32,7 +39,6 @@ const MAX_TILE_PIXELS: usize =
     BANK_COUNT * TILE_SIZE as usize * TILE_SIZE as usize * TILE_COUNT as usize * 4;
 const COMMAND_MAX_LEN: u32 = 100;
 const COMMAND_MAX_ARGS: usize = 8;
-
 // Temp Debug Arena
 // This is necessary since DrawOps need to be processed, and can't be read
 // (Text, Vec2, etc) and written (DrawOp) to the same arena at the same time.
@@ -55,11 +61,11 @@ pub struct Dashboard {
     pub gui_scale: f32,
     pub color_origin: RGBA12,
     pub color_grid: RGBA12,
+    pub visible: bool,
 
     // Storage
     fixed_arena: Arena<FIXED_ARENA_LEN, u32>, //  Not cleared per frame
     // State
-    display_debug_info: bool,
     display_console: bool,
     // Console
     console_buffer: RingBuffer<[u8; COMMAND_MAX_LEN as usize]>,
@@ -83,12 +89,6 @@ pub struct Dashboard {
     current_tile_index: TileID,
     previous_tile_index: TileID,
 }
-
-pub const PANEL_WIDTH_LEFT: i16 = 120;
-pub const PANEL_WIDTH_RIGHT: i16 = 150;
-pub const PANEL_MARGIN: i16 = 10;
-const DARKEST_GRAY: RGBA32 = RGBA32 { r: 18, g: 18, b: 18, a: 200 };
-const DARK_GRAY: RGBA32 = RGBA32 { r: 32, g: 32, b: 32, a: 200 };
 
 impl Dashboard {
     /// Creates a new Dashboard where LEN is the memory available to its
@@ -129,7 +129,7 @@ impl Dashboard {
             console_latest_command: None,
             canvas_rect: None,
             // last_key_received: Key::None,
-            display_debug_info: true,
+            visible: true,
             display_console: false,
             // Fixed arena data (not cleared on every frame)
             // Shared frame arena data
@@ -157,7 +157,7 @@ impl Dashboard {
 
     /// The visibility state of the console.
     pub fn console_visible(&self) -> bool {
-        self.display_console && self.display_debug_info
+        self.display_console && self.visible
     }
 
     /// A reference to the pixel buffer used to debug tile pixels, if
@@ -375,7 +375,7 @@ impl Dashboard {
         self.debug_polys_gui = Buffer::new(frame_arena, DEBUG_POLY_COUNT).unwrap();
 
         // Input
-        let text_input = self.display_console && self.display_debug_info;
+        let text_input = self.display_console && self.visible;
         backend.set_game_input(!text_input); // if console is active, no gameplay input allowed
         self.process_input(backend);
     }
@@ -391,7 +391,7 @@ impl Dashboard {
     ) where
         A: ArenaOps<u32, ()>,
     {
-        if !self.display_debug_info {
+        if !self.visible {
             return;
         }
 
@@ -402,14 +402,14 @@ impl Dashboard {
             let bank = &banks[tato.video.bg_tile_bank as usize];
             let tile = bank.tiles.tiles[tile_index];
             let mut i = 0;
-            for y in 0 .. TILE_SIZE {
-                for x in 0 .. TILE_SIZE {
+            for y in 0..TILE_SIZE {
+                for x in 0..TILE_SIZE {
                     let color = tile.get_pixel(x, y) * 85; // maps 2 bit colors to a max of 255;
                     // let color:RGBA32 = bank.colors.palette[color_index].into();
                     self.current_tile_pixels[i] = color;
-                    self.current_tile_pixels[i+1] = color;
-                    self.current_tile_pixels[i+2] = color;
-                    self.current_tile_pixels[i+3] = 255;
+                    self.current_tile_pixels[i + 1] = color;
+                    self.current_tile_pixels[i + 2] = color;
+                    self.current_tile_pixels[i + 3] = 255;
                     i += 4;
                 }
             }

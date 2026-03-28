@@ -110,7 +110,7 @@ pub trait Backend {
     /// Get screen dimensions
     fn get_screen_size(&self) -> Vec2<i16>;
 
-    // ---------------------- Profiling ----------------------
+    // ---------------------- Debugging ----------------------
 
     fn toggle_info_printing(&mut self);
 
