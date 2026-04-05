@@ -117,4 +117,16 @@ impl ColorBank {
         }
         Ok(color_remap)
     }
+
+    pub fn fade_out(&mut self, delta: i8) {
+        for color in &mut self.palette {
+            *color = color.fade_by(delta);
+        }
+    }
+
+    pub fn fade_to(&mut self, target: [RGBA12; COLORS_PER_PALETTE as usize], step: u8) {
+        for (color, target_color) in self.palette.iter_mut().zip(target.iter()) {
+            *color = color.fade_to(*target_color, step);
+        }
+    }
 }

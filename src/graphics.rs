@@ -270,8 +270,8 @@ pub fn draw_patch_to_tilemap<const LEN: usize>(
 /// Returns the resulting height (in rows), if any.
 pub fn draw_text<const LEN: usize>(
     bg: &mut Tilemap<LEN>,
-    bg_col: i16,
-    bg_row: i16,
+    col: i16,
+    row: i16,
     op: &TextOp,
     text: &str,
 ) -> Option<i16> {
@@ -287,12 +287,12 @@ pub fn draw_text<const LEN: usize>(
             CharacterSet::Arcade => char_set_arcade(ch) as usize,
         };
         let font_cols = op.font.columns() as usize;
-        let col = char_index % font_cols;
-        let row = char_index / font_cols;
-        if let Some(cell) = op.font.get_cell(col as i16, row as i16) {
+        let new_col = char_index % font_cols;
+        let new_row = char_index / font_cols;
+        if let Some(cell) = op.font.get_cell(new_col as i16, new_row as i16) {
             bg.set_op(BgOp {
-                col: bg_col + cursor_x,
-                row: bg_row + cursor_y,
+                col: col + cursor_x,
+                row: row + cursor_y,
                 cell: Cell {
                     id: TileID(cell.id.0 + op.tile_offset), // TODO: This may overflow...
                     flags: cell.flags,
@@ -347,7 +347,7 @@ pub fn tilemap_replace_color<const LEN: usize>(
                 if color == color_in { color_out } else { color }
             });
             // println!("Color swap at {},{} -> {:?}", col, row, colors);
-            bg.set_colors(col, row, colors.into());
+            bg.set_colors(col, row, colors);
         }
     }
 }

@@ -371,10 +371,6 @@ impl<'a> BankBuilder<'a> {
                 ));
             }
             code.write_line("    ],");
-            // code.write_line("    &[");
-            // Color mappings are no longer used - colors are now per-cell via Palette
-            // code.write_line("        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],");
-            // code.write_line("    ],");
             code.write_line(");");
             code.write_line("");
         }
@@ -401,13 +397,17 @@ impl<'a> BankBuilder<'a> {
             for strip in self.strips.values() {
                 code.write_line(&format!(
                     "pub const STRIP_{}: [TilemapRef; {}] = [",
-                    strip.name.to_uppercase(),
+                    strip.name.to_uppercase().to_uppercase(),
                     strip.frames.len()
                 ));
 
                 for (i, frame) in strip.frames.iter().enumerate() {
                     code.write_line("    TilemapRef {");
-                    code.write_line(&format!("        cells: &FRAMES_{}[{}],", strip.name, i));
+                    code.write_line(&format!(
+                        "        cells: &FRAMES_{}[{}],",
+                        strip.name.to_uppercase(),
+                        i
+                    ));
                     code.write_line(&format!("        columns: {},", frame.columns));
                     code.write_line(&format!("        rows: {},", frame.rows));
                     code.write_line("    },");

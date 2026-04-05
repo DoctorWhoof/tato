@@ -11,17 +11,16 @@ pub struct SceneC {
 static mut LINE: u16 = 0;
 
 impl SceneC {
-    pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
+    pub fn new(t: &mut Tato, bank: &mut Bank, state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
 
-        banks[0].reset();
-        banks[1].reset();
-        banks[0].colors.load_default();
+        bank.reset();
+        bank.colors.load_default();
         t.video.bg_color = RGBA12::GRAY;
 
-        banks[0].append_tiles(&TILES_DITHER).unwrap();
-        let cross = banks[0].append_tile(&TILES_GRIDS[1]).unwrap();
-        let smiley = banks[0].append_tile(&TILES_SYMBOLS[0]).unwrap();
+        bank.append_tiles(&TILES_DITHER).unwrap();
+        let cross = bank.append_tile(&TILES_GRIDS[1]).unwrap();
+        let smiley = bank.append_tile(&TILES_SYMBOLS[0]).unwrap();
 
         for col in 0..state.bg.columns() as i16 {
             for row in 0..state.bg.rows() as i16 {
@@ -53,11 +52,11 @@ impl SceneC {
         Ok(SceneC { smiley: smiley, counter: 0 })
     }
 
-    pub fn update(&mut self, t: &mut Tato, banks: &mut [Bank]) -> Option<SceneChange> {
+    pub fn update(&mut self, t: &mut Tato, bg_bank: &mut Bank) -> Option<SceneChange> {
         if t.video.frame_number() % 4 == 0 {
             unsafe {
                 LINE = LINE.wrapping_sub(1);
-                banks[0].tiles.tiles[6].scroll(1, 0);
+                bg_bank.tiles.tiles[6].scroll(1, 0);
             }
         }
 

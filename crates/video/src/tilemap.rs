@@ -132,9 +132,9 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
     }
 
     /// Sets the palette colors at the given coordinates. Does nothing if out of bounds.
-    pub fn set_colors(&mut self, col: i16, row: i16, colors: Palette) {
+    pub fn set_colors(&mut self, col: i16, row: i16, colors: impl Into<Palette>) {
         if let Some(index) = self.get_index(col, row) {
-            self.cells[index].colors = colors;
+            self.cells[index].colors = colors.into();
         }
     }
     /// Copies a rectangular region from a cells array to this tilemap.

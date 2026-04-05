@@ -10,14 +10,14 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<896>::new(32, 28);
     let mut tato = Tato::new(240, 180, 60);
 
-    let mut banks = [Bank::new()];
+    let mut bank = Bank::new();
 
     // Graphics setup
     tato.video.bg_color = RGBA12::new(1, 2, 3);
     tato.video.bg_tile_bank = 0;
-    banks[0].colors.load_default();
-    banks[0].tiles.add(&Tile::default());
-    let text_offset = banks[0].append_tiles(&TILES_CHARS).unwrap();
+    bank.colors.load_default();
+    bank.tiles.add(&Tile::default());
+    let text_offset = bank.append_tiles(&TILES_CHARS).unwrap();
 
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,
@@ -105,8 +105,8 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &bg_map, &banks, &tato, &mut backend);
-        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
+        dash.frame_present(&mut frame_arena, &bg_map, &[&bank], &tato, &mut backend);
+        backend.frame_present(&mut frame_arena, &tato, &[&bank], &[&bg_map]);
     }
     Ok(())
 }

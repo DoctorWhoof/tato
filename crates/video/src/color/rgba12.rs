@@ -26,8 +26,6 @@ impl RGBA12 {
     pub const BLUE: RGBA12 = RGBA12::new(1, 2, 6);
     pub const LIGHT_BLUE: RGBA12 = RGBA12::new(4, 6, 7);
     pub const PINK: RGBA12 = RGBA12::new(6, 3, 6);
-    // Used as a placeholder for colors not specified
-    pub const EMPTY_COLOR: RGBA12 = RGBA12::new(7, 0, 7);
 
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         debug_assert!(r < 8, err!("Exceeded maximum value for Red channel"));
@@ -99,6 +97,47 @@ impl RGBA12 {
         let mut result = self;
         result.set_z(z);
         result
+    }
+
+    /// Fades this color toward `target` by `step` units per call, using
+    /// proportional advance to preserve hue throughout the fade.
+    pub fn fade_to(self, target: RGBA12, step: u8) -> Self {
+        let r = self.r();
+        let g = self.g();
+        let b = self.b();
+        let tr = target.r();
+        let tg = target.g();
+        let tb = target.b();
+
+        let dr = r.abs_diff(tr);
+        let dg = g.abs_diff(tg);
+        let db = b.abs_diff(tb);
+        let max_delta = dr.max(dg).max(db);
+
+        let advance = |cur: u8, tgt: u8, channel_delta: u8| -> u8 {
+            if channel_delta == 0 || max_delta == 0 {
+                return cur;
+            }
+            let scaled = ((step as u16 * channel_delta as u16) / max_delta as u16) as u8;
+            if cur < tgt { (cur + scaled).min(tgt) } else { cur.saturating_sub(scaled).max(tgt) }
+        };
+
+        RGBA12::new(advance(r, tr, dr), advance(g, tg, dg), advance(b, tb, db))
+    }
+
+    /// Shifts each RGB channel by `delta`, clamping to the valid range (0–7).
+    pub fn fade_by(self, delta: i8) -> Self {
+        if delta == 0 {
+            return self;
+        }
+        let r = self.r() as i8;
+        let g = self.g() as i8;
+        let b = self.b() as i8;
+        if delta < 0 {
+            RGBA12::new((r + delta).max(0) as u8, (g + delta).max(0) as u8, (b + delta).max(0) as u8)
+        } else {
+            RGBA12::new((r + delta).min(7) as u8, (g + delta).min(7) as u8, (b + delta).min(7) as u8)
+        }
     }
 }
 

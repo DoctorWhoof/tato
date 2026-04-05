@@ -17,7 +17,12 @@ pub struct SceneA {
 
 impl SceneA {
     // Initialize and retuns a new scene
-    pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
+    pub fn new(
+        t: &mut Tato,
+        bank_fg: &mut Bank,
+        bank_bg: &mut Bank,
+        state: &mut State,
+    ) -> TatoResult<Self> {
         t.video.reset_all();
         t.video.bg_tile_bank = 1; // uses bank 1 for BG tiles
         t.video.bg_color = RGBA12::new(2, 1, 0);
@@ -31,18 +36,18 @@ impl SceneA {
             iter.scroll_x = (video.scroll.x as f32 - (phase * 8.0)) as i16;
         });
 
-        banks[0].reset();
-        banks[0].colors.load_default();
+        bank_fg.reset();
+        bank_fg.colors.load_default();
         // TODO: Append single tile function, to avoid passing a slice like this
-        let arrow = banks[0].append_tile(&TILES_ICONS[0]).unwrap();
-        let smiley = banks[0].append_tile(&TILES_SYMBOLS[0]).unwrap();
+        let arrow = bank_fg.append_tile(&TILES_ICONS[0]).unwrap();
+        let smiley = bank_fg.append_tile(&TILES_SYMBOLS[0]).unwrap();
 
         // Palette test - defines BG palette with a golden tint!
-        banks[1].reset();
-        banks[1].append_tile(&TILES_ICONS[0]).unwrap();
-        banks[1].append_tile(&TILES_SYMBOLS[0]).unwrap();
+        bank_bg.reset();
+        bank_bg.append_tile(&TILES_ICONS[0]).unwrap();
+        bank_bg.append_tile(&TILES_SYMBOLS[0]).unwrap();
 
-        banks[1].colors.palette = [
+        bank_bg.colors.palette = [
             RGBA12::TRANSPARENT,
             RGBA12::new(2, 1, 1),
             RGBA12::new(3, 1, 1),
@@ -64,7 +69,8 @@ impl SceneA {
         // Color mappings
         let colors_shadow = Palette::new(0, 1, 1, 1);
         let colors_cycle = Palette::new(0, 1, 2, 3);
-        let colors_unique: [Palette; 16] = core::array::from_fn(|i| Palette::new(0, (i as u8 % 12) + 4, 2, 3));
+        let colors_unique: [Palette; 16] =
+            core::array::from_fn(|i| Palette::new(0, (i as u8 % 12) + 4, 2, 3));
         let colors_bg: [Palette; 16] = core::array::from_fn(|i| {
             let bg_color = (i % 16) as u8;
             Palette::new(0, bg_color, bg_color, bg_color)
@@ -115,7 +121,7 @@ impl SceneA {
             colors_cycle,
             colors_shadow,
             // arrow: arrow,
-            smiley
+            smiley,
         })
     }
 
@@ -133,7 +139,11 @@ impl SceneA {
         }
 
         // Increase speed if any "face" button (A,B,X,Y) is down
-        let speed = if t.pad.is_down(Button::A) { 30.0 * state.elapsed as f32 } else { 120.0 * state.elapsed as f32 };
+        let speed = if t.pad.is_down(Button::A) {
+            30.0 * state.elapsed as f32
+        } else {
+            120.0 * state.elapsed as f32
+        };
 
         // Ensures animation always starts from phase = 0.0;
         if t.pad.is_any_just_pressed(AnyButton::Direction) {

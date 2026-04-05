@@ -8,7 +8,7 @@ pub struct SceneB {
 }
 
 impl SceneB {
-    pub fn new(t: &mut Tato, banks: &mut [Bank], state: &mut State) -> TatoResult<Self> {
+    pub fn new(t: &mut Tato, bank: &mut Bank, state: &mut State) -> TatoResult<Self> {
         t.video.reset_all();
         t.video.fg_tile_bank = 0;
         t.video.bg_tile_bank = 0;
@@ -21,14 +21,14 @@ impl SceneB {
         t.video.wrap_sprites = true;
 
         // Colors
-        banks[0].reset();
-        banks[0].colors.load_default();
+        bank.reset();
+        bank.colors.load_default();
 
         t.video.bg_color = RGBA12::BLACK;
         t.video.crop_color = RGBA12::DARK_GREEN;
 
         // Load the same tile into both banks since FG uses bank 0 and BG uses bank 1
-        let tile = banks[0].append_tile(&TILES_SYMBOLS[0]).unwrap();
+        let tile = bank.append_tile(&TILES_SYMBOLS[0]).unwrap();
 
         // Set BG cells to use mappings
         for (i, cell) in state.bg.cells.iter_mut().enumerate() {

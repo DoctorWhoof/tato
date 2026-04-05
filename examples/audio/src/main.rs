@@ -13,14 +13,13 @@ fn main() -> TatoResult<()> {
     let mut frame_arena = Arena::<307_200, u32>::new();
     let mut bg_map = Tilemap::<1024>::new(32, 32);
     let mut tato = Tato::new(240, 180, 60);
-
-    let mut banks = [Bank::new()];
+    let mut bank = Bank::new();
 
     // Tato Video Setup
     tato.video.bg_color = RGBA12::DARK_BLUE;
-    banks[0].colors.load_default();
-    banks[0].tiles.add(&Tile::default());
-    let text_offset = banks[0].append_tiles(&TILES_CHARS).unwrap();
+    bank.colors.load_default();
+    bank.tiles.add(&Tile::default());
+    let text_offset = bank.append_tiles(&TILES_CHARS).unwrap();
 
     let text_white = &TextOp {
         font: &MAP_FONT_LONG,
@@ -114,9 +113,9 @@ fn main() -> TatoResult<()> {
 
         // Update backends
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &bg_map, &banks, &tato, &mut backend);
+        dash.frame_present(&mut frame_arena, &bg_map, &[&bank], &tato, &mut backend);
         audio_backend.process_frame(&mut audio);
-        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
+        backend.frame_present(&mut frame_arena, &tato, &[&bank], &[&bg_map]);
     }
 
     audio_backend.write_wav_file();

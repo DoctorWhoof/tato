@@ -117,8 +117,8 @@ async fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &bg_map, &[BANK_ASTRO], &tato, &mut backend);
-        backend.frame_present(&mut frame_arena, &tato, &[BANK_ASTRO], &[&bg_map]);
+        dash.frame_present(&mut frame_arena, &bg_map, &[&BANK_ASTRO], &tato, &mut backend);
+        backend.frame_present(&mut frame_arena, &tato, &[&BANK_ASTRO], &[&bg_map]);
         next_frame().await;
     }
     Ok(())

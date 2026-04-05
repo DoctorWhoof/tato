@@ -385,7 +385,7 @@ impl Dashboard {
         &mut self,
         frame_arena: &mut A,
         bg: &dyn DynTilemap,
-        banks: &[Bank],
+        banks: &[&Bank],
         tato: &Tato,
         backend: &mut impl Backend,
     ) where

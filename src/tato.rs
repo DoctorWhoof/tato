@@ -146,7 +146,7 @@ impl Tato {
     //     self.video.iter_pixels(&video_banks[..], tilemaps)
     // }
 
-    pub fn iter_pixels<'a, T>(&'a self, banks: &'a [Bank], tilemaps: &'a [&'a T]) -> PixelIter<'a>
+    pub fn iter_pixels<'a, T>(&'a self, banks: &'a [&'a Bank], tilemaps: &'a [&'a T]) -> PixelIter<'a>
     where
         &'a T: Into<TilemapRef<'a>>,
     {

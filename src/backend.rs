@@ -59,7 +59,7 @@ pub trait Backend {
         &mut self,
         frame_arena: &'a mut A,
         tato: &'a Tato,
-        banks: &'a [Bank],
+        banks: &'a [&'a Bank],
         tilemaps: &'a [&'a T],
     ) where
         &'a T: Into<TilemapRef<'a>>,

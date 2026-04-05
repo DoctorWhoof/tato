@@ -63,8 +63,11 @@ pub struct VideoChip {
 
 impl VideoChip {
     /// Creates a new drawing context with default settings.
-    pub fn new(w: u16, h: u16, frame_rate:u8) -> Self {
-        assert!(h > 7 && h <= MAX_RESOLUTION_Y as u16, err!("Screen height range is 8 to MAX_RESOLUTION_Y"));
+    pub fn new(w: u16, h: u16, frame_rate: u8) -> Self {
+        assert!(
+            h > 7 && h <= MAX_RESOLUTION_Y as u16,
+            err!("Screen height range is 8 to MAX_RESOLUTION_Y")
+        );
 
         let mut result = Self {
             bg_color: RGBA12::BLACK,
@@ -228,8 +231,10 @@ impl VideoChip {
             let adjusted_y = screen_y + size;
 
             // Apply proper modulo wrapping
-            let wrapped_adjusted_x = ((adjusted_x % (w + size * 2)) + (w + size * 2)) % (w + size * 2);
-            let wrapped_adjusted_y = ((adjusted_y % (h + size * 2)) + (h + size * 2)) % (h + size * 2);
+            let wrapped_adjusted_x =
+                ((adjusted_x % (w + size * 2)) + (w + size * 2)) % (w + size * 2);
+            let wrapped_adjusted_y =
+                ((adjusted_y % (h + size * 2)) + (h + size * 2)) % (h + size * 2);
 
             // Adjust back to get the final coordinates
             wrapped_x = wrapped_adjusted_x - size;
@@ -249,7 +254,15 @@ impl VideoChip {
             }
         }
 
-        self.sprite_gen.insert(wrapped_x, wrapped_y, self.w, self.h, data.flags, data.id, data.colors);
+        self.sprite_gen.insert(
+            wrapped_x,
+            wrapped_y,
+            self.w,
+            self.h,
+            data.flags,
+            data.id,
+            data.colors,
+        );
     }
 
     pub fn frame_start(&mut self, is_paused: bool) {
@@ -264,7 +277,11 @@ impl VideoChip {
 
     /// Returns an iterator over the visible screen pixels, yielding RGB colors for each pixel.
     /// Requires a reference to the Tile array and one for the BG Tilemap array.
-    pub fn iter_pixels<'a, T>(&'a self, video_banks: &'a [Bank], tilemaps: &'a [&'a T]) -> PixelIter<'a>
+    pub fn iter_pixels<'a, T>(
+        &'a self,
+        video_banks: &'a [&'a Bank],
+        tilemaps: &'a [&'a T],
+    ) -> PixelIter<'a>
     where
         &'a T: Into<TilemapRef<'a>>,
     {

@@ -49,10 +49,10 @@ pub enum Scene {
 fn main() -> TatoResult<()> {
     // Tato setup + initial scene
     let mut frame_arena = Arena::<65_536, u32>::new();
-    let mut scene = Scene::None;
     let tato = &mut Tato::new(240, 180, 60);
-
-    let banks = &mut [Bank::new(), Bank::new()];
+    let mut scene = Scene::None;
+    let mut bank_bg = Bank::new();
+    let mut bank_fg = Bank::new();
 
     let mut state = State {
         time: 0.0,
@@ -80,7 +80,7 @@ fn main() -> TatoResult<()> {
             Scene::None => Some(SceneChange::A),
             Scene::A(scn) => scn.update(tato, &mut state),
             Scene::B(scn) => scn.update(tato),
-            Scene::C(scn) => scn.update(tato, banks),
+            Scene::C(scn) => scn.update(tato, &mut bank_bg),
         };
 
         // Basic console input
@@ -89,17 +89,22 @@ fn main() -> TatoResult<()> {
         // Update backend
         tato.frame_finish();
         dash.update_bank_texture();
-        dash.frame_present(&mut frame_arena, &state.bg, banks, &tato, &mut backend);
-        backend.frame_present(&mut frame_arena, &tato, banks, &[&state.bg]);
+        {
+            let banks_ref: [&Bank; 2] = [&bank_bg, &bank_fg];
+            dash.frame_present(&mut frame_arena, &state.bg, &banks_ref, &tato, &mut backend);
+            backend.frame_present(&mut frame_arena, &tato, &banks_ref, &[&state.bg]);
+        }
 
         // Prepare next frame if scene change was requested
         if let Some(choice) = scene_change {
             tato.reset();
             dash.update_bank_texture();
             match choice {
-                SceneChange::A => scene = Scene::A(SceneA::new(tato, banks, &mut state)?),
-                SceneChange::B => scene = Scene::B(SceneB::new(tato, banks, &mut state)?),
-                SceneChange::C => scene = Scene::C(SceneC::new(tato, banks, &mut state)?),
+                SceneChange::A => {
+                    scene = Scene::A(SceneA::new(tato, &mut bank_bg, &mut bank_fg, &mut state)?)
+                },
+                SceneChange::B => scene = Scene::B(SceneB::new(tato, &mut bank_bg, &mut state)?),
+                SceneChange::C => scene = Scene::C(SceneC::new(tato, &mut bank_bg, &mut state)?),
             }
         }
     }

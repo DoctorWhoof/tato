@@ -39,7 +39,7 @@ pub struct PixelIter<'a> {
 }
 
 impl<'a> PixelIter<'a> {
-    pub fn new<T>(vid: &'a VideoChip, video_mem: &'a [Bank], bg_maps: &'a [&'a T]) -> Self
+    pub fn new<T>(vid: &'a VideoChip, video_mem: &'a [&'a Bank], bg_maps: &'a [&'a T]) -> Self
     where
         &'a T: Into<TilemapRef<'a>>,
     {
@@ -59,7 +59,7 @@ impl<'a> PixelIter<'a> {
         );
         let mut result = Self {
             vid,
-            tile_banks: from_fn(|i| if i < video_mem.len() { &video_mem[i] } else { &video_mem[0] }),
+            tile_banks: from_fn(|i| if i < video_mem.len() { video_mem[i] } else { video_mem[0] }),
             tilemaps: from_fn(|i| {
                 if i < bg_maps.len() { bg_maps[i].into() } else { bg_maps[0].into() }
             }),
@@ -247,11 +247,8 @@ impl<'a> PixelIter<'a> {
                 let sprite_x = x as i16 - sprite.x;
 
                 // Using standard transform_coords. Consistency!
-                let (tx, ty) = sprite.flags.transform_coords(
-                    sprite_x as u8,
-                    sprite_y as u8,
-                    TILE_SIZE,
-                );
+                let (tx, ty) =
+                    sprite.flags.transform_coords(sprite_x as u8, sprite_y as u8, TILE_SIZE);
 
                 let pixel = tile.get_pixel(tx as u8, ty as u8);
                 let color_index = sprite.colors.get(pixel);
@@ -391,8 +388,7 @@ impl<'a> PixelIter<'a> {
                     let base_idx = chunk * 4;
                     for i in 0..4 {
                         let tile_x = tile_x_start + (base_idx + i) as u8;
-                        let color_idx =
-                            bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
+                        let color_idx = bg_cluster.get_subpixel(tile_x % PIXELS_PER_CLUSTER);
                         let mapped_idx = bg_cell.colors.get(color_idx);
                         // let mapped_idx = bank.colors[remap_id][color_idx] as usize;
                         // let mapped_idx = bank.colors.mapping[remap_id][color_idx] as usize;

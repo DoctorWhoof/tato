@@ -15,15 +15,15 @@ fn main() -> TatoResult<()> {
     let mut bg_map = Tilemap::<MAP_LEN>::new(32, 32);
 
     let mut tato = Tato::new(240, 180, 60);
-    let mut banks = [Bank::new()];
+    let mut bank = Bank::new();
 
     tato.video.bg_color = RGBA12::with_transparency(2, 3, 4, 7);
     tato.video.wrap_bg = true;
 
     // Combine multiple banks into bank 0
-    banks[0].tiles.add(&Tile::default());
-    let patch_offset = banks[0].append(&BANK_PATCH).unwrap();
-    let smileys_offset = banks[0].append(&BANK_SMILEYS).unwrap();
+    bank.tiles.add(&Tile::default());
+    let patch_offset = bank.append(&BANK_PATCH).unwrap();
+    let smileys_offset = bank.append(&BANK_SMILEYS).unwrap();
 
     // Draw using the new direct tilemap API
     draw_patch_to_tilemap(
@@ -66,8 +66,10 @@ fn main() -> TatoResult<()> {
         }
 
         tato.frame_finish();
-        dash.frame_present(&mut frame_arena, &bg_map, &banks, &tato, &mut backend);
-        backend.frame_present(&mut frame_arena, &tato, &banks, &[&bg_map]);
+        {
+            dash.frame_present(&mut frame_arena, &bg_map, &[&bank], &tato, &mut backend);
+            backend.frame_present(&mut frame_arena, &tato, &[&bank], &[&bg_map]);
+        }
     }
     Ok(())
 }

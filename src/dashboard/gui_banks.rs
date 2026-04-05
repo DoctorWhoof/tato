@@ -6,7 +6,7 @@ impl Dashboard {
         &mut self,
         layout: &mut Frame<i16>,
         arena: &mut A,
-        banks: &[Bank],
+        banks: &[&Bank],
         bg: &dyn DynTilemap,
         backend: &impl Backend,
         tato: &Tato,
