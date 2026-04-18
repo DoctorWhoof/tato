@@ -137,6 +137,8 @@ impl<const CELL_COUNT: usize> Tilemap<CELL_COUNT> {
             self.cells[index].colors = colors.into();
         }
     }
+
+
     /// Copies a rectangular region from a cells array to this tilemap.
     ///
     /// If `src_rect` is None, copies the entire source. If `dst_rect` is None, pastes at (0,0).

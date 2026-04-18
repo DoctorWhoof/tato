@@ -1,11 +1,11 @@
 // Flag bits
-pub const FLAG_FLIP_H: u8 = 0b_1000_0000;
-pub const FLAG_FLIP_V: u8 = 0b_0100_0000;
-pub const FLAG_ROTATED: u8 = 0b_0010_0000;
-pub const FLAG_FG: u8 = 0b_0001_0000;
-pub const FLAG_COLLIDER: u8 = 0b_0000_1000;
-pub const FLAG_TRIGGER: u8 = 0b_0000_0100;
-pub const FLAG_INVISIBLE: u8 = 0b_0000_0010;
+const MASK_FLIP_H: u8 = 0b_1000_0000;
+const MASK_FLIP_V: u8 = 0b_0100_0000;
+const MASK_ROTATED: u8 = 0b_0010_0000;
+const MASK_FG: u8 = 0b_0001_0000;
+const MASK_COLLIDER: u8 = 0b_0000_1000;
+const MASK_TRIGGER: u8 = 0b_0000_0100;
+const MASK_INVISIBLE: u8 = 0b_0000_0010;
 
 /// A single byte struct that stores a tile's render state such as
 /// horizontal flip, vertical flip, rotation and custom data.
@@ -17,16 +17,16 @@ impl TileFlags {
         let mut data: u8 = 0;
 
         if flip_h {
-            data |= FLAG_FLIP_H;
+            data |= MASK_FLIP_H;
         }
         if flip_v {
-            data |= FLAG_FLIP_V;
+            data |= MASK_FLIP_V;
         }
         if collider {
-            data |= FLAG_COLLIDER;
+            data |= MASK_COLLIDER;
         }
         if trigger {
-            data |= FLAG_TRIGGER;
+            data |= MASK_TRIGGER;
         }
 
         Self(data)
@@ -34,33 +34,33 @@ impl TileFlags {
 
     /// Consumes the original flag and ensures flip_x matches state
     pub const fn with_flip_x(self, state: bool) -> Self {
-        if state { Self(self.0 | FLAG_FLIP_H) } else { Self(self.0 & !FLAG_FLIP_H) }
+        if state { Self(self.0 | MASK_FLIP_H) } else { Self(self.0 & !MASK_FLIP_H) }
     }
 
     /// Consumes the original flag and ensures flip_y matches state
     pub const fn with_flip_y(self, state: bool) -> Self {
-        if state { Self(self.0 | FLAG_FLIP_V) } else { Self(self.0 & !FLAG_FLIP_V) }
+        if state { Self(self.0 | MASK_FLIP_V) } else { Self(self.0 & !MASK_FLIP_V) }
     }
 
     /// Consumes the original flag and ensures rotation matches state
     pub const fn with_rotation(self, state: bool) -> Self {
-        if state { Self(self.0 | FLAG_ROTATED) } else { Self(self.0 & !FLAG_ROTATED) }
+        if state { Self(self.0 | MASK_ROTATED) } else { Self(self.0 & !MASK_ROTATED) }
     }
 
 
     /// Consumes the original flag and ensures a BG tile is rendered in front of sprites.
     pub const fn with_fg(self, state:bool) -> Self {
-        if state { Self(self.0 | FLAG_FG) } else { Self(self.0 & !FLAG_FG) }
+        if state { Self(self.0 | MASK_FG) } else { Self(self.0 & !MASK_FG) }
     }
 
     /// Consumes the original flag and ensures tile is a collider.
     pub const fn with_collision(self, state:bool) -> Self {
-        if state { Self(self.0 | FLAG_COLLIDER) } else { Self(self.0 & !FLAG_COLLIDER) }
+        if state { Self(self.0 | MASK_COLLIDER) } else { Self(self.0 & !MASK_COLLIDER) }
     }
 
     /// Consumes the original flag and ensures tile is a trigger.
     pub const fn with_trigger(self, state:bool) -> Self {
-        if state { Self(self.0 | FLAG_TRIGGER) } else { Self(self.0 & !FLAG_TRIGGER) }
+        if state { Self(self.0 | MASK_TRIGGER) } else { Self(self.0 & !MASK_TRIGGER) }
     }
 
     /// Consumes original, sets desired transformations
@@ -77,38 +77,38 @@ impl TileFlags {
 
     /// If true flag will be flipped horizontally
     pub fn set_flip_x(&mut self, state: bool) {
-        if state { self.0 |= FLAG_FLIP_H } else { self.0 &= !FLAG_FLIP_H }
+        if state { self.0 |= MASK_FLIP_H } else { self.0 &= !MASK_FLIP_H }
     }
 
     /// If true flag will be flipped vertically
     pub fn set_flip_y(&mut self, state: bool) {
-        if state { self.0 |= FLAG_FLIP_V } else { self.0 &= !FLAG_FLIP_V }
+        if state { self.0 |= MASK_FLIP_V } else { self.0 &= !MASK_FLIP_V }
     }
 
     /// If true flag will be rotated 90 degrees.
     pub fn set_rotation(&mut self, state: bool) {
-        if state { self.0 |= FLAG_ROTATED } else { self.0 &= !FLAG_ROTATED }
+        if state { self.0 |= MASK_ROTATED } else { self.0 &= !MASK_ROTATED }
     }
 
     /// If true and this is a BG tile, it will be rendered in front of sprites.
     /// This value is ignored when used on sprites.
     pub fn set_fg(&mut self, state: bool) {
-        if state { self.0 |= FLAG_FG } else { self.0 &= !FLAG_FG }
+        if state { self.0 |= MASK_FG } else { self.0 &= !MASK_FG }
     }
 
     /// If true the tile will be a collider.
     pub fn set_collision(&mut self, state: bool) {
-        if state { self.0 |= FLAG_COLLIDER } else { self.0 &= !FLAG_COLLIDER }
+        if state { self.0 |= MASK_COLLIDER } else { self.0 &= !MASK_COLLIDER }
     }
 
     /// If true the tile will be a trigger.
     pub fn set_trigger(&mut self, state: bool) {
-        if state { self.0 |= FLAG_TRIGGER } else { self.0 &= !FLAG_TRIGGER }
+        if state { self.0 |= MASK_TRIGGER } else { self.0 &= !MASK_TRIGGER }
     }
 
     /// If false the tile will not render.
     pub fn set_invisible(&mut self, state: bool) {
-        if state { self.0 |= FLAG_INVISIBLE } else { self.0 &= !FLAG_INVISIBLE }
+        if state { self.0 |= MASK_INVISIBLE } else { self.0 &= !MASK_INVISIBLE }
     }
 
     pub fn rotate_up(&mut self) {
@@ -133,58 +133,58 @@ impl TileFlags {
 
     /// Current horizontal flip state.
     pub const fn is_flipped_x(&self) -> bool {
-        self.0 & FLAG_FLIP_H != 0
+        self.0 & MASK_FLIP_H != 0
     }
 
     /// Current vertical flip state.
     pub const fn is_flipped_y(&self) -> bool {
-        self.0 & FLAG_FLIP_V != 0
+        self.0 & MASK_FLIP_V != 0
     }
 
     /// Current rotation state.
     pub const fn is_rotated(&self) -> bool {
-        self.0 & FLAG_ROTATED != 0
+        self.0 & MASK_ROTATED != 0
     }
 
     /// If true and this is a BG tile, it will be rendered in front of sprites.
     /// This value is ignored when used on sprites.
     pub const fn is_fg(&self) -> bool {
-        self.0 & FLAG_FG != 0
+        self.0 & MASK_FG != 0
     }
 
     /// If true this tile is a collision tile.
     pub const fn is_collider(&self) -> bool {
-        self.0 & FLAG_COLLIDER != 0
+        self.0 & MASK_COLLIDER != 0
     }
 
     /// If true this tile is a trigger tile.
     pub const fn is_trigger(&self) -> bool {
-        self.0 & FLAG_TRIGGER != 0
+        self.0 & MASK_TRIGGER != 0
     }
 
     /// If true this tile is renderable.
     pub const fn is_invisible(&self) -> bool {
-        self.0 & FLAG_INVISIBLE != 0
+        self.0 & MASK_INVISIBLE != 0
     }
 
     /// Toggles the horizontal flip state
     pub const fn toggle_flip_x(self) -> Self {
-        Self(self.0 ^ FLAG_FLIP_H)
+        Self(self.0 ^ MASK_FLIP_H)
     }
 
     /// Toggles the vertical flip state
     pub const fn toggle_flip_y(self) -> Self {
-        Self(self.0 ^ FLAG_FLIP_V)
+        Self(self.0 ^ MASK_FLIP_V)
     }
 
     /// Toggles the rotation state
     pub const fn toggle_rotation(self) -> Self {
-        Self(self.0 ^ FLAG_ROTATED)
+        Self(self.0 ^ MASK_ROTATED)
     }
 
     /// Toggles the foreground state (BG tiles only)
     pub const fn toggle_fg(self) -> Self {
-        Self(self.0 ^ FLAG_FG)
+        Self(self.0 ^ MASK_FG)
     }
 
     /// Transform screen coordinates to tile coordinates based on flip/rotation flags.
