@@ -125,5 +125,5 @@ async fn main() -> TatoResult<()> {
 }
 
 fn window_conf() -> Conf {
-    tato_window_conf("Tato Macroquad Example", 320, 240)
+    tato_window_conf("Tato Macroquad Example", 320, 240, 3, false)
 }

@@ -47,20 +47,10 @@ impl Tato {
         self.time_cache = 0.0;
         self.time_scale = 1.0;
         self.video.reset_all();
-        // self.assets.reset();
-        // for bank in &mut self.banks {
-        //     bank.reset();
-        // }
         self.frame_started = false;
         self.frame_finished = true;
         ();
     }
-
-    // /// Load a Bank reference directly into a bank slot
-    // pub fn load_bank(&mut self, bank_id: u8, bank: &'a Bank) {
-    //     assert!((bank_id as usize) < BANK_COUNT, "Invalid bank_id");
-    //     self.banks[bank_id as usize] = Some(bank);
-    // }
 
     pub fn time(&self) -> f32 {
         self.time_cache
@@ -132,19 +122,6 @@ impl Tato {
     }
 
     // --------------------- Iterators ---------------------
-
-    // pub fn iter_pixels<T>(&'a self, tilemaps: &[&'a T]) -> PixelIter<'a>
-    // where
-    //     &'a T: Into<TilemapRef<'a>>,
-    // {
-    //     let default_bank = self.banks[0].expect("Tato banks mmust have at least one valid bank at index 0");
-    //     let video_banks: [&'a Bank; BANK_COUNT] =
-    //         core::array::from_fn(|i| match self.banks[i] {
-    //             Some(bank) => bank,
-    //             None => default_bank
-    //         });
-    //     self.video.iter_pixels(&video_banks[..], tilemaps)
-    // }
 
     pub fn iter_pixels<'a, T>(&'a self, banks: &'a [&'a Bank], tilemaps: &'a [&'a T]) -> PixelIter<'a>
     where

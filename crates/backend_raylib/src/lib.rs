@@ -5,8 +5,6 @@ use tato::{Tato, arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*,
 
 pub use tato;
 
-
-
 #[inline]
 fn rgba32_to_rl_color(color: RGBA32) -> Color {
     Color::new(color.r, color.g, color.b, color.a)
@@ -138,14 +136,35 @@ impl Backend for RayBackend {
         let ray = &mut self.ray;
         pad.copy_current_to_previous_state();
         if self.allow_game_input {
-            pad.set_button(Button::Left, ray.is_key_down(KEY_LEFT));
-            pad.set_button(Button::Right, ray.is_key_down(KEY_RIGHT));
-            pad.set_button(Button::Up, ray.is_key_down(KEY_UP));
-            pad.set_button(Button::Down, ray.is_key_down(KEY_DOWN));
+            const DEADZONE: f32 = 0.25;
+            let dpad = ray.get_gamepad_button_pressed();
+            let right = ray.is_key_down(KEY_RIGHT)
+                || ray.get_gamepad_axis_movement(0, GamepadAxis::GAMEPAD_AXIS_LEFT_X) > DEADZONE
+                || dpad == Some(GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_RIGHT);
+            let left = ray.is_key_down(KEY_LEFT)
+                || ray.get_gamepad_axis_movement(0, GamepadAxis::GAMEPAD_AXIS_LEFT_X) < -DEADZONE
+                || dpad == Some(GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_LEFT);
+
+            let down = ray.is_key_down(KEY_DOWN)
+                || ray.get_gamepad_axis_movement(0, GamepadAxis::GAMEPAD_AXIS_LEFT_Y) > DEADZONE
+                || dpad == Some(GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_DOWN);
+            let up = ray.is_key_down(KEY_UP)
+                || ray.get_gamepad_axis_movement(0, GamepadAxis::GAMEPAD_AXIS_LEFT_Y) < -DEADZONE
+                || dpad == Some(GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_UP);
+
+            let button_a = ray.is_key_down(KEY_Z)
+                || dpad == Some(GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+            let button_b = ray.is_key_down(KEY_X)
+                || dpad == Some(GamepadButton::GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
+
+            pad.set_button(Button::Left, left);
+            pad.set_button(Button::Right, right);
+            pad.set_button(Button::Up, up);
+            pad.set_button(Button::Down, down);
             pad.set_button(Button::Menu, ray.is_key_down(KEY_ESCAPE));
             pad.set_button(Button::Start, ray.is_key_down(KEY_ENTER));
-            pad.set_button(Button::A, ray.is_key_down(KEY_Z));
-            pad.set_button(Button::B, ray.is_key_down(KEY_X));
+            pad.set_button(Button::A, button_a);
+            pad.set_button(Button::B, button_b);
             pad.set_button(Button::X, ray.is_key_down(KEY_A));
             pad.set_button(Button::Y, ray.is_key_down(KEY_S));
             pad.set_button(Button::LeftShoulder, ray.is_key_down(KEY_Q));

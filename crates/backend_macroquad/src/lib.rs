@@ -9,13 +9,14 @@ use tato::{arena::*, avgbuffer::AvgBuffer, backend::Backend, dashboard::*, prelu
 
 pub use tato;
 
-pub fn tato_window_conf(title: &str, width: i32, height: i32) -> Conf {
+pub fn tato_window_conf(title: &str, width: i32, height: i32, zoom:i32, fullscreen:bool) -> Conf {
     Conf {
         window_title: title.to_owned(),
-        window_width: width / 2,
-        window_height: height / 2,
+        window_width: width * zoom,
+        window_height: height * zoom,
         window_resizable: true,
         high_dpi: true,
+        fullscreen,
         ..Default::default()
     }
 }
@@ -53,13 +54,8 @@ pub struct MquadBackend {
 impl MquadBackend {
     pub async fn new(tato: &Tato) -> Self {
         // Sizing
-        let multiplier = 3;
         let w = tato.video.width() as i32;
         let h = tato.video.height() as i32;
-        let total_panel_width = ((PANEL_WIDTH_LEFT + PANEL_WIDTH_RIGHT) * 2) + (PANEL_MARGIN * 2);
-        let adjusted_w = total_panel_width as i32 + (w * multiplier);
-
-        request_new_screen_size(adjusted_w as f32, (h * multiplier) as f32);
 
         // Load embedded font
         let font_data = include_bytes!("font.ttf");
